@@ -11,18 +11,11 @@ SatisfactoryMods/
     Resources/
     Screenshots/
     Documentation/
-  Link-Mods.ps1             ← junction into StarterProject Mods/
 ```
 
 ## Link into SML StarterProject
 
-From repo root:
-
-```powershell
-.\Link-Mods.ps1
-```
-
-Creates junctions under `StarterProject\Mods\StructuralPower`.
+Junction or copy `StructuralPower/` into your SML StarterProject `Mods/` folder (same name as the plugin), then build with Alpakit or UBT.
 
 ## Dev build (fast iteration)
 

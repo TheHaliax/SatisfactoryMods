@@ -19,6 +19,9 @@
 *.user
 *.suo
 
+# Local infra scripts (host-specific; not for repo)
+tools/
+
 # OS
 Thumbs.db
 Desktop.ini

@@ -6,8 +6,6 @@ Source for multiple [Satisfactory](https://www.satisfactorygame.com/) mods in on
 
 Each mod is a top-level folder named after its plugin (`ModReference`). Inside: `.uplugin`, C++ `Source/`, and any `Config/` or `Resources/` shipped with the mod. Build artifacts are local only and not tracked in git.
 
-Use `Link-Mods.ps1` to junction mod folders into your SML StarterProject `Mods/` directory before building with Alpakit or UBT.
-
 ## Mods
 
 [![StructuralPower icon](StructuralPower/Resources/Icon128.png)](StructuralPower/)
