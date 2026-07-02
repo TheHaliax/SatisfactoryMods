@@ -1,16 +1,18 @@
-# Per-mod build artifacts (same as mklierman/SatisfactoryMods)
-*/Binaries/*
-*/Intermediate/*
-*/Saved/*
-*/Metadata/*
-*/.vs/
+# Per-mod build artifacts
+**/Binaries/**
+**/Intermediate/**
+**/Saved/**
+**/Metadata/**
+**/.vs/
 
 # Keep source + ship config
-!*/Source/**
-!*/Config/**
-!*/Resources/**
-!*/Content/**
-!*/*.uplugin
+!**/Source/**
+!**/Config/**
+!**/Resources/**
+!**/Content/**
+!**/*.uplugin
+!**/Documentation/**
+!**/Screenshots/**
 
 # Local / IDE
 .vs/

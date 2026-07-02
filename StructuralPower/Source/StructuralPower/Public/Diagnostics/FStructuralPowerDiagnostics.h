@@ -11,5 +11,6 @@ class UWorld;
 class STRUCTURALPOWER_API FStructuralPowerDiagnostics
 {
 public:
-	static void AuditWorld(UWorld* World);
+	/** bAllowMenuWorld=false skips menu maps during automatic post-load audits. */
+	static void AuditWorld(UWorld* World, bool bAllowMenuWorld = false);
 };

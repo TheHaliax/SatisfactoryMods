@@ -13,7 +13,7 @@ namespace
 {
 static TAutoConsoleVariable<int32> CVarStructuralPowerTrace(
 	TEXT("StructuralPower.Trace"),
-	1,
+	0,
 	TEXT("Deep propagation trace ([PWR] prefix). 0=off, 1=on."),
 	ECVF_Default);
 }
@@ -109,7 +109,8 @@ void FStructuralPowerTrace::LogLinkOp(
 	UFGCircuitConnectionComponent* A,
 	UFGCircuitConnectionComponent* B,
 	bool bSuccess,
-	const TCHAR* Path)
+	const TCHAR* Path,
+	ELogVerbosity::Type Verbosity)
 {
 	if (!IsEnabled() || !Op)
 	{
@@ -120,14 +121,28 @@ void FStructuralPowerTrace::LogLinkOp(
 	const int32 CircuitB = IsValid(B) ? B->GetCircuitID() : INDEX_NONE;
 	const bool bHadLink = IsValid(A) && IsValid(B) && A->HasHiddenConnection(B);
 
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] link %s ok=%d path=%s hadLink=%d A(circuit=%d) B(circuit=%d)"),
-		Op,
-		bSuccess ? 1 : 0,
-		Path ? Path : TEXT("?"),
-		bHadLink ? 1 : 0,
-		CircuitA,
-		CircuitB);
+	if (Verbosity == ELogVerbosity::Verbose)
+	{
+		UE_LOG(LogStructuralPower, Verbose,
+			TEXT("[PWR] link %s ok=%d path=%s hadLink=%d A(circuit=%d) B(circuit=%d)"),
+			Op,
+			bSuccess ? 1 : 0,
+			Path ? Path : TEXT("?"),
+			bHadLink ? 1 : 0,
+			CircuitA,
+			CircuitB);
+	}
+	else
+	{
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[PWR] link %s ok=%d path=%s hadLink=%d A(circuit=%d) B(circuit=%d)"),
+			Op,
+			bSuccess ? 1 : 0,
+			Path ? Path : TEXT("?"),
+			bHadLink ? 1 : 0,
+			CircuitA,
+			CircuitB);
+	}
 }
 
 void FStructuralPowerTrace::LogOutletBridge(

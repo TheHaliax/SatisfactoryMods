@@ -39,7 +39,10 @@ static bool ComponentCarriesPower(const UFGPowerConnectionComponent* Component)
 	return !Component->IsHidden() && Component->GetNumConnections() > 0;
 }
 
-static void PromoteCircuitLink(UFGPowerConnectionComponent* A, UFGPowerConnectionComponent* B)
+static void PromoteCircuitLink(
+	UFGPowerConnectionComponent* A,
+	UFGPowerConnectionComponent* B,
+	ELogVerbosity::Type PromoteVerbosity = ELogVerbosity::Log)
 {
 	if (!IsValid(A) || !IsValid(B))
 	{
@@ -56,7 +59,13 @@ static void PromoteCircuitLink(UFGPowerConnectionComponent* A, UFGPowerConnectio
 		if (AFGCircuitSubsystem* CircuitSubsystem = AFGCircuitSubsystem::Get(World))
 		{
 			CircuitSubsystem->ConnectComponents(A, B);
-			FStructuralPowerTrace::LogLinkOp(TEXT("promote"), A, B, true, TEXT("ConnectComponents"));
+			FStructuralPowerTrace::LogLinkOp(
+				TEXT("promote"),
+				A,
+				B,
+				true,
+				TEXT("ConnectComponents"),
+				PromoteVerbosity);
 		}
 	}
 }
@@ -93,6 +102,17 @@ AStructuralPowerGraphSubsystem* AStructuralPowerGraphSubsystem::GetOrCreate(UWor
 		AStructuralPowerGraphSubsystem::StaticClass(),
 		FTransform::Identity,
 		SpawnParams);
+}
+
+AStructuralPowerGraphSubsystem* AStructuralPowerGraphSubsystem::Find(UWorld* World)
+{
+	if (!IsValid(World) || World->GetNetMode() == NM_Client)
+	{
+		return nullptr;
+	}
+
+	return Cast<AStructuralPowerGraphSubsystem>(
+		UGameplayStatics::GetActorOfClass(World, AStructuralPowerGraphSubsystem::StaticClass()));
 }
 
 FStructuralNodeId AStructuralPowerGraphSubsystem::MakeNodeId(const AFGBuildable* Buildable)
@@ -190,6 +210,11 @@ void AStructuralPowerGraphSubsystem::EnqueueLightweightPlacement(
 
 	if (bDefer)
 	{
+		if (IsLightweightAlreadyPending(Key))
+		{
+			return;
+		}
+
 		PendingLightweightJobs.Add(Key);
 		UE_LOG(LogStructuralPower, Log,
 			TEXT("[PWR] LW queued %s[%d]"),
@@ -225,6 +250,16 @@ void AStructuralPowerGraphSubsystem::EnqueuePlacement(
 
 	if (bDefer)
 	{
+		if (IsBuildableAlreadyPending(Buildable, JobType))
+		{
+			FStructuralPowerTrace::LogHook(
+				Buildable,
+				TEXT("EnqueuePlacement"),
+				JobType == EStructuralPlacementJobType::Outlet ? TEXT("skipped_outlet") : TEXT("skipped_structure"),
+				TEXT("already_pending"));
+			return;
+		}
+
 		FDeferredPlacementJob Job;
 		Job.Buildable = Buildable;
 		Job.JobType = JobType;
@@ -262,6 +297,35 @@ void AStructuralPowerGraphSubsystem::CompactPendingJobQueues()
 	}
 }
 
+bool AStructuralPowerGraphSubsystem::IsBuildableAlreadyPending(
+	AFGBuildable* Buildable,
+	EStructuralPlacementJobType JobType) const
+{
+	for (int32 Index = PendingJobsHead; Index < PendingJobs.Num(); ++Index)
+	{
+		const FDeferredPlacementJob& Job = PendingJobs[Index];
+		if (Job.JobType == JobType && Job.Buildable.Get() == Buildable)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool AStructuralPowerGraphSubsystem::IsLightweightAlreadyPending(const FStructuralLightweightKey& Key) const
+{
+	for (int32 Index = PendingLightweightJobsHead; Index < PendingLightweightJobs.Num(); ++Index)
+	{
+		if (PendingLightweightJobs[Index] == Key)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void AStructuralPowerGraphSubsystem::TickDeferredPlacements(int32 MaxJobs)
 {
 	if (!FStructuralPowerSessionSettings::IsPropagationEnabled() || MaxJobs <= 0)
@@ -286,8 +350,12 @@ void AStructuralPowerGraphSubsystem::TickDeferredPlacements(int32 MaxJobs)
 		{
 			const FStructuralLightweightKey Key = PendingLightweightJobs[PendingLightweightJobsHead++];
 			ProcessLightweightStructure(Key);
+			bPreferLightweight = !bPreferLightweight;
+			++Processed;
+			continue;
 		}
-		else if (bHasActor)
+
+		if (bHasActor)
 		{
 			const FDeferredPlacementJob Job = PendingJobs[PendingJobsHead++];
 			if (AFGBuildable* Buildable = Job.Buildable.Get())
@@ -300,23 +368,28 @@ void AStructuralPowerGraphSubsystem::TickDeferredPlacements(int32 MaxJobs)
 				{
 					ProcessStructure(Buildable);
 				}
+
+				bPreferLightweight = !bPreferLightweight;
+				++Processed;
 			}
+
+			continue;
 		}
-		else if (bHasLightweight)
+
+		if (bHasLightweight)
 		{
 			const FStructuralLightweightKey Key = PendingLightweightJobs[PendingLightweightJobsHead++];
 			ProcessLightweightStructure(Key);
-		}
-		else
-		{
-			break;
+			bPreferLightweight = !bPreferLightweight;
+			++Processed;
+			continue;
 		}
 
-		bPreferLightweight = !bPreferLightweight;
-		++Processed;
+		break;
 	}
 
-	if (PendingJobsHead > 32 && PendingJobsHead * 2 >= PendingJobs.Num())
+	if ((PendingJobsHead > 32 && PendingJobsHead * 2 >= PendingJobs.Num())
+		|| (PendingLightweightJobsHead > 32 && PendingLightweightJobsHead * 2 >= PendingLightweightJobs.Num()))
 	{
 		CompactPendingJobQueues();
 	}
@@ -459,8 +532,14 @@ bool AStructuralPowerGraphSubsystem::LinkHiddenPair(
 	if (A->HasHiddenConnection(B))
 	{
 		// Mesh already linked — still promote so newly wired generators merge circuit IDs.
-		PromoteCircuitLink(A, B);
-		FStructuralPowerTrace::LogLinkOp(TEXT("link"), A, B, false, TEXT("already_linked"));
+		PromoteCircuitLink(A, B, ELogVerbosity::Verbose);
+		FStructuralPowerTrace::LogLinkOp(
+			TEXT("link"),
+			A,
+			B,
+			false,
+			TEXT("already_linked"),
+			ELogVerbosity::Verbose);
 		return false;
 	}
 
@@ -985,12 +1064,12 @@ void AStructuralPowerGraphSubsystem::PromoteStructuralMeshFrom(
 	Queue.Add(Seed);
 
 	int32 EdgesPromoted = 0;
+	int32 QueueHead = 0;
 	constexpr int32 MaxEdgesPerFlood = 512;
 
-	while (Queue.Num() > 0 && EdgesPromoted < MaxEdgesPerFlood)
+	while (QueueHead < Queue.Num() && EdgesPromoted < MaxEdgesPerFlood)
 	{
-		UFGPowerConnectionComponent* Current = Queue[0];
-		Queue.RemoveAt(0);
+		UFGPowerConnectionComponent* Current = Queue[QueueHead++];
 
 		TArray<UFGCircuitConnectionComponent*> HiddenLinks;
 		Current->GetHiddenConnections(HiddenLinks);
@@ -1186,7 +1265,8 @@ void AStructuralPowerGraphSubsystem::RebuildRuntimeFromSave()
 	RegisterSavedLightweightNodes(GetWorld());
 
 	int32 ComponentsCreated = 0;
-	int32 LinksRestored = 0;
+	int32 LinksNewlyAdded = 0;
+	int32 LinksAlreadyPresent = 0;
 
 	for (const TPair<FStructuralNodeId, FStructuralNodeRecord>& Pair : RuntimeGraph)
 	{
@@ -1209,19 +1289,25 @@ void AStructuralPowerGraphSubsystem::RebuildRuntimeFromSave()
 			{
 				UFGStructuralPowerConnectionComponent* NeighborHidden =
 					ResolveNodeConnector(NeighborId, NeighborRecord->bIsOutlet);
-				if (LinkHiddenPair(Hidden, NeighborHidden))
+				if (Hidden->HasHiddenConnection(NeighborHidden))
 				{
-					++LinksRestored;
+					LinkHiddenPair(Hidden, NeighborHidden);
+					++LinksAlreadyPresent;
+				}
+				else if (LinkHiddenPair(Hidden, NeighborHidden))
+				{
+					++LinksNewlyAdded;
 				}
 			}
 		}
 	}
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("PostLoadGame graph rebuild: %d nodes, %d components, %d links restored"),
+		TEXT("PostLoadGame graph rebuild: %d nodes, %d components, %d links newly added, %d already present"),
 		RuntimeGraph.Num(),
 		ComponentsCreated,
-		LinksRestored);
+		LinksNewlyAdded,
+		LinksAlreadyPresent);
 
 	FStructuralPowerDiagnostics::AuditWorld(GetWorld());
 }
@@ -1248,5 +1334,5 @@ void AStructuralPowerGraphSubsystem::PostLoadGame_Implementation(int32 saveVersi
 
 void AStructuralPowerGraphSubsystem::RunDiagnostics() const
 {
-	FStructuralPowerDiagnostics::AuditWorld(GetWorld());
+	FStructuralPowerDiagnostics::AuditWorld(GetWorld(), true);
 }

@@ -3,6 +3,7 @@
 
 #include "StructuralPowerModule.h"
 #include "StructuralPowerRootInstanceModule.h"
+#include "Subsystems/UStructuralPowerFactoryTickHandler.h"
 
 #include "Diagnostics/FStructuralPowerDiagnostics.h"
 #include "Engine/World.h"
@@ -25,7 +26,7 @@ static FAutoConsoleCommandWithWorld GStructuralPowerDiagCmd(
 			}
 			else
 			{
-				FStructuralPowerDiagnostics::AuditWorld(World);
+				FStructuralPowerDiagnostics::AuditWorld(World, true);
 			}
 		}
 	}));
@@ -37,6 +38,7 @@ void FStructuralPowerModule::StartupModule()
 
 void FStructuralPowerModule::ShutdownModule()
 {
+	UStructuralPowerFactoryTickHandler::UnregisterGlobalDelegates();
 	UStructuralPowerRootInstanceModule::UnregisterGlobalDelegates();
 }
 

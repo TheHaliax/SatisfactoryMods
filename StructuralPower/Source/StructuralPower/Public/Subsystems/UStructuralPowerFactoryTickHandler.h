@@ -18,6 +18,7 @@ class STRUCTURALPOWER_API UStructuralPowerFactoryTickHandler : public UObject, p
 public:
 	static void RegisterForWorld(UWorld* World);
 	static void UnregisterForWorld(UWorld* World);
+	static void UnregisterGlobalDelegates();
 
 	virtual void PostFactoryTick(AFGBuildableSubsystem* Subsystem, float DeltaTime) override;
 

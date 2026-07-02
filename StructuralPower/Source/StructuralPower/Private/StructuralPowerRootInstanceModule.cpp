@@ -38,8 +38,14 @@ bool UStructuralPowerRootInstanceModule::TryEnqueueBuildable(
 	const TCHAR* HookName,
 	const TCHAR* SourceTag)
 {
-	if (!IsValid(Buildable) || !Buildable->HasAuthority())
+	if (!IsValid(Buildable))
 	{
+		return false;
+	}
+
+	if (!Buildable->HasAuthority())
+	{
+		FStructuralPowerTrace::LogPlacementSkip(Buildable, TEXT("no_authority"));
 		return false;
 	}
 
@@ -76,17 +82,6 @@ bool UStructuralPowerRootInstanceModule::TryEnqueueBuildable(
 
 void UStructuralPowerRootInstanceModule::HandleBuildableBuilt(AFGBuildable* Buildable)
 {
-	if (!IsValid(Buildable))
-	{
-		return;
-	}
-
-	if (!Buildable->HasAuthority())
-	{
-		FStructuralPowerTrace::LogPlacementSkip(Buildable, TEXT("no_authority"));
-		return;
-	}
-
 	TryEnqueueBuildable(Buildable, TEXT("OnBuildEffectFinished"), TEXT("defer"));
 }
 
@@ -114,12 +109,12 @@ void UStructuralPowerRootInstanceModule::HandlePowerConnectionChanged(
 	AFGBuildablePowerPole* Pole,
 	UFGCircuitConnectionComponent* /*Connection*/)
 {
-	if (!FStructuralEligibilityRules::IsPowerBridgePole(Pole))
+	if (!IsValid(Pole) || !Pole->HasAuthority())
 	{
 		return;
 	}
 
-	if (!IsValid(Pole) || !Pole->HasAuthority())
+	if (!FStructuralEligibilityRules::IsPowerBridgePole(Pole))
 	{
 		return;
 	}
@@ -155,7 +150,7 @@ void UStructuralPowerRootInstanceModule::HandleBuildableRemoved(AFGBuildable* Bu
 
 	if (UWorld* World = Buildable->GetWorld())
 	{
-		if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::GetOrCreate(World))
+		if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::Find(World))
 		{
 			Graph->OnBuildableRemoved(Buildable);
 		}
@@ -215,7 +210,7 @@ void UStructuralPowerRootInstanceModule::HandleLightweightMemberRemoved(
 
 	if (UWorld* World = Subsystem->GetWorld())
 	{
-		if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::GetOrCreate(World))
+		if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::Find(World))
 		{
 			Graph->OnLightweightRemoved(FStructuralLightweightKey{BuildableClass, InstanceIndex});
 		}

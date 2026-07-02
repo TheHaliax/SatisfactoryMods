@@ -7,7 +7,7 @@
 	"RequiredOnRemote": true,
 	"RemoteVersionRange": "^1.0.0",
 	"FriendlyName": "StructuralPower",
-	"Description": "Placement-only hidden structural power bus. New structures only; subsystem graph persistence.",
+	"Description": "Hidden power bus through connected foundations, walls, ramps, and bridge poles. New placements only; graph persists on save/load.",
 	"Category": "Modding",
 	"CreatedBy": "Haliax",
 	"CanContainContent": true,

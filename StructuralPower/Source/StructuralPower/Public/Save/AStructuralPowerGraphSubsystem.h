@@ -34,6 +34,7 @@ public:
 	AStructuralPowerGraphSubsystem();
 
 	static AStructuralPowerGraphSubsystem* GetOrCreate(UWorld* World);
+	static AStructuralPowerGraphSubsystem* Find(UWorld* World);
 	static FStructuralNodeId MakeNodeId(const AFGBuildable* Buildable);
 	static bool HasStructuralConnector(const AFGBuildable* Buildable);
 	static UFGStructuralPowerConnectionComponent* FindStructuralConnector(const AFGBuildable* Buildable);
@@ -112,4 +113,6 @@ private:
 	bool bPostLoadRebuilt = false;
 
 	void CompactPendingJobQueues();
+	bool IsBuildableAlreadyPending(AFGBuildable* Buildable, EStructuralPlacementJobType JobType) const;
+	bool IsLightweightAlreadyPending(const FStructuralLightweightKey& Key) const;
 };

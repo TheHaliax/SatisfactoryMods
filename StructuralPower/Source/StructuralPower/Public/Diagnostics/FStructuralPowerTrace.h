@@ -9,7 +9,7 @@ class AFGBuildable;
 class UFGCircuitConnectionComponent;
 class UFGPowerConnectionComponent;
 
-/** Deep placement/link trace — grep FactoryGame.log for [PWR]. Toggle: StructuralPower.Trace 1 */
+/** Deep placement/link trace — grep FactoryGame.log for [PWR]. Toggle: StructuralPower.Trace 1 (default off). */
 namespace FStructuralPowerTrace
 {
 	bool IsEnabled();
@@ -28,7 +28,8 @@ namespace FStructuralPowerTrace
 		UFGCircuitConnectionComponent* A,
 		UFGCircuitConnectionComponent* B,
 		bool bSuccess,
-		const TCHAR* Path);
+		const TCHAR* Path,
+		ELogVerbosity::Type Verbosity = ELogVerbosity::Log);
 	void LogOutletBridge(
 		AFGBuildable* Outlet,
 		bool bSuccess,

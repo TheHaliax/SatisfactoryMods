@@ -15,9 +15,28 @@
 #include "Session/FStructuralPowerSessionSettings.h"
 #include "StructuralPowerLog.h"
 
-void FStructuralPowerDiagnostics::AuditWorld(UWorld* World)
+namespace
+{
+bool ShouldSkipAutomaticAudit(const UWorld* World)
 {
 	if (!IsValid(World))
+	{
+		return true;
+	}
+
+	const FString MapName = World->GetMapName();
+	return MapName.Contains(TEXT("Menu"), ESearchCase::IgnoreCase);
+}
+}
+
+void FStructuralPowerDiagnostics::AuditWorld(UWorld* World, bool bAllowMenuWorld)
+{
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	if (!bAllowMenuWorld && ShouldSkipAutomaticAudit(World))
 	{
 		return;
 	}
@@ -106,4 +125,6 @@ void FStructuralPowerDiagnostics::AuditWorld(UWorld* World)
 		LegacyUntracked);
 	UE_LOG(LogStructuralPower, Log,
 		TEXT("Placement-only: mod tracks structures/bridge poles placed after install. Legacy pre-mod geometry skipped."));
+	UE_LOG(LogStructuralPower, Log,
+		TEXT("NO_COMPONENT = pole with structural parent but incomplete mod wiring (e.g. isolated foundation test)."));
 }

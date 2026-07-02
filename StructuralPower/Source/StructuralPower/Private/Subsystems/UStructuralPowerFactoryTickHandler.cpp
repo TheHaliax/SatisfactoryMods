@@ -12,6 +12,32 @@ TMap<TWeakObjectPtr<UWorld>, TObjectPtr<UStructuralPowerFactoryTickHandler>>
 	UStructuralPowerFactoryTickHandler::Handlers;
 FDelegateHandle UStructuralPowerFactoryTickHandler::WorldCleanupHandle;
 
+void UStructuralPowerFactoryTickHandler::UnregisterGlobalDelegates()
+{
+	TArray<UWorld*> WorldsToUnregister;
+	WorldsToUnregister.Reserve(Handlers.Num());
+	for (const TPair<TWeakObjectPtr<UWorld>, TObjectPtr<UStructuralPowerFactoryTickHandler>>& Pair : Handlers)
+	{
+		if (UWorld* World = Pair.Key.Get())
+		{
+			WorldsToUnregister.Add(World);
+		}
+	}
+
+	for (UWorld* World : WorldsToUnregister)
+	{
+		UnregisterForWorld(World);
+	}
+
+	Handlers.Empty();
+
+	if (WorldCleanupHandle.IsValid())
+	{
+		FWorldDelegates::OnWorldCleanup.Remove(WorldCleanupHandle);
+		WorldCleanupHandle.Reset();
+	}
+}
+
 void UStructuralPowerFactoryTickHandler::HandleWorldCleanup(
 	UWorld* World,
 	bool /*bSessionEnded*/,
@@ -40,7 +66,8 @@ void UStructuralPowerFactoryTickHandler::RegisterForWorld(UWorld* World)
 		}
 	}
 
-	if (Handlers.Contains(World))
+	const TWeakObjectPtr<UWorld> WorldKey(World);
+	if (Handlers.Contains(WorldKey))
 	{
 		return;
 	}
@@ -53,7 +80,7 @@ void UStructuralPowerFactoryTickHandler::RegisterForWorld(UWorld* World)
 
 	UStructuralPowerFactoryTickHandler* Handler = NewObject<UStructuralPowerFactoryTickHandler>(World);
 	BuildableSubsystem->AddFactoryTickHandler(Handler);
-	Handlers.Add(World, Handler);
+	Handlers.Add(WorldKey, Handler);
 }
 
 void UStructuralPowerFactoryTickHandler::UnregisterForWorld(UWorld* World)
@@ -63,7 +90,8 @@ void UStructuralPowerFactoryTickHandler::UnregisterForWorld(UWorld* World)
 		return;
 	}
 
-	if (TObjectPtr<UStructuralPowerFactoryTickHandler>* Found = Handlers.Find(World))
+	const TWeakObjectPtr<UWorld> WorldKey(World);
+	if (TObjectPtr<UStructuralPowerFactoryTickHandler>* Found = Handlers.Find(WorldKey))
 	{
 		if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World))
 		{
@@ -72,7 +100,7 @@ void UStructuralPowerFactoryTickHandler::UnregisterForWorld(UWorld* World)
 				BuildableSubsystem->RemoveFactoryTickHandler(*Found);
 			}
 		}
-		Handlers.Remove(World);
+		Handlers.Remove(WorldKey);
 	}
 }
 
@@ -82,9 +110,12 @@ void UStructuralPowerFactoryTickHandler::PostFactoryTick(
 {
 	if (UWorld* World = GetWorld())
 	{
-		if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::GetOrCreate(World))
+		if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::Find(World))
 		{
-			Graph->TickDeferredPlacements(StructuralPowerConstants::DeferredPlacementsPerTick);
+			if (Graph->GetPendingJobCount() > 0)
+			{
+				Graph->TickDeferredPlacements(StructuralPowerConstants::DeferredPlacementsPerTick);
+			}
 		}
 	}
 }
