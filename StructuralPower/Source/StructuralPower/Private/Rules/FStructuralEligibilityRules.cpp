@@ -36,6 +36,7 @@ bool FStructuralEligibilityRules::IsBusMember(const AFGBuildable* Buildable)
 		return false;
 	}
 
+	// Mod structural packs often inherit factory building without UFGPowerInfoComponent.
 	return Buildable->IsA<AFGBuildableFactoryBuilding>()
 		|| Buildable->IsA<AFGBuildableFoundation>()
 		|| Buildable->IsA<AFGBuildableRamp>()

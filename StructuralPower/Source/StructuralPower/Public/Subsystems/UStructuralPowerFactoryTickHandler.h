@@ -22,5 +22,8 @@ public:
 	virtual void PostFactoryTick(AFGBuildableSubsystem* Subsystem, float DeltaTime) override;
 
 private:
+	static void HandleWorldCleanup(UWorld* World, bool bSessionEnded, bool bCleanupResources);
+
 	static TMap<TWeakObjectPtr<UWorld>, TObjectPtr<UStructuralPowerFactoryTickHandler>> Handlers;
+	static FDelegateHandle WorldCleanupHandle;
 };

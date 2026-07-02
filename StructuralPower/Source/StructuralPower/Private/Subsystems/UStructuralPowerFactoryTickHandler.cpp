@@ -10,12 +10,26 @@
 
 TMap<TWeakObjectPtr<UWorld>, TObjectPtr<UStructuralPowerFactoryTickHandler>>
 	UStructuralPowerFactoryTickHandler::Handlers;
+FDelegateHandle UStructuralPowerFactoryTickHandler::WorldCleanupHandle;
+
+void UStructuralPowerFactoryTickHandler::HandleWorldCleanup(
+	UWorld* World,
+	bool /*bSessionEnded*/,
+	bool /*bCleanupResources*/)
+{
+	UnregisterForWorld(World);
+}
 
 void UStructuralPowerFactoryTickHandler::RegisterForWorld(UWorld* World)
 {
 	if (!IsValid(World))
 	{
 		return;
+	}
+
+	if (!WorldCleanupHandle.IsValid())
+	{
+		WorldCleanupHandle = FWorldDelegates::OnWorldCleanup.AddStatic(&HandleWorldCleanup);
 	}
 
 	for (auto It = Handlers.CreateIterator(); It; ++It)

@@ -10,12 +10,12 @@
 #include "Diagnostics/FStructuralPowerDiagnostics.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "Engine/World.h"
-#include "EngineUtils.h"
 #include "FGBuildableSubsystem.h"
 #include "FGCircuitSubsystem.h"
 #include "FGLightweightBuildableSubsystem.h"
 #include "FGPowerConnectionComponent.h"
 #include "Graph/FOverlapBoxAdjacencyStrategy.h"
+#include "Kismet/GameplayStatics.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "Session/FStructuralPowerSessionSettings.h"
@@ -74,17 +74,15 @@ AStructuralPowerGraphSubsystem* AStructuralPowerGraphSubsystem::GetOrCreate(UWor
 		return nullptr;
 	}
 
-	for (TActorIterator<AStructuralPowerGraphSubsystem> It(World); It; ++It)
-	{
-		if (IsValid(*It))
-		{
-			return *It;
-		}
-	}
-
 	if (World->GetNetMode() == NM_Client)
 	{
 		return nullptr;
+	}
+
+	if (AStructuralPowerGraphSubsystem* Existing = Cast<AStructuralPowerGraphSubsystem>(
+		UGameplayStatics::GetActorOfClass(World, AStructuralPowerGraphSubsystem::StaticClass())))
+	{
+		return Existing;
 	}
 
 	FActorSpawnParameters SpawnParams;
@@ -112,8 +110,13 @@ FStructuralNodeId AStructuralPowerGraphSubsystem::MakeNodeId(const AFGBuildable*
 
 bool AStructuralPowerGraphSubsystem::HasStructuralConnector(const AFGBuildable* Buildable)
 {
-	return FindStructuralConnector(Buildable) != nullptr
-		|| (Cast<AFGBuildablePowerPole>(Buildable) && FindOutletBusConnector(Cast<AFGBuildablePowerPole>(Buildable)) != nullptr);
+	if (const AFGBuildablePowerPole* Pole = Cast<AFGBuildablePowerPole>(Buildable))
+	{
+		return FindStructuralConnector(Buildable) != nullptr
+			|| FindOutletBusConnector(Pole) != nullptr;
+	}
+
+	return FindStructuralConnector(Buildable) != nullptr;
 }
 
 UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindStructuralConnector(const AFGBuildable* Buildable)
@@ -244,6 +247,21 @@ void AStructuralPowerGraphSubsystem::EnqueuePlacement(
 	}
 }
 
+void AStructuralPowerGraphSubsystem::CompactPendingJobQueues()
+{
+	if (PendingJobsHead > 0)
+	{
+		PendingJobs.RemoveAt(0, PendingJobsHead, EAllowShrinking::No);
+		PendingJobsHead = 0;
+	}
+
+	if (PendingLightweightJobsHead > 0)
+	{
+		PendingLightweightJobs.RemoveAt(0, PendingLightweightJobsHead, EAllowShrinking::No);
+		PendingLightweightJobsHead = 0;
+	}
+}
+
 void AStructuralPowerGraphSubsystem::TickDeferredPlacements(int32 MaxJobs)
 {
 	if (!FStructuralPowerSessionSettings::IsPropagationEnabled() || MaxJobs <= 0)
@@ -252,32 +270,55 @@ void AStructuralPowerGraphSubsystem::TickDeferredPlacements(int32 MaxJobs)
 	}
 
 	int32 Processed = 0;
-	while (Processed < MaxJobs && PendingLightweightJobs.Num() > 0)
+	bool bPreferLightweight = true;
+
+	while (Processed < MaxJobs)
 	{
-		const FStructuralLightweightKey Key = PendingLightweightJobs[0];
-		PendingLightweightJobs.RemoveAt(0);
-		ProcessLightweightStructure(Key);
+		const bool bHasLightweight = PendingLightweightJobsHead < PendingLightweightJobs.Num();
+		const bool bHasActor = PendingJobsHead < PendingJobs.Num();
+
+		if (!bHasLightweight && !bHasActor)
+		{
+			break;
+		}
+
+		if (bPreferLightweight && bHasLightweight)
+		{
+			const FStructuralLightweightKey Key = PendingLightweightJobs[PendingLightweightJobsHead++];
+			ProcessLightweightStructure(Key);
+		}
+		else if (bHasActor)
+		{
+			const FDeferredPlacementJob Job = PendingJobs[PendingJobsHead++];
+			if (AFGBuildable* Buildable = Job.Buildable.Get())
+			{
+				if (Job.JobType == EStructuralPlacementJobType::Outlet)
+				{
+					ProcessOutlet(Buildable);
+				}
+				else
+				{
+					ProcessStructure(Buildable);
+				}
+			}
+		}
+		else if (bHasLightweight)
+		{
+			const FStructuralLightweightKey Key = PendingLightweightJobs[PendingLightweightJobsHead++];
+			ProcessLightweightStructure(Key);
+		}
+		else
+		{
+			break;
+		}
+
+		bPreferLightweight = !bPreferLightweight;
 		++Processed;
 	}
 
-	while (Processed < MaxJobs && PendingJobs.Num() > 0)
+	if (PendingJobsHead > 32 && PendingJobsHead * 2 >= PendingJobs.Num())
 	{
-		const FDeferredPlacementJob Job = PendingJobs[0];
-		PendingJobs.RemoveAt(0);
-
-		if (AFGBuildable* Buildable = Job.Buildable.Get())
-		{
-			if (Job.JobType == EStructuralPlacementJobType::Outlet)
-			{
-				ProcessOutlet(Buildable);
-			}
-			else
-			{
-				ProcessStructure(Buildable);
-			}
-		}
-
-		++Processed;
+		CompactPendingJobQueues();
 	}
 }
 
@@ -417,6 +458,7 @@ bool AStructuralPowerGraphSubsystem::LinkHiddenPair(
 
 	if (A->HasHiddenConnection(B))
 	{
+		// Mesh already linked — still promote so newly wired generators merge circuit IDs.
 		PromoteCircuitLink(A, B);
 		FStructuralPowerTrace::LogLinkOp(TEXT("link"), A, B, false, TEXT("already_linked"));
 		return false;
@@ -666,6 +708,7 @@ void AStructuralPowerGraphSubsystem::ProcessLightweightStructure(const FStructur
 		PromoteCircuitLink(SelfHidden, NeighborHidden);
 		TSet<UFGPowerConnectionComponent*> PoweredNodes;
 		PromoteStructuralMeshFrom(NeighborHidden, PoweredNodes);
+		// Hidden mesh is connected; one powered neighbor seeds full mesh promotion.
 		break;
 	}
 
@@ -995,6 +1038,7 @@ void AStructuralPowerGraphSubsystem::OnLightweightRemoved(const FStructuralLight
 	if (!RuntimeGraph.Contains(NodeId))
 	{
 		LightweightIndex.UnregisterMember(Key);
+		CompactPendingJobQueues();
 		PendingLightweightJobs.RemoveAll([&Key](const FStructuralLightweightKey& Pending)
 		{
 			return Pending == Key;
@@ -1017,6 +1061,7 @@ void AStructuralPowerGraphSubsystem::OnLightweightRemoved(const FStructuralLight
 
 	RemoveGraphNode(NodeId);
 	LightweightIndex.UnregisterMember(Key);
+	CompactPendingJobQueues();
 	PendingLightweightJobs.RemoveAll([&Key](const FStructuralLightweightKey& Pending)
 	{
 		return Pending == Key;
@@ -1060,6 +1105,7 @@ void AStructuralPowerGraphSubsystem::OnBuildableRemoved(AFGBuildable* Buildable)
 
 	RemoveGraphNode(NodeId);
 
+	CompactPendingJobQueues();
 	PendingJobs.RemoveAll([&Buildable](const FDeferredPlacementJob& Job)
 	{
 		return Job.Buildable.Get() == Buildable;

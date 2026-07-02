@@ -24,6 +24,56 @@ UStructuralPowerRootInstanceModule::UStructuralPowerRootInstanceModule()
 	bRootModule = true;
 }
 
+void UStructuralPowerRootInstanceModule::UnregisterGlobalDelegates()
+{
+	if (PostLoadMapHandle.IsValid())
+	{
+		FCoreUObjectDelegates::PostLoadMapWithWorld.Remove(PostLoadMapHandle);
+		PostLoadMapHandle.Reset();
+	}
+}
+
+bool UStructuralPowerRootInstanceModule::TryEnqueueBuildable(
+	AFGBuildable* Buildable,
+	const TCHAR* HookName,
+	const TCHAR* SourceTag)
+{
+	if (!IsValid(Buildable) || !Buildable->HasAuthority())
+	{
+		return false;
+	}
+
+	UWorld* World = Buildable->GetWorld();
+	if (!IsValid(World))
+	{
+		FStructuralPowerTrace::LogPlacementSkip(Buildable, TEXT("no_world"));
+		return false;
+	}
+
+	AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::GetOrCreate(World);
+	if (!Graph)
+	{
+		return false;
+	}
+
+	if (FStructuralEligibilityRules::IsPowerBridgePole(Buildable))
+	{
+		FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("enqueue_bridge_pole"), SourceTag);
+		Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+		return true;
+	}
+
+	if (FStructuralEligibilityRules::IsBusMember(Buildable))
+	{
+		FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("enqueue_structure"), SourceTag);
+		Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Structure, /*bDefer=*/true);
+		return true;
+	}
+
+	FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("ignored"), TEXT("not_bus_or_outlet"));
+	return false;
+}
+
 void UStructuralPowerRootInstanceModule::HandleBuildableBuilt(AFGBuildable* Buildable)
 {
 	if (!IsValid(Buildable))
@@ -37,30 +87,7 @@ void UStructuralPowerRootInstanceModule::HandleBuildableBuilt(AFGBuildable* Buil
 		return;
 	}
 
-	UWorld* World = Buildable->GetWorld();
-	if (!IsValid(World))
-	{
-		FStructuralPowerTrace::LogPlacementSkip(Buildable, TEXT("no_world"));
-		return;
-	}
-
-	if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::GetOrCreate(World))
-	{
-		if (FStructuralEligibilityRules::IsPowerBridgePole(Buildable))
-		{
-			FStructuralPowerTrace::LogHook(Buildable, TEXT("OnBuildEffectFinished"), TEXT("enqueue_bridge_pole"), TEXT("defer"));
-			Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
-		}
-		else if (FStructuralEligibilityRules::IsBusMember(Buildable))
-		{
-			FStructuralPowerTrace::LogHook(Buildable, TEXT("OnBuildEffectFinished"), TEXT("enqueue_structure"), TEXT("defer"));
-			Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Structure, /*bDefer=*/true);
-		}
-		else
-		{
-			FStructuralPowerTrace::LogHook(Buildable, TEXT("OnBuildEffectFinished"), TEXT("ignored"), TEXT("not_bus_or_outlet"));
-		}
-	}
+	TryEnqueueBuildable(Buildable, TEXT("OnBuildEffectFinished"), TEXT("defer"));
 }
 
 void UStructuralPowerRootInstanceModule::HandleBuildablesConstructed(const TArray<AActor*>& Children)
@@ -70,31 +97,9 @@ void UStructuralPowerRootInstanceModule::HandleBuildablesConstructed(const TArra
 	{
 		if (AFGBuildable* Buildable = Cast<AFGBuildable>(Child))
 		{
-			if (!IsValid(Buildable) || !Buildable->HasAuthority())
+			if (TryEnqueueBuildable(Buildable, TEXT("BlueprintConstruct"), TEXT("defer")))
 			{
-				continue;
-			}
-
-			UWorld* World = Buildable->GetWorld();
-			if (!IsValid(World))
-			{
-				continue;
-			}
-
-			if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::GetOrCreate(World))
-			{
-				if (FStructuralEligibilityRules::IsPowerBridgePole(Buildable))
-				{
-					FStructuralPowerTrace::LogHook(Buildable, TEXT("BlueprintConstruct"), TEXT("enqueue_bridge_pole"), TEXT("defer"));
-					Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
-					++Enqueued;
-				}
-				else if (FStructuralEligibilityRules::IsBusMember(Buildable))
-				{
-					FStructuralPowerTrace::LogHook(Buildable, TEXT("BlueprintConstruct"), TEXT("enqueue_structure"), TEXT("defer"));
-					Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Structure, /*bDefer=*/true);
-					++Enqueued;
-				}
+				++Enqueued;
 			}
 		}
 	}
@@ -229,9 +234,9 @@ void UStructuralPowerRootInstanceModule::HandlePostLoadMap(UWorld* World)
 		{
 			if (UWorld* WorldPtr = WorldWeak.Get())
 			{
-				AStructuralPowerGraphSubsystem::GetOrCreate(WorldPtr);
+				AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::GetOrCreate(WorldPtr);
 				UStructuralPowerFactoryTickHandler::RegisterForWorld(WorldPtr);
-				if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::GetOrCreate(WorldPtr))
+				if (Graph)
 				{
 					Graph->OnWorldReady(WorldPtr);
 				}
@@ -248,11 +253,8 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 	}
 
 #if WITH_EDITOR
-	UE_LOG(LogStructuralPower, Log, TEXT("StructuralPower v3: skipping hooks in editor"));
-	Super::DispatchLifecycleEvent(Phase);
-	return;
-#endif
-
+	UE_LOG(LogStructuralPower, Log, TEXT("StructuralPower: skipping hooks in editor"));
+#else
 	UE_LOG(LogStructuralPower, Log, TEXT("StructuralPower v1.0 initialized — placement-only structural bus (actor + lightweight)"));
 
 	SUBSCRIBE_METHOD_VIRTUAL_AFTER(
@@ -261,14 +263,6 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 		[](AFGBuildable* Buildable)
 		{
 			HandleBuildableBuilt(Buildable);
-		});
-
-	SUBSCRIBE_METHOD_VIRTUAL_AFTER(
-		AFGBuildablePowerPole::OnBuildEffectFinished,
-		GetMutableDefault<AFGBuildablePowerPole>(),
-		[](AFGBuildablePowerPole* Pole)
-		{
-			HandleBuildableBuilt(Pole);
 		});
 
 	SUBSCRIBE_METHOD_VIRTUAL_AFTER(
@@ -327,6 +321,7 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 	{
 		PostLoadMapHandle = FCoreUObjectDelegates::PostLoadMapWithWorld.AddStatic(&HandlePostLoadMap);
 	}
+#endif
 
 	Super::DispatchLifecycleEvent(Phase);
 }

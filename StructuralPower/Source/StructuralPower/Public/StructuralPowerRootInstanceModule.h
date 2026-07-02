@@ -20,7 +20,10 @@ public:
 
 	virtual void DispatchLifecycleEvent(ELifecyclePhase Phase) override;
 
+	static void UnregisterGlobalDelegates();
+
 private:
+	static bool TryEnqueueBuildable(AFGBuildable* Buildable, const TCHAR* HookName, const TCHAR* SourceTag);
 	static void HandleBuildableBuilt(AFGBuildable* Buildable);
 	static void HandleBuildablesConstructed(const TArray<AActor*>& Children);
 	static void HandleBuildableRemoved(AFGBuildable* Buildable);

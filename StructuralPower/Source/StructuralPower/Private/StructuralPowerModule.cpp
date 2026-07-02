@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "StructuralPowerModule.h"
+#include "StructuralPowerRootInstanceModule.h"
 
 #include "Diagnostics/FStructuralPowerDiagnostics.h"
 #include "Engine/World.h"
@@ -36,6 +37,7 @@ void FStructuralPowerModule::StartupModule()
 
 void FStructuralPowerModule::ShutdownModule()
 {
+	UStructuralPowerRootInstanceModule::UnregisterGlobalDelegates();
 }
 
 #undef LOCTEXT_NAMESPACE

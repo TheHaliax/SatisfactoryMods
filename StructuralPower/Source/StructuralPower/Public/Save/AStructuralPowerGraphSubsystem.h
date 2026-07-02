@@ -52,7 +52,11 @@ public:
 	UFGStructuralPowerConnectionComponent* FindStructureHidden(const FStructuralWallAnchor& Anchor) const;
 
 	int32 GetRuntimeNodeCount() const { return RuntimeGraph.Num(); }
-	int32 GetPendingJobCount() const { return PendingJobs.Num() + PendingLightweightJobs.Num(); }
+	int32 GetPendingJobCount() const
+	{
+		return (PendingJobs.Num() - PendingJobsHead)
+			+ (PendingLightweightJobs.Num() - PendingLightweightJobsHead);
+	}
 	int32 GetTrackedLightweightCount() const { return LightweightIndex.GetTrackedCount(); }
 
 	// IFGSaveInterface
@@ -102,6 +106,10 @@ private:
 	TMap<FStructuralNodeId, FStructuralNodeRecord> RuntimeGraph;
 	TArray<FDeferredPlacementJob> PendingJobs;
 	TArray<FStructuralLightweightKey> PendingLightweightJobs;
+	int32 PendingJobsHead = 0;
+	int32 PendingLightweightJobsHead = 0;
 	FStructuralLightweightIndex LightweightIndex;
 	bool bPostLoadRebuilt = false;
+
+	void CompactPendingJobQueues();
 };
