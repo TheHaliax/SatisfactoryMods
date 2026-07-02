@@ -27,15 +27,17 @@ Deploy cooked output to:
 <Satisfactory>/FactoryGame/Mods/StructuralPower
 ```
 
-## Release zip (SMR)
+## Release (SMR)
 
-Cook all required targets (client + Windows Server + Linux Server). Output typically:
+Cook all required targets (client + Windows Server + Linux Server) with **Alpakit Release**. Upload the combined zip to SMR — players and servers then use **`.smod`** downloads from the API, not the per-target zips Alpakit also writes.
 
 ```
-StarterProject/Saved/ArchivedPlugins/StructuralPower/StructuralPower.zip
+StarterProject/Saved/ArchivedPlugins/StructuralPower/StructuralPower.zip   ← upload this
+StructuralPower-LinuxServer.zip   ← local debug only
+StructuralPower-WindowsServer.zip   ← local debug only
 ```
 
-Upload that zip to [ficsit.app](https://ficsit.app).
+Full checklist: [release.md](release.md).
 
 ## Key source areas
 

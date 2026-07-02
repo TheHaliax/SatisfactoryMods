@@ -9,6 +9,7 @@ Player and developer docs for **StructuralPower v1.0.0**.
 - [Multiplayer](multiplayer.md) — client/server requirements and dedicated hosting
 - [Troubleshooting](troubleshooting.md) — log messages, common questions, support checklist
 - [Development](development.md) — repo layout, linking mods, Alpakit release build
+- [Release (SMR)](release.md) — upload zip, `.smod` distribution, server deploy version IDs
 
 ## Quick links
 

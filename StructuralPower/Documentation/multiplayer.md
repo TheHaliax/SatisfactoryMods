@@ -19,7 +19,7 @@ Release builds must include server targets:
 
 Configure these in Alpakit / `Config/Alpakit.ini` before cooking the SMR zip.
 
-Upload the **release** zip to ficsit.app — not a dev Shipping client-only pack.
+Upload the **Alpakit Release** zip (`StructuralPower.zip`) to [ficsit.app](https://ficsit.app/mod/StructuralPower). SMR serves server `.smod` files from that upload — not the smaller per-target zips in `ArchivedPlugins/`.
 
 ## Save compatibility
 

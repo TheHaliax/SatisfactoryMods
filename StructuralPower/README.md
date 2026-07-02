@@ -23,11 +23,14 @@ Structural Power adds a hidden power network through structural pieces — found
 | Multiplayer | [Documentation/multiplayer.md](Documentation/multiplayer.md) |
 | Troubleshooting | [Documentation/troubleshooting.md](Documentation/troubleshooting.md) |
 | Building from source | [Documentation/development.md](Documentation/development.md) |
+| Release on SMR | [Documentation/release.md](Documentation/release.md) |
 
 ## Requirements
 
 - Satisfactory 1.2 (≥491125)
 - [SML](https://ficsit.app/mod/SML) ^3.12.0
+
+Install via [Mod Manager](https://ficsit.app/mod/StructuralPower) (`.smod` from SMR) — not from this git repo.
 
 ## Multiplayer
 
