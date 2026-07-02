@@ -10,8 +10,9 @@ Use `Link-Mods.ps1` to junction mod folders into your SML StarterProject `Mods/`
 
 ## Mods
 
-<img src="StructuralPower/Resources/Icon128.png" width="128" height="128" alt="StructuralPower icon" align="top" />
-### [StructuralPower](StructuralPower/README.md)
+[![StructuralPower icon](StructuralPower/Resources/Icon128.png)](StructuralPower/)
+
+[StructuralPower](StructuralPower/README.md)
 
 | | |
 |---|---|
