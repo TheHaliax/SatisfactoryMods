@@ -1,0 +1,22 @@
+# Per-mod build artifacts (same as mklierman/SatisfactoryMods)
+*/Binaries/*
+*/Intermediate/*
+*/Saved/*
+*/Metadata/*
+*/.vs/
+
+# Keep source + ship config
+!*/Source/**
+!*/Config/**
+!*/Resources/**
+!*/Content/**
+!*/*.uplugin
+
+# Local / IDE
+.vs/
+*.user
+*.suo
+
+# OS
+Thumbs.db
+Desktop.ini

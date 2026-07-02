@@ -1,0 +1,36 @@
+{
+	"FileVersion": 3,
+	"Version": 0,
+	"VersionName": "1.0.0",
+	"SemVersion": "1.0.0",
+	"GameVersion": ">=491125",
+	"RequiredOnRemote": true,
+	"RemoteVersionRange": "^1.0.0",
+	"FriendlyName": "StructuralPower",
+	"Description": "Placement-only hidden structural power bus. New structures only; subsystem graph persistence.",
+	"Category": "Modding",
+	"CreatedBy": "Haliax",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"Installed": false,
+	"BuiltInInitialFeatureState": "Active",
+	"Modules": [
+		{
+			"Name": "StructuralPower",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "SML",
+			"Enabled": true,
+			"SemVersion": "^3.12.0"
+		},
+		{
+			"Name": "AbstractInstance",
+			"Enabled": true,
+			"BasePlugin": true
+		}
+	]
+}
