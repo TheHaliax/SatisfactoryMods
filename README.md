@@ -10,9 +10,7 @@ Use `Link-Mods.ps1` to junction mod folders into your SML StarterProject `Mods/`
 
 ## Mods
 
-### [StructuralPower](StructuralPower/README.md)
-
-Player-facing mod docs: **[StructuralPower/README.md](StructuralPower/README.md)**
+### [StructuralPower](StructuralPower/README.md) <img src="StructuralPower/Resources/Icon128.png" width="32" height="32" alt="StructuralPower icon" align="top" />
 
 | | |
 |---|---|
@@ -23,11 +21,7 @@ Player-facing mod docs: **[StructuralPower/README.md](StructuralPower/README.md)
 
 Hidden structural power bus for foundations, walls, and bridge poles. Applies to new placements only — no retroactive scan of existing builds. Graph state persists through the mod subsystem on save/load.
 
-![StructuralPower in-game — foundation and pole on structural bus](StructuralPower/Screenshots/gameplay-foundation-pole.jpg)
-
 Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
-
-**Docs:** [StructuralPower README](StructuralPower/README.md) · [Documentation index](StructuralPower/Documentation/README.md) · [Player guide](StructuralPower/Documentation/player-guide.md) · [Console commands](StructuralPower/Documentation/console-commands.md) · [Multiplayer](StructuralPower/Documentation/multiplayer.md) · [Troubleshooting](StructuralPower/Documentation/troubleshooting.md) · [Development](StructuralPower/Documentation/development.md)
 
 ---
 
