@@ -59,6 +59,8 @@ public:
 			+ (PendingLightweightJobs.Num() - PendingLightweightJobsHead);
 	}
 	int32 GetTrackedLightweightCount() const { return LightweightIndex.GetTrackedCount(); }
+	const FStructuralNodeRecord* FindRuntimeNodeRecord(const FStructuralNodeId& NodeId) const;
+	FStructuralWallAnchor AnchorFromRuntimeNodeId(const FStructuralNodeId& NodeId) const;
 
 	// IFGSaveInterface
 	virtual void PreSaveGame_Implementation(int32 saveVersion, int32 gameVersion) override;
@@ -84,6 +86,12 @@ private:
 	void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
 	void ProcessOutlet(AFGBuildable* Buildable);
 	bool LinkHiddenPair(UFGPowerConnectionComponent* A, UFGPowerConnectionComponent* B);
+	UFGStructuralPowerConnectionComponent* TryEnergizeParentMesh(
+		UFGStructuralPowerConnectionComponent* ParentHidden,
+		bool bAlwaysFlood);
+	void RegisterBuildableActor(AFGBuildable* Buildable);
+	void UnregisterBuildableActor(const FStructuralNodeId& NodeId);
+	void RebuildBuildableRegistry(UWorld* World);
 	void PromoteStructuralMeshFrom(UFGPowerConnectionComponent* Seed);
 	void PromoteStructuralMeshFrom(
 		UFGPowerConnectionComponent* Seed,
@@ -92,13 +100,28 @@ private:
 		AFGBuildablePowerPole* Pole,
 		UFGStructuralPowerConnectionComponent* OutletBus,
 		UFGStructuralPowerConnectionComponent* ParentHidden);
+	void ClearStaleOutletParentBinding(
+		AFGBuildablePowerPole* Pole,
+		FStructuralNodeRecord& OutletRecord);
+	static FStructuralNodeId MakeParentNodeId(const FStructuralWallAnchor& Anchor);
+	void QueueBridgePoleRefresh(const TSet<UFGPowerConnectionComponent*>& PoweredHiddenNodes);
+	void FlushPendingBridgePoleRefresh();
 	void RefreshBridgePolesOnMesh(const TSet<UFGPowerConnectionComponent*>& PoweredHiddenNodes);
+	UFGStructuralPowerConnectionComponent* FindPoweredHiddenReachable(
+		UFGStructuralPowerConnectionComponent* StartHidden,
+		int32 MaxHiddenHops = 512) const;
 	void RegisterGraphEdge(const FStructuralNodeId& A, const FStructuralNodeId& B, bool bAIsOutlet, bool bBIsOutlet);
 	void RemoveGraphNode(const FStructuralNodeId& NodeId);
 	AFGBuildable* ResolveBuildable(const FStructuralNodeId& NodeId) const;
 	void RebuildRuntimeFromSave();
+	void ValidateSavedHiddenLinks();
+	bool GetNodeAdjacencyInfo(
+		const FStructuralNodeId& NodeId,
+		FBox& OutBounds,
+		TSubclassOf<AFGBuildable>& OutClass) const;
 	void SyncSaveFromRuntime();
 	void RegisterSavedLightweightNodes(UWorld* World);
+	int32 CountStructuralHiddenNodes() const;
 	static FString NodeDedupKey(const FStructuralNodeId& NodeId);
 
 	UPROPERTY(SaveGame)
@@ -111,6 +134,8 @@ private:
 	int32 PendingLightweightJobsHead = 0;
 	FStructuralLightweightIndex LightweightIndex;
 	bool bPostLoadRebuilt = false;
+	TSet<UFGPowerConnectionComponent*> PendingPoweredMeshRefresh;
+	TMap<FStructuralNodeId, TWeakObjectPtr<AFGBuildable>> RegisteredBuildables;
 
 	void CompactPendingJobQueues();
 	bool IsBuildableAlreadyPending(AFGBuildable* Buildable, EStructuralPlacementJobType JobType) const;

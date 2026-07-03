@@ -11,40 +11,14 @@
 #include "Buildables/FGBuildableWall.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "FGLightweightBuildableSubsystem.h"
+#include "Graph/FStructuralOutletParentHeuristics.h"
+#include "Graph/FStructuralAdjacencyHeuristics.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
 
 namespace
 {
-static bool IsPreferredWallClass(const AFGBuildable* Buildable)
-{
-	return Buildable->IsA<AFGBuildableWall>() || Buildable->IsA<AFGBuildableCornerWall>();
-}
-
-static bool IsPreferredFoundationClass(const AFGBuildable* Buildable)
-{
-	return Buildable->IsA<AFGBuildableFoundation>() || Buildable->IsA<AFGBuildableRamp>();
-}
-
-static bool PrefersFoundationAnchor(const AFGBuildable* BridgeNode)
-{
-	const AFGBuildablePowerPole* Pole = Cast<AFGBuildablePowerPole>(BridgeNode);
-	if (!Pole)
-	{
-		return false;
-	}
-
-	switch (Pole->GetPowerPoleType())
-	{
-	case EPowerPoleType::PPT_POLE:
-	case EPowerPoleType::PPT_TOWER:
-		return true;
-	default:
-		return false;
-	}
-}
-
 static AFGLightweightBuildableSubsystem* GetLightweightSubsystem(UWorld* World)
 {
 	return IsValid(World) ? AFGLightweightBuildableSubsystem::Get(World) : nullptr;
@@ -85,7 +59,7 @@ bool FStructuralLightweightIndex::AreBoundsStructurallyConnected(
 		return false;
 	}
 
-	const float Gap = StructuralPowerConstants::StructuralConnectivityGapCm;
+	const float Gap = FStructuralAdjacencyHeuristics::GetStructuralGapCm(ClassA, ClassB);
 
 	auto ExpandForClass = [Gap](const FBox& Box, TSubclassOf<AFGBuildable> BuildableClass)
 	{
@@ -96,13 +70,17 @@ bool FStructuralLightweightIndex::AreBoundsStructurallyConnected(
 		}
 
 		const AFGBuildable* CDO = BuildableClass->GetDefaultObject<AFGBuildable>();
-		if (IsPreferredWallClass(CDO))
+		if (FStructuralOutletParentHeuristics::IsPreferredWallClass(CDO))
 		{
 			Expanded.Min.Z -= 100.0f;
 		}
-		else if (IsPreferredFoundationClass(CDO))
+		else if (FStructuralOutletParentHeuristics::IsPreferredFoundationClass(CDO))
 		{
 			Expanded.Max.Z += 100.0f;
+		}
+		else if (FStructuralAdjacencyHeuristics::IsBeamClass(BuildableClass))
+		{
+			Expanded = Expanded.ExpandBy(StructuralPowerConstants::BeamOverlapPaddingCm);
 		}
 
 		return Expanded;
@@ -113,7 +91,7 @@ bool FStructuralLightweightIndex::AreBoundsStructurallyConnected(
 		return true;
 	}
 
-	return A.ExpandBy(Gap).ComputeSquaredDistanceToBox(B) <= Gap * Gap;
+	return FStructuralAdjacencyHeuristics::AreAdjacencyBoundsConnected(A, B, ClassA, ClassB);
 }
 
 void FStructuralLightweightIndex::IndexMemberCells(int32 MemberIndex, const FBox& WorldBounds)
@@ -175,6 +153,22 @@ const FStructuralLightweightIndex::FIndexedMember* FStructuralLightweightIndex::
 	}
 
 	return &Members[*MemberIndexPtr];
+}
+
+bool FStructuralLightweightIndex::IsTracked(const FStructuralLightweightKey& Key) const
+{
+	return FindMember(Key) != nullptr;
+}
+
+bool FStructuralLightweightIndex::GetMemberBounds(const FStructuralLightweightKey& Key, FBox& OutBounds) const
+{
+	if (const FIndexedMember* Member = FindMember(Key))
+	{
+		OutBounds = Member->WorldBounds;
+		return OutBounds.IsValid != 0;
+	}
+
+	return false;
 }
 
 bool FStructuralLightweightIndex::RegisterTrackedMember(UWorld* World, const FStructuralLightweightKey& Key)
@@ -275,17 +269,17 @@ FStructuralWallAnchor FStructuralLightweightIndex::FindParentWallForOutlet(AFGBu
 		return {};
 	}
 
-	const FVector OutletLocation = Outlet->GetActorLocation();
-	const FIntVector Origin = ToCell(OutletLocation);
+	const FVector AnchorLocation = FStructuralOutletParentHeuristics::GetOutletAnchorLocation(Outlet);
+	const FIntVector Origin = ToCell(AnchorLocation);
 	const int32 CellRadius = FMath::CeilToInt(
 		StructuralPowerConstants::MaxOutletParentDistCm / StructuralPowerConstants::GridCellCm);
 
-	const bool bPreferFoundation = PrefersFoundationAnchor(Outlet);
+	const bool bPreferFoundation = FStructuralOutletParentHeuristics::PrefersFoundationAnchor(Outlet);
 
 	FStructuralWallAnchor BestPreferred;
-	float BestPreferredDistSq = StructuralPowerConstants::MaxOutletParentDistCmSq;
+	float BestPreferredScore = TNumericLimits<float>::Max();
 	FStructuralWallAnchor BestAny;
-	float BestAnyDistSq = StructuralPowerConstants::MaxOutletParentDistCmSq;
+	float BestAnyScore = TNumericLimits<float>::Max();
 
 	for (int32 DX = -CellRadius; DX <= CellRadius; ++DX)
 	{
@@ -302,28 +296,36 @@ FStructuralWallAnchor FStructuralLightweightIndex::FindParentWallForOutlet(AFGBu
 				for (int32 MemberIndex : *Indices)
 				{
 					const FIndexedMember& Member = Members[MemberIndex];
-					const float DistSq = Member.WorldBounds.ComputeSquaredDistanceToPoint(OutletLocation);
-					if (DistSq >= StructuralPowerConstants::MaxOutletParentDistCmSq)
+					const AFGBuildable* CDO = Member.Key.BuildableClass->GetDefaultObject<AFGBuildable>();
+
+					const bool bNear = FStructuralOutletParentHeuristics::IsOutletNearBounds(
+						Member.WorldBounds,
+						Member.Key.BuildableClass,
+						Outlet);
+					if (!bNear)
 					{
 						continue;
 					}
 
 					FStructuralWallAnchor Candidate;
 					Candidate.Lightweight = Member.Key;
-					Candidate.WorldLocation = Member.WorldBounds.GetClosestPointTo(OutletLocation);
-
-					const AFGBuildable* CDO = Member.Key.BuildableClass->GetDefaultObject<AFGBuildable>();
+					Candidate.WorldLocation = Member.WorldBounds.GetClosestPointTo(AnchorLocation);
+					const float Score = FStructuralOutletParentHeuristics::ScoreParentCandidate(
+						AnchorLocation,
+						Member.WorldBounds,
+						Member.Key.BuildableClass,
+						Outlet);
 					const bool bPreferredClass = bPreferFoundation
-						? IsPreferredFoundationClass(CDO)
-						: IsPreferredWallClass(CDO);
-					if (bPreferredClass && DistSq < BestPreferredDistSq)
+						? FStructuralOutletParentHeuristics::IsPreferredFoundationClass(CDO)
+						: FStructuralOutletParentHeuristics::IsPreferredWallClass(CDO);
+					if (bPreferredClass && Score < BestPreferredScore)
 					{
-						BestPreferredDistSq = DistSq;
+						BestPreferredScore = Score;
 						BestPreferred = Candidate;
 					}
-					else if (DistSq < BestAnyDistSq)
+					else if (Score < BestAnyScore)
 					{
-						BestAnyDistSq = DistSq;
+						BestAnyScore = Score;
 						BestAny = Candidate;
 					}
 				}

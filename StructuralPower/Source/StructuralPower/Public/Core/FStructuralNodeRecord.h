@@ -23,4 +23,8 @@ struct STRUCTURALPOWER_API FStructuralNodeRecord
 
 	UPROPERTY(SaveGame)
 	bool bIsOutlet = false;
+
+	/** Parent structural node for bridge poles; invalid for non-outlets. */
+	UPROPERTY(SaveGame)
+	FStructuralNodeId ParentNodeId;
 };

@@ -65,7 +65,7 @@ void FStructuralPowerDiagnostics::AuditWorld(UWorld* World, bool bAllowMenuWorld
 	int32 NoParent = 0;
 	int32 NoComponent = 0;
 	int32 NoCircuit = 0;
-	int32 LegacyUntracked = 0;
+	int32 LegacySkipped = 0;
 
 	for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef())
 	{
@@ -81,12 +81,25 @@ void FStructuralPowerDiagnostics::AuditWorld(UWorld* World, bool bAllowMenuWorld
 			AStructuralPowerGraphSubsystem::FindOutletBusConnector(Pole);
 		if (!OutletBus)
 		{
-			++LegacyUntracked;
+			++LegacySkipped;
+			continue;
 		}
 
-		const FStructuralWallAnchor ParentAnchor = Graph
-			? Graph->ResolveOutletAnchor(Buildable)
-			: FStructuralWallAnchor{};
+		FStructuralWallAnchor ParentAnchor;
+		if (Graph)
+		{
+			const FStructuralNodeId OutletId = AStructuralPowerGraphSubsystem::MakeNodeId(Buildable);
+			if (const FStructuralNodeRecord* OutletRecord = Graph->FindRuntimeNodeRecord(OutletId);
+				OutletRecord && OutletRecord->bIsOutlet && OutletRecord->ParentNodeId.IsValid())
+			{
+				ParentAnchor = Graph->AnchorFromRuntimeNodeId(OutletRecord->ParentNodeId);
+			}
+			else
+			{
+				ParentAnchor = Graph->ResolveOutletAnchor(Buildable);
+			}
+		}
+
 		UFGStructuralPowerConnectionComponent* ParentHidden = Graph
 			? Graph->FindStructureHidden(ParentAnchor)
 			: nullptr;
@@ -97,7 +110,7 @@ void FStructuralPowerDiagnostics::AuditWorld(UWorld* World, bool bAllowMenuWorld
 			continue;
 		}
 
-		if (!OutletBus || !ParentHidden)
+		if (!ParentHidden)
 		{
 			++NoComponent;
 			continue;
@@ -116,15 +129,13 @@ void FStructuralPowerDiagnostics::AuditWorld(UWorld* World, bool bAllowMenuWorld
 
 	UE_LOG(LogStructuralPower, Log, TEXT("=== StructuralPower Diagnostics ==="));
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("Bridge poles: %d total | OK: %d | NO_PARENT: %d | NO_COMPONENT: %d | NO_CIRCUIT: %d | LEGACY_UNTRACKED: %d"),
+		TEXT("Bridge poles: %d total | TRACKED OK: %d | NO_PARENT: %d | NO_COMPONENT: %d | NO_CIRCUIT: %d | LEGACY skipped: %d"),
 		OutletsTotal,
 		OutletsOk,
 		NoParent,
 		NoComponent,
 		NoCircuit,
-		LegacyUntracked);
+		LegacySkipped);
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("Placement-only: mod tracks structures/bridge poles placed after install. Legacy pre-mod geometry skipped."));
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("NO_COMPONENT = pole with structural parent but incomplete mod wiring (e.g. isolated foundation test)."));
+		TEXT("Placement-only: LEGACY = pre-mod poles without outlet bus (no live_scan). NO_CIRCUIT = tracked pole, parent mesh unpowered."));
 }

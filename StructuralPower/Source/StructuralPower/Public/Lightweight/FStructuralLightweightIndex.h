@@ -16,6 +16,7 @@ class STRUCTURALPOWER_API FStructuralLightweightIndex
 {
 public:
 	int32 GetTrackedCount() const { return Members.Num(); }
+	bool IsTracked(const FStructuralLightweightKey& Key) const;
 
 	bool RegisterTrackedMember(UWorld* World, const FStructuralLightweightKey& Key);
 	void UnregisterMember(const FStructuralLightweightKey& Key);
@@ -40,6 +41,15 @@ public:
 		const FBox& WorldBounds,
 		TArray<FStructuralLightweightKey>& OutKeys) const;
 
+	bool GetMemberBounds(const FStructuralLightweightKey& Key, FBox& OutBounds) const;
+
+	/** Canonical structural-adjacency predicate used to create mesh links at placement. */
+	static bool AreBoundsStructurallyConnected(
+		const FBox& A,
+		const FBox& B,
+		TSubclassOf<AFGBuildable> ClassA = nullptr,
+		TSubclassOf<AFGBuildable> ClassB = nullptr);
+
 	void RehydrateConnectorsFromSubsystem(UWorld* World);
 	void RegisterSavedMembers(UWorld* World, const TArray<FStructuralLightweightKey>& Keys);
 
@@ -57,11 +67,6 @@ private:
 	void IndexMemberCells(int32 MemberIndex, const FBox& WorldBounds);
 	void UnindexMemberCells(int32 MemberIndex, const FBox& WorldBounds);
 	const FIndexedMember* FindMember(const FStructuralLightweightKey& Key) const;
-	static bool AreBoundsStructurallyConnected(
-		const FBox& A,
-		const FBox& B,
-		TSubclassOf<AFGBuildable> ClassA = nullptr,
-		TSubclassOf<AFGBuildable> ClassB = nullptr);
 	static FBox GetWorldBounds(
 		TSubclassOf<AFGBuildable> BuildableClass,
 		const FTransform& Transform,
