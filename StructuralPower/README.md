@@ -1,6 +1,6 @@
 # StructuralPower
 
-**Version 1.0.0** · Satisfactory 1.2 (≥491125) · SML ^3.12.0
+**Version 2.0.0** · Satisfactory 1.2 (≥491125) · SML ^3.12.0
 
 Structural Power adds a hidden power network through structural pieces — foundations, walls, ramps, and bridge poles — so you can power outlets and poles without running visible wires along every segment.
 
@@ -8,10 +8,10 @@ Structural Power adds a hidden power network through structural pieces — found
 
 ## How it works
 
-- **New placements only** — existing builds before install are not retroactively wired
+- **Retroactive** — existing structures are wired on load; no rebuild required after installing or updating
 - Wire one structural outlet to your grid; connected structure shares the bus
 - Ground poles, wall outlets, and towers bridge to the nearest powered structure
-- Save/load persists the mod's connection graph
+- Connectivity is rebuilt from world geometry on load — nothing structural is persisted, so saves can't carry stale links
 
 ## Documentation
 

@@ -8,7 +8,7 @@ You still use normal power poles and cables where the mod does not apply (machin
 
 ## What gets wired
 
-**Structural bus members** (new placements after mod install):
+**Structural bus members** (existing and newly placed):
 
 - Foundations, ramps, stairs, walkways
 - Walls and corner walls
@@ -21,18 +21,18 @@ You still use normal power poles and cables where the mod does not apply (machin
 - Wall outlets (single and double)
 - Power towers
 
-## Placement-only rule
+## Retroactive on load
 
-The mod **does not scan** your existing save on install. Only structures and poles placed **after** StructuralPower is active are tracked.
+The mod **rebuilds its connectivity from world geometry** every time the save loads, so existing foundations, walls, ramps, and poles are tracked automatically — no rebuild or re-placement required after installing or updating.
 
-Pre-mod foundations and poles keep working with normal Satisfactory wiring but do not join the hidden bus unless you rebuild or extend from new tracked pieces.
+Pieces the mod does not recognise (machines, generators) keep working with normal Satisfactory wiring.
 
 ## Typical workflow
 
-1. Install the mod and load your save.
-2. Extend from existing builds using **new** foundations or walls — they link to adjacent tracked structure when placed.
-3. Snap a bridge pole to powered structure; the pole's outlet bus merges with the structural mesh.
-4. Connect one point on the bus to your generator grid with a **visible cable** — the rest of the connected mesh shares that circuit.
+1. Install the mod and load your save — existing structure and poles are wired on load.
+2. Connect one point on the bus to your generator grid with a **visible cable** — the rest of the connected mesh shares that circuit.
+3. Extend with new foundations or walls; they link to adjacent tracked structure when placed.
+4. Snap a bridge pole to powered structure; the pole's outlet bus merges with the structural mesh.
 
 ## Isolated structures
 
@@ -40,4 +40,4 @@ Structure with **no adjacency** to the tracked graph stays on its own island. A 
 
 ## Save / load
 
-Graph nodes and lightweight connector keys are stored in the mod subsystem. On load, hidden links are restored from save data; the log reports how many links were already present vs newly added.
+Nothing structural is written to the save. On load the mod reconstructs the connectivity graph from the live world and re-establishes the hidden bus, so saves can never carry stale or "wireless" links from earlier builds.

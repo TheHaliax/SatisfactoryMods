@@ -7,7 +7,7 @@
 
 class UWorld;
 
-/** Post-rebuild audit buckets. */
+/** Logs a snapshot of the structural graph and bridge-pole circuit state. */
 class STRUCTURALPOWER_API FStructuralPowerDiagnostics
 {
 public:

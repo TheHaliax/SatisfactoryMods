@@ -15,7 +15,7 @@
 
 static FAutoConsoleCommandWithWorld GStructuralPowerDiagCmd(
 	TEXT("StructuralPower.Diag"),
-	TEXT("Audit mod-managed wall outlets (links + circuit IDs)."),
+	TEXT("Audit the structural graph and bridge-pole circuit state."),
 	FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
 	{
 		if (IsValid(World))

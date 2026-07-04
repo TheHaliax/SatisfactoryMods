@@ -57,27 +57,6 @@ void FStructuralPowerTrace::LogPlacementSkip(AFGBuildable* Buildable, const TCHA
 		Reason ? Reason : TEXT("?"));
 }
 
-void FStructuralPowerTrace::LogOverlapQuery(
-	AFGBuildable* Source,
-	int32 RawHits,
-	int32 BusHits,
-	int32 ModNeighborHits,
-	int32 NoConnectorHits)
-{
-	if (!IsEnabled() || !IsValid(Source))
-	{
-		return;
-	}
-
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] overlap %s raw=%d bus=%d modNbr=%d noConnector=%d"),
-		*Source->GetName(),
-		RawHits,
-		BusHits,
-		ModNeighborHits,
-		NoConnectorHits);
-}
-
 void FStructuralPowerTrace::LogConnector(const TCHAR* Context, const UFGCircuitConnectionComponent* Connector)
 {
 	if (!IsEnabled() || !Context)
@@ -143,27 +122,4 @@ void FStructuralPowerTrace::LogLinkOp(
 			CircuitA,
 			CircuitB);
 	}
-}
-
-void FStructuralPowerTrace::LogOutletBridge(
-	AFGBuildable* Outlet,
-	bool bSuccess,
-	int32 StructureCircuitId,
-	int32 OutletBusCircuitId,
-	int32 WiredVisibleCount,
-	const TCHAR* Note)
-{
-	if (!IsEnabled())
-	{
-		return;
-	}
-
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] outlet %s bridge ok=%d structCircuit=%d busCircuit=%d wiredVisible=%d note=%s"),
-		IsValid(Outlet) ? *Outlet->GetName() : TEXT("null"),
-		bSuccess ? 1 : 0,
-		StructureCircuitId,
-		OutletBusCircuitId,
-		WiredVisibleCount,
-		Note ? Note : TEXT(""));
 }

@@ -1,10 +1,10 @@
 # StructuralPower Documentation
 
-Player and developer docs for **StructuralPower v1.0.0**.
+Player and developer docs for **StructuralPower v2.0.0**.
 
 ## Guides
 
-- [Player guide](player-guide.md) — what the mod does, placement rules, save behavior
+- [Player guide](player-guide.md) — what the mod does, retroactive load, save behavior
 - [Console commands](console-commands.md) — debug trace, propagation toggle, diagnostics
 - [Multiplayer](multiplayer.md) — client/server requirements and dedicated hosting
 - [Troubleshooting](troubleshooting.md) — log messages, common questions, support checklist

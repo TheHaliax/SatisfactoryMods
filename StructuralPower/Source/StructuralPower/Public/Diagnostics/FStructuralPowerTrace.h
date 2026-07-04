@@ -16,12 +16,6 @@ namespace FStructuralPowerTrace
 
 	void LogHook(AFGBuildable* Buildable, const TCHAR* Hook, const TCHAR* Action, const TCHAR* Detail = nullptr);
 	void LogPlacementSkip(AFGBuildable* Buildable, const TCHAR* Reason);
-	void LogOverlapQuery(
-		AFGBuildable* Source,
-		int32 RawHits,
-		int32 BusHits,
-		int32 ModNeighborHits,
-		int32 NoConnectorHits);
 	void LogConnector(const TCHAR* Context, const UFGCircuitConnectionComponent* Connector);
 	void LogLinkOp(
 		const TCHAR* Op,
@@ -30,11 +24,4 @@ namespace FStructuralPowerTrace
 		bool bSuccess,
 		const TCHAR* Path,
 		ELogVerbosity::Type Verbosity = ELogVerbosity::Log);
-	void LogOutletBridge(
-		AFGBuildable* Outlet,
-		bool bSuccess,
-		int32 StructureCircuitId,
-		int32 OutletBusCircuitId,
-		int32 WiredVisibleCount,
-		const TCHAR* Note);
 }

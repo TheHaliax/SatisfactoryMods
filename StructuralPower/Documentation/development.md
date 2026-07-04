@@ -44,7 +44,8 @@ Full checklist: [release.md](release.md).
 | Area | Path |
 |------|------|
 | Hooks & enqueue | `StructuralPowerRootInstanceModule.cpp` |
-| Graph & save | `AStructuralPowerGraphSubsystem.cpp` |
+| Poles, circuit & subsystem | `AStructuralPowerGraphSubsystem.cpp` |
+| Structural connectivity graph (spatial hash + union-find) | `FStructuralConnectivityGraph.cpp` |
 | Lightweight index | `FStructuralLightweightIndex.cpp` |
 | Eligibility rules | `FStructuralEligibilityRules.cpp` |
 | Factory tick drain | `UStructuralPowerFactoryTickHandler.cpp` |

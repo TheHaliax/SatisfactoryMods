@@ -16,10 +16,11 @@ Each mod is a top-level folder named after its plugin (`ModReference`). Inside: 
 |---|---|
 | **Added** | 2026-06-30 |
 | **Published** | 2026-07-02 |
-| **Version** | 1.0.0 |
+| **Updated** | 2026-07-03 |
+| **Version** | 2.0.0 |
 | **Status** | Released |
 
-Hidden structural power bus for foundations, walls, and bridge poles. Applies to new placements only — no retroactive scan of existing builds. Graph state persists through the mod subsystem on save/load.
+Hidden structural power bus for foundations, walls, ramps, and bridge poles. Retroactive — existing builds are wired on load. Connectivity is rebuilt from world geometry each load, so nothing structural is persisted and saves can't carry stale links.
 
 Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 

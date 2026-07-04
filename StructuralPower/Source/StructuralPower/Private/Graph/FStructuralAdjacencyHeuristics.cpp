@@ -62,16 +62,6 @@ float GetStructuralGapCm(TSubclassOf<AFGBuildable> ClassA, TSubclassOf<AFGBuilda
 	return StructuralPowerConstants::StructuralConnectivityGapCm;
 }
 
-float ComputeAdjacencyBoundsDistCm(const FBox& BoundsA, const FBox& BoundsB)
-{
-	if (!BoundsA.IsValid || !BoundsB.IsValid)
-	{
-		return TNumericLimits<float>::Max();
-	}
-
-	return FMath::Sqrt(BoundsA.ComputeSquaredDistanceToBox(BoundsB));
-}
-
 bool AreAdjacencyBoundsConnected(
 	const FBox& BoundsA,
 	const FBox& BoundsB,

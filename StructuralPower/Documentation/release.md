@@ -14,9 +14,9 @@ Upload the **big** `StructuralPower.zip`. SMR unpacks it and serves per-platform
 
 Mod page: [ficsit.app/mod/StructuralPower](https://ficsit.app/mod/StructuralPower)
 
-## Release checklist (1.0.0)
+## Release checklist
 
-1. **Version fields** in `StructuralPower.uplugin` — `SemVersion`, `GameVersion`, SML dependency (already set for 1.0.0).
+1. **Version fields** in `StructuralPower.uplugin` — bump `Version` and `SemVersion` together (ficsit.app requires the SemVer major to match `Version`), and confirm `GameVersion` and the SML dependency.
 2. **Alpakit Release** — cook client + Windows Server + Linux Server. Output:
    ```
    StarterProject/Saved/ArchivedPlugins/StructuralPower/StructuralPower.zip

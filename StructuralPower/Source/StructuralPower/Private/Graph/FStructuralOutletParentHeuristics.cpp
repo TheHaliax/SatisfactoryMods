@@ -8,9 +8,6 @@
 #include "Buildables/FGBuildablePowerPole.h"
 #include "Buildables/FGBuildableRamp.h"
 #include "Buildables/FGBuildableWall.h"
-#include "FGBuildableSubsystem.h"
-#include "FGLightweightBuildableSubsystem.h"
-#include "Rules/FStructuralEligibilityRules.h"
 #include "StructuralPowerConstants.h"
 
 namespace FStructuralOutletParentHeuristics
@@ -264,98 +261,5 @@ float ScoreParentCandidate(
 	}
 
 	return bInsideFace ? DistSq * 0.01f : DistSq;
-}
-
-namespace
-{
-static void ConsiderNearestBusDistSq(
-	const FBox& Bounds,
-	const FVector& OutletLocation,
-	float& BestDistSq)
-{
-	if (!Bounds.IsValid)
-	{
-		return;
-	}
-
-	const float DistSq = Bounds.ComputeSquaredDistanceToPoint(OutletLocation);
-	if (DistSq < BestDistSq)
-	{
-		BestDistSq = DistSq;
-	}
-}
-}
-
-float FindNearestBusDistSq(const AFGBuildable* Outlet, UWorld* World)
-{
-	if (!IsValid(Outlet) || !IsValid(World))
-	{
-		return TNumericLimits<float>::Max();
-	}
-
-	const FVector AnchorLocation = GetOutletAnchorLocation(Outlet);
-	float BestDistSq = TNumericLimits<float>::Max();
-
-	if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World))
-	{
-		for (AFGBuildable* Candidate : BuildableSubsystem->GetAllBuildablesRef())
-		{
-			if (!IsValid(Candidate) || Candidate == Outlet)
-			{
-				continue;
-			}
-
-			if (!FStructuralEligibilityRules::IsBusMember(Candidate))
-			{
-				continue;
-			}
-
-			FVector Origin;
-			FVector Extent;
-			Candidate->GetActorBounds(false, Origin, Extent);
-			ConsiderNearestBusDistSq(FBox(Origin - Extent, Origin + Extent), AnchorLocation, BestDistSq);
-		}
-	}
-
-	if (AFGLightweightBuildableSubsystem* LightweightSubsystem = AFGLightweightBuildableSubsystem::Get(World))
-	{
-		for (const TPair<TSubclassOf<AFGBuildable>, TArray<FRuntimeBuildableInstanceData>>& ClassPair :
-			LightweightSubsystem->GetAllLightweightBuildableInstances())
-		{
-			if (!ClassPair.Key)
-			{
-				continue;
-			}
-
-			const AFGBuildable* CDO = ClassPair.Key->GetDefaultObject<AFGBuildable>();
-			if (!FStructuralEligibilityRules::IsBusMember(CDO))
-			{
-				continue;
-			}
-
-			for (const FRuntimeBuildableInstanceData& RuntimeData : ClassPair.Value)
-			{
-				if (!RuntimeData.IsValidOnLoad())
-				{
-					continue;
-				}
-
-				FBox Bounds = RuntimeData.BoundingBox.IsValid
-					? RuntimeData.BoundingBox.TransformBy(RuntimeData.Transform)
-					: FBox(RuntimeData.Transform.GetLocation(), RuntimeData.Transform.GetLocation());
-
-				if (!Bounds.IsValid)
-				{
-					const float Extent = StructuralPowerConstants::DefaultFoundationExtentCm;
-					const FVector HalfExtents(Extent, Extent, Extent);
-					Bounds = FBox(RuntimeData.Transform.GetLocation() - HalfExtents, RuntimeData.Transform.GetLocation() + HalfExtents);
-				}
-
-				ConsiderNearestBusDistSq(Bounds, AnchorLocation, BestDistSq);
-			}
-		}
-	}
-
-	return BestDistSq;
 }
 }

@@ -4,7 +4,7 @@
 
 StructuralPower sets **`RequiredOnRemote: true`**. Every player joining a session must have the same mod version installed.
 
-Version range in the plugin: `^1.0.0` (compatible 1.0.x).
+Version range in the plugin: `^2.0.0` (compatible 2.x).
 
 ## Listen server / host
 
@@ -23,12 +23,12 @@ Upload the **Alpakit Release** zip (`StructuralPower.zip`) to [ficsit.app](https
 
 ## Save compatibility
 
-Graph state lives in the save via the mod subsystem. Server and clients loading the same save see the same persisted graph after rebuild on load.
+Nothing structural is written to the save. The host rebuilds the connectivity graph from world geometry on load, so any save opens cleanly regardless of which version last touched it — no stale or "wireless" links carry over.
 
 ## Troubleshooting MP
 
 | Symptom | Check |
 |---------|--------|
-| Mod missing on join | All parties on SMR 1.0.0, SML ^3.12.0 |
+| Mod missing on join | All parties on SMR 2.0.0, SML ^3.12.0 |
 | Power works SP, not MP | Server build includes StructuralPower DLL for server target |
 | Desync / no propagation | Host-only hooks; verify host has mod, not just clients |

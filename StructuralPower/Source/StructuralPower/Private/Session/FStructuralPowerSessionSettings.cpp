@@ -8,7 +8,7 @@
 static TAutoConsoleVariable<int32> CVarStructuralPowerEnablePropagation(
 	TEXT("StructuralPower.EnablePropagation"),
 	1,
-	TEXT("1 = inject structural power on new placements; 0 = disable"),
+	TEXT("1 = enable structural power propagation; 0 = disable"),
 	ECVF_Default);
 
 bool FStructuralPowerSessionSettings::IsPropagationEnabled()

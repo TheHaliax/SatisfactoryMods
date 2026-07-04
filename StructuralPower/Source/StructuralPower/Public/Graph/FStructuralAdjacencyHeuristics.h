@@ -19,5 +19,4 @@ bool AreAdjacencyBoundsConnected(
 	const FBox& BoundsB,
 	TSubclassOf<AFGBuildable> ClassA,
 	TSubclassOf<AFGBuildable> ClassB);
-float ComputeAdjacencyBoundsDistCm(const FBox& BoundsA, const FBox& BoundsB);
 }

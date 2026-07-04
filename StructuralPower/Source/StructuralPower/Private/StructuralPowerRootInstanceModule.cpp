@@ -250,7 +250,7 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 #if WITH_EDITOR
 	UE_LOG(LogStructuralPower, Log, TEXT("StructuralPower: skipping hooks in editor"));
 #else
-	UE_LOG(LogStructuralPower, Log, TEXT("StructuralPower v1.0 initialized — placement-only structural bus (actor + lightweight)"));
+	UE_LOG(LogStructuralPower, Log, TEXT("StructuralPower v2.0 initialized — pole-to-pole bus over a structural connectivity graph"));
 
 	SUBSCRIBE_METHOD_VIRTUAL_AFTER(
 		AFGBuildable::OnBuildEffectFinished,

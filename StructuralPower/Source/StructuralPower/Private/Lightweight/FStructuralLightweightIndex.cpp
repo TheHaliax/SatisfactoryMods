@@ -4,18 +4,11 @@
 #include "Lightweight/FStructuralLightweightIndex.h"
 
 #include "Buildables/FGBuildable.h"
-#include "Buildables/FGBuildableCornerWall.h"
-#include "Buildables/FGBuildableFoundation.h"
-#include "Buildables/FGBuildablePowerPole.h"
-#include "Buildables/FGBuildableRamp.h"
-#include "Buildables/FGBuildableWall.h"
-#include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "FGLightweightBuildableSubsystem.h"
-#include "Graph/FStructuralOutletParentHeuristics.h"
 #include "Graph/FStructuralAdjacencyHeuristics.h"
+#include "Graph/FStructuralOutletParentHeuristics.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "StructuralPowerConstants.h"
-#include "StructuralPowerLog.h"
 
 namespace
 {
@@ -143,34 +136,6 @@ void FStructuralLightweightIndex::UnindexMemberCells(int32 MemberIndex, const FB
 	}
 }
 
-const FStructuralLightweightIndex::FIndexedMember* FStructuralLightweightIndex::FindMember(
-	const FStructuralLightweightKey& Key) const
-{
-	const int32* MemberIndexPtr = KeyToIndex.Find(Key);
-	if (!MemberIndexPtr || !Members.IsValidIndex(*MemberIndexPtr))
-	{
-		return nullptr;
-	}
-
-	return &Members[*MemberIndexPtr];
-}
-
-bool FStructuralLightweightIndex::IsTracked(const FStructuralLightweightKey& Key) const
-{
-	return FindMember(Key) != nullptr;
-}
-
-bool FStructuralLightweightIndex::GetMemberBounds(const FStructuralLightweightKey& Key, FBox& OutBounds) const
-{
-	if (const FIndexedMember* Member = FindMember(Key))
-	{
-		OutBounds = Member->WorldBounds;
-		return OutBounds.IsValid != 0;
-	}
-
-	return false;
-}
-
 bool FStructuralLightweightIndex::RegisterTrackedMember(UWorld* World, const FStructuralLightweightKey& Key)
 {
 	if (!Key.IsValid() || KeyToIndex.Contains(Key))
@@ -219,23 +184,6 @@ bool FStructuralLightweightIndex::RegisterTrackedMember(UWorld* World, const FSt
 
 void FStructuralLightweightIndex::UnregisterMember(const FStructuralLightweightKey& Key)
 {
-	if (UFGStructuralPowerConnectionComponent* Connector = HiddenConnectors.FindRef(Key))
-	{
-		if (IsValid(Connector))
-		{
-			TArray<UFGCircuitConnectionComponent*> HiddenLinks;
-			Connector->GetHiddenConnections(HiddenLinks);
-			for (UFGCircuitConnectionComponent* Other : HiddenLinks)
-			{
-				if (UFGPowerConnectionComponent* OtherPower = Cast<UFGPowerConnectionComponent>(Other))
-				{
-					Connector->RemoveHiddenConnection(OtherPower);
-				}
-			}
-		}
-		HiddenConnectors.Remove(Key);
-	}
-
 	const int32* MemberIndexPtr = KeyToIndex.Find(Key);
 	if (!MemberIndexPtr || !Members.IsValidIndex(*MemberIndexPtr))
 	{
@@ -336,218 +284,6 @@ FStructuralWallAnchor FStructuralLightweightIndex::FindParentWallForOutlet(AFGBu
 	return BestPreferred.IsValid() ? BestPreferred : BestAny;
 }
 
-UFGStructuralPowerConnectionComponent* FStructuralLightweightIndex::FindHiddenConnector(
-	const FStructuralLightweightKey& Key) const
-{
-	if (const UFGStructuralPowerConnectionComponent* const* Found = HiddenConnectors.Find(Key))
-	{
-		return const_cast<UFGStructuralPowerConnectionComponent*>(*Found);
-	}
-
-	return nullptr;
-}
-
-UFGStructuralPowerConnectionComponent* FStructuralLightweightIndex::GetOrCreateHiddenConnector(
-	UWorld* World,
-	const FStructuralLightweightKey& Key,
-	const FVector& WorldLocation)
-{
-	if (UFGStructuralPowerConnectionComponent* Existing = FindHiddenConnector(Key))
-	{
-		if (IsValid(Existing))
-		{
-			Existing->SetWorldLocation(WorldLocation);
-			return Existing;
-		}
-		HiddenConnectors.Remove(Key);
-	}
-
-	AFGLightweightBuildableSubsystem* Subsystem = GetLightweightSubsystem(World);
-	if (!IsValid(Subsystem) || !Key.IsValid())
-	{
-		return nullptr;
-	}
-
-	const FName ConnectorName = *FString::Printf(
-		TEXT("StructuralPowerLW_%s_%d"),
-		*Key.BuildableClass->GetName(),
-		Key.Index);
-
-	TInlineComponentArray<UFGStructuralPowerConnectionComponent*> Connectors;
-	Subsystem->GetComponents(Connectors);
-	for (UFGStructuralPowerConnectionComponent* Connector : Connectors)
-	{
-		if (IsValid(Connector) && Connector->GetFName() == ConnectorName)
-		{
-			Connector->SetWorldLocation(WorldLocation);
-			HiddenConnectors.Add(Key, Connector);
-			return Connector;
-		}
-	}
-
-	UFGStructuralPowerConnectionComponent* Connector =
-		NewObject<UFGStructuralPowerConnectionComponent>(Subsystem, ConnectorName);
-	if (!Connector)
-	{
-		return nullptr;
-	}
-
-	Connector->SetMobility(EComponentMobility::Static);
-	Connector->SetIsHidden(true);
-	Connector->SetWorldLocation(WorldLocation);
-	Subsystem->AddInstanceComponent(Connector);
-	Connector->RegisterComponent();
-	HiddenConnectors.Add(Key, Connector);
-	return Connector;
-}
-
-int32 FStructuralLightweightIndex::StitchPlacementNeighbors(
-	UWorld* World,
-	const FStructuralLightweightKey& Key,
-	TFunctionRef<bool(
-		UFGStructuralPowerConnectionComponent*,
-		UFGStructuralPowerConnectionComponent*,
-		const FStructuralLightweightKey&,
-		const FStructuralLightweightKey&)> LinkFn)
-{
-	const FIndexedMember* Member = FindMember(Key);
-	if (!Member)
-	{
-		return 0;
-	}
-
-	UFGStructuralPowerConnectionComponent* SelfHidden =
-		GetOrCreateHiddenConnector(World, Key, Member->WorldBounds.GetCenter());
-	if (!IsValid(SelfHidden))
-	{
-		return 0;
-	}
-
-	TArray<FStructuralLightweightKey> NeighborKeys;
-	FindModManagedNeighborsInBounds(Member->WorldBounds, NeighborKeys);
-
-	int32 LinksAdded = 0;
-	for (const FStructuralLightweightKey& NeighborKey : NeighborKeys)
-	{
-		if (NeighborKey == Key)
-		{
-			continue;
-		}
-
-		const FIndexedMember* Neighbor = FindMember(NeighborKey);
-		if (!Neighbor || !AreBoundsStructurallyConnected(
-			Member->WorldBounds,
-			Neighbor->WorldBounds,
-			Member->Key.BuildableClass,
-			NeighborKey.BuildableClass))
-		{
-			continue;
-		}
-
-		UFGStructuralPowerConnectionComponent* NeighborHidden =
-			GetOrCreateHiddenConnector(World, NeighborKey, Neighbor->WorldBounds.GetCenter());
-		if (!IsValid(NeighborHidden))
-		{
-			continue;
-		}
-
-		if (LinkFn(SelfHidden, NeighborHidden, Key, NeighborKey))
-		{
-			++LinksAdded;
-		}
-	}
-
-	return LinksAdded;
-}
-
-void FStructuralLightweightIndex::FindModManagedNeighborsInBounds(
-	const FBox& WorldBounds,
-	TArray<FStructuralLightweightKey>& OutKeys) const
-{
-	OutKeys.Reset();
-	if (!WorldBounds.IsValid)
-	{
-		return;
-	}
-
-	const FBox QueryBounds = WorldBounds.ExpandBy(StructuralPowerConstants::OverlapPaddingCm);
-	const FIntVector MinCell = ToCell(QueryBounds.Min) - FIntVector(1, 1, 1);
-	const FIntVector MaxCell = ToCell(QueryBounds.Max) + FIntVector(1, 1, 1);
-	TSet<int32> SeenIndices;
-
-	for (int32 X = MinCell.X; X <= MaxCell.X; ++X)
-	{
-		for (int32 Y = MinCell.Y; Y <= MaxCell.Y; ++Y)
-		{
-			for (int32 Z = MinCell.Z; Z <= MaxCell.Z; ++Z)
-			{
-				const TArray<int32>* Indices = CellToIndices.Find(FIntVector(X, Y, Z));
-				if (!Indices)
-				{
-					continue;
-				}
-
-				for (int32 MemberIndex : *Indices)
-				{
-					if (SeenIndices.Contains(MemberIndex))
-					{
-						continue;
-					}
-
-					SeenIndices.Add(MemberIndex);
-					OutKeys.Add(Members[MemberIndex].Key);
-				}
-			}
-		}
-	}
-}
-
-void FStructuralLightweightIndex::RehydrateConnectorsFromSubsystem(UWorld* World)
-{
-	AFGLightweightBuildableSubsystem* Subsystem = GetLightweightSubsystem(World);
-	if (!IsValid(Subsystem))
-	{
-		return;
-	}
-
-	int32 Rehydrated = 0;
-	for (const FIndexedMember& Member : Members)
-	{
-		const FName ConnectorName = *FString::Printf(
-			TEXT("StructuralPowerLW_%s_%d"),
-			*Member.Key.BuildableClass->GetName(),
-			Member.Key.Index);
-
-		TInlineComponentArray<UFGStructuralPowerConnectionComponent*> Connectors;
-		Subsystem->GetComponents(Connectors);
-		for (UFGStructuralPowerConnectionComponent* Connector : Connectors)
-		{
-			if (IsValid(Connector) && Connector->GetFName() == ConnectorName)
-			{
-				HiddenConnectors.Add(Member.Key, Connector);
-				++Rehydrated;
-				break;
-			}
-		}
-	}
-
-	if (Rehydrated > 0)
-	{
-		UE_LOG(LogStructuralPower, Log,
-			TEXT("Rehydrated %d/%d tracked lightweight hidden connectors"),
-			Rehydrated,
-			Members.Num());
-	}
-}
-
-void FStructuralLightweightIndex::RegisterSavedMembers(UWorld* World, const TArray<FStructuralLightweightKey>& Keys)
-{
-	for (const FStructuralLightweightKey& Key : Keys)
-	{
-		RegisterTrackedMember(World, Key);
-	}
-}
-
 FStructuralNodeId FStructuralLightweightIndex::MakeNodeId(const FStructuralLightweightKey& Key)
 {
 	FStructuralNodeId Id;
@@ -555,12 +291,4 @@ FStructuralNodeId FStructuralLightweightIndex::MakeNodeId(const FStructuralLight
 	Id.LightweightIndex = Key.Index;
 	Id.ActorName = NAME_None;
 	return Id;
-}
-
-FStructuralLightweightKey FStructuralLightweightIndex::KeyFromNodeId(const FStructuralNodeId& NodeId)
-{
-	FStructuralLightweightKey Key;
-	Key.BuildableClass = NodeId.BuildableClass.TryLoadClass<AFGBuildable>();
-	Key.Index = NodeId.LightweightIndex;
-	return Key;
 }

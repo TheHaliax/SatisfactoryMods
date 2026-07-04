@@ -37,5 +37,4 @@ float ScoreParentCandidate(
 	const FBox& Bounds,
 	TSubclassOf<AFGBuildable> BuildableClass,
 	const AFGBuildable* Outlet);
-float FindNearestBusDistSq(const AFGBuildable* Outlet, UWorld* World);
 }

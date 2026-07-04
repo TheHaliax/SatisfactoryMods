@@ -8,53 +8,27 @@
 #include "Lightweight/FStructuralLightweightTypes.h"
 
 class AFGBuildable;
-class UFGStructuralPowerConnectionComponent;
 class UWorld;
 
-/** Spatial index of mod-tracked lightweight structures (placement-only, no world scan). */
+/** Spatial index of mod-tracked lightweight structures, queried to resolve outlet parents. */
 class STRUCTURALPOWER_API FStructuralLightweightIndex
 {
 public:
 	int32 GetTrackedCount() const { return Members.Num(); }
-	bool IsTracked(const FStructuralLightweightKey& Key) const;
 
 	bool RegisterTrackedMember(UWorld* World, const FStructuralLightweightKey& Key);
 	void UnregisterMember(const FStructuralLightweightKey& Key);
 
 	FStructuralWallAnchor FindParentWallForOutlet(AFGBuildable* Outlet) const;
-	UFGStructuralPowerConnectionComponent* GetOrCreateHiddenConnector(
-		UWorld* World,
-		const FStructuralLightweightKey& Key,
-		const FVector& WorldLocation);
-	UFGStructuralPowerConnectionComponent* FindHiddenConnector(const FStructuralLightweightKey& Key) const;
 
-	int32 StitchPlacementNeighbors(
-		UWorld* World,
-		const FStructuralLightweightKey& Key,
-		TFunctionRef<bool(
-			UFGStructuralPowerConnectionComponent*,
-			UFGStructuralPowerConnectionComponent*,
-			const FStructuralLightweightKey&,
-			const FStructuralLightweightKey&)> LinkFn);
-
-	void FindModManagedNeighborsInBounds(
-		const FBox& WorldBounds,
-		TArray<FStructuralLightweightKey>& OutKeys) const;
-
-	bool GetMemberBounds(const FStructuralLightweightKey& Key, FBox& OutBounds) const;
-
-	/** Canonical structural-adjacency predicate used to create mesh links at placement. */
+	/** Canonical structural-adjacency predicate; the connectivity graph groups nodes with it. */
 	static bool AreBoundsStructurallyConnected(
 		const FBox& A,
 		const FBox& B,
 		TSubclassOf<AFGBuildable> ClassA = nullptr,
 		TSubclassOf<AFGBuildable> ClassB = nullptr);
 
-	void RehydrateConnectorsFromSubsystem(UWorld* World);
-	void RegisterSavedMembers(UWorld* World, const TArray<FStructuralLightweightKey>& Keys);
-
 	static FStructuralNodeId MakeNodeId(const FStructuralLightweightKey& Key);
-	static FStructuralLightweightKey KeyFromNodeId(const FStructuralNodeId& NodeId);
 
 private:
 	struct FIndexedMember
@@ -66,7 +40,6 @@ private:
 	static FIntVector ToCell(const FVector& Location);
 	void IndexMemberCells(int32 MemberIndex, const FBox& WorldBounds);
 	void UnindexMemberCells(int32 MemberIndex, const FBox& WorldBounds);
-	const FIndexedMember* FindMember(const FStructuralLightweightKey& Key) const;
 	static FBox GetWorldBounds(
 		TSubclassOf<AFGBuildable> BuildableClass,
 		const FTransform& Transform,
@@ -75,5 +48,4 @@ private:
 	TArray<FIndexedMember> Members;
 	TMap<FStructuralLightweightKey, int32> KeyToIndex;
 	TMap<FIntVector, TArray<int32>> CellToIndices;
-	TMap<FStructuralLightweightKey, UFGStructuralPowerConnectionComponent*> HiddenConnectors;
 };

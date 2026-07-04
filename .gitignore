@@ -19,8 +19,15 @@
 *.user
 *.suo
 
-# Local infra scripts (host-specific; not for repo)
-tools/
+# Local infra scripts (host-specific; not for repo) — except the committed build tooling.
+tools/*
+!tools/pack-structuralpower.ps1
+!tools/pack-structuralpower-release.ps1
+!tools/make-icons.py
+!tools/requirements.txt
+!tools/BaseIcon1024.png
+!tools/Mask1024.png
+!tools/README.md
 
 # OS
 Thumbs.db

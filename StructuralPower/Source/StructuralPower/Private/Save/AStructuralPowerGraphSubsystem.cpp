@@ -14,9 +14,7 @@
 #include "FGCircuitSubsystem.h"
 #include "FGLightweightBuildableSubsystem.h"
 #include "FGPowerConnectionComponent.h"
-#include "Graph/FOverlapBoxAdjacencyStrategy.h"
 #include "Graph/FStructuralAdjacencyHeuristics.h"
-#include "Graph/FStructuralOutletParentHeuristics.h"
 #include "Graph/FStructuralOutletParentResolver.h"
 #include "Kismet/GameplayStatics.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
@@ -40,86 +38,6 @@ static bool ComponentCarriesPower(const UFGPowerConnectionComponent* Component)
 	}
 
 	return !Component->IsHidden() && Component->GetNumConnections() > 0;
-}
-
-static FString FormatLinkedNeighborNames(const TArray<AFGBuildable*>& Neighbors, int32 MaxNames = 4)
-{
-	FString Result;
-	for (int32 Index = 0; Index < Neighbors.Num() && Index < MaxNames; ++Index)
-	{
-		if (IsValid(Neighbors[Index]))
-		{
-			if (!Result.IsEmpty())
-			{
-				Result += TEXT(", ");
-			}
-
-			Result += Neighbors[Index]->GetName();
-		}
-	}
-
-	if (Neighbors.Num() > MaxNames)
-	{
-		Result += FString::Printf(TEXT(" +%d more"), Neighbors.Num() - MaxNames);
-	}
-
-	return Result;
-}
-
-static void LogBeamStitchMiss(
-	UWorld* World,
-	AFGBuildable* Buildable,
-	UFGStructuralPowerConnectionComponent* SelfHidden,
-	int32 LinksCreated)
-{
-	if (!IsValid(Buildable) || LinksCreated > 0 || !FStructuralAdjacencyHeuristics::IsBeamBuildable(Buildable))
-	{
-		return;
-	}
-
-	if (IsValid(SelfHidden))
-	{
-		TArray<UFGCircuitConnectionComponent*> HiddenLinks;
-		SelfHidden->GetHiddenConnections(HiddenLinks);
-		if (HiddenLinks.Num() > 0)
-		{
-			return;
-		}
-	}
-
-	AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World);
-	if (!IsValid(BuildableSubsystem))
-	{
-		return;
-	}
-
-	const FBox SourceBounds = FStructuralAdjacencyHeuristics::GetActorAdjacencyBounds(Buildable);
-	float BestDistCm = TNumericLimits<float>::Max();
-	FString BestName = TEXT("none");
-
-	for (AFGBuildable* Candidate : BuildableSubsystem->GetAllBuildablesRef())
-	{
-		if (!IsValid(Candidate) || Candidate == Buildable || !FStructuralEligibilityRules::IsBusMember(Candidate))
-		{
-			continue;
-		}
-
-		const float DistCm = FStructuralAdjacencyHeuristics::ComputeAdjacencyBoundsDistCm(
-			SourceBounds,
-			FStructuralAdjacencyHeuristics::GetActorAdjacencyBounds(Candidate));
-		if (DistCm < BestDistCm)
-		{
-			BestDistCm = DistCm;
-			BestName = Candidate->GetName();
-		}
-	}
-
-	UE_LOG(LogStructuralPower, Warning,
-		TEXT("[PWR] beam stitch miss %s nearest=%s distCm=%.1f maxGapCm=%.0f"),
-		*Buildable->GetName(),
-		*BestName,
-		BestDistCm,
-		StructuralPowerConstants::BeamStructuralGapCm);
 }
 
 static void PromoteCircuitLink(
@@ -152,24 +70,6 @@ static void PromoteCircuitLink(
 		}
 	}
 }
-
-static bool EnsureHiddenLink(
-	UFGPowerConnectionComponent* A,
-	UFGPowerConnectionComponent* B,
-	TFunctionRef<bool(UFGPowerConnectionComponent*, UFGPowerConnectionComponent*)> LinkFn)
-{
-	if (!IsValid(A) || !IsValid(B))
-	{
-		return false;
-	}
-
-	if (A->HasHiddenConnection(B))
-	{
-		return true;
-	}
-
-	return LinkFn(A, B);
-}
 }
 
 AStructuralPowerGraphSubsystem::AStructuralPowerGraphSubsystem()
@@ -179,12 +79,7 @@ AStructuralPowerGraphSubsystem::AStructuralPowerGraphSubsystem()
 
 AStructuralPowerGraphSubsystem* AStructuralPowerGraphSubsystem::GetOrCreate(UWorld* World)
 {
-	if (!IsValid(World))
-	{
-		return nullptr;
-	}
-
-	if (World->GetNetMode() == NM_Client)
+	if (!IsValid(World) || World->GetNetMode() == NM_Client)
 	{
 		return nullptr;
 	}
@@ -229,37 +124,6 @@ FStructuralNodeId AStructuralPowerGraphSubsystem::MakeNodeId(const AFGBuildable*
 	return Id;
 }
 
-bool AStructuralPowerGraphSubsystem::HasStructuralConnector(const AFGBuildable* Buildable)
-{
-	if (const AFGBuildablePowerPole* Pole = Cast<AFGBuildablePowerPole>(Buildable))
-	{
-		return FindStructuralConnector(Buildable) != nullptr
-			|| FindOutletBusConnector(Pole) != nullptr;
-	}
-
-	return FindStructuralConnector(Buildable) != nullptr;
-}
-
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindStructuralConnector(const AFGBuildable* Buildable)
-{
-	if (!IsValid(Buildable))
-	{
-		return nullptr;
-	}
-
-	TInlineComponentArray<UFGStructuralPowerConnectionComponent*> Connectors;
-	const_cast<AFGBuildable*>(Buildable)->GetComponents(Connectors);
-	for (UFGStructuralPowerConnectionComponent* Connector : Connectors)
-	{
-		if (IsValid(Connector) && Connector->GetFName() == StructuralPowerConstants::StructuralConnectorName)
-		{
-			return Connector;
-		}
-	}
-
-	return nullptr;
-}
-
 UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindOutletBusConnector(const AFGBuildablePowerPole* Outlet)
 {
 	if (!IsValid(Outlet))
@@ -280,6 +144,52 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindOutle
 	return nullptr;
 }
 
+UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCreateOutletBusConnector(AFGBuildablePowerPole* Outlet)
+{
+	if (!IsValid(Outlet))
+	{
+		return nullptr;
+	}
+
+	if (UFGStructuralPowerConnectionComponent* Existing = FindOutletBusConnector(Outlet))
+	{
+		return Existing;
+	}
+
+	UFGStructuralPowerConnectionComponent* Connector = NewObject<UFGStructuralPowerConnectionComponent>(
+		Outlet,
+		StructuralPowerConstants::OutletBusConnectorName);
+	if (!Connector)
+	{
+		return nullptr;
+	}
+
+	Connector->SetMobility(EComponentMobility::Static);
+	Outlet->AddInstanceComponent(Connector);
+	Connector->RegisterComponent();
+	return Connector;
+}
+
+FStructuralWallAnchor AStructuralPowerGraphSubsystem::ResolveOutletAnchor(AFGBuildable* Outlet) const
+{
+	return FStructuralOutletParentResolver::Resolve(Outlet, GetWorld(), LightweightIndex);
+}
+
+FStructuralNodeId AStructuralPowerGraphSubsystem::MakeParentNodeId(const FStructuralWallAnchor& Anchor)
+{
+	if (IsValid(Anchor.Actor))
+	{
+		return MakeNodeId(Anchor.Actor);
+	}
+
+	if (Anchor.Lightweight.IsValid())
+	{
+		return FStructuralLightweightIndex::MakeNodeId(Anchor.Lightweight);
+	}
+
+	return {};
+}
+
 void AStructuralPowerGraphSubsystem::OnWorldReady(UWorld* World)
 {
 	if (!IsValid(World) || World->GetNetMode() == NM_Client)
@@ -287,19 +197,103 @@ void AStructuralPowerGraphSubsystem::OnWorldReady(UWorld* World)
 		return;
 	}
 
-	if (!bPostLoadRebuilt)
+	if (bPostLoadRebuilt)
 	{
-		RebuildRuntimeFromSave();
-		bPostLoadRebuilt = true;
+		return;
 	}
 
 	RebuildBuildableRegistry(World);
+	RebuildLightweightIndex(World);
+	StructureGraph.Rebuild(World);
+	PurgeSavedOutletBusMesh(World);
+	bPostLoadRebuilt = true;
+
+	// Seed every bridge pole through the normal deferred outlet path so its bus is created,
+	// meshed to same-component sibling poles, and promoted if any pole is already wired. This
+	// retroactively powers pre-existing bases: cost is bounded to the pole count and only
+	// powered components ever touch the game circuit.
+	int32 Seeded = 0;
+	if (FStructuralPowerSessionSettings::IsPropagationEnabled())
+	{
+		if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World))
+		{
+			for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef())
+			{
+				if (IsValid(Buildable)
+					&& Buildable->HasAuthority()
+					&& FStructuralEligibilityRules::IsPowerBridgePole(Buildable))
+				{
+					EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+					++Seeded;
+				}
+			}
+		}
+	}
+
+	int32 Components = 0;
+	int32 Largest = 0;
+	StructureGraph.GetComponentStats(Components, Largest);
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("Graph subsystem ready — %d saved nodes, %d tracked LW, %d pending jobs"),
-		RuntimeGraph.Num(),
+		TEXT("Graph ready — %d structure node(s), %d component(s) (largest %d), %d LW tracked, %d pole(s) seeded"),
+		StructureGraph.GetNodeCount(),
+		Components,
+		Largest,
 		LightweightIndex.GetTrackedCount(),
-		GetPendingJobCount());
+		Seeded);
+}
+
+void AStructuralPowerGraphSubsystem::PurgeSavedOutletBusMesh(UWorld* World)
+{
+	AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World);
+	if (!IsValid(BuildableSubsystem))
+	{
+		return;
+	}
+
+	AFGCircuitSubsystem* CircuitSubsystem = AFGCircuitSubsystem::Get(World);
+	int32 Purged = 0;
+
+	for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef())
+	{
+		AFGBuildablePowerPole* Pole = Cast<AFGBuildablePowerPole>(Buildable);
+		if (!IsValid(Pole) || !Pole->HasAuthority())
+		{
+			continue;
+		}
+
+		UFGStructuralPowerConnectionComponent* Bus = FindOutletBusConnector(Pole);
+		if (!IsValid(Bus))
+		{
+			continue;
+		}
+
+		TArray<UFGCircuitConnectionComponent*> HiddenLinks;
+		Bus->GetHiddenConnections(HiddenLinks);
+		for (UFGCircuitConnectionComponent* Other : HiddenLinks)
+		{
+			// A saved hidden link may be recorded on only one endpoint, so clear both sides.
+			if (IsValid(Other))
+			{
+				Other->RemoveHiddenConnection(Bus);
+			}
+			Bus->RemoveHiddenConnection(Other);
+		}
+		Bus->ClearHiddenConnections();
+
+		if (IsValid(CircuitSubsystem))
+		{
+			CircuitSubsystem->RemoveComponent(Bus);
+		}
+		++Purged;
+	}
+
+	if (Purged > 0)
+	{
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("Purged saved outlet-bus mesh on %d pole(s) — rebuilding from geometry"),
+			Purged);
+	}
 }
 
 void AStructuralPowerGraphSubsystem::EnqueueLightweightPlacement(
@@ -319,10 +313,6 @@ void AStructuralPowerGraphSubsystem::EnqueueLightweightPlacement(
 		}
 
 		PendingLightweightJobs.Add(Key);
-		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] LW queued %s[%d]"),
-			*Key.BuildableClass->GetName(),
-			Key.Index);
 		return;
 	}
 
@@ -355,11 +345,6 @@ void AStructuralPowerGraphSubsystem::EnqueuePlacement(
 	{
 		if (IsBuildableAlreadyPending(Buildable, JobType))
 		{
-			FStructuralPowerTrace::LogHook(
-				Buildable,
-				TEXT("EnqueuePlacement"),
-				JobType == EStructuralPlacementJobType::Outlet ? TEXT("skipped_outlet") : TEXT("skipped_structure"),
-				TEXT("already_pending"));
 			return;
 		}
 
@@ -367,11 +352,6 @@ void AStructuralPowerGraphSubsystem::EnqueuePlacement(
 		Job.Buildable = Buildable;
 		Job.JobType = JobType;
 		PendingJobs.Add(Job);
-		FStructuralPowerTrace::LogHook(
-			Buildable,
-			TEXT("EnqueuePlacement"),
-			JobType == EStructuralPlacementJobType::Outlet ? TEXT("queued_outlet") : TEXT("queued_structure"),
-			TEXT("defer"));
 		return;
 	}
 
@@ -496,145 +476,6 @@ void AStructuralPowerGraphSubsystem::TickDeferredPlacements(int32 MaxJobs)
 	{
 		CompactPendingJobQueues();
 	}
-
-	FlushPendingBridgePoleRefresh();
-}
-
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCreateStructuralConnector(AFGBuildable* Buildable)
-{
-	if (UFGStructuralPowerConnectionComponent* Existing = FindStructuralConnector(Buildable))
-	{
-		return Existing;
-	}
-
-	UFGStructuralPowerConnectionComponent* Connector = NewObject<UFGStructuralPowerConnectionComponent>(
-		Buildable,
-		StructuralPowerConstants::StructuralConnectorName);
-	if (!Connector)
-	{
-		return nullptr;
-	}
-
-	Connector->SetMobility(EComponentMobility::Static);
-	Buildable->AddInstanceComponent(Connector);
-	Connector->RegisterComponent();
-	return Connector;
-}
-
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCreateOutletBusConnector(AFGBuildablePowerPole* Outlet)
-{
-	if (UFGStructuralPowerConnectionComponent* Existing = FindOutletBusConnector(Outlet))
-	{
-		return Existing;
-	}
-
-	UFGStructuralPowerConnectionComponent* Connector = NewObject<UFGStructuralPowerConnectionComponent>(
-		Outlet,
-		StructuralPowerConstants::OutletBusConnectorName);
-	if (!Connector)
-	{
-		return nullptr;
-	}
-
-	Connector->SetMobility(EComponentMobility::Static);
-	Outlet->AddInstanceComponent(Connector);
-	Connector->RegisterComponent();
-	return Connector;
-}
-
-FStructuralWallAnchor AStructuralPowerGraphSubsystem::ResolveOutletAnchor(AFGBuildable* Outlet) const
-{
-	return FStructuralOutletParentResolver::Resolve(Outlet, GetWorld(), LightweightIndex);
-}
-
-const FStructuralNodeRecord* AStructuralPowerGraphSubsystem::FindRuntimeNodeRecord(
-	const FStructuralNodeId& NodeId) const
-{
-	return RuntimeGraph.Find(NodeId);
-}
-
-FStructuralWallAnchor AStructuralPowerGraphSubsystem::AnchorFromRuntimeNodeId(
-	const FStructuralNodeId& NodeId) const
-{
-	FStructuralWallAnchor Anchor;
-	if (!NodeId.IsValid())
-	{
-		return Anchor;
-	}
-
-	if (NodeId.IsLightweight())
-	{
-		Anchor.Lightweight = FStructuralLightweightIndex::KeyFromNodeId(NodeId);
-		if (const FStructuralNodeRecord* Record = RuntimeGraph.Find(NodeId))
-		{
-			Anchor.WorldLocation = Record->WorldLocation;
-		}
-	}
-	else if (AFGBuildable* Buildable = const_cast<AStructuralPowerGraphSubsystem*>(this)->ResolveBuildable(NodeId))
-	{
-		Anchor.Actor = Buildable;
-		Anchor.WorldLocation = Buildable->GetActorLocation();
-	}
-
-	return Anchor;
-}
-
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindStructureHidden(
-	const FStructuralWallAnchor& Anchor) const
-{
-	if (IsValid(Anchor.Actor))
-	{
-		return FindStructuralConnector(Anchor.Actor);
-	}
-
-	if (Anchor.Lightweight.IsValid())
-	{
-		return LightweightIndex.FindHiddenConnector(Anchor.Lightweight);
-	}
-
-	return nullptr;
-}
-
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCreateStructureHidden(
-	const FStructuralWallAnchor& Anchor)
-{
-	if (IsValid(Anchor.Actor))
-	{
-		return GetOrCreateStructuralConnector(Anchor.Actor);
-	}
-
-	if (Anchor.Lightweight.IsValid())
-	{
-		return LightweightIndex.GetOrCreateHiddenConnector(GetWorld(), Anchor.Lightweight, Anchor.WorldLocation);
-	}
-
-	return nullptr;
-}
-
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::ResolveNodeConnector(
-	const FStructuralNodeId& NodeId,
-	bool bIsOutlet)
-{
-	if (AFGBuildable* Buildable = ResolveBuildable(NodeId))
-	{
-		if (bIsOutlet)
-		{
-			return GetOrCreateOutletBusConnector(Cast<AFGBuildablePowerPole>(Buildable));
-		}
-		return GetOrCreateStructuralConnector(Buildable);
-	}
-
-	if (NodeId.IsLightweight())
-	{
-		const FStructuralLightweightKey Key = FStructuralLightweightIndex::KeyFromNodeId(NodeId);
-		if (UFGStructuralPowerConnectionComponent* Existing = LightweightIndex.FindHiddenConnector(Key))
-		{
-			return Existing;
-		}
-		return LightweightIndex.GetOrCreateHiddenConnector(GetWorld(), Key, FVector::ZeroVector);
-	}
-
-	return nullptr;
 }
 
 bool AStructuralPowerGraphSubsystem::LinkHiddenPair(
@@ -643,7 +484,6 @@ bool AStructuralPowerGraphSubsystem::LinkHiddenPair(
 {
 	if (!IsValid(A) || !IsValid(B) || A == B)
 	{
-		FStructuralPowerTrace::LogLinkOp(TEXT("link"), A, B, false, TEXT("invalid"));
 		return false;
 	}
 
@@ -651,13 +491,6 @@ bool AStructuralPowerGraphSubsystem::LinkHiddenPair(
 	{
 		// Mesh already linked — still promote so newly wired generators merge circuit IDs.
 		PromoteCircuitLink(A, B, ELogVerbosity::Verbose);
-		FStructuralPowerTrace::LogLinkOp(
-			TEXT("link"),
-			A,
-			B,
-			false,
-			TEXT("already_linked"),
-			ELogVerbosity::Verbose);
 		return false;
 	}
 
@@ -683,7 +516,6 @@ bool AStructuralPowerGraphSubsystem::LinkHiddenPair(
 	}
 	else
 	{
-		FStructuralPowerTrace::LogLinkOp(TEXT("link"), A, B, false, TEXT("neither_hidden"));
 		return false;
 	}
 
@@ -697,47 +529,269 @@ bool AStructuralPowerGraphSubsystem::LinkHiddenPair(
 	return bAdded;
 }
 
-void AStructuralPowerGraphSubsystem::RegisterGraphEdge(
-	const FStructuralNodeId& A,
-	const FStructuralNodeId& B,
-	bool bAIsOutlet,
-	bool bBIsOutlet)
+void AStructuralPowerGraphSubsystem::PromoteStructuralMeshFrom(UFGPowerConnectionComponent* Seed)
 {
-	if (!A.IsValid() || !B.IsValid())
+	if (!IsValid(Seed) || !ComponentCarriesPower(Seed))
 	{
 		return;
 	}
 
-	FStructuralNodeRecord& RecordA = RuntimeGraph.FindOrAdd(A);
-	RecordA.NodeId = A;
-	RecordA.bIsOutlet = bAIsOutlet;
-	RecordA.NeighborIds.AddUnique(B);
-
-	FStructuralNodeRecord& RecordB = RuntimeGraph.FindOrAdd(B);
-	RecordB.NodeId = B;
-	RecordB.bIsOutlet = bBIsOutlet;
-	RecordB.NeighborIds.AddUnique(A);
-}
-
-void AStructuralPowerGraphSubsystem::RemoveGraphNode(const FStructuralNodeId& NodeId)
-{
-	if (!NodeId.IsValid())
+	UWorld* World = GetWorld();
+	if (!IsValid(World))
 	{
 		return;
 	}
 
-	if (FStructuralNodeRecord* Record = RuntimeGraph.Find(NodeId))
+	AFGCircuitSubsystem* CircuitSubsystem = AFGCircuitSubsystem::Get(World);
+	if (!IsValid(CircuitSubsystem))
 	{
-		for (const FStructuralNodeId& NeighborId : Record->NeighborIds)
+		return;
+	}
+
+	TSet<UFGPowerConnectionComponent*> Visited;
+	Visited.Add(Seed);
+	TArray<UFGPowerConnectionComponent*> Queue;
+	Queue.Add(Seed);
+
+	int32 EdgesPromoted = 0;
+	int32 QueueHead = 0;
+
+	while (QueueHead < Queue.Num())
+	{
+		UFGPowerConnectionComponent* Current = Queue[QueueHead++];
+
+		TArray<UFGCircuitConnectionComponent*> HiddenLinks;
+		Current->GetHiddenConnections(HiddenLinks);
+
+		for (UFGCircuitConnectionComponent* OtherRaw : HiddenLinks)
 		{
-			if (FStructuralNodeRecord* Neighbor = RuntimeGraph.Find(NeighborId))
+			UFGPowerConnectionComponent* Other = Cast<UFGPowerConnectionComponent>(OtherRaw);
+			if (!IsValid(Other))
 			{
-				Neighbor->NeighborIds.Remove(NodeId);
+				continue;
+			}
+
+			CircuitSubsystem->ConnectComponents(Current, Other);
+			++EdgesPromoted;
+
+			if (Other->IsHidden() && !Visited.Contains(Other))
+			{
+				Visited.Add(Other);
+				Queue.Add(Other);
 			}
 		}
 	}
 
-	RuntimeGraph.Remove(NodeId);
+	if (EdgesPromoted > 0)
+	{
+		UE_LOG(LogStructuralPower, Verbose,
+			TEXT("[PWR] mesh flood from %s promoted %d edge(s) visited=%d"),
+			*Seed->GetName(),
+			EdgesPromoted,
+			Visited.Num());
+	}
+}
+
+UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindPoweredHiddenReachable(
+	UFGStructuralPowerConnectionComponent* StartHidden,
+	int32 MaxHiddenHops) const
+{
+	if (!IsValid(StartHidden))
+	{
+		return nullptr;
+	}
+
+	if (ComponentCarriesPower(StartHidden))
+	{
+		return StartHidden;
+	}
+
+	TSet<UFGPowerConnectionComponent*> Visited;
+	TArray<UFGPowerConnectionComponent*> Queue;
+	Queue.Add(StartHidden);
+	Visited.Add(StartHidden);
+
+	int32 QueueHead = 0;
+	while (QueueHead < Queue.Num() && Visited.Num() <= MaxHiddenHops)
+	{
+		UFGPowerConnectionComponent* Current = Queue[QueueHead++];
+		if (ComponentCarriesPower(Current))
+		{
+			return Cast<UFGStructuralPowerConnectionComponent>(Current);
+		}
+
+		TArray<UFGCircuitConnectionComponent*> HiddenLinks;
+		Current->GetHiddenConnections(HiddenLinks);
+		for (UFGCircuitConnectionComponent* OtherRaw : HiddenLinks)
+		{
+			UFGPowerConnectionComponent* Other = Cast<UFGPowerConnectionComponent>(OtherRaw);
+			if (!IsValid(Other) || !Other->IsHidden() || Visited.Contains(Other))
+			{
+				continue;
+			}
+
+			Visited.Add(Other);
+			Queue.Add(Other);
+		}
+	}
+
+	return nullptr;
+}
+
+int32 AStructuralPowerGraphSubsystem::ResolvePoleComponentRoot(
+	AFGBuildablePowerPole* Pole,
+	const FStructuralWallAnchor& Anchor,
+	FStructuralNodeId& OutParentId)
+{
+	OutParentId = FStructuralNodeId();
+	if (!IsValid(Pole))
+	{
+		return INDEX_NONE;
+	}
+
+	if (Anchor.IsValid())
+	{
+		const FStructuralNodeId ParentId = MakeParentNodeId(Anchor);
+		const int32 Root = StructureGraph.FindRoot(ParentId);
+		if (Root != INDEX_NONE)
+		{
+			OutParentId = ParentId;
+			return Root;
+		}
+	}
+
+	// The resolver could not bind a tracked structure; fall back to the spatial index so the
+	// pole still joins the nearest structural component and gets a stable parent reference.
+	const FBox Bounds = FStructuralAdjacencyHeuristics::GetActorAdjacencyBounds(Pole);
+	return StructureGraph.FindRootForBounds(Bounds, Pole->GetClass(), &OutParentId);
+}
+
+void AStructuralPowerGraphSubsystem::LinkBusToVisibleConnections(
+	AFGBuildablePowerPole* Pole,
+	UFGStructuralPowerConnectionComponent* Bus)
+{
+	if (!IsValid(Pole) || !IsValid(Bus))
+	{
+		return;
+	}
+
+	for (UFGPowerConnectionComponent* Visible : Pole->GetPowerConnections())
+	{
+		if (!IsValid(Visible) || Visible->IsHidden())
+		{
+			continue;
+		}
+
+		LinkHiddenPair(Bus, Visible);
+	}
+}
+
+void AStructuralPowerGraphSubsystem::RestitchComponent(int32 Root, bool bTearDownFirst)
+{
+	if (Root == INDEX_NONE)
+	{
+		return;
+	}
+
+	TArray<AFGBuildablePowerPole*> Poles;
+	TArray<UFGStructuralPowerConnectionComponent*> Buses;
+	for (const TPair<FStructuralNodeId, FTrackedPole>& Pair : TrackedPoles)
+	{
+		AFGBuildablePowerPole* Pole = Pair.Value.Pole.Get();
+		if (!IsValid(Pole))
+		{
+			continue;
+		}
+
+		if (StructureGraph.FindRoot(Pair.Value.ParentId) != Root)
+		{
+			continue;
+		}
+
+		UFGStructuralPowerConnectionComponent* Bus = GetOrCreateOutletBusConnector(Pole);
+		if (!Bus)
+		{
+			continue;
+		}
+
+		Poles.Add(Pole);
+		Buses.Add(Bus);
+	}
+
+	if (Buses.Num() == 0)
+	{
+		return;
+	}
+
+	if (bTearDownFirst)
+	{
+		// Drop only bus-to-bus (pole-to-pole) hidden links; keep each bus↔visible link so wired
+		// poles never flicker. This severs any cross-component links left behind by a split.
+		for (UFGStructuralPowerConnectionComponent* Bus : Buses)
+		{
+			TArray<UFGCircuitConnectionComponent*> HiddenLinks;
+			Bus->GetHiddenConnections(HiddenLinks);
+			for (UFGCircuitConnectionComponent* OtherRaw : HiddenLinks)
+			{
+				if (UFGStructuralPowerConnectionComponent* OtherBus =
+					Cast<UFGStructuralPowerConnectionComponent>(OtherRaw))
+				{
+					Bus->RemoveHiddenConnection(OtherBus);
+				}
+			}
+		}
+	}
+
+	UFGStructuralPowerConnectionComponent* Anchor = Buses[0];
+	for (int32 Index = 0; Index < Buses.Num(); ++Index)
+	{
+		LinkBusToVisibleConnections(Poles[Index], Buses[Index]);
+		if (Index > 0)
+		{
+			LinkHiddenPair(Buses[Index], Anchor);
+		}
+	}
+
+	// If any pole in the component is powered, flood-promote the whole bus mesh so every
+	// sibling pole (and its machines) shares the circuit.
+	UFGStructuralPowerConnectionComponent* Seed = nullptr;
+	for (UFGStructuralPowerConnectionComponent* Bus : Buses)
+	{
+		if (ComponentCarriesPower(Bus))
+		{
+			Seed = Bus;
+			break;
+		}
+	}
+	if (!Seed)
+	{
+		for (UFGStructuralPowerConnectionComponent* Bus : Buses)
+		{
+			if (UFGStructuralPowerConnectionComponent* Reachable = FindPoweredHiddenReachable(Bus))
+			{
+				Seed = Reachable;
+				break;
+			}
+		}
+	}
+	if (Seed)
+	{
+		PromoteStructuralMeshFrom(Seed);
+	}
+}
+
+void AStructuralPowerGraphSubsystem::ReEnergizeComponentRoots(const TArray<int32>& Roots, bool bTearDownFirst)
+{
+	TSet<int32> Done;
+	for (int32 Root : Roots)
+	{
+		if (Root == INDEX_NONE || Done.Contains(Root))
+		{
+			continue;
+		}
+		Done.Add(Root);
+		RestitchComponent(Root, bTearDownFirst);
+	}
 }
 
 void AStructuralPowerGraphSubsystem::ProcessStructure(AFGBuildable* Buildable)
@@ -750,94 +804,27 @@ void AStructuralPowerGraphSubsystem::ProcessStructure(AFGBuildable* Buildable)
 
 	RegisterBuildableActor(Buildable);
 
-	UFGStructuralPowerConnectionComponent* SelfHidden = GetOrCreateStructuralConnector(Buildable);
-	if (!SelfHidden)
+	TArray<int32> MergedRoots;
+	if (!StructureGraph.AddActorNode(Buildable, MergedRoots))
 	{
-		FStructuralPowerTrace::LogPlacementSkip(Buildable, TEXT("connector_create_failed"));
 		return;
 	}
 
-	FStructuralPowerTrace::LogConnector(TEXT("structure_hidden"), SelfHidden);
-
-	const FStructuralNodeId SelfId = MakeNodeId(Buildable);
-	FStructuralNodeRecord& SelfRecord = RuntimeGraph.FindOrAdd(SelfId);
-	SelfRecord.NodeId = SelfId;
-	SelfRecord.WorldLocation = Buildable->GetActorLocation();
-	SelfRecord.bIsOutlet = false;
-
-	TArray<AFGBuildable*> Neighbors;
-	FOverlapBoxAdjacencyStrategy::FindModManagedNeighbors(Buildable, Neighbors);
-
-	TArray<AFGBuildable*> LinkedNeighbors;
-	int32 LinksCreated = 0;
-	for (AFGBuildable* Neighbor : Neighbors)
+	// Only a genuine fusion of two+ previously separate components can change which poles share
+	// power. Extending a single component (or an isolated add) leaves pole grouping untouched.
+	if (MergedRoots.Num() >= 2)
 	{
-		UFGStructuralPowerConnectionComponent* NeighborHidden = GetOrCreateStructuralConnector(Neighbor);
-		if (!NeighborHidden)
-		{
-			continue;
-		}
+		const int32 Root = StructureGraph.FindRoot(MakeNodeId(Buildable));
+		TArray<int32> Roots;
+		Roots.Add(Root);
+		ReEnergizeComponentRoots(Roots, /*bTearDownFirst=*/false);
 
-		if (EnsureHiddenLink(SelfHidden, NeighborHidden, [this](UFGPowerConnectionComponent* A, UFGPowerConnectionComponent* B)
-		{
-			return LinkHiddenPair(A, B);
-		}))
-		{
-			RegisterGraphEdge(SelfId, MakeNodeId(Neighbor), false, false);
-			LinkedNeighbors.Add(Neighbor);
-			++LinksCreated;
-		}
+		UE_LOG(LogStructuralPower, Verbose,
+			TEXT("[PWR] structure %s fused %d component(s) -> root %d"),
+			*Buildable->GetName(),
+			MergedRoots.Num(),
+			Root);
 	}
-
-	const FBox ActorBounds = FStructuralAdjacencyHeuristics::GetActorAdjacencyBounds(Buildable);
-
-	TArray<FStructuralLightweightKey> LightweightNeighbors;
-	LightweightIndex.FindModManagedNeighborsInBounds(ActorBounds, LightweightNeighbors);
-	for (const FStructuralLightweightKey& NeighborKey : LightweightNeighbors)
-	{
-		UFGStructuralPowerConnectionComponent* NeighborHidden = LightweightIndex.FindHiddenConnector(NeighborKey);
-		if (!NeighborHidden)
-		{
-			NeighborHidden = LightweightIndex.GetOrCreateHiddenConnector(
-				GetWorld(),
-				NeighborKey,
-				FVector::ZeroVector);
-		}
-
-		if (EnsureHiddenLink(SelfHidden, NeighborHidden, [this](UFGPowerConnectionComponent* A, UFGPowerConnectionComponent* B)
-		{
-			return LinkHiddenPair(A, B);
-		}))
-		{
-			RegisterGraphEdge(SelfId, FStructuralLightweightIndex::MakeNodeId(NeighborKey), false, false);
-			++LinksCreated;
-		}
-	}
-
-	TArray<UFGCircuitConnectionComponent*> HiddenLinks;
-	SelfHidden->GetHiddenConnections(HiddenLinks);
-	for (UFGCircuitConnectionComponent* OtherRaw : HiddenLinks)
-	{
-		UFGPowerConnectionComponent* NeighborHidden = Cast<UFGPowerConnectionComponent>(OtherRaw);
-		if (!ComponentCarriesPower(NeighborHidden))
-		{
-			continue;
-		}
-
-		PromoteCircuitLink(SelfHidden, NeighborHidden);
-		TSet<UFGPowerConnectionComponent*> PoweredNodes;
-		PromoteStructuralMeshFrom(NeighborHidden, PoweredNodes);
-		break;
-	}
-
-	LogBeamStitchMiss(GetWorld(), Buildable, SelfHidden, LinksCreated);
-
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] structure %s linked %d mod neighbor(s) circuitId=%d neighbors=[%s]"),
-		*Buildable->GetName(),
-		LinksCreated,
-		SelfHidden->GetCircuitID(),
-		*FormatLinkedNeighborNames(LinkedNeighbors));
 }
 
 void AStructuralPowerGraphSubsystem::ProcessLightweightStructure(const FStructuralLightweightKey& Key)
@@ -853,195 +840,21 @@ void AStructuralPowerGraphSubsystem::ProcessLightweightStructure(const FStructur
 		return;
 	}
 
-	if (!LightweightIndex.RegisterTrackedMember(World, Key))
-	{
-		UE_LOG(LogStructuralPower, Warning,
-			TEXT("[PWR] LW register failed %s[%d]"),
-			*Key.BuildableClass->GetName(),
-			Key.Index);
-		return;
-	}
+	LightweightIndex.RegisterTrackedMember(World, Key);
 
-	FVector ConnectorLocation = FVector::ZeroVector;
-	FBox MemberBounds(ForceInit);
-	if (AFGLightweightBuildableSubsystem* LwSubsystem = AFGLightweightBuildableSubsystem::Get(World))
-	{
-		if (const TArray<FRuntimeBuildableInstanceData>* Instances =
-			LwSubsystem->GetAllLightweightBuildableInstances().Find(Key.BuildableClass))
-		{
-			if (Instances->IsValidIndex(Key.Index))
-			{
-				const FRuntimeBuildableInstanceData& Data = (*Instances)[Key.Index];
-				MemberBounds = Data.BoundingBox.IsValid
-					? Data.BoundingBox.TransformBy(Data.Transform)
-					: FBox(Data.Transform.GetLocation(), Data.Transform.GetLocation());
-				if (!MemberBounds.IsValid)
-				{
-					const float Extent = StructuralPowerConstants::DefaultFoundationExtentCm;
-					const FVector HalfExtents(Extent, Extent, Extent);
-					MemberBounds = FBox(Data.Transform.GetLocation() - HalfExtents, Data.Transform.GetLocation() + HalfExtents);
-				}
-
-				ConnectorLocation = MemberBounds.GetCenter();
-			}
-		}
-	}
-
-	UFGStructuralPowerConnectionComponent* SelfHidden = LightweightIndex.GetOrCreateHiddenConnector(
-		World,
-		Key,
-		ConnectorLocation);
-	if (!SelfHidden)
+	TArray<int32> MergedRoots;
+	if (!StructureGraph.AddLightweightNode(World, Key, MergedRoots))
 	{
 		return;
 	}
 
-	FStructuralPowerTrace::LogConnector(TEXT("lw_structure_hidden"), SelfHidden);
-
-	const FStructuralNodeId SelfId = FStructuralLightweightIndex::MakeNodeId(Key);
-	FStructuralNodeRecord& SelfRecord = RuntimeGraph.FindOrAdd(SelfId);
-	SelfRecord.NodeId = SelfId;
-	SelfRecord.WorldLocation = ConnectorLocation;
-	SelfRecord.bIsOutlet = false;
-
-	int32 LinksCreated = LightweightIndex.StitchPlacementNeighbors(
-		World,
-		Key,
-		[this](
-			UFGStructuralPowerConnectionComponent* A,
-			UFGStructuralPowerConnectionComponent* B,
-			const FStructuralLightweightKey& KeyA,
-			const FStructuralLightweightKey& KeyB)
-		{
-			if (!LinkHiddenPair(A, B))
-			{
-				return false;
-			}
-
-			RegisterGraphEdge(
-				FStructuralLightweightIndex::MakeNodeId(KeyA),
-				FStructuralLightweightIndex::MakeNodeId(KeyB),
-				false,
-				false);
-			return true;
-		});
-
-	if (MemberBounds.IsValid)
+	if (MergedRoots.Num() >= 2)
 	{
-		FBox SearchBounds = FStructuralOutletParentHeuristics::ExpandBoundsForClass(
-			MemberBounds,
-			Key.BuildableClass);
-		if (FStructuralAdjacencyHeuristics::IsBeamClass(Key.BuildableClass))
-		{
-			SearchBounds = SearchBounds.ExpandBy(StructuralPowerConstants::BeamOverlapPaddingCm);
-		}
-
-		TArray<AFGBuildable*> ActorNeighbors;
-		FOverlapBoxAdjacencyStrategy::FindBusNeighborsNearBounds(
-			World,
-			SearchBounds,
-			Key.BuildableClass,
-			nullptr,
-			ActorNeighbors);
-
-		int32 ActorLinks = 0;
-		for (AFGBuildable* ActorNeighbor : ActorNeighbors)
-		{
-			UFGStructuralPowerConnectionComponent* NeighborHidden = GetOrCreateStructuralConnector(ActorNeighbor);
-			if (!NeighborHidden)
-			{
-				continue;
-			}
-
-			if (LinkHiddenPair(SelfHidden, NeighborHidden))
-			{
-				RegisterGraphEdge(SelfId, MakeNodeId(ActorNeighbor), false, false);
-				++LinksCreated;
-				++ActorLinks;
-			}
-		}
-
-		if (ActorLinks > 0)
-		{
-			UE_LOG(LogStructuralPower, Log,
-				TEXT("[PWR] LW %s[%d] actor-bridge linked %d actor neighbor(s)"),
-				*Key.BuildableClass->GetName(),
-				Key.Index,
-				ActorLinks);
-		}
+		const int32 Root = StructureGraph.FindRoot(FStructuralLightweightIndex::MakeNodeId(Key));
+		TArray<int32> Roots;
+		Roots.Add(Root);
+		ReEnergizeComponentRoots(Roots, /*bTearDownFirst=*/false);
 	}
-
-	if (LinksCreated == 0)
-	{
-		UE_LOG(LogStructuralPower, Warning,
-			TEXT("[PWR] LW stitch miss %s[%d] boundsValid=%d tracked=%d"),
-			*Key.BuildableClass->GetName(),
-			Key.Index,
-			MemberBounds.IsValid ? 1 : 0,
-			LightweightIndex.GetTrackedCount());
-	}
-
-	TArray<UFGCircuitConnectionComponent*> HiddenLinks;
-	SelfHidden->GetHiddenConnections(HiddenLinks);
-	for (UFGCircuitConnectionComponent* OtherRaw : HiddenLinks)
-	{
-		UFGPowerConnectionComponent* NeighborHidden = Cast<UFGPowerConnectionComponent>(OtherRaw);
-		if (!ComponentCarriesPower(NeighborHidden))
-		{
-			continue;
-		}
-
-		PromoteCircuitLink(SelfHidden, NeighborHidden);
-		TSet<UFGPowerConnectionComponent*> PoweredNodes;
-		PromoteStructuralMeshFrom(NeighborHidden, PoweredNodes);
-		// Hidden mesh is connected; one powered neighbor seeds full mesh promotion.
-		break;
-	}
-
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] LW %s[%d] linked %d mod neighbor(s) circuitId=%d tracked=%d"),
-		*Key.BuildableClass->GetName(),
-		Key.Index,
-		LinksCreated,
-		SelfHidden->GetCircuitID(),
-		LightweightIndex.GetTrackedCount());
-}
-
-FStructuralNodeId AStructuralPowerGraphSubsystem::MakeParentNodeId(const FStructuralWallAnchor& Anchor)
-{
-	if (IsValid(Anchor.Actor))
-	{
-		return MakeNodeId(Anchor.Actor);
-	}
-
-	if (Anchor.Lightweight.IsValid())
-	{
-		return FStructuralLightweightIndex::MakeNodeId(Anchor.Lightweight);
-	}
-
-	return {};
-}
-
-void AStructuralPowerGraphSubsystem::ClearStaleOutletParentBinding(
-	AFGBuildablePowerPole* Pole,
-	FStructuralNodeRecord& OutletRecord)
-{
-	if (!OutletRecord.ParentNodeId.IsValid())
-	{
-		return;
-	}
-
-	UFGStructuralPowerConnectionComponent* OutletBus = FindOutletBusConnector(Pole);
-	if (UFGStructuralPowerConnectionComponent* OldParentHidden =
-		Cast<UFGStructuralPowerConnectionComponent>(ResolveNodeConnector(OutletRecord.ParentNodeId, false)))
-	{
-		if (IsValid(OutletBus) && OutletBus->HasHiddenConnection(OldParentHidden))
-		{
-			OutletBus->RemoveHiddenConnection(OldParentHidden);
-		}
-	}
-
-	OutletRecord.ParentNodeId = {};
 }
 
 void AStructuralPowerGraphSubsystem::ProcessOutlet(AFGBuildable* Buildable)
@@ -1060,125 +873,59 @@ void AStructuralPowerGraphSubsystem::ProcessOutlet(AFGBuildable* Buildable)
 		return;
 	}
 
-	AActor* ParentActor = Buildable->GetParentBuildableActor();
 	const FStructuralWallAnchor ParentAnchor = ResolveOutletAnchor(Buildable);
-	const FStructuralNodeId OutletId = MakeNodeId(Buildable);
-	FStructuralNodeRecord& OutletRecord = RuntimeGraph.FindOrAdd(OutletId);
-	OutletRecord.NodeId = OutletId;
-	OutletRecord.bIsOutlet = true;
-	OutletRecord.WorldLocation = Buildable->GetActorLocation();
+	FStructuralNodeId ParentId;
+	const int32 Root = ResolvePoleComponentRoot(Pole, ParentAnchor, ParentId);
 
-	if (!ParentAnchor.IsValid())
-	{
-		const FString ParentName = IsValid(ParentActor) ? ParentActor->GetName() : TEXT("null");
-		const float NearestDistSq = FStructuralOutletParentHeuristics::FindNearestBusDistSq(Buildable, GetWorld());
-		const float NearestDistCm = FMath::Sqrt(NearestDistSq);
-		ClearStaleOutletParentBinding(Pole, OutletRecord);
-		UE_LOG(LogStructuralPower, Warning,
-			TEXT("[PWR] outlet %s NO_PARENT parent=%s trackedLW=%d nearestDistCm=%.1f maxDistCm=%.1f"),
-			*Buildable->GetName(),
-			*ParentName,
-			LightweightIndex.GetTrackedCount(),
-			NearestDistCm,
-			StructuralPowerConstants::MaxOutletParentDistCm);
-		FStructuralPowerTrace::LogOutletBridge(Buildable, false, INDEX_NONE, OutletBus->GetCircuitID(), 0, TEXT("no_mod_parent"));
-		return;
-	}
-
-	if (ParentAnchor.Lightweight.IsValid())
-	{
-		if (!LightweightIndex.IsTracked(ParentAnchor.Lightweight))
-		{
-			ProcessLightweightStructure(ParentAnchor.Lightweight);
-		}
-	}
-	else if (IsValid(ParentAnchor.Actor) && !HasStructuralConnector(ParentAnchor.Actor))
-	{
-		ProcessStructure(ParentAnchor.Actor);
-	}
-
-	UFGStructuralPowerConnectionComponent* ParentHidden = GetOrCreateStructureHidden(ParentAnchor);
-	if (!ParentHidden)
-	{
-		FStructuralPowerTrace::LogOutletBridge(Buildable, false, INDEX_NONE, OutletBus->GetCircuitID(), 0, TEXT("parent_hidden_failed"));
-		return;
-	}
-
-	const FStructuralNodeId ParentId = MakeParentNodeId(ParentAnchor);
-
-	if (OutletRecord.ParentNodeId.IsValid() && OutletRecord.ParentNodeId != ParentId)
-	{
-		ClearStaleOutletParentBinding(Pole, OutletRecord);
-	}
-
-	OutletRecord.ParentNodeId = ParentId;
-
-	const bool bStructLinked = EnsureHiddenLink(OutletBus, ParentHidden, [this](UFGPowerConnectionComponent* A, UFGPowerConnectionComponent* B)
-	{
-		return LinkHiddenPair(A, B);
-	});
-	if (bStructLinked)
-	{
-		RegisterGraphEdge(OutletId, ParentId, true, false);
-	}
-
+	const FStructuralNodeId PoleId = MakeNodeId(Buildable);
+	FTrackedPole& Tracked = TrackedPoles.FindOrAdd(PoleId);
+	Tracked.Pole = Pole;
+	Tracked.ParentId = ParentId;
 	RegisterBuildableActor(Buildable);
 
-	TryEnergizeParentMesh(ParentHidden, /*bAlwaysFlood=*/false);
-	if (ComponentCarriesPower(ParentHidden))
+	LinkBusToVisibleConnections(Pole, OutletBus);
+
+	// Mesh this pole into any sibling pole already tracked in the same structural component.
+	// Each pole links to one already-meshed sibling, so the component's buses form one
+	// connected mesh regardless of processing order.
+	if (Root != INDEX_NONE)
 	{
-		SyncBridgePoleToPoweredParent(Pole, OutletBus, ParentHidden);
-	}
-
-	int32 VisibleLinks = 0;
-	int32 WiredVisible = 0;
-	for (UFGPowerConnectionComponent* Visible : Pole->GetPowerConnections())
-	{
-		if (!IsValid(Visible) || Visible->IsHidden())
+		for (const TPair<FStructuralNodeId, FTrackedPole>& Pair : TrackedPoles)
 		{
-			continue;
-		}
+			if (Pair.Key == PoleId)
+			{
+				continue;
+			}
 
-		if (Visible->GetNumConnections() == 0)
-		{
-			continue;
-		}
+			AFGBuildablePowerPole* Sibling = Pair.Value.Pole.Get();
+			if (!IsValid(Sibling) || StructureGraph.FindRoot(Pair.Value.ParentId) != Root)
+			{
+				continue;
+			}
 
-		++WiredVisible;
-
-		if (LinkHiddenPair(OutletBus, Visible))
-		{
-			++VisibleLinks;
-		}
-	}
-
-	if (WiredVisible > 0)
-	{
-		if (UFGStructuralPowerConnectionComponent* FloodSeed =
-			TryEnergizeParentMesh(ParentHidden, /*bAlwaysFlood=*/true))
-		{
-			PromoteCircuitLink(OutletBus, FloodSeed);
+			if (UFGStructuralPowerConnectionComponent* SiblingBus = FindOutletBusConnector(Sibling))
+			{
+				LinkHiddenPair(OutletBus, SiblingBus);
+				break;
+			}
 		}
 	}
 
-	const bool bStructConnected = bStructLinked || OutletBus->HasHiddenConnection(ParentHidden);
-	FStructuralPowerTrace::LogOutletBridge(
-		Buildable,
-		bStructConnected || VisibleLinks > 0,
-		ParentHidden->GetCircuitID(),
-		OutletBus->GetCircuitID(),
-		WiredVisible,
-		bStructConnected ? TEXT("ok") : TEXT("struct_link_failed"));
+	UFGStructuralPowerConnectionComponent* Seed = ComponentCarriesPower(OutletBus)
+		? OutletBus
+		: FindPoweredHiddenReachable(OutletBus);
+	if (Seed)
+	{
+		PromoteStructuralMeshFrom(Seed);
+	}
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] outlet %s parent=%s structLink=%d visibleLinks=%d busCircuit=%d parentCircuit=%d"),
+		TEXT("[PWR] outlet %s root=%d parentValid=%d busCircuit=%d powered=%d"),
 		*Buildable->GetName(),
-		IsValid(ParentAnchor.Actor) ? *ParentAnchor.Actor->GetName()
-			: *FString::Printf(TEXT("LW:%s[%d]"), *ParentAnchor.Lightweight.BuildableClass->GetName(), ParentAnchor.Lightweight.Index),
-		bStructConnected ? 1 : 0,
-		VisibleLinks,
+		Root,
+		ParentAnchor.IsValid() ? 1 : 0,
 		OutletBus->GetCircuitID(),
-		ParentHidden->GetCircuitID());
+		ComponentCarriesPower(OutletBus) ? 1 : 0);
 }
 
 void AStructuralPowerGraphSubsystem::ProcessWallOutletAfterWire(AFGBuildablePowerPole* Pole)
@@ -1197,42 +944,81 @@ void AStructuralPowerGraphSubsystem::ProcessWallOutletAfterWire(AFGBuildablePowe
 	EnqueuePlacement(Pole, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
 }
 
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::TryEnergizeParentMesh(
-	UFGStructuralPowerConnectionComponent* ParentHidden,
-	bool bAlwaysFlood)
+void AStructuralPowerGraphSubsystem::OnBuildableRemoved(AFGBuildable* Buildable)
 {
-	if (!IsValid(ParentHidden))
+	if (!IsValid(Buildable))
 	{
-		return nullptr;
+		return;
 	}
 
-	UFGStructuralPowerConnectionComponent* PoweredParentHidden = nullptr;
-	if (ComponentCarriesPower(ParentHidden))
+	const FStructuralNodeId NodeId = MakeNodeId(Buildable);
+	UnregisterBuildableActor(NodeId);
+
+	if (FTrackedPole* Tracked = TrackedPoles.Find(NodeId))
 	{
-		PoweredParentHidden = ParentHidden;
+		const int32 OldRoot = StructureGraph.FindRoot(Tracked->ParentId);
+
+		if (AFGBuildablePowerPole* Pole = Cast<AFGBuildablePowerPole>(Buildable))
+		{
+			if (UFGStructuralPowerConnectionComponent* Bus = FindOutletBusConnector(Pole))
+			{
+				TArray<UFGCircuitConnectionComponent*> HiddenLinks;
+				Bus->GetHiddenConnections(HiddenLinks);
+				for (UFGCircuitConnectionComponent* OtherRaw : HiddenLinks)
+				{
+					if (UFGPowerConnectionComponent* Other = Cast<UFGPowerConnectionComponent>(OtherRaw))
+					{
+						Bus->RemoveHiddenConnection(Other);
+					}
+				}
+			}
+		}
+
+		TrackedPoles.Remove(NodeId);
+
+		if (OldRoot != INDEX_NONE)
+		{
+			TArray<int32> Roots;
+			Roots.Add(OldRoot);
+			ReEnergizeComponentRoots(Roots, /*bTearDownFirst=*/true);
+		}
 	}
-	else
+	else if (StructureGraph.IsTracked(NodeId))
 	{
-		PoweredParentHidden = FindPoweredHiddenReachable(
-			ParentHidden,
-			StructuralPowerConstants::PassiveEnergizeMaxHiddenHops);
+		TArray<int32> AffectedRoots;
+		StructureGraph.RemoveNode(NodeId, AffectedRoots);
+		ReEnergizeComponentRoots(AffectedRoots, /*bTearDownFirst=*/true);
 	}
 
-	if (!IsValid(PoweredParentHidden))
+	CompactPendingJobQueues();
+	PendingJobs.RemoveAll([&Buildable](const FDeferredPlacementJob& Job)
 	{
-		return nullptr;
+		return Job.Buildable.Get() == Buildable;
+	});
+}
+
+void AStructuralPowerGraphSubsystem::OnLightweightRemoved(const FStructuralLightweightKey& Key)
+{
+	if (!Key.IsValid())
+	{
+		return;
 	}
 
-	const bool bShouldFlood = bAlwaysFlood
-		|| (!ComponentCarriesPower(ParentHidden) && PoweredParentHidden != ParentHidden);
-
-	if (bShouldFlood)
+	const FStructuralNodeId NodeId = FStructuralLightweightIndex::MakeNodeId(Key);
+	if (StructureGraph.IsTracked(NodeId))
 	{
-		TSet<UFGPowerConnectionComponent*> PoweredNodes;
-		PromoteStructuralMeshFrom(PoweredParentHidden, PoweredNodes);
+		TArray<int32> AffectedRoots;
+		StructureGraph.RemoveNode(NodeId, AffectedRoots);
+		ReEnergizeComponentRoots(AffectedRoots, /*bTearDownFirst=*/true);
 	}
 
-	return PoweredParentHidden;
+	LightweightIndex.UnregisterMember(Key);
+
+	CompactPendingJobQueues();
+	PendingLightweightJobs.RemoveAll([&Key](const FStructuralLightweightKey& Pending)
+	{
+		return Pending == Key;
+	});
 }
 
 void AStructuralPowerGraphSubsystem::RegisterBuildableActor(AFGBuildable* Buildable)
@@ -1285,624 +1071,43 @@ void AStructuralPowerGraphSubsystem::RebuildBuildableRegistry(UWorld* World)
 	}
 }
 
-void AStructuralPowerGraphSubsystem::SyncBridgePoleToPoweredParent(
-	AFGBuildablePowerPole* Pole,
-	UFGStructuralPowerConnectionComponent* OutletBus,
-	UFGStructuralPowerConnectionComponent* ParentHidden)
+void AStructuralPowerGraphSubsystem::RebuildLightweightIndex(UWorld* World)
 {
-	if (!IsValid(Pole) || !IsValid(OutletBus) || !IsValid(ParentHidden))
-	{
-		return;
-	}
-
-	if (!ComponentCarriesPower(ParentHidden))
-	{
-		return;
-	}
-
-	PromoteCircuitLink(OutletBus, ParentHidden);
-
-	int32 VisibleSynced = 0;
-	const bool bParentPowered = ComponentCarriesPower(ParentHidden);
-	for (UFGPowerConnectionComponent* Visible : Pole->GetPowerConnections())
-	{
-		if (!IsValid(Visible) || Visible->IsHidden())
-		{
-			continue;
-		}
-
-		if (LinkHiddenPair(OutletBus, Visible))
-		{
-			++VisibleSynced;
-		}
-		else if (OutletBus->HasHiddenConnection(Visible) || bParentPowered)
-		{
-			PromoteCircuitLink(OutletBus, Visible);
-			++VisibleSynced;
-		}
-	}
-
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] bridge pole %s passive sync parentCircuit=%d busCircuit=%d visibleSynced=%d"),
-		*Pole->GetName(),
-		ParentHidden->GetCircuitID(),
-		OutletBus->GetCircuitID(),
-		VisibleSynced);
-}
-
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindPoweredHiddenReachable(
-	UFGStructuralPowerConnectionComponent* StartHidden,
-	int32 MaxHiddenHops) const
-{
-	if (!IsValid(StartHidden))
-	{
-		return nullptr;
-	}
-
-	if (ComponentCarriesPower(StartHidden))
-	{
-		return StartHidden;
-	}
-
-	TSet<UFGPowerConnectionComponent*> Visited;
-	TArray<UFGPowerConnectionComponent*> Queue;
-	Queue.Add(StartHidden);
-	Visited.Add(StartHidden);
-
-	int32 QueueHead = 0;
-	while (QueueHead < Queue.Num() && Visited.Num() <= MaxHiddenHops)
-	{
-		UFGPowerConnectionComponent* Current = Queue[QueueHead++];
-		if (ComponentCarriesPower(Current))
-		{
-			return Cast<UFGStructuralPowerConnectionComponent>(Current);
-		}
-
-		TArray<UFGCircuitConnectionComponent*> HiddenLinks;
-		Current->GetHiddenConnections(HiddenLinks);
-		for (UFGCircuitConnectionComponent* OtherRaw : HiddenLinks)
-		{
-			UFGPowerConnectionComponent* Other = Cast<UFGPowerConnectionComponent>(OtherRaw);
-			if (!IsValid(Other) || !Other->IsHidden() || Visited.Contains(Other))
-			{
-				continue;
-			}
-
-			Visited.Add(Other);
-			Queue.Add(Other);
-		}
-	}
-
-	return nullptr;
-}
-
-void AStructuralPowerGraphSubsystem::QueueBridgePoleRefresh(
-	const TSet<UFGPowerConnectionComponent*>& PoweredHiddenNodes)
-{
-	if (PoweredHiddenNodes.Num() == 0)
-	{
-		return;
-	}
-
-	PendingPoweredMeshRefresh.Append(PoweredHiddenNodes);
-}
-
-void AStructuralPowerGraphSubsystem::FlushPendingBridgePoleRefresh()
-{
-	if (PendingPoweredMeshRefresh.Num() == 0)
-	{
-		return;
-	}
-
-	const TSet<UFGPowerConnectionComponent*> NodesToRefresh = MoveTemp(PendingPoweredMeshRefresh);
-	PendingPoweredMeshRefresh.Reset();
-	RefreshBridgePolesOnMesh(NodesToRefresh);
-}
-
-void AStructuralPowerGraphSubsystem::RefreshBridgePolesOnMesh(
-	const TSet<UFGPowerConnectionComponent*>& PoweredHiddenNodes)
-{
-	if (PoweredHiddenNodes.Num() == 0)
-	{
-		return;
-	}
-
-	int32 Refreshed = 0;
-	for (const TPair<FStructuralNodeId, FStructuralNodeRecord>& Pair : RuntimeGraph)
-	{
-		const FStructuralNodeRecord& Record = Pair.Value;
-		if (!Record.bIsOutlet || !Record.ParentNodeId.IsValid())
-		{
-			continue;
-		}
-
-		UFGStructuralPowerConnectionComponent* ParentHidden =
-			Cast<UFGStructuralPowerConnectionComponent>(ResolveNodeConnector(Record.ParentNodeId, false));
-		if (!IsValid(ParentHidden) || !PoweredHiddenNodes.Contains(ParentHidden))
-		{
-			continue;
-		}
-
-		AFGBuildable* Buildable = ResolveBuildable(Pair.Key);
-		AFGBuildablePowerPole* Pole = Cast<AFGBuildablePowerPole>(Buildable);
-		UFGStructuralPowerConnectionComponent* OutletBus = FindOutletBusConnector(Pole);
-		if (!IsValid(Pole) || !OutletBus)
-		{
-			continue;
-		}
-
-		const FStructuralWallAnchor CurrentParent = ResolveOutletAnchor(Pole);
-		if (!CurrentParent.IsValid())
-		{
-			continue;
-		}
-
-		const FStructuralNodeId CurrentParentId = MakeParentNodeId(CurrentParent);
-		if (CurrentParentId != Record.ParentNodeId)
-		{
-			continue;
-		}
-
-		if (!ComponentCarriesPower(ParentHidden))
-		{
-			continue;
-		}
-
-		SyncBridgePoleToPoweredParent(Pole, OutletBus, ParentHidden);
-		++Refreshed;
-	}
-
-	if (Refreshed > 0)
-	{
-		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] refreshed %d bridge pole(s) on powered mesh"),
-			Refreshed);
-	}
-}
-
-void AStructuralPowerGraphSubsystem::PromoteStructuralMeshFrom(UFGPowerConnectionComponent* Seed)
-{
-	TSet<UFGPowerConnectionComponent*> PoweredNodes;
-	PromoteStructuralMeshFrom(Seed, PoweredNodes);
-}
-
-void AStructuralPowerGraphSubsystem::PromoteStructuralMeshFrom(
-	UFGPowerConnectionComponent* Seed,
-	TSet<UFGPowerConnectionComponent*>& OutVisited)
-{
-	if (!IsValid(Seed))
-	{
-		return;
-	}
-
-	if (!ComponentCarriesPower(Seed))
-	{
-		return;
-	}
-
-	UWorld* World = GetWorld();
 	if (!IsValid(World))
 	{
 		return;
 	}
 
-	AFGCircuitSubsystem* CircuitSubsystem = AFGCircuitSubsystem::Get(World);
-	if (!IsValid(CircuitSubsystem))
+	AFGLightweightBuildableSubsystem* Lw = AFGLightweightBuildableSubsystem::Get(World);
+	if (!IsValid(Lw))
 	{
 		return;
 	}
 
-	TSet<UFGPowerConnectionComponent*>& Visited = OutVisited;
-	Visited.Add(Seed);
-	TArray<UFGPowerConnectionComponent*> Queue;
-	Queue.Add(Seed);
-
-	int32 EdgesPromoted = 0;
-	int32 QueueHead = 0;
-
-	while (QueueHead < Queue.Num())
+	for (const TPair<TSubclassOf<AFGBuildable>, TArray<FRuntimeBuildableInstanceData>>& Pair :
+		Lw->GetAllLightweightBuildableInstances())
 	{
-		UFGPowerConnectionComponent* Current = Queue[QueueHead++];
-
-		TArray<UFGCircuitConnectionComponent*> HiddenLinks;
-		Current->GetHiddenConnections(HiddenLinks);
-
-		for (UFGCircuitConnectionComponent* OtherRaw : HiddenLinks)
-		{
-			UFGPowerConnectionComponent* Other = Cast<UFGPowerConnectionComponent>(OtherRaw);
-			if (!IsValid(Other))
-			{
-				continue;
-			}
-
-			CircuitSubsystem->ConnectComponents(Current, Other);
-			FStructuralPowerTrace::LogLinkOp(TEXT("mesh_promote"), Current, Other, true, TEXT("flood"));
-			++EdgesPromoted;
-
-			if (Other->IsHidden() && !Visited.Contains(Other))
-			{
-				Visited.Add(Other);
-				Queue.Add(Other);
-			}
-		}
-	}
-
-	if (EdgesPromoted > 0)
-	{
-		const int32 TotalHiddenNodes = CountStructuralHiddenNodes();
-		const int32 Unvisited = FMath::Max(0, TotalHiddenNodes - Visited.Num());
-		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] mesh flood from %s promoted %d edge(s) visited=%d unvisited=%d totalHidden=%d"),
-			*Seed->GetName(),
-			EdgesPromoted,
-			Visited.Num(),
-			Unvisited,
-			TotalHiddenNodes);
-
-		QueueBridgePoleRefresh(Visited);
-	}
-}
-
-void AStructuralPowerGraphSubsystem::OnLightweightRemoved(const FStructuralLightweightKey& Key)
-{
-	if (!Key.IsValid())
-	{
-		return;
-	}
-
-	const FStructuralNodeId NodeId = FStructuralLightweightIndex::MakeNodeId(Key);
-	if (!RuntimeGraph.Contains(NodeId))
-	{
-		LightweightIndex.UnregisterMember(Key);
-		CompactPendingJobQueues();
-		PendingLightweightJobs.RemoveAll([&Key](const FStructuralLightweightKey& Pending)
-		{
-			return Pending == Key;
-		});
-		return;
-	}
-
-	if (UFGStructuralPowerConnectionComponent* SelfHidden = LightweightIndex.FindHiddenConnector(Key))
-	{
-		TArray<UFGCircuitConnectionComponent*> HiddenLinks;
-		SelfHidden->GetHiddenConnections(HiddenLinks);
-		for (UFGCircuitConnectionComponent* Other : HiddenLinks)
-		{
-			if (UFGPowerConnectionComponent* OtherPower = Cast<UFGPowerConnectionComponent>(Other))
-			{
-				SelfHidden->RemoveHiddenConnection(OtherPower);
-			}
-		}
-	}
-
-	RemoveGraphNode(NodeId);
-	LightweightIndex.UnregisterMember(Key);
-	CompactPendingJobQueues();
-	PendingLightweightJobs.RemoveAll([&Key](const FStructuralLightweightKey& Pending)
-	{
-		return Pending == Key;
-	});
-}
-
-void AStructuralPowerGraphSubsystem::OnBuildableRemoved(AFGBuildable* Buildable)
-{
-	if (!IsValid(Buildable))
-	{
-		return;
-	}
-
-	const FStructuralNodeId NodeId = MakeNodeId(Buildable);
-	UnregisterBuildableActor(NodeId);
-
-	if (!RuntimeGraph.Contains(NodeId))
-	{
-		return;
-	}
-
-	UFGStructuralPowerConnectionComponent* SelfHidden = FindStructuralConnector(Buildable);
-	if (!SelfHidden)
-	{
-		if (AFGBuildablePowerPole* Pole = Cast<AFGBuildablePowerPole>(Buildable))
-		{
-			SelfHidden = FindOutletBusConnector(Pole);
-		}
-	}
-
-	if (SelfHidden)
-	{
-		TArray<UFGCircuitConnectionComponent*> HiddenLinks;
-		SelfHidden->GetHiddenConnections(HiddenLinks);
-		for (UFGCircuitConnectionComponent* Other : HiddenLinks)
-		{
-			if (UFGPowerConnectionComponent* OtherPower = Cast<UFGPowerConnectionComponent>(Other))
-			{
-				SelfHidden->RemoveHiddenConnection(OtherPower);
-			}
-		}
-	}
-
-	RemoveGraphNode(NodeId);
-
-	CompactPendingJobQueues();
-	PendingJobs.RemoveAll([&Buildable](const FDeferredPlacementJob& Job)
-	{
-		return Job.Buildable.Get() == Buildable;
-	});
-}
-
-AFGBuildable* AStructuralPowerGraphSubsystem::ResolveBuildable(const FStructuralNodeId& NodeId) const
-{
-	if (!NodeId.IsValid() || NodeId.IsLightweight())
-	{
-		return nullptr;
-	}
-
-	if (const TWeakObjectPtr<AFGBuildable>* Found = RegisteredBuildables.Find(NodeId))
-	{
-		return Found->Get();
-	}
-
-	return nullptr;
-}
-
-FString AStructuralPowerGraphSubsystem::NodeDedupKey(const FStructuralNodeId& NodeId)
-{
-	return NodeId.BuildableClass.ToString()
-		+ NodeId.ActorName.ToString()
-		+ FString::FromInt(NodeId.LightweightIndex);
-}
-
-void AStructuralPowerGraphSubsystem::RegisterSavedLightweightNodes(UWorld* World)
-{
-	TArray<FStructuralLightweightKey> SavedKeys;
-	SavedKeys.Reserve(RuntimeGraph.Num());
-
-	for (const TPair<FStructuralNodeId, FStructuralNodeRecord>& Pair : RuntimeGraph)
-	{
-		if (Pair.Key.IsLightweight())
-		{
-			const FStructuralLightweightKey Key = FStructuralLightweightIndex::KeyFromNodeId(Pair.Key);
-			if (Key.IsValid())
-			{
-				SavedKeys.Add(Key);
-			}
-		}
-	}
-
-	if (SavedKeys.Num() > 0)
-	{
-		LightweightIndex.RegisterSavedMembers(World, SavedKeys);
-		LightweightIndex.RehydrateConnectorsFromSubsystem(World);
-		UE_LOG(LogStructuralPower, Log, TEXT("Registered %d saved lightweight graph node(s)"), SavedKeys.Num());
-	}
-}
-
-void AStructuralPowerGraphSubsystem::RebuildRuntimeFromSave()
-{
-	RuntimeGraph.Reset();
-
-	for (const FStructuralNodeRecord& Saved : SavedGraph)
-	{
-		if (Saved.NodeId.IsValid())
-		{
-			RuntimeGraph.Add(Saved.NodeId, Saved);
-		}
-	}
-
-	RegisterSavedLightweightNodes(GetWorld());
-	RebuildBuildableRegistry(GetWorld());
-
-	// Drop stale cross-gap hidden links baked into older saves before re-linking/energizing.
-	ValidateSavedHiddenLinks();
-
-	int32 ComponentsCreated = 0;
-	int32 LinksNewlyAdded = 0;
-	int32 LinksAlreadyPresent = 0;
-
-	for (const TPair<FStructuralNodeId, FStructuralNodeRecord>& Pair : RuntimeGraph)
-	{
-		UFGStructuralPowerConnectionComponent* Hidden = ResolveNodeConnector(Pair.Key, Pair.Value.bIsOutlet);
-		if (!Hidden)
+		TSubclassOf<AFGBuildable> Class = Pair.Key;
+		if (!Class)
 		{
 			continue;
 		}
 
-		++ComponentsCreated;
-
-		for (const FStructuralNodeId& NeighborId : Pair.Value.NeighborIds)
-		{
-			if (NodeDedupKey(Pair.Key) > NodeDedupKey(NeighborId))
-			{
-				continue;
-			}
-
-			if (const FStructuralNodeRecord* NeighborRecord = RuntimeGraph.Find(NeighborId))
-			{
-				UFGStructuralPowerConnectionComponent* NeighborHidden =
-					ResolveNodeConnector(NeighborId, NeighborRecord->bIsOutlet);
-				if (Hidden->HasHiddenConnection(NeighborHidden))
-				{
-					LinkHiddenPair(Hidden, NeighborHidden);
-					++LinksAlreadyPresent;
-				}
-				else if (LinkHiddenPair(Hidden, NeighborHidden))
-				{
-					++LinksNewlyAdded;
-				}
-			}
-		}
-	}
-
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("PostLoadGame graph rebuild: %d nodes, %d components, %d links newly added, %d already present"),
-		RuntimeGraph.Num(),
-		ComponentsCreated,
-		LinksNewlyAdded,
-		LinksAlreadyPresent);
-
-	FStructuralPowerDiagnostics::AuditWorld(GetWorld());
-}
-
-bool AStructuralPowerGraphSubsystem::GetNodeAdjacencyInfo(
-	const FStructuralNodeId& NodeId,
-	FBox& OutBounds,
-	TSubclassOf<AFGBuildable>& OutClass) const
-{
-	if (NodeId.IsLightweight())
-	{
-		const FStructuralLightweightKey Key = FStructuralLightweightIndex::KeyFromNodeId(NodeId);
-		FBox Bounds(ForceInit);
-		if (Key.IsValid() && LightweightIndex.GetMemberBounds(Key, Bounds))
-		{
-			OutBounds = Bounds;
-			OutClass = Key.BuildableClass;
-			return true;
-		}
-		return false;
-	}
-
-	if (AFGBuildable* Buildable = ResolveBuildable(NodeId))
-	{
-		OutBounds = FStructuralAdjacencyHeuristics::GetActorAdjacencyBounds(Buildable);
-		OutClass = Buildable->GetClass();
-		return OutBounds.IsValid != 0;
-	}
-
-	return false;
-}
-
-void AStructuralPowerGraphSubsystem::ValidateSavedHiddenLinks()
-{
-	// Structure-structure hidden links persisted by older builds can bridge foundations
-	// that are physically far apart (the "wireless" megamesh). Re-check each saved edge
-	// against the same structural-adjacency predicate placement uses and drop the ones
-	// that no longer connect. Outlet/parent edges are left to the resolver; only clearly
-	// non-adjacent structure pairs are cut so contiguous meshes stay intact.
-	TArray<TPair<FStructuralNodeId, FStructuralNodeId>> ToPrune;
-	int32 Checked = 0;
-
-	for (const TPair<FStructuralNodeId, FStructuralNodeRecord>& Pair : RuntimeGraph)
-	{
-		if (Pair.Value.bIsOutlet)
+		const AFGBuildable* CDO = Class->GetDefaultObject<AFGBuildable>();
+		if (!FStructuralEligibilityRules::IsBusMember(CDO))
 		{
 			continue;
 		}
 
-		FBox BoundsA(ForceInit);
-		TSubclassOf<AFGBuildable> ClassA = nullptr;
-		if (!GetNodeAdjacencyInfo(Pair.Key, BoundsA, ClassA))
+		const TArray<FRuntimeBuildableInstanceData>& Instances = Pair.Value;
+		for (int32 Index = 0; Index < Instances.Num(); ++Index)
 		{
-			continue;
-		}
-
-		for (const FStructuralNodeId& NeighborId : Pair.Value.NeighborIds)
-		{
-			if (NodeDedupKey(Pair.Key) > NodeDedupKey(NeighborId))
+			if (Instances[Index].IsValidOnLoad())
 			{
-				continue;
-			}
-
-			const FStructuralNodeRecord* NeighborRecord = RuntimeGraph.Find(NeighborId);
-			if (!NeighborRecord || NeighborRecord->bIsOutlet)
-			{
-				continue;
-			}
-
-			FBox BoundsB(ForceInit);
-			TSubclassOf<AFGBuildable> ClassB = nullptr;
-			if (!GetNodeAdjacencyInfo(NeighborId, BoundsB, ClassB))
-			{
-				continue;
-			}
-
-			++Checked;
-			// Use the EXACT predicate placement uses to create mesh links. Keep every
-			// edge current code would form (incl. thin/beam/edge, wall/foundation Z
-			// overlap); cut only pairs it would not — i.e. the stale cross-gap
-			// "wireless" links baked in by older builds. Matching link creation by
-			// construction means valid contiguous meshes can never be fragmented.
-			if (!FStructuralLightweightIndex::AreBoundsStructurallyConnected(
-				BoundsA, BoundsB, ClassA, ClassB))
-			{
-				ToPrune.Emplace(Pair.Key, NeighborId);
+				LightweightIndex.RegisterTrackedMember(World, FStructuralLightweightKey{Class, Index});
 			}
 		}
 	}
-
-	int32 Pruned = 0;
-	for (const TPair<FStructuralNodeId, FStructuralNodeId>& Edge : ToPrune)
-	{
-		if (FStructuralNodeRecord* RecordA = RuntimeGraph.Find(Edge.Key))
-		{
-			RecordA->NeighborIds.Remove(Edge.Value);
-		}
-		if (FStructuralNodeRecord* RecordB = RuntimeGraph.Find(Edge.Value))
-		{
-			RecordB->NeighborIds.Remove(Edge.Key);
-		}
-
-		UFGStructuralPowerConnectionComponent* ConnA = ResolveNodeConnector(Edge.Key, false);
-		UFGStructuralPowerConnectionComponent* ConnB = ResolveNodeConnector(Edge.Value, false);
-		if (IsValid(ConnA) && IsValid(ConnB) && ConnA->HasHiddenConnection(ConnB))
-		{
-			ConnA->RemoveHiddenConnection(ConnB);
-			++Pruned;
-		}
-	}
-
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] load revalidate: checked %d struct edge(s), pruned %d stale cross-gap link(s)"),
-		Checked,
-		Pruned);
-}
-
-int32 AStructuralPowerGraphSubsystem::CountStructuralHiddenNodes() const
-{
-	int32 Count = 0;
-	for (const TPair<FStructuralNodeId, FStructuralNodeRecord>& Pair : RuntimeGraph)
-	{
-		if (Pair.Value.bIsOutlet)
-		{
-			continue;
-		}
-
-		UFGStructuralPowerConnectionComponent* Hidden = nullptr;
-		if (AFGBuildable* Buildable = const_cast<AStructuralPowerGraphSubsystem*>(this)->ResolveBuildable(Pair.Key))
-		{
-			Hidden = FindStructuralConnector(Buildable);
-		}
-		else if (Pair.Key.IsLightweight())
-		{
-			Hidden = LightweightIndex.FindHiddenConnector(FStructuralLightweightIndex::KeyFromNodeId(Pair.Key));
-		}
-
-		if (IsValid(Hidden) && Hidden->IsHidden())
-		{
-			++Count;
-		}
-	}
-
-	return Count;
-}
-
-void AStructuralPowerGraphSubsystem::SyncSaveFromRuntime()
-{
-	SavedGraph.Reset();
-	SavedGraph.Reserve(RuntimeGraph.Num());
-	for (const TPair<FStructuralNodeId, FStructuralNodeRecord>& Pair : RuntimeGraph)
-	{
-		SavedGraph.Add(Pair.Value);
-	}
-}
-
-void AStructuralPowerGraphSubsystem::PreSaveGame_Implementation(int32 saveVersion, int32 gameVersion)
-{
-	SyncSaveFromRuntime();
-}
-
-void AStructuralPowerGraphSubsystem::PostLoadGame_Implementation(int32 saveVersion, int32 gameVersion)
-{
-	bPostLoadRebuilt = false;
 }
 
 void AStructuralPowerGraphSubsystem::RunDiagnostics() const

@@ -1,0 +1,21 @@
+# Unreal-flavoured C++ style: Allman braces, tab indent, 100-column limit.
+Language: Cpp
+Standard: c++20
+BasedOnStyle: LLVM
+ColumnLimit: 100
+UseTab: Always
+IndentWidth: 4
+TabWidth: 4
+AccessModifierOffset: -4
+NamespaceIndentation: None
+FixNamespaceComments: false
+BreakBeforeBraces: Allman
+PointerAlignment: Left
+SpaceAfterCStyleCast: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+KeepEmptyLinesAtTheStartOfBlocks: false

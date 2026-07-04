@@ -1,0 +1,20 @@
+# Normalise line endings: LF in the repo and on checkout. Dev is Windows, deploy is a
+# Linux dedicated server, and CRLF churn breaks server shell scripts.
+* text=auto eol=lf
+
+# Shells that genuinely require CRLF on Windows.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary assets — never diff or line-normalise.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.uasset binary
+*.umap binary
+*.pak binary
+*.dll binary
+*.lib binary
+*.pdb binary
