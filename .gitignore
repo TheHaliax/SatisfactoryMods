@@ -29,6 +29,9 @@ tools/*
 !tools/Mask1024.png
 !tools/README.md
 
+# Local development notes (roadmap, research, scratch specs) — not for repo
+development/
+
 # OS
 Thumbs.db
 Desktop.ini

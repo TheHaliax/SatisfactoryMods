@@ -2,6 +2,11 @@
 
 Player and developer docs for **StructuralPower v2.0.0**.
 
+## Mod overview
+
+- [Mod README](../README.md) — what ships today, roadmap, requirements, multiplayer
+- [Roadmap](../README.md#roadmap) — v2.1–v2.6 planned features
+
 ## Guides
 
 - [Player guide](player-guide.md) — what the mod does, retroactive load, save behavior
@@ -13,6 +18,5 @@ Player and developer docs for **StructuralPower v2.0.0**.
 
 ## Quick links
 
-- Mod README: [../README.md](../README.md)
 - Monorepo: [../../README.md](../../README.md)
 - Source: [github.com/TheHaliax/SatisfactoryMods](https://github.com/TheHaliax/SatisfactoryMods)

@@ -21,7 +21,7 @@ Mod page: [ficsit.app/mod/StructuralPower](https://ficsit.app/mod/StructuralPowe
    ```
    StarterProject/Saved/ArchivedPlugins/StructuralPower/StructuralPower.zip
    ```
-3. **ficsit.app** → StructuralPower → **New Version** → upload `StructuralPower.zip`, changelog, compatibility **Works** (stable + experimental if tested).
+3. **ficsit.app** → StructuralPower → **New Version** → upload `StructuralPower.zip`, changelog, compatibility **Works** (stable + experimental if tested). Mod page body uses root `README.md` — keep screenshot URLs as `raw.githubusercontent.com/.../main/StructuralPower/Screenshots/...` (not relative paths).
 4. **Copy version ID** after approval (needed for server deploy scripts):
    ```powershell
    curl -sL "https://api.ficsit.app/v1/mod/5W9LAp72Xzuwjn/versions"

@@ -2,9 +2,9 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-Source for multiple [Satisfactory](https://www.satisfactorygame.com/) mods in one git repository.
+Open-source mods for [Satisfactory](https://www.satisfactorygame.com/). Install released builds from [ficsit.app](https://ficsit.app) — not from this repository.
 
-Each mod is a top-level folder named after its plugin (`ModReference`). Inside: `.uplugin`, C++ `Source/`, and any `Config/` or `Resources/` shipped with the mod. Build artifacts are local only and not tracked in git.
+Each mod has its own folder and README with features, requirements, and roadmap.
 
 ## Mods
 
@@ -18,7 +18,7 @@ Each mod is a top-level folder named after its plugin (`ModReference`). Inside: 
 | **Published** | 2026-07-02 |
 | **Updated** | 2026-07-03 |
 | **Version** | 2.0.0 |
-| **Status** | Released |
+| **In development** | **2.1** — [Switches & hoverpack](StructuralPower/README.md#v21--switches--hoverpack-in-development) ([roadmap](StructuralPower/README.md#roadmap)) |
 
 Hidden structural power bus for foundations, walls, ramps, and bridge poles. Retroactive — existing builds are wired on load. Connectivity is rebuilt from world geometry each load, so nothing structural is persisted and saves can't carry stale links.
 

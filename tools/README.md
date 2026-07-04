@@ -1,7 +1,6 @@
 # Build & release tooling
 
-Runnable tooling for building, packaging, and shipping the mods in this repo. Only the files
-below are tracked; the rest of `tools/` is host-specific scratch and stays gitignored.
+Runnable tooling for building, packaging, and shipping the mods in this repo.
 
 | Script | Purpose |
 |--------|---------|
