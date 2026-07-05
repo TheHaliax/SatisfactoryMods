@@ -4,23 +4,44 @@
 #include "Diagnostics/FStructuralPowerTrace.h"
 
 #include "Buildables/FGBuildable.h"
+#include "Config/FStructuralPowerModConfig.h"
 #include "FGCircuitConnectionComponent.h"
 #include "FGPowerConnectionComponent.h"
-#include "HAL/IConsoleManager.h"
+#include "Routing/EStructuralChannel.h"
+#include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerLog.h"
-
-namespace
-{
-static TAutoConsoleVariable<int32> CVarStructuralPowerTrace(
-	TEXT("StructuralPower.Trace"),
-	0,
-	TEXT("Deep propagation trace ([PWR] prefix). 0=off, 1=on."),
-	ECVF_Default);
-}
 
 bool FStructuralPowerTrace::IsEnabled()
 {
-	return CVarStructuralPowerTrace.GetValueOnAnyThread() != 0;
+	return FStructuralPowerModConfig::IsTraceEnabled();
+}
+
+FString FStructuralPowerTrace::FormatEffectiveIdForTrace(EStructuralChannel Tag, FName EffectiveId)
+{
+	if (Tag == EStructuralChannel::Structure)
+	{
+		return TEXT("-");
+	}
+
+	return EffectiveId.IsNone() ? TEXT("?") : EffectiveId.ToString();
+}
+
+FStructuralChannelKey FStructuralPowerTrace::KeyForBuildable(AFGBuildable* Buildable)
+{
+	if (!IsValid(Buildable))
+	{
+		return {};
+	}
+
+	if (UWorld* World = Buildable->GetWorld())
+	{
+		if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::Find(World))
+		{
+			return Graph->ResolveChannelKeyForBuildable(Buildable);
+		}
+	}
+
+	return {};
 }
 
 void FStructuralPowerTrace::LogHook(
@@ -31,6 +52,21 @@ void FStructuralPowerTrace::LogHook(
 {
 	if (!IsValid(Buildable))
 	{
+		return;
+	}
+
+	if (IsEnabled())
+	{
+		const FStructuralChannelKey Key = KeyForBuildable(Buildable);
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[PWR] hook %s %s %s class=%s tag=%s id=%s detail=%s"),
+			Hook ? Hook : TEXT("?"),
+			*Buildable->GetName(),
+			Action ? Action : TEXT("?"),
+			*Buildable->GetClass()->GetName(),
+			StructuralChannelToString(Key.Tag),
+			*FormatEffectiveIdForTrace(Key.Tag, Key.EffectiveId),
+			Detail ? Detail : TEXT(""));
 		return;
 	}
 
@@ -70,17 +106,20 @@ void FStructuralPowerTrace::LogConnector(const TCHAR* Context, const UFGCircuitC
 		return;
 	}
 
+	const FStructuralChannelKey Key = KeyForBuildable(Cast<AFGBuildable>(Connector->GetOwner()));
 	TArray<UFGCircuitConnectionComponent*> HiddenLinks;
 	Connector->GetHiddenConnections(HiddenLinks);
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] %s hidden=%d circuitId=%d connected=%d hiddenLinks=%d owner=%s"),
+		TEXT("[PWR] %s hidden=%d circuitId=%d connected=%d hiddenLinks=%d owner=%s tag=%s id=%s"),
 		Context,
 		Connector->IsHidden() ? 1 : 0,
 		Connector->GetCircuitID(),
 		Connector->IsConnected() ? 1 : 0,
 		HiddenLinks.Num(),
-		*Connector->GetName());
+		*Connector->GetName(),
+		StructuralChannelToString(Key.Tag),
+		*FormatEffectiveIdForTrace(Key.Tag, Key.EffectiveId));
 }
 
 void FStructuralPowerTrace::LogLinkOp(
@@ -99,27 +138,37 @@ void FStructuralPowerTrace::LogLinkOp(
 	const int32 CircuitA = IsValid(A) ? A->GetCircuitID() : INDEX_NONE;
 	const int32 CircuitB = IsValid(B) ? B->GetCircuitID() : INDEX_NONE;
 	const bool bHadLink = IsValid(A) && IsValid(B) && A->HasHiddenConnection(B);
+	const FStructuralChannelKey KeyA = KeyForBuildable(Cast<AFGBuildable>(IsValid(A) ? A->GetOwner() : nullptr));
+	const FStructuralChannelKey KeyB = KeyForBuildable(Cast<AFGBuildable>(IsValid(B) ? B->GetOwner() : nullptr));
 
 	if (Verbosity == ELogVerbosity::Verbose)
 	{
 		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[PWR] link %s ok=%d path=%s hadLink=%d A(circuit=%d) B(circuit=%d)"),
+			TEXT("[PWR] link %s ok=%d path=%s hadLink=%d A(circuit=%d tag=%s id=%s) B(circuit=%d tag=%s id=%s)"),
 			Op,
 			bSuccess ? 1 : 0,
 			Path ? Path : TEXT("?"),
 			bHadLink ? 1 : 0,
 			CircuitA,
-			CircuitB);
+			StructuralChannelToString(KeyA.Tag),
+			*FormatEffectiveIdForTrace(KeyA.Tag, KeyA.EffectiveId),
+			CircuitB,
+			StructuralChannelToString(KeyB.Tag),
+			*FormatEffectiveIdForTrace(KeyB.Tag, KeyB.EffectiveId));
 	}
 	else
 	{
 		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] link %s ok=%d path=%s hadLink=%d A(circuit=%d) B(circuit=%d)"),
+			TEXT("[PWR] link %s ok=%d path=%s hadLink=%d A(circuit=%d tag=%s id=%s) B(circuit=%d tag=%s id=%s)"),
 			Op,
 			bSuccess ? 1 : 0,
 			Path ? Path : TEXT("?"),
 			bHadLink ? 1 : 0,
 			CircuitA,
-			CircuitB);
+			StructuralChannelToString(KeyA.Tag),
+			*FormatEffectiveIdForTrace(KeyA.Tag, KeyA.EffectiveId),
+			CircuitB,
+			StructuralChannelToString(KeyB.Tag),
+			*FormatEffectiveIdForTrace(KeyB.Tag, KeyB.EffectiveId));
 	}
 }

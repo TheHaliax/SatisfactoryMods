@@ -10,7 +10,38 @@
 #include "Graph/FStructuralAdjacencyHeuristics.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
 #include "Rules/FStructuralEligibilityRules.h"
+#include "Routing/EStructuralChannel.h"
 #include "StructuralPowerConstants.h"
+
+namespace
+{
+int32 CompareNodeId(const FStructuralNodeId& A, const FStructuralNodeId& B)
+{
+	const FString PathA = A.BuildableClass.ToString();
+	const FString PathB = B.BuildableClass.ToString();
+	int32 Cmp = PathA.Compare(PathB);
+	if (Cmp != 0)
+	{
+		return Cmp;
+	}
+
+	Cmp = A.ActorName.Compare(B.ActorName);
+	if (Cmp != 0)
+	{
+		return Cmp;
+	}
+
+	if (A.LightweightIndex < B.LightweightIndex)
+	{
+		return -1;
+	}
+	if (A.LightweightIndex > B.LightweightIndex)
+	{
+		return 1;
+	}
+	return 0;
+}
+}
 
 namespace
 {
@@ -104,6 +135,15 @@ int32 FStructuralConnectivityGraph::Find(int32 Index)
 	while (Parent[Index] != Index)
 	{
 		Parent[Index] = Parent[Parent[Index]];
+		Index = Parent[Index];
+	}
+	return Index;
+}
+
+int32 FStructuralConnectivityGraph::FindRootIndexReadOnly(int32 Index) const
+{
+	while (Parent[Index] != Index)
+	{
 		Index = Parent[Index];
 	}
 	return Index;
@@ -406,20 +446,20 @@ void FStructuralConnectivityGraph::RemoveNode(
 	}
 }
 
-int32 FStructuralConnectivityGraph::FindRoot(const FStructuralNodeId& Id)
+int32 FStructuralConnectivityGraph::FindRoot(const FStructuralNodeId& Id) const
 {
 	const int32* IndexPtr = IdToIndex.Find(Id);
 	if (!IndexPtr)
 	{
 		return INDEX_NONE;
 	}
-	return Find(*IndexPtr);
+	return FindRootIndexReadOnly(*IndexPtr);
 }
 
 int32 FStructuralConnectivityGraph::FindRootForBounds(
 	const FBox& Bounds,
 	TSubclassOf<AFGBuildable> Class,
-	FStructuralNodeId* OutBestNodeId)
+	FStructuralNodeId* OutBestNodeId) const
 {
 	if (OutBestNodeId)
 	{
@@ -494,7 +534,102 @@ int32 FStructuralConnectivityGraph::FindRootForBounds(
 	{
 		*OutBestNodeId = Nodes[BestIndex].Id;
 	}
-	return Find(BestIndex);
+	return FindRootIndexReadOnly(BestIndex);
+}
+
+FStructuralNodeId FStructuralConnectivityGraph::MakeCanonicalNodeIdForComponent(int32 Root) const
+{
+	if (Root == INDEX_NONE)
+	{
+		return FStructuralNodeId();
+	}
+
+	TArray<int32> Members;
+	CollectComponent(Root, Members);
+
+	FStructuralNodeId Best;
+	for (int32 MemberIndex : Members)
+	{
+		if (!Nodes.IsValidIndex(MemberIndex) || !Nodes[MemberIndex].bValid)
+		{
+			continue;
+		}
+
+		const FStructuralNodeId& Candidate = Nodes[MemberIndex].Id;
+		if (!Best.IsValid() || CompareNodeId(Candidate, Best) < 0)
+		{
+			Best = Candidate;
+		}
+	}
+
+	return Best;
+}
+
+bool FStructuralConnectivityGraph::FindNearestStructureAnchor(
+	const FVector& QueryLoc,
+	float MaxHorizontal,
+	float MaxVertical,
+	FVector& OutAnchor,
+	int32& OutComponentRoot) const
+{
+	if (MaxHorizontal <= 0.0f || MaxVertical <= 0.0f || NumValid <= 0)
+	{
+		return false;
+	}
+
+	float BestScoreSq = FLT_MAX;
+	bool bFound = false;
+	OutComponentRoot = INDEX_NONE;
+
+	for (const TPair<FStructuralNodeId, int32>& Pair : IdToIndex)
+	{
+		const int32 Index = Pair.Value;
+		if (!Nodes.IsValidIndex(Index) || !Nodes[Index].bValid)
+		{
+			continue;
+		}
+
+		const FBox& Bounds = Nodes[Index].Bounds;
+		if (!Bounds.IsValid)
+		{
+			continue;
+		}
+
+		FVector Closest;
+		Closest.X = FMath::Clamp(QueryLoc.X, Bounds.Min.X, Bounds.Max.X);
+		Closest.Y = FMath::Clamp(QueryLoc.Y, Bounds.Min.Y, Bounds.Max.Y);
+		Closest.Z = FMath::Clamp(QueryLoc.Z, Bounds.Min.Z, Bounds.Max.Z);
+
+		const float Horizontal = FVector2D::Distance(
+			FVector2D(QueryLoc.X, QueryLoc.Y),
+			FVector2D(Closest.X, Closest.Y));
+		const float Vertical = FMath::Abs(QueryLoc.Z - Closest.Z);
+		if (Horizontal > MaxHorizontal || Vertical > MaxVertical)
+		{
+			continue;
+		}
+
+		const float HorizontalSq = FMath::Square(Horizontal);
+		const float VerticalSq = FMath::Square(Vertical);
+		const float ScoreSq = FMath::Max(HorizontalSq, VerticalSq);
+		if (ScoreSq >= BestScoreSq)
+		{
+			continue;
+		}
+
+		const int32 Root = FindRoot(Pair.Key);
+		if (Root == INDEX_NONE)
+		{
+			continue;
+		}
+
+		BestScoreSq = ScoreSq;
+		OutAnchor = Closest;
+		OutComponentRoot = Root;
+		bFound = true;
+	}
+
+	return bFound;
 }
 
 void FStructuralConnectivityGraph::GetComponentStats(int32& OutComponents, int32& OutLargest)

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Routing/EStructuralChannel.h"
 
 class AFGBuildable;
 class AFGBuildablePowerPole;
@@ -17,5 +18,8 @@ public:
 	static bool IsWallOutlet(const AFGBuildable* Buildable);
 	/** Wall outlets, ground poles, and power towers that bridge visible wires to the structural bus. */
 	static bool IsPowerBridgePole(const AFGBuildable* Buildable);
+	/** Power circuit switch (excludes lights control panel — not AFGBuildableCircuitSwitch). */
+	static bool IsPowerBridgeSwitch(const AFGBuildable* Buildable);
 	static bool IsValidOutletParent(const AFGBuildable* Parent);
+	static EStructuralChannel ClassifyBuildable(const AFGBuildable* Buildable);
 };

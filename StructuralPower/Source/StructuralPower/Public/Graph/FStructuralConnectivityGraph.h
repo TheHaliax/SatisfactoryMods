@@ -40,7 +40,7 @@ public:
 	void RemoveNode(const FStructuralNodeId& Id, TArray<int32>& OutAffectedRoots);
 
 	/** Component representative for a tracked structure; INDEX_NONE if not tracked. */
-	int32 FindRoot(const FStructuralNodeId& Id);
+	int32 FindRoot(const FStructuralNodeId& Id) const;
 
 	/**
 	 * Best structural component overlapping the given bounds; INDEX_NONE if none.
@@ -50,11 +50,22 @@ public:
 	int32 FindRootForBounds(
 		const FBox& Bounds,
 		TSubclassOf<AFGBuildable> Class,
-		FStructuralNodeId* OutBestNodeId = nullptr);
+		FStructuralNodeId* OutBestNodeId = nullptr) const;
 
 	bool IsTracked(const FStructuralNodeId& Id) const { return IdToIndex.Contains(Id); }
 	int32 GetNodeCount() const { return NumValid; }
 	void GetComponentStats(int32& OutComponents, int32& OutLargest);
+
+	/** Smallest member node id for a union-find component; invalid if Root is INDEX_NONE. */
+	FStructuralNodeId MakeCanonicalNodeIdForComponent(int32 Root) const;
+
+	/** Closest point on any structure bounds within axis limits; for hoverpack (DR-010). */
+	bool FindNearestStructureAnchor(
+		const FVector& QueryLoc,
+		float MaxHorizontal,
+		float MaxVertical,
+		FVector& OutAnchor,
+		int32& OutComponentRoot) const;
 
 private:
 	struct FNode
@@ -82,6 +93,7 @@ private:
 	void CollectNeighbors(int32 NodeIndex, TArray<int32>& Out) const;
 	void CollectComponent(int32 StartIndex, TArray<int32>& Out) const;
 	int32 Find(int32 Index);
+	int32 FindRootIndexReadOnly(int32 Index) const;
 	void Union(int32 A, int32 B);
 
 	TArray<FNode> Nodes;

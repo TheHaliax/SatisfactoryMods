@@ -4,7 +4,14 @@
 #include "Rules/FStructuralEligibilityRules.h"
 
 #include "Buildables/FGBuildable.h"
+#include "Buildables/FGBuildableCircuitSwitch.h"
+#include "Buildables/FGBuildableGenerator.h"
+#include "Buildables/FGBuildableLightSource.h"
+#include "Buildables/FGBuildableLightsControlPanel.h"
+#include "Buildables/FGBuildableManufacturer.h"
+#include "Buildables/FGBuildableResourceExtractorBase.h"
 #include "FGBuildableBeam.h"
+#include "Routing/EStructuralChannel.h"
 #include "Buildables/FGBuildableCornerWall.h"
 #include "Buildables/FGBuildableFactory.h"
 #include "Buildables/FGBuildableFactoryBuilding.h"
@@ -60,6 +67,11 @@ bool FStructuralEligibilityRules::IsWallOutlet(const AFGBuildable* Buildable)
 	return PoleType == EPowerPoleType::PPT_WALL || PoleType == EPowerPoleType::PPT_WALL_DOUBLE;
 }
 
+bool FStructuralEligibilityRules::IsPowerBridgeSwitch(const AFGBuildable* Buildable)
+{
+	return IsValid(Buildable) && Buildable->IsA<AFGBuildableCircuitSwitch>();
+}
+
 bool FStructuralEligibilityRules::IsPowerBridgePole(const AFGBuildable* Buildable)
 {
 	const AFGBuildablePowerPole* Pole = Cast<AFGBuildablePowerPole>(Buildable);
@@ -83,4 +95,40 @@ bool FStructuralEligibilityRules::IsPowerBridgePole(const AFGBuildable* Buildabl
 bool FStructuralEligibilityRules::IsValidOutletParent(const AFGBuildable* Parent)
 {
 	return IsBusMember(Parent);
+}
+
+EStructuralChannel FStructuralEligibilityRules::ClassifyBuildable(const AFGBuildable* Buildable)
+{
+	if (!IsValid(Buildable))
+	{
+		return EStructuralChannel::Structure;
+	}
+
+	if (Buildable->IsA<AFGBuildableCircuitSwitch>())
+	{
+		return EStructuralChannel::Switch;
+	}
+
+	if (Buildable->IsA<AFGBuildableLightsControlPanel>()
+		|| Buildable->IsA<AFGBuildableLightSource>())
+	{
+		return EStructuralChannel::Light;
+	}
+
+	if (Buildable->IsA<AFGBuildableGenerator>())
+	{
+		return EStructuralChannel::Generator;
+	}
+
+	if (Buildable->IsA<AFGBuildableResourceExtractorBase>())
+	{
+		return EStructuralChannel::Extractor;
+	}
+
+	if (Buildable->IsA<AFGBuildableManufacturer>())
+	{
+		return EStructuralChannel::Manufacturer;
+	}
+
+	return EStructuralChannel::Structure;
 }

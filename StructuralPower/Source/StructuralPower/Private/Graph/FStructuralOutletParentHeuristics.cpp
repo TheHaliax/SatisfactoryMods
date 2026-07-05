@@ -4,6 +4,7 @@
 #include "Graph/FStructuralOutletParentHeuristics.h"
 
 #include "Buildables/FGBuildableCornerWall.h"
+#include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Buildables/FGBuildableFoundation.h"
 #include "Buildables/FGBuildablePowerPole.h"
 #include "Buildables/FGBuildableRamp.h"
@@ -22,8 +23,30 @@ bool IsPreferredFoundationClass(const AFGBuildable* Buildable)
 	return Buildable->IsA<AFGBuildableFoundation>() || Buildable->IsA<AFGBuildableRamp>();
 }
 
+bool IsWallMountedSwitch(const AFGBuildable* Outlet)
+{
+	const AFGBuildableCircuitSwitch* Switch = Cast<AFGBuildableCircuitSwitch>(Outlet);
+	if (!IsValid(Switch))
+	{
+		return false;
+	}
+
+	// Satisfactory wall-snapped buildables carry a mostly horizontal face normal.
+	return FMath::Abs(Switch->GetActorUpVector().Z) < 0.5f;
+}
+
 bool PrefersFoundationAnchor(const AFGBuildable* Outlet)
 {
+	if (IsWallMountedSwitch(Outlet))
+	{
+		return false;
+	}
+
+	if (IsValid(Outlet) && Outlet->IsA<AFGBuildableCircuitSwitch>())
+	{
+		return true;
+	}
+
 	const AFGBuildablePowerPole* Pole = Cast<AFGBuildablePowerPole>(Outlet);
 	if (!Pole)
 	{
@@ -42,6 +65,11 @@ bool PrefersFoundationAnchor(const AFGBuildable* Outlet)
 
 bool IsWallOutlet(const AFGBuildable* Outlet)
 {
+	if (IsWallMountedSwitch(Outlet))
+	{
+		return true;
+	}
+
 	const AFGBuildablePowerPole* Pole = Cast<AFGBuildablePowerPole>(Outlet);
 	if (!Pole)
 	{

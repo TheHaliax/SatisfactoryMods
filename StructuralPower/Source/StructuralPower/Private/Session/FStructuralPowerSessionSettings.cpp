@@ -3,15 +3,9 @@
 
 #include "Session/FStructuralPowerSessionSettings.h"
 
-#include "HAL/IConsoleManager.h"
-
-static TAutoConsoleVariable<int32> CVarStructuralPowerEnablePropagation(
-	TEXT("StructuralPower.EnablePropagation"),
-	1,
-	TEXT("1 = enable structural power propagation; 0 = disable"),
-	ECVF_Default);
+#include "Config/FStructuralPowerModConfig.h"
 
 bool FStructuralPowerSessionSettings::IsPropagationEnabled()
 {
-	return CVarStructuralPowerEnablePropagation.GetValueOnGameThread() != 0;
+	return FStructuralPowerModConfig::IsPropagationEnabled();
 }

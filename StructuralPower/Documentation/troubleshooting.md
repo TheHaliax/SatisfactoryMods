@@ -15,11 +15,26 @@ Common case: **isolated structure** — a foundation with no adjacency to the re
 1. Verify continuous adjacency — no gaps in the foundation / wall / ramp chain between source and target.
 2. Connect **one** visible cable from your generator grid to the structural bus (a pole or wired machine on a tracked piece).
 3. Run `StructuralPower.Diag` — poles on powered structure should count under `IN_CIRCUIT`.
-4. Enable trace (`StructuralPower.Trace 1`), place or rewire one pole, and grep the log for `[PWR]`.
+4. Enable trace (`StructuralPower.Trace 1` or `!tracetoggle`), place or rewire one pole, and grep the log for `[PWR]`.
+5. Check **Debug → Enable structural propagation** in the mod menu (or `StructuralPower.EnablePropagation 1`).
+
+## Switch gating unexpected (v2.1)
+
+1. Confirm **Gate power switches** is on in **Debug**.
+2. Mode B (default): keyed subnets need matching building tag + device Id — see dev docs / RCO.
+3. Mode A: set `PowerSwitchManualGroups` to `0` in config for whole-component gate.
+
+## Hoverpack tether (v2.1)
+
+| Symptom | Check |
+|---------|--------|
+| No tether | **Enable hoverpack structural tether** in Debug; stand near **powered** structure |
+| Short reach | Raise `!HoverH` / `!HoverV` or mod menu multipliers (max 10× per axis) |
+| Vanilla behaviour | Disable tether in Debug or `StructuralPower.EnableHoverpackStructural 0` |
 
 ## No LogStructuralPower lines during gameplay
 
-Trace is **off by default**. Enable `StructuralPower.Trace 1` before testing.
+Trace is **off by default**. Enable `StructuralPower.Trace 1`, mod menu **Debug → PWR trace logging**, or `!tracetoggle` before testing.
 
 ## Menu map shows nothing in the log
 
@@ -29,7 +44,8 @@ Automatic diagnostics skip menu worlds (`Map_Menu_*`). Load a save or run `Struc
 
 Include:
 
-- StructuralPower version (2.0.0)
+- StructuralPower version (2.1.0)
 - SML version
-- Single-player or dedicated server
-- Relevant `LogStructuralPower` / `[PWR]` lines (with `StructuralPower.Trace 1` if possible)
+- Single-player, listen host, or dedicated server
+- Relevant `LogStructuralPower` / `[PWR]` lines (with trace enabled if possible)
+- Whether switches / hoverpack involved

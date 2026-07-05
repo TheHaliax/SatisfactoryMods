@@ -4,6 +4,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Routing/EStructuralChannel.h"
 
 class AFGBuildable;
 class UFGCircuitConnectionComponent;
@@ -13,6 +14,9 @@ class UFGPowerConnectionComponent;
 namespace FStructuralPowerTrace
 {
 	bool IsEnabled();
+
+	FString FormatEffectiveIdForTrace(EStructuralChannel Tag, FName EffectiveId);
+	FStructuralChannelKey KeyForBuildable(AFGBuildable* Buildable);
 
 	void LogHook(AFGBuildable* Buildable, const TCHAR* Hook, const TCHAR* Action, const TCHAR* Detail = nullptr);
 	void LogPlacementSkip(AFGBuildable* Buildable, const TCHAR* Reason);

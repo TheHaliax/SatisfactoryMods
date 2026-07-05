@@ -44,6 +44,10 @@ Full checklist: [release.md](release.md).
 | Area | Path |
 |------|------|
 | Hooks & enqueue | `StructuralPowerRootInstanceModule.cpp` |
+| Mod config + SML menu | `UStructuralPowerModConfiguration.cpp`, `FStructuralPowerModConfig.cpp` |
+| Chat `!` commands | `FStructuralPowerBangCommands.cpp` |
+| Hoverpack bridge | `FStructuralHoverpackBridge.cpp` |
+| Switch listener / RCO | `UStructuralPowerSwitchListener.cpp`, `UStructuralPowerRCO.cpp` |
 | Poles, circuit & subsystem | `AStructuralPowerGraphSubsystem.cpp` |
 | Structural connectivity graph (spatial hash + union-find) | `FStructuralConnectivityGraph.cpp` |
 | Lightweight index | `FStructuralLightweightIndex.cpp` |

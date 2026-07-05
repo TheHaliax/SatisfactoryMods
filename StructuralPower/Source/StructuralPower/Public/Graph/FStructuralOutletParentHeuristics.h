@@ -11,6 +11,8 @@ namespace FStructuralOutletParentHeuristics
 bool IsPreferredWallClass(const AFGBuildable* Buildable);
 bool IsPreferredFoundationClass(const AFGBuildable* Buildable);
 bool IsWallOutlet(const AFGBuildable* Outlet);
+/** Wall-face mount (actor up mostly horizontal) — same profile as wall poles. */
+bool IsWallMountedSwitch(const AFGBuildable* Outlet);
 bool PrefersFoundationAnchor(const AFGBuildable* Outlet);
 /** Bottom of pole bounds for ground/tower outlets; actor location for wall outlets. */
 FVector GetOutletAnchorLocation(const AFGBuildable* Outlet);

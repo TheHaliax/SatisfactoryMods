@@ -4,13 +4,18 @@
 #include "StructuralPowerRootInstanceModule.h"
 
 #include "Buildables/FGBuildable.h"
+#include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Buildables/FGBuildablePowerPole.h"
+#include "Config/FStructuralPowerModConfig.h"
+#include "Config/UStructuralPowerModConfiguration.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "FGLightweightBuildableSubsystem.h"
 #include "FGBuildableSubsystem.h"
 #include "Hologram/FGBlueprintHologram.h"
 #include "Lightweight/FStructuralLightweightTypes.h"
+#include "Network/UStructuralPowerRCO.h"
 #include "Patching/NativeHookManager.h"
+#include "Equipment/FStructuralHoverpackBridge.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "Subsystems/UStructuralPowerFactoryTickHandler.h"
@@ -22,6 +27,8 @@ FDelegateHandle UStructuralPowerRootInstanceModule::PostLoadMapHandle;
 UStructuralPowerRootInstanceModule::UStructuralPowerRootInstanceModule()
 {
 	bRootModule = true;
+	RemoteCallObjects.Add(UStructuralPowerRCO::StaticClass());
+	ModConfigurations.Add(UStructuralPowerModConfiguration::StaticClass());
 }
 
 void UStructuralPowerRootInstanceModule::UnregisterGlobalDelegates()
@@ -69,6 +76,14 @@ bool UStructuralPowerRootInstanceModule::TryEnqueueBuildable(
 		return true;
 	}
 
+	if (FStructuralPowerModConfig::IsGatePowerSwitchesEnabled()
+		&& FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable))
+	{
+		FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("enqueue_switch"), SourceTag);
+		Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+		return true;
+	}
+
 	if (FStructuralEligibilityRules::IsBusMember(Buildable))
 	{
 		FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("enqueue_structure"), SourceTag);
@@ -78,6 +93,49 @@ bool UStructuralPowerRootInstanceModule::TryEnqueueBuildable(
 
 	FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("ignored"), TEXT("not_bus_or_outlet"));
 	return false;
+}
+
+static void HandleSwitchBeginPlay(AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(Switch) || !Switch->HasAuthority())
+	{
+		return;
+	}
+
+	if (!FStructuralPowerModConfig::IsGatePowerSwitchesEnabled())
+	{
+		return;
+	}
+
+	UWorld* World = Switch->GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	UE_LOG(LogStructuralPower, Log,
+		TEXT("[PWR] switch BeginPlay %s — enqueue outlet"),
+		*Switch->GetName());
+
+	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
+		[WorldWeak = TWeakObjectPtr<UWorld>(World),
+			SwitchWeak = TWeakObjectPtr<AFGBuildableCircuitSwitch>(Switch)]()
+		{
+			if (AFGBuildableCircuitSwitch* SwitchPtr = SwitchWeak.Get())
+			{
+				if (UWorld* WorldPtr = WorldWeak.Get())
+				{
+					if (AStructuralPowerGraphSubsystem* Graph =
+						AStructuralPowerGraphSubsystem::GetOrCreate(WorldPtr))
+					{
+						Graph->EnqueuePlacement(
+							SwitchPtr,
+							EStructuralPlacementJobType::Outlet,
+							/*bDefer=*/true);
+					}
+				}
+			}
+		}));
 }
 
 void UStructuralPowerRootInstanceModule::HandleBuildableBuilt(AFGBuildable* Buildable)
@@ -241,6 +299,11 @@ void UStructuralPowerRootInstanceModule::HandlePostLoadMap(UWorld* World)
 
 void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase Phase)
 {
+	if (Phase == ELifecyclePhase::POST_INITIALIZATION)
+	{
+		FStructuralPowerModConfig::SyncRuntimeFromConfigManager(GetGameInstance());
+	}
+
 	if (Phase != ELifecyclePhase::INITIALIZATION)
 	{
 		Super::DispatchLifecycleEvent(Phase);
@@ -250,7 +313,34 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 #if WITH_EDITOR
 	UE_LOG(LogStructuralPower, Log, TEXT("StructuralPower: skipping hooks in editor"));
 #else
-	UE_LOG(LogStructuralPower, Log, TEXT("StructuralPower v2.0 initialized — pole-to-pole bus over a structural connectivity graph"));
+	UE_LOG(LogStructuralPower, Log,
+		TEXT("StructuralPower v2.1 — switches (Mode %s) + hoverpack structural"),
+		FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled()
+			? TEXT("B keyed subnet")
+			: TEXT("A whole-component"));
+
+	FStructuralHoverpackBridge::RegisterHooks();
+
+	SUBSCRIBE_METHOD_VIRTUAL(
+		AFGBuildableCircuitSwitch::BeginPlay,
+		GetMutableDefault<AFGBuildableCircuitSwitch>(),
+		[](auto& /*Scope*/, AFGBuildableCircuitSwitch* Switch)
+		{
+			if (!IsValid(Switch) || !Switch->HasAuthority())
+			{
+				return;
+			}
+
+			AStructuralPowerGraphSubsystem::StripPersistedEndpointModComponents(Switch);
+		});
+
+	SUBSCRIBE_METHOD_VIRTUAL_AFTER(
+		AFGBuildableCircuitSwitch::BeginPlay,
+		GetMutableDefault<AFGBuildableCircuitSwitch>(),
+		[](AFGBuildableCircuitSwitch* Switch)
+		{
+			HandleSwitchBeginPlay(Switch);
+		});
 
 	SUBSCRIBE_METHOD_VIRTUAL_AFTER(
 		AFGBuildable::OnBuildEffectFinished,

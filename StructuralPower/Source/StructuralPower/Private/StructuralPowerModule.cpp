@@ -5,9 +5,9 @@
 #include "StructuralPowerRootInstanceModule.h"
 #include "Subsystems/UStructuralPowerFactoryTickHandler.h"
 
+#include "Config/FStructuralPowerModConfig.h"
+#include "Command/FStructuralPowerBangCommands.h"
 #include "Diagnostics/FStructuralPowerDiagnostics.h"
-#include "Engine/World.h"
-#include "HAL/IConsoleManager.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "Session/FStructuralPowerSessionSettings.h"
 
@@ -31,9 +31,19 @@ static FAutoConsoleCommandWithWorld GStructuralPowerDiagCmd(
 		}
 	}));
 
+static FAutoConsoleCommandWithWorldAndArgs GStructuralPowerSetCmd(
+	TEXT("StructuralPower.Set"),
+	TEXT("Set a mod config key and persist to .cfg (authority only)."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		FStructuralPowerModConfig::TryApplySetCommand(Args, World);
+	}));
+
 void FStructuralPowerModule::StartupModule()
 {
+	FStructuralPowerModConfig::RegisterConsoleVariables();
 	FStructuralPowerSessionSettings::IsPropagationEnabled();
+	FStructuralPowerBangCommands::RegisterChatHook();
 }
 
 void FStructuralPowerModule::ShutdownModule()

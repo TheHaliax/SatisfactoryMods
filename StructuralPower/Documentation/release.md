@@ -2,6 +2,17 @@
 
 Players and dedicated servers install **`.smod` files from [ficsit.app](https://ficsit.app)** — not zips from git.
 
+## Internal test deploy (Haliax)
+
+Test hosts run **our Alpakit release zips**, not SMR pulls (unless you later wire `SAT_STRUCTURAL_POWER_VERSION`).
+
+1. `powershell -File tools/pack-structuralpower-release.ps1`
+2. **Client:** `StructuralPower-Windows.zip` → Steam `FactoryGame/Mods/StructuralPower`
+3. **Linux `10.0.0.11:7256`:** `scp` `StructuralPower-LinuxServer.zip` → `STRUCTURAL_POWER_ZIP=~/sat-server/StructuralPower-LinuxServer.zip` + `deploy-test-mods.sh` + `systemctl restart sat-server-test`
+4. **Windows `207.244.250.178:7777`:** FTP `StructuralPower-WindowsServer.zip` → `FactoryGame/Mods/StructuralPower` (local gitignored `tools/windows-dedicated-server/`) → restart via hosting panel
+
+SML + UtilityMod on laptop script still download from SMR API; only StructuralPower uses the zip override today.
+
 ## Zip vs smod
 
 | Artifact | What it is | Who uses it |
@@ -21,33 +32,21 @@ Mod page: [ficsit.app/mod/StructuralPower](https://ficsit.app/mod/StructuralPowe
    ```
    StarterProject/Saved/ArchivedPlugins/StructuralPower/StructuralPower.zip
    ```
-3. **ficsit.app** → StructuralPower → **New Version** → upload `StructuralPower.zip`, changelog, compatibility **Works** (stable + experimental if tested). Mod page body uses root `README.md` — keep screenshot URLs as `raw.githubusercontent.com/.../main/StructuralPower/Screenshots/...` (not relative paths).
-4. **Copy version ID** after approval (needed for server deploy scripts):
+3. **ficsit.app** → StructuralPower → **New Version** → upload `StructuralPower.zip`, changelog (from `CHANGELOG.md`), compatibility **Works** (stable + experimental if tested). Mod page body uses root `README.md` — keep screenshot URLs as `raw.githubusercontent.com/.../main/StructuralPower/Screenshots/...` (not relative paths).
+4. **Deploy test servers** — follow [Internal test deploy](#internal-test-deploy-haliax) above (our zips). Optional SMR parity: copy version ID after approval if you want laptop script to `fetch_smr` StructuralPower instead of `STRUCTURAL_POWER_ZIP`:
    ```powershell
    curl -sL "https://api.ficsit.app/v1/mod/5W9LAp72Xzuwjn/versions"
    ```
-   Use the `id` field for version `1.0.0` (e.g. `abc123xyz`).
-5. **Local deploy config** — in repo `tools/mod-versions.env`:
-   ```
-   SAT_STRUCTURAL_POWER_VERSION=<id from step 4>
-   ```
-6. **Deploy test servers** (all mods from SMR `.smod`):
-   ```bash
-   ~/sat-server/scripts/deploy-test-mods.sh
-   sudo systemctl restart sat-server-test
-   ```
-   ```powershell
-   powershell -File tools/windows-dedicated-server/deploy-remote-mods.ps1
-   ```
-7. **Verify** — Mod Manager / ficsit profile installs StructuralPower 1.0.0; join test server with same mod set.
+   Store in gitignored `tools/mod-versions.env`: `SAT_STRUCTURAL_POWER_VERSION=<id>`. Not required for routine testing.
+5. **Verify** — Mod Manager / ficsit profile installs StructuralPower 2.1.0; join test server with same mod set.
 
 ## Updating a release
 
 1. Bump `SemVersion` in `.uplugin`.
 2. Alpakit Release → new `StructuralPower.zip`.
 3. New Version on ficsit.app.
-4. Update `SAT_STRUCTURAL_POWER_VERSION` in `tools/mod-versions.env`.
-5. Re-run deploy scripts.
+4. Re-run [internal test deploy](#internal-test-deploy-haliax) to all three targets.
+5. Optionally update `SAT_STRUCTURAL_POWER_VERSION` if using SMR-pull laptop deploy.
 
 ## Players
 

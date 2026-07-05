@@ -6,6 +6,8 @@ Structural Power injects a **hidden structural bus** into eligible buildables. P
 
 You still use normal power poles and cables where the mod does not apply (machines, generators, legacy geometry).
 
+**v2.1** adds **structural power-switch gating** and a **hoverpack structural tether** (see below).
+
 ## What gets wired
 
 **Structural bus members** (existing and newly placed):
@@ -34,6 +36,23 @@ Pieces the mod does not recognise (machines, generators) keep working with norma
 3. Extend with new foundations or walls; they link to adjacent tracked structure when placed.
 4. Snap a bridge pole to powered structure; the pole's outlet bus merges with the structural mesh.
 
+## Power switches (v2.1)
+
+Power switches on structures can **gate** keyed subnets (Mode B, default). Use building tags and matching device Ids to isolate sections. Optional pole-like bridge on switches; see development docs for Id assignment (world save, not config file).
+
+Toggle gating and Mode A/B in **Pause → Mods → Structural Power → Debug**.
+
+## Hoverpack structural tether (v2.1)
+
+When enabled, the hoverpack can tether to **powered structure** geometry nearby — fly above, below, or beside your base with fewer poles.
+
+Adjust reach on the server:
+
+- **Pause → Mods → Structural Power** — horizontal/vertical multipliers (main panel)
+- Chat: `!HoverH` / `!HoverV` — see [chat-commands.md](chat-commands.md)
+
+Defaults: **1.5×** base radius per axis (clamp 1.0–10.0). Disable tether in the **Debug** section.
+
 ## Isolated structures
 
 Structure with **no adjacency** to the tracked graph stays on its own island. A pole on a solitary foundation does not propagate to the main factory unless you build a continuous structural chain between them.
@@ -41,3 +60,14 @@ Structure with **no adjacency** to the tracked graph stays on its own island. A 
 ## Save / load
 
 Nothing structural is written to the save. On load the mod reconstructs the connectivity graph from the live world and re-establishes the hidden bus, so saves can never carry stale or "wireless" links from earlier builds.
+
+Switch **player override Ids** are stored in the world save (graph subsystem), not in `StructuralPower.cfg`.
+
+## Settings
+
+| Where | What |
+|-------|------|
+| Pause → Mods → Structural Power | Hover multipliers; **Debug** (collapsed) for propagation, switches, hoverpack tether, trace |
+| `Configs/StructuralPower.cfg` | Server-persisted mod settings |
+| Chat `!` commands | `!HoverH`, `!HoverV`, `!tracetoggle`, `!pwrhelp` |
+| Console | `StructuralPower.Set` — [console-commands.md](console-commands.md) |

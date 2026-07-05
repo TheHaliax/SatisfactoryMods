@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.0 — 2026-07-04
+Switches, hoverpack structural tether, SML pause-menu config, and UtilityMod-style chat commands.
+- **Power switches:** structural gating with Mode B keyed subnets by default (Mode A whole-component via config)
+- **Hoverpack:** virtual tether from powered structure geometry; separate horizontal/vertical reach multipliers (default 1.5×, clamp 1.0–10.0)
+- **Config:** SML mod menu (Mods → Structural Power) + `Configs/StructuralPower.cfg`; debug toggles in collapsible **Debug** section
+- **Chat:** `!HoverH`, `!HoverV`, `!tracetoggle`, `!pwrhelp` — Hal system replies; does not block other mods' `!` commands
+- **Console:** `StructuralPower.Set <key> <value>` mirrors mod config keys
+- Per-building switch **Ids** remain in world save (RCO), not `.cfg`
+
 ## 2.0.0 — 2026-07-03
 Retroactive support for existing structures and a rebuilt connectivity engine.
 The structural graph is now derived from live world geometry on load instead of
