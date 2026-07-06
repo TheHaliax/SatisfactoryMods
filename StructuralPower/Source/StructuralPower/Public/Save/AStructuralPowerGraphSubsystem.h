@@ -10,6 +10,7 @@
 #include "Graph/FStructuralAttachmentResolver.h"
 #include "Graph/FStructuralConnectivityGraph.h"
 #include "Graph/FStructuralEndpointTypes.h"
+#include "Graph/FStructuralEndpointIndex.h"
 #include "Graph/FStructuralSwitchParentResolver.h"
 #include "Routing/EStructuralChannel.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
@@ -135,7 +136,7 @@ public:
 
 	void EnumerateTrackedLightsOnRoot(
 		int32 Root,
-		TFunctionRef<void(AFGBuildableLightSource*)> Visitor) const;
+		TFunctionRef<void(AFGBuildableLightSource*)> Visitor);
 
 	void BeginCircuitPromotion();
 	void EndCircuitPromotion();
@@ -166,12 +167,15 @@ private:
 	void ProcessOutlet(AFGBuildable* Buildable);
 	void ProcessPoleEndpoint(AFGBuildablePowerPole* Pole);
 	void ProcessSwitchEndpoint(AFGBuildableCircuitSwitch* Switch);
-	void ProcessLightEndpoint(AFGBuildableLightSource* Light);
-	void ProcessPanelEndpoint(AFGBuildableLightsControlPanel* Panel);
+	void ProcessLightEndpoint(AFGBuildableLightSource* Light, bool bLocalPromoteOnly = false);
+	void ProcessPanelEndpoint(AFGBuildableLightsControlPanel* Panel, bool bLocalPromoteOnly = false);
 	void RestitchLightEndpointsForRoot(int32 Root);
 	void RestitchPanelEndpointsForRoot(int32 Root);
 	void RestitchPanelsWithControlOnRoot(int32 Root, FName ControlId);
-	void RestitchSwitchKeyedConsumersOnRoot(int32 Root, FName SwitchControlId);
+	void RestitchSwitchKeyedConsumersOnRoot(
+		int32 Root,
+		FName SwitchControlId,
+		bool bLocalPromoteOnly = false);
 	void TearDownLightStructuralLinks(AFGBuildableLightSource* Light);
 	void TearDownPanelStructuralLinks(AFGBuildableLightsControlPanel* Panel);
 
@@ -217,7 +221,10 @@ private:
 		bool bPreferBulkResolve);
 	void MarkBridgeEndpointRootIndexDirty();
 	void RefreshBridgeEndpointRootIndex();
-	void AddBridgeEndpointToRootIndex(const FStructuralNodeId& EndpointId, int32 Root);
+	void AddEndpointToRootIndex(
+		int32 Root,
+		EStructuralEndpointKind Kind,
+		const FStructuralNodeId& EndpointId);
 	void ApplyKeyedSubnetAllPanels();
 	void FinishBulkLoadDrain();
 	void ReconcileAllPanelEndpoints();
@@ -312,7 +319,7 @@ private:
 	bool bPendingPostLoadLightReconcile = false;
 	bool bBulkLoadDrainActive = false;
 	bool bBridgeEndpointRootIndexDirty = true;
-	TMap<int32, TArray<FStructuralNodeId>> BridgeEndpointsByRoot;
+	FStructuralEndpointIndex EndpointIndex;
 	/** Feed connector cache per component root — invalidated with the root index. */
 	TMap<int32, TWeakObjectPtr<UFGCircuitConnectionComponent>> SourceConnectorByRoot;
 };
