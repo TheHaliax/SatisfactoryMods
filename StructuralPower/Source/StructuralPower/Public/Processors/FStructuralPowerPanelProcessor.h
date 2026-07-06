@@ -10,6 +10,7 @@
 class AFGBuildableLightsControlPanel;
 class AStructuralPowerGraphSubsystem;
 
+/** AFGBuildableLightsControlPanel host — PRE-2.2 Part II role=host. */
 class STRUCTURALPOWER_API FStructuralPowerPanelProcessor
 {
 public:

@@ -13,7 +13,7 @@ On join, the server prints: **Hal: Structural Power loaded.**
 - `!lighting` — toggle **structural lighting** (v2.2 M3; default off; saved to mod config)
 - `!HoverH [1-10]` — set hoverpack **horizontal** reach multiplier (clamped 1.0–10.0; saved to `Configs/StructuralPower.cfg`)
 - `!HoverV [1-10]` — set hoverpack **vertical** reach multiplier (clamped 1.0–10.0; saved to mod config)
-- `!tracetoggle` — debug: toggle verbose `[PWR]` trace logging in `FactoryGame.log`
+- `!tracetoggle` — debug: toggle verbose `[HALSP]` trace logging in `FactoryGame.log`
 - `!pwrhelp` — list commands (same list as this section)
 
 ## Examples

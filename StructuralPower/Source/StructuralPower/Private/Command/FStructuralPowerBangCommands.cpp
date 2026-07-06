@@ -219,7 +219,7 @@ static void SendHelp(AFGPlayerController* PlayerController)
 		FLinearColor::Yellow);
 	SendSystemChat(
 		PlayerController,
-		TEXT("!tracetoggle  — debug: flip verbose [PWR] logging in FactoryGame.log"),
+		TEXT("!tracetoggle  — debug: flip verbose [HALSP] logging in FactoryGame.log"),
 		FLinearColor::Yellow);
 	SendSystemChat(
 		PlayerController,

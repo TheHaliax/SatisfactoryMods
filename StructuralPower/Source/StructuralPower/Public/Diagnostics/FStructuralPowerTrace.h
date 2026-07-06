@@ -10,7 +10,7 @@ class AFGBuildable;
 class UFGCircuitConnectionComponent;
 class UFGPowerConnectionComponent;
 
-/** Deep placement/link trace — grep FactoryGame.log for [PWR]. Toggle: StructuralPower.Trace 1 (default off). */
+/** Deep placement/link trace — grep FactoryGame.log for [HALSP]. Toggle: StructuralPower.Trace 1 (default off). */
 namespace FStructuralPowerTrace
 {
 	bool IsEnabled();

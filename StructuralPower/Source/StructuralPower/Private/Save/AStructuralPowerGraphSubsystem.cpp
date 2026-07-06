@@ -826,7 +826,7 @@ void AStructuralPowerGraphSubsystem::PromoteStructuralMeshFrom(UFGPowerConnectio
 	if (EdgesPromoted > 0 || EdgesSkipped > 0)
 	{
 		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[PWR] mesh flood from %s promoted=%d skipped=%d visited=%d"),
+			TEXT("[HALSP] mesh flood from %s promoted=%d skipped=%d visited=%d"),
 			*Seed->GetName(),
 			EdgesPromoted,
 			EdgesSkipped,
@@ -1165,7 +1165,7 @@ void AStructuralPowerGraphSubsystem::FinishBulkLoadDrain()
 	}
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] Post-load bulk drain complete — %d bridge component root(s)"),
+		TEXT("[HALSP] Post-load bulk drain complete — %d bridge component root(s)"),
 		Roots.Num());
 
 	CrossSiteGraph.SeedFeedSignaturesForSites(*this, Roots);
@@ -1922,8 +1922,10 @@ void AStructuralPowerGraphSubsystem::LogPanelReconcileSummary(
 		Panel->GetControlledBuildables(AFGBuildableLightSource::StaticClass()).Num();
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] panel reconcile %s root=%d powered=%d busCircuit=%d source=%s control=%s controlled=%d"),
+		TEXT("[HALSP] panel reconcile %s scope=site site=%d role=host root=%d powered=%d busCircuit=%d"
+			" source=%s control=%s controlled=%d"),
 		*Panel->GetName(),
+		Root,
 		Root,
 		Powered,
 		BusCircuit,
@@ -2012,7 +2014,7 @@ void AStructuralPowerGraphSubsystem::ReconcileAllPanelEndpoints()
 	}
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] Post-load panel reconcile complete — %d panel(s)"),
+		TEXT("[HALSP] Post-load panel reconcile complete — %d panel(s)"),
 		Panels.Num());
 
 	ApplyKeyedSubnetAllPanels();
@@ -2067,7 +2069,7 @@ bool AStructuralPowerGraphSubsystem::EnsureParentRegisteredInGraph(
 	{
 		OutParentId = ParentId;
 		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[PWR] parent ingested into structure graph actor=%s lw=%s[%d]"),
+			TEXT("[HALSP] parent ingested into structure graph actor=%s lw=%s[%d]"),
 			IsValid(Anchor.Actor) ? *Anchor.Actor->GetName() : TEXT("null"),
 			Anchor.Lightweight.IsValid() ? *Anchor.Lightweight.BuildableClass->GetName() : TEXT("null"),
 			Anchor.Lightweight.IsValid() ? Anchor.Lightweight.Index : INDEX_NONE);
@@ -2678,7 +2680,7 @@ void AStructuralPowerGraphSubsystem::ProcessStructure(AFGBuildable* Buildable)
 		ReEnergizeComponentRoots(Roots, /*bTearDownFirst=*/false, EAttachContext::RuntimePlace);
 
 		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[PWR] structure %s fused %d component(s) -> root %d"),
+			TEXT("[HALSP] structure %s fused %d component(s) -> root %d"),
 			*Buildable->GetName(),
 			MergedRoots.Num(),
 			Root);
@@ -2814,7 +2816,7 @@ void AStructuralPowerGraphSubsystem::ProcessPoleWireDelta(AFGBuildablePowerPole*
 	PromoteOutletBusIfPowered(OutletBus, /*bLocalPromoteOnly=*/true);
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] pole wire delta %s root=%d busCircuit=%d powered=%d"),
+		TEXT("[HALSP] pole wire delta %s root=%d busCircuit=%d powered=%d"),
 		*Pole->GetName(),
 		Root,
 		OutletBus->GetCircuitID(),
@@ -2882,7 +2884,7 @@ void AStructuralPowerGraphSubsystem::ProcessPoleEndpoint(AFGBuildablePowerPole* 
 	if (bBulk)
 	{
 		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[PWR] outlet %s root=%d parentValid=%d busCircuit=%d powered=%d tag=%s id=%s"),
+			TEXT("[HALSP] outlet %s root=%d parentValid=%d busCircuit=%d powered=%d tag=%s id=%s"),
 			*Pole->GetName(),
 			Root,
 			ParentAnchor.IsValid() ? 1 : 0,
@@ -2894,7 +2896,7 @@ void AStructuralPowerGraphSubsystem::ProcessPoleEndpoint(AFGBuildablePowerPole* 
 	else
 	{
 		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] outlet %s root=%d parentValid=%d busCircuit=%d powered=%d tag=%s id=%s"),
+			TEXT("[HALSP] outlet %s root=%d parentValid=%d busCircuit=%d powered=%d tag=%s id=%s"),
 			*Pole->GetName(),
 			Root,
 			ParentAnchor.IsValid() ? 1 : 0,

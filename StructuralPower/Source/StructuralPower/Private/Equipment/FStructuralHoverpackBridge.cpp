@@ -513,7 +513,7 @@ void FStructuralHoverpackBridge::LogTransition(
 	const FCylindricalTetherMetrics Metrics = SessionTetherMetrics(Pack, Session);
 	(void)Distance;
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] hoverpack %s %s src=%d root=%d h=%.0f v=%.0f lim=%.0f maxH=%.0f maxV=%.0f feed=%s circuit=%d hasPower=%d"),
+		TEXT("[HALSP] hoverpack %s %s src=%d root=%d h=%.0f v=%.0f lim=%.0f maxH=%.0f maxV=%.0f feed=%s circuit=%d hasPower=%d"),
 		*Pack->GetName(),
 		Event,
 		static_cast<int32>(Session.Source),

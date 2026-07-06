@@ -123,7 +123,7 @@ void FStructuralPanelControlledSync::ApplyKeyedSubnet(
 	WriteControlledBuildables(Panel, KeyedLights);
 
 	UE_LOG(LogStructuralPower, Verbose,
-		TEXT("[PWR] panel %s keyed controlled=%d control=%s"),
+		TEXT("[HALSP] panel %s keyed controlled=%d control=%s"),
 		*Panel->GetName(),
 		KeyedLights.Num(),
 		*Control.ToString());

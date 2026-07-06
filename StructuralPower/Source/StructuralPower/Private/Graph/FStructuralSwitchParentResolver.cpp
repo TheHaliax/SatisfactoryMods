@@ -236,7 +236,7 @@ FStructuralSwitchParentResolveResult FStructuralSwitchParentResolver::Resolve(
 		if (Result.IsValid())
 		{
 			UE_LOG(LogStructuralPower, Log,
-				TEXT("[PWR] switch %s parent resolved via wire_port_%c neighbor=%s"),
+				TEXT("[HALSP] switch %s parent resolved via wire_port_%c neighbor=%s"),
 				*Switch->GetName(),
 				Result.WirePortIndex == 0 ? TEXT('A') : TEXT('B'),
 				IsValid(Result.Anchor.Actor)
@@ -265,7 +265,7 @@ FStructuralSwitchParentResolveResult FStructuralSwitchParentResolver::Resolve(
 	if (Result.IsValid())
 	{
 		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] switch %s parent resolved via mount"),
+			TEXT("[HALSP] switch %s parent resolved via mount"),
 			*Switch->GetName());
 		return Result;
 	}
@@ -276,7 +276,7 @@ FStructuralSwitchParentResolveResult FStructuralSwitchParentResolver::Resolve(
 		if (Result.IsValid())
 		{
 			UE_LOG(LogStructuralPower, Log,
-				TEXT("[PWR] switch %s parent resolved via wire_port_%c neighbor=%s"),
+				TEXT("[HALSP] switch %s parent resolved via wire_port_%c neighbor=%s"),
 				*Switch->GetName(),
 				Result.WirePortIndex == 0 ? TEXT('A') : TEXT('B'),
 				IsValid(Result.Anchor.Actor)

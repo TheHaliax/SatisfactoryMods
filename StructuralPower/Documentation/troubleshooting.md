@@ -15,7 +15,7 @@ Common case: **isolated structure** — a foundation with no adjacency to the re
 1. Verify continuous adjacency — no gaps in the foundation / wall / ramp chain between source and target.
 2. Connect **one** visible cable from your generator grid to the structural bus (a pole or wired machine on a tracked piece).
 3. Run `StructuralPower.Diag` — poles on powered structure should count under `IN_CIRCUIT`.
-4. Enable trace (`StructuralPower.Trace 1` or `!tracetoggle`), place or rewire one pole, and grep the log for `[PWR]`.
+4. Enable trace (`StructuralPower.Trace 1` or `!tracetoggle`), place or rewire one pole, and grep the log for `[HALSP]`.
 5. Check **Debug → Enable structural propagation** in the mod menu (or `StructuralPower.EnablePropagation 1`).
 
 ## Structural lighting (v2.2)
@@ -62,5 +62,5 @@ Include:
 - SML version
 - Single-player, listen host, or dedicated server
 - Group Lighting on/off
-- Relevant `LogStructuralPower` / `[PWR]` lines (with trace enabled if possible)
+- Relevant `LogStructuralPower` / `[HALSP]` lines (with trace enabled if possible)
 - Whether switches / lighting / hoverpack involved

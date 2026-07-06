@@ -86,9 +86,10 @@ void FStructuralPowerPanelProcessor::Process(
 	auto LogPanelOutlet = [&](int32 Powered, int32 BusCircuit)
 	{
 		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[PWR] panel %s root=%d parentValid=%d busCircuit=%d powered=%d tag=%s"
-				" source=%s control=%s wirePort=-"),
+			TEXT("[HALSP] panel %s scope=site site=%d role=host root=%d parentValid=%d busCircuit=%d"
+				" powered=%d tag=%s source=%s control=%s wirePort=-"),
 			*Panel->GetName(),
+			Root,
 			Root,
 			ParentAnchor.IsValid() ? 1 : 0,
 			BusCircuit,
@@ -225,8 +226,10 @@ void FStructuralPowerPanelProcessor::Process(
 	const int32 Controlled =
 		Panel->GetControlledBuildables(AFGBuildableLightSource::StaticClass()).Num();
 	UE_LOG(LogStructuralPower, Verbose,
-		TEXT("[PWR] panel %s root=%d powered=%d busCircuit=%d source=%s control=%s controlled=%d"),
+		TEXT("[HALSP] panel %s scope=site site=%d role=host root=%d powered=%d busCircuit=%d"
+			" source=%s control=%s controlled=%d"),
 		*Panel->GetName(),
+		Root,
 		Root,
 		Powered,
 		BusCircuit,

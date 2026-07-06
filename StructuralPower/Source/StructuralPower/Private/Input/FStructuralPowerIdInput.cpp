@@ -99,7 +99,7 @@ void FStructuralPowerIdInput::EnsureHotkeyProcessorRegistered()
 
 	HotkeyInputProcessor = MakeShared<FStructuralPowerIdHotkeyProcessor>();
 	FSlateApplication::Get().RegisterInputPreProcessor(HotkeyInputProcessor, 10);
-	UE_LOG(LogStructuralPower, Log, TEXT("[PWR] Id panel hotkey processor registered (I)"));
+	UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] Id panel hotkey processor registered (I)"));
 }
 
 void FStructuralPowerIdInput::UnregisterHotkeyProcessor()
@@ -211,7 +211,7 @@ void FStructuralPowerIdInput::RecoverAfterVanillaUiClosed(AFGPlayerController* P
 	FStructuralPowerIdPresenterFactory::ForceReleaseModalState(PlayerController);
 	EnsureInputReady(PlayerController);
 
-	UE_LOG(LogStructuralPower, Log, TEXT("[PWR] Id panel input recovered after vanilla UI"));
+	UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] Id panel input recovered after vanilla UI"));
 }
 
 void FStructuralPowerIdInput::OpenIdPanelForController(AFGPlayerController* PlayerController)
@@ -221,13 +221,13 @@ void FStructuralPowerIdInput::OpenIdPanelForController(AFGPlayerController* Play
 		return;
 	}
 
-	UE_LOG(LogStructuralPower, Log, TEXT("[PWR] Id panel I key"));
+	UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] Id panel I key"));
 	EnsureInputReady(PlayerController);
 
 	AFGBuildable* Target = nullptr;
 	if (!FStructuralIdConfigTarget::PickFromView(PlayerController, Target))
 	{
-		UE_LOG(LogStructuralPower, Log, TEXT("[PWR] Id panel — no eligible trace target"));
+		UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] Id panel — no eligible trace target"));
 		return;
 	}
 
@@ -242,13 +242,13 @@ void FStructuralPowerIdInput::OpenIdPanelForController(AFGPlayerController* Play
 		{
 			Presenter.RetargetTo(Target);
 			UE_LOG(LogStructuralPower, Log,
-				TEXT("[PWR] Id panel retargeted via I key target=%s"),
+				TEXT("[HALSP] Id panel retargeted via I key target=%s"),
 				*Target->GetName());
 		}
 		else
 		{
 			Presenter.Close();
-			UE_LOG(LogStructuralPower, Log, TEXT("[PWR] Id panel toggled closed"));
+			UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] Id panel toggled closed"));
 		}
 
 		return;

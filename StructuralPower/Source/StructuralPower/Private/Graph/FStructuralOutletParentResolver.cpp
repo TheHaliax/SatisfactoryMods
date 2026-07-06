@@ -140,7 +140,7 @@ static FStructuralWallAnchor TryResolveAttachedLightweightParent(AFGBuildable* O
 	{
 		const float DistCm = FMath::Sqrt(FVector::DistSquared(Best.WorldLocation, AnchorLocation));
 		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[PWR] outlet %s parent resolved via lw_face_attach lw=%s[%d] distCm=%.1f"),
+			TEXT("[HALSP] outlet %s parent resolved via lw_face_attach lw=%s[%d] distCm=%.1f"),
 			*Outlet->GetName(),
 			*Best.Lightweight.BuildableClass->GetName(),
 			Best.Lightweight.Index,
@@ -208,7 +208,7 @@ static FStructuralWallAnchor FindParentFromLiveBusMembers(
 		if (Result.IsValid())
 		{
 			UE_LOG(LogStructuralPower, Log,
-				TEXT("[PWR] outlet %s parent resolved via live_scan actor=%s lw=%s[%d]"),
+				TEXT("[HALSP] outlet %s parent resolved via live_scan actor=%s lw=%s[%d]"),
 				*Outlet->GetName(),
 				IsValid(Result.Actor) ? *Result.Actor->GetName() : TEXT("null"),
 				Result.Lightweight.IsValid() ? *Result.Lightweight.BuildableClass->GetName() : TEXT("null"),
@@ -314,7 +314,7 @@ static void LogResolvedParent(
 	}
 
 	UE_LOG(LogStructuralPower, Verbose,
-		TEXT("[PWR] outlet %s parent via %s actor=%s lw=%s[%d]"),
+		TEXT("[HALSP] outlet %s parent via %s actor=%s lw=%s[%d]"),
 		*Outlet->GetName(),
 		MethodName,
 		IsValid(Result.Anchor.Actor) ? *Result.Anchor.Actor->GetName() : TEXT("null"),

@@ -520,9 +520,11 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 	SwitchKey.Control = SwitchControlId;
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] switch restitch_%s %s root=%d control=%s panels=%d direct_lights=%d lit=%d"),
+		TEXT("[HALSP] switch restitch_%s %s scope=site site=%d role=router root=%d control=%s"
+			" panels=%d direct_lights=%d lit=%d"),
 		bSwitchOn ? TEXT("on") : TEXT("off"),
 		IsValid(Switch) ? *Switch->GetName() : TEXT("null"),
+		Root,
 		Root,
 		*FStructuralPowerTrace::FormatControlForTrace(SwitchKey),
 		PanelCount,
@@ -696,8 +698,10 @@ void FStructuralPowerSwitchProcessor::PropagateWiredFeedChange(
 	}
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] wired switch %s feed change localRoot=%d feedAffected=%d"),
+		TEXT("[HALSP] wired switch %s scope=cross_site site=%d role=gateway path=wire_bridge"
+			" localRoot=%d feedAffected=%d"),
 		*Switch->GetName(),
+		LocalRoot,
 		LocalRoot,
 		AffectedRoots.Num());
 }
@@ -861,9 +865,10 @@ void FStructuralPowerSwitchProcessor::Process(
 	auto LogSwitchOutlet = [&](UFGStructuralPowerConnectionComponent* OutletBus, int32 Powered, const TCHAR* Mode)
 	{
 		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] outlet %s root=%d parentValid=%d busCircuit=%d powered=%d tag=%s"
-				" source=%s control=%s wirePort=%s mode=%s"),
+			TEXT("[HALSP] outlet %s scope=site site=%d role=router root=%d parentValid=%d busCircuit=%d"
+				" powered=%d tag=%s source=%s control=%s wirePort=%s mode=%s"),
 			*Switch->GetName(),
+			Root,
 			Root,
 			ParentAnchor.IsValid() ? 1 : 0,
 			IsValid(OutletBus) ? OutletBus->GetCircuitID() : INDEX_NONE,

@@ -263,7 +263,7 @@ void InitializeSchema(UConfigPropertySection* Root)
 		Debug,
 		TEXT("Trace"),
 		NSLOCTEXT("StructuralPower", "Trace", "PWR trace logging"),
-		NSLOCTEXT("StructuralPower", "TraceTip", "Verbose [PWR] diagnostics in FactoryGame.log. Chat: !tracetoggle"),
+		NSLOCTEXT("StructuralPower", "TraceTip", "Verbose [HALSP] diagnostics in FactoryGame.log. Chat: !tracetoggle"),
 		false);
 
 	AddBoolProperty(

@@ -47,5 +47,5 @@ Per-device **Source/Control** overrides (lights, switches, panels) are stored in
 | Power works SP, not MP | Server build includes StructuralPower DLL for server target |
 | Desync / no propagation | Host-only hooks; verify host has mod, not just clients |
 | Chat commands ignored | Run on server/listen host; pure client gets Hal error message |
-| Id panel apply no effect | Server authority; RCO must run on host — check log for `[PWR] Id panel apply` |
+| Id panel apply no effect | Server authority; RCO must run on host — check log for `[HALSP] Id panel apply` |
 | Hoverpack tether wrong | Multipliers are server CVars — host sets via menu or `!HoverH` / `!HoverV` |

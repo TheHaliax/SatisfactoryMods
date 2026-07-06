@@ -140,7 +140,7 @@ static void HandleSwitchBeginPlay(AFGBuildableCircuitSwitch* Switch)
 	}
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] switch BeginPlay %s — enqueue outlet"),
+		TEXT("[HALSP] switch BeginPlay %s — enqueue outlet"),
 		*Switch->GetName());
 
 	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
@@ -208,7 +208,7 @@ static void HandlePanelBeginPlay(AFGBuildableLightsControlPanel* Panel)
 	}
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] panel BeginPlay %s — enqueue outlet"),
+		TEXT("[HALSP] panel BeginPlay %s — enqueue outlet"),
 		*Panel->GetName());
 
 	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateStatic(
@@ -231,7 +231,7 @@ static void HandleLightBeginPlay(AFGBuildableLightSource* Light)
 	}
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] light BeginPlay %s — enqueue outlet"),
+		TEXT("[HALSP] light BeginPlay %s — enqueue outlet"),
 		*Light->GetName());
 
 	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
@@ -296,7 +296,7 @@ void UStructuralPowerRootInstanceModule::HandleBuildablesConstructed(const TArra
 
 	if (Enqueued > 0)
 	{
-		UE_LOG(LogStructuralPower, Log, TEXT("[PWR] BlueprintConstruct deferred %d buildable(s)"), Enqueued);
+		UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] BlueprintConstruct deferred %d buildable(s)"), Enqueued);
 	}
 }
 
@@ -376,7 +376,7 @@ void UStructuralPowerRootInstanceModule::HandleLightweightMemberAdded(
 
 	const FStructuralLightweightKey Key{BuildableClass, InstanceIndex};
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] LW hook AddFromBuildableInstanceData %s[%d]"),
+		TEXT("[HALSP] LW hook AddFromBuildableInstanceData %s[%d]"),
 		*BuildableClass->GetName(),
 		InstanceIndex);
 

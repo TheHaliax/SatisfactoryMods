@@ -15,7 +15,7 @@ Updates a mod config key, mirrors the pause menu, and marks `Configs/StructuralP
 | Key | Values | Notes |
 |-----|--------|-------|
 | `EnablePropagation` | `0` / `1` | Master bus toggle (Debug section) |
-| `Trace` | `0` / `1` | `[PWR]` logging (Debug; chat: `!tracetoggle`) |
+| `Trace` | `0` / `1` | `[HALSP]` logging (Debug; chat: `!tracetoggle`) |
 | `GatePowerSwitches` | `0` / `1` | Structural switch gating (Debug) |
 | `PowerSwitchManualGroups` | `0` / `1` | `1` = Mode B keyed subnets; `0` = Mode A whole-component (Debug) |
 | `GroupLighting` | `0` / `1` | Structural lighting (v2.2; Debug; chat: `!lighting`) |
@@ -30,7 +30,7 @@ Updates a mod config key, mirrors the pause menu, and marks `Configs/StructuralP
 StructuralPower.Trace 1
 ```
 
-Enables deep `[PWR]` logging in `FactoryGame.log` — placement hooks, hidden links, circuit promotion.
+Enables deep `[HALSP]` logging in `FactoryGame.log` — placement hooks, hidden links, circuit promotion.
 
 **Default: `0` (off)** in shipping builds. Turn on when reporting bugs. Same as `!tracetoggle` or the **Debug** toggle in the mod menu.
 
@@ -95,4 +95,4 @@ Windows:
 %LOCALAPPDATA%\FactoryGame\Saved\Logs\FactoryGame.log
 ```
 
-Search for `LogStructuralPower` or `[PWR]`.
+Search for `LogStructuralPower` or `[HALSP]`.

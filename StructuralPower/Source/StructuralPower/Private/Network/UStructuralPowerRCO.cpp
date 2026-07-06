@@ -44,7 +44,7 @@ void UStructuralPowerRCO::Server_SetEndpointIds_Implementation(
 	if (!FStructuralEligibilityRules::IsIdConfigTarget(Buildable))
 	{
 		UE_LOG(LogStructuralPower, Warning,
-			TEXT("[PWR] RCO SetEndpointIds rejected — not an id config target: %s"),
+			TEXT("[HALSP] RCO SetEndpointIds rejected — not an id config target: %s"),
 			*Buildable->GetName());
 		return;
 	}
@@ -52,14 +52,14 @@ void UStructuralPowerRCO::Server_SetEndpointIds_Implementation(
 	AStructuralPowerGraphSubsystem* Graph = GetAuthorityGraph(GetWorld());
 	if (!Graph)
 	{
-		UE_LOG(LogStructuralPower, Warning, TEXT("[PWR] RCO SetEndpointIds — no graph subsystem"));
+		UE_LOG(LogStructuralPower, Warning, TEXT("[HALSP] RCO SetEndpointIds — no graph subsystem"));
 		return;
 	}
 
 	Graph->SetEndpointIds(Buildable, Source, Control, bClearSource, bClearControl);
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] RCO SetEndpointIds %s src=%s ctl=%s clearSrc=%d clearCtl=%d"),
+		TEXT("[HALSP] RCO SetEndpointIds %s src=%s ctl=%s clearSrc=%d clearCtl=%d"),
 		*Buildable->GetName(),
 		bClearSource ? TEXT("(clear)") : *Source.ToString(),
 		bClearControl ? TEXT("(clear)") : *Control.ToString(),
@@ -101,7 +101,7 @@ void UStructuralPowerRCO::Client_ReceiveComponentIdList_Implementation(
 	FStructuralPowerIdPresenterFactory::Get().ApplyComponentIdList(List);
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] RCO ComponentIdList target=%s sources=%d controls=%d switchCtl=%d lightGrp=%d resolvedSrc=%s resolvedCtl=%s"),
+		TEXT("[HALSP] RCO ComponentIdList target=%s sources=%d controls=%d switchCtl=%d lightGrp=%d resolvedSrc=%s resolvedCtl=%s"),
 		List.DefaultSourceId.IsNone() ? TEXT("?") : *List.DefaultSourceId.ToString(),
 		List.NamedSourceIds.Num(),
 		List.NamedControlIds.Num(),

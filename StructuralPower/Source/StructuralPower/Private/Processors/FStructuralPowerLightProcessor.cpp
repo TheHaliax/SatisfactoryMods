@@ -77,9 +77,10 @@ void FStructuralPowerLightProcessor::Process(
 	auto LogLightOutlet = [&](int32 Powered, int32 BusCircuit, const TCHAR* Path)
 	{
 		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] light %s root=%d parentValid=%d busCircuit=%d powered=%d tag=%s"
-				" source=%s control=%s wirePort=- path=%s"),
+			TEXT("[HALSP] light %s scope=site site=%d role=host root=%d parentValid=%d busCircuit=%d"
+				" powered=%d tag=%s source=%s control=%s wirePort=- path=%s"),
 			*Light->GetName(),
+			Root,
 			Root,
 			ParentAnchor.IsValid() ? 1 : 0,
 			BusCircuit,

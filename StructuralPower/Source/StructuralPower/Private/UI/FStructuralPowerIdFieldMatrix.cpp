@@ -174,7 +174,7 @@ bool FStructuralPowerIdFieldMatrix::Build(
 	AddVBoxRow(ContentVBox, ButtonRow, FMargin(0.0f, 4.0f, 0.0f, 0.0f));
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] Id panel form built dual=%d sourceOpts=%d controlOpts=%d"),
+		TEXT("[HALSP] Id panel form built dual=%d sourceOpts=%d controlOpts=%d"),
 		bDual ? 1 : 0,
 		OptionManager->GetSourceOptionCount(),
 		OptionManager->GetControlOptionCount());

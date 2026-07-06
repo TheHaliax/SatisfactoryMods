@@ -178,7 +178,7 @@ static void DismissBlockingGameMessages(AFGPlayerController* PC)
 	{
 		ActiveMessage->CancelPlayback();
 		GameUI->AudioMessageFinishedPlayback();
-		UE_LOG(LogStructuralPower, Log, TEXT("[PWR] Id panel dismissed active audio message"));
+		UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] Id panel dismissed active audio message"));
 	}
 }
 }
@@ -241,7 +241,7 @@ void UStructuralPowerIdConfigWidget::NormalizeModalState()
 		}
 
 		UE_LOG(LogStructuralPower, Warning,
-			TEXT("[PWR] Id panel recovered stale modal (active=1 shown=0)"));
+			TEXT("[HALSP] Id panel recovered stale modal (active=1 shown=0)"));
 	}
 	else if (!bModalActive && IsPanelShown())
 	{
@@ -277,7 +277,7 @@ UStructuralPowerIdConfigWidget* UStructuralPowerIdConfigWidget::GetOrCreateWindo
 	}
 
 	CachedWindow = Window;
-	UE_LOG(LogStructuralPower, Log, TEXT("[PWR] Id panel window created"));
+	UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] Id panel window created"));
 	return Window;
 }
 
@@ -466,7 +466,7 @@ void UStructuralPowerIdConfigWidget::OpenForTarget(AFGBuildable* Target)
 	}
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] Id panel opened target=%s inViewport=%d slate=%d cached=%d"),
+		TEXT("[HALSP] Id panel opened target=%s inViewport=%d slate=%d cached=%d"),
 		*Target->GetName(),
 		IsInViewport() ? 1 : 0,
 		GetCachedWidget().IsValid() ? 1 : 0,
@@ -565,7 +565,7 @@ void UStructuralPowerIdConfigWidget::ApplyModalInputMode()
 	}
 
 	UE_LOG(LogStructuralPower, Verbose,
-		TEXT("[PWR] Id panel input=UIOnly cursor=%d slateFocus=%d inViewport=%d"),
+		TEXT("[HALSP] Id panel input=UIOnly cursor=%d slateFocus=%d inViewport=%d"),
 		PC->bShowMouseCursor ? 1 : 0,
 		SlateWidget.IsValid() ? 1 : 0,
 		IsInViewport() ? 1 : 0);
@@ -602,7 +602,7 @@ void UStructuralPowerIdConfigWidget::ForceReleaseAllModalState(
 	if (!bRestoreGameInputMode)
 	{
 		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[PWR] Id panel released capture (vanilla interact owns input)"));
+			TEXT("[HALSP] Id panel released capture (vanilla interact owns input)"));
 		return;
 	}
 
@@ -611,7 +611,7 @@ void UStructuralPowerIdConfigWidget::ForceReleaseAllModalState(
 		if (IsValid(GameUI) && GameUI->HasActiveInteractWidget())
 		{
 			UE_LOG(LogStructuralPower, Verbose,
-				TEXT("[PWR] Id panel skip GameOnly — vanilla interact active"));
+				TEXT("[HALSP] Id panel skip GameOnly — vanilla interact active"));
 			return;
 		}
 	}
@@ -630,7 +630,7 @@ void UStructuralPowerIdConfigWidget::ForceReleaseAllModalState(
 		HUD->SetShowCrossHair(true);
 	}
 
-	UE_LOG(LogStructuralPower, Log, TEXT("[PWR] Id panel force-released modal state"));
+	UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] Id panel force-released modal state"));
 }
 
 void UStructuralPowerIdConfigWidget::RegisterEscapeInputProcessor()
@@ -697,7 +697,7 @@ void UStructuralPowerIdConfigWidget::InitializeForTarget(AFGBuildable* Target)
 	const bool bSwitch = Target->IsA<AFGBuildableCircuitSwitch>();
 	const TCHAR* Kind = bLight ? TEXT("Light") : (bSwitch ? TEXT("Switch") : TEXT("Panel"));
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] Id panel generator init target=%s kind=%s options=%d root=%d"),
+		TEXT("[HALSP] Id panel generator init target=%s kind=%s options=%d root=%d"),
 		*Target->GetName(),
 		Kind,
 		OptionManager->GetSuggestedOptionCount(),
@@ -715,7 +715,7 @@ void UStructuralPowerIdConfigWidget::RetargetTo(AFGBuildable* Target)
 	InitializeForTarget(Target);
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] Id panel retargeted target=%s"),
+		TEXT("[HALSP] Id panel retargeted target=%s"),
 		*Target->GetName());
 }
 
@@ -727,7 +727,7 @@ void UStructuralPowerIdConfigWidget::ApplyComponentIdList(const FStructuralCompo
 	if (!IsValid(OptionManager))
 	{
 		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[PWR] Id panel sync deferred — option manager not ready"));
+			TEXT("[HALSP] Id panel sync deferred — option manager not ready"));
 		return;
 	}
 
@@ -736,7 +736,7 @@ void UStructuralPowerIdConfigWidget::ApplyComponentIdList(const FStructuralCompo
 	if (!AreFormWidgetsReady())
 	{
 		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[PWR] Id panel sync deferred — form widgets not ready"));
+			TEXT("[HALSP] Id panel sync deferred — form widgets not ready"));
 		return;
 	}
 
@@ -890,7 +890,7 @@ void UStructuralPowerIdConfigWidget::RefreshIdDisplayFromList(
 	bSuppressServerApply = false;
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] Id panel synced ids resolvedSrc=%s resolvedCtl=%s overrideSrc=%s overrideCtl=%s"),
+		TEXT("[HALSP] Id panel synced ids resolvedSrc=%s resolvedCtl=%s overrideSrc=%s overrideCtl=%s"),
 		List.ResolvedSource.IsNone() ? TEXT("-") : *List.ResolvedSource.ToString(),
 		List.ResolvedControl.IsNone() ? TEXT("-") : *List.ResolvedControl.ToString(),
 		List.SourceOverride.IsNone() ? TEXT("-") : *List.SourceOverride.ToString(),
@@ -1033,7 +1033,7 @@ void UStructuralPowerIdConfigWidget::EnsureShellBuilt()
 	{
 		SlateRoot->Invalidate(EInvalidateWidgetReason::Layout);
 	}
-	UE_LOG(LogStructuralPower, Log, TEXT("[PWR] Id panel shell built root=%s chrome=cpp"), *RootOverlay->GetName());
+	UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] Id panel shell built root=%s chrome=cpp"), *RootOverlay->GetName());
 }
 
 void UStructuralPowerIdConfigWidget::RebuildPanelContent()
@@ -1280,7 +1280,7 @@ void UStructuralPowerIdConfigWidget::ClosePanel()
 	}
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] Id panel closed inViewport=%d cached=%d"),
+		TEXT("[HALSP] Id panel closed inViewport=%d cached=%d"),
 		IsInViewport() ? 1 : 0,
 		CachedWindow.Get() == this ? 1 : 0);
 }

@@ -170,9 +170,11 @@ void FStructuralPanelAttach::RestitchDownstream(
 		if (Graph.LinkHiddenPair(ControlBus, Plug))
 		{
 			UE_LOG(LogStructuralPower, Verbose,
-				TEXT("[PWR] panel %s linked light %s control=%s path=panel_control_bus"),
+				TEXT("[HALSP] panel %s linked light %s scope=site site=%d role=host path=panel_downstream"
+					" control=%s"),
 				*Panel->GetName(),
 				*Light->GetName(),
+				ComponentRoot,
 				*PanelControl.ToString());
 		}
 	});

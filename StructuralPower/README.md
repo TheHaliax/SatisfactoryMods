@@ -25,7 +25,7 @@ Available commands (`[]` — required argument):
 - `!lighting` — toggle **structural lighting** (v2.2; default off)
 - `!HoverH [1-10]` — set hoverpack **horizontal** reach multiplier (saved to mod config)
 - `!HoverV [1-10]` — set hoverpack **vertical** reach multiplier (saved to mod config)
-- `!tracetoggle` — debug: toggle verbose `[PWR]` logging in `FactoryGame.log`
+- `!tracetoggle` — debug: toggle verbose `[HALSP]` logging in `FactoryGame.log`
 - `!pwrhelp` — list Structural Power chat commands
 
 Settings also live in **Pause → Mods → Structural Power** (hover multipliers on the main panel; propagation, switches, lighting, hoverpack tether, and trace under the collapsible **Debug** section). Host-only changes persist to `Configs/StructuralPower.cfg`.

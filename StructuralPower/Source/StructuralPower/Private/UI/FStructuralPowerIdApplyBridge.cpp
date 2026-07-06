@@ -146,14 +146,14 @@ void FStructuralPowerIdApplyBridge::ApplyTypedIds(
 {
 	if (!IsValid(Target) || !IsValid(OptionManager))
 	{
-		UE_LOG(LogStructuralPower, Warning, TEXT("[PWR] Id panel apply — missing target or option manager"));
+		UE_LOG(LogStructuralPower, Warning, TEXT("[HALSP] Id panel apply — missing target or option manager"));
 		return;
 	}
 
 	UStructuralPowerRCO* Rco = ResolveRco(PlayerController);
 	if (!Rco)
 	{
-		UE_LOG(LogStructuralPower, Warning, TEXT("[PWR] Id panel apply — RCO missing"));
+		UE_LOG(LogStructuralPower, Warning, TEXT("[HALSP] Id panel apply — RCO missing"));
 		return;
 	}
 
@@ -183,13 +183,13 @@ void FStructuralPowerIdApplyBridge::ApplyTypedIds(
 
 	if (!bDual && !bTouchSource)
 	{
-		UE_LOG(LogStructuralPower, Warning, TEXT("[PWR] Id panel apply — no source id selected or typed"));
+		UE_LOG(LogStructuralPower, Warning, TEXT("[HALSP] Id panel apply — no source id selected or typed"));
 		return;
 	}
 
 	if (bDual && !bTouchSource && !bTouchControl)
 	{
-		UE_LOG(LogStructuralPower, Warning, TEXT("[PWR] Id panel apply — no ids selected or typed"));
+		UE_LOG(LogStructuralPower, Warning, TEXT("[HALSP] Id panel apply — no ids selected or typed"));
 		return;
 	}
 
@@ -214,7 +214,7 @@ void FStructuralPowerIdApplyBridge::ApplyTypedIds(
 		else
 		{
 			UE_LOG(LogStructuralPower, Warning,
-				TEXT("[PWR] Id panel apply — rejected source id '%s'"),
+				TEXT("[HALSP] Id panel apply — rejected source id '%s'"),
 				*TypedSource.ToString());
 			return;
 		}
@@ -236,7 +236,7 @@ void FStructuralPowerIdApplyBridge::ApplyTypedIds(
 		else
 		{
 			UE_LOG(LogStructuralPower, Warning,
-				TEXT("[PWR] Id panel apply — rejected control id '%s'"),
+				TEXT("[HALSP] Id panel apply — rejected control id '%s'"),
 				*TypedControl.ToString());
 			return;
 		}
@@ -250,7 +250,7 @@ void FStructuralPowerIdApplyBridge::ApplyTypedIds(
 		bClearControl);
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] Id panel apply target=%s src=%s ctl=%s clearSrc=%d clearCtl=%d touchSrc=%d touchCtl=%d"),
+		TEXT("[HALSP] Id panel apply target=%s src=%s ctl=%s clearSrc=%d clearCtl=%d touchSrc=%d touchCtl=%d"),
 		*Target->GetName(),
 		bClearSource ? TEXT("(clear)") : *SourceToSet.ToString(),
 		bClearControl ? TEXT("(clear)") : *ControlToSet.ToString(),

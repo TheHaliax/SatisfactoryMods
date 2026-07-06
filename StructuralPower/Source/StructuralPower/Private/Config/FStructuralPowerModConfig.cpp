@@ -33,7 +33,7 @@ static TAutoConsoleVariable<int32> CVarStructuralPowerEnablePropagation(
 static TAutoConsoleVariable<int32> CVarStructuralPowerTrace(
 	TEXT("StructuralPower.Trace"),
 	0,
-	TEXT("1 = enable [PWR] trace logging"),
+	TEXT("1 = enable [HALSP] trace logging"),
 	ECVF_Default);
 
 static TAutoConsoleVariable<int32> CVarStructuralPowerGatePowerSwitches(

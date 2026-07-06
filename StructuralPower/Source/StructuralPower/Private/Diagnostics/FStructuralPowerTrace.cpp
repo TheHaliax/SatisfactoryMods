@@ -102,7 +102,7 @@ void FStructuralPowerTrace::LogHook(
 	{
 		const FStructuralChannelKey Key = KeyForBuildable(Buildable);
 		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] hook %s %s %s class=%s tag=%s source=%s control=%s detail=%s"),
+			TEXT("[HALSP] hook %s %s %s class=%s tag=%s source=%s control=%s detail=%s"),
 			Hook ? Hook : TEXT("?"),
 			*Buildable->GetName(),
 			Action ? Action : TEXT("?"),
@@ -115,7 +115,7 @@ void FStructuralPowerTrace::LogHook(
 	}
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] hook %s %s %s class=%s detail=%s"),
+		TEXT("[HALSP] hook %s %s %s class=%s detail=%s"),
 		Hook ? Hook : TEXT("?"),
 		*Buildable->GetName(),
 		Action ? Action : TEXT("?"),
@@ -139,21 +139,21 @@ void FStructuralPowerTrace::LogPlacementSkip(
 	{
 	case ELogVerbosity::Verbose:
 		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[PWR] skip %s class=%s reason=%s"),
+			TEXT("[HALSP] skip %s class=%s reason=%s"),
 			*Buildable->GetName(),
 			*Buildable->GetClass()->GetName(),
 			ReasonText);
 		break;
 	case ELogVerbosity::Log:
 		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] skip %s class=%s reason=%s"),
+			TEXT("[HALSP] skip %s class=%s reason=%s"),
 			*Buildable->GetName(),
 			*Buildable->GetClass()->GetName(),
 			ReasonText);
 		break;
 	default:
 		UE_LOG(LogStructuralPower, Warning,
-			TEXT("[PWR] skip %s class=%s reason=%s"),
+			TEXT("[HALSP] skip %s class=%s reason=%s"),
 			*Buildable->GetName(),
 			*Buildable->GetClass()->GetName(),
 			ReasonText);
@@ -183,7 +183,7 @@ void FStructuralPowerTrace::LogLinkOp(
 	if (Verbosity == ELogVerbosity::Verbose)
 	{
 		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[PWR] link %s ok=%d path=%s hadLink=%d A(circuit=%d tag=%s src=%s ctl=%s)"
+			TEXT("[HALSP] link %s ok=%d path=%s hadLink=%d A(circuit=%d tag=%s src=%s ctl=%s)"
 				" B(circuit=%d tag=%s src=%s ctl=%s)"),
 			Op,
 			bSuccess ? 1 : 0,
@@ -201,7 +201,7 @@ void FStructuralPowerTrace::LogLinkOp(
 	else
 	{
 		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] link %s ok=%d path=%s hadLink=%d A(circuit=%d tag=%s src=%s ctl=%s)"
+			TEXT("[HALSP] link %s ok=%d path=%s hadLink=%d A(circuit=%d tag=%s src=%s ctl=%s)"
 				" B(circuit=%d tag=%s src=%s ctl=%s)"),
 			Op,
 			bSuccess ? 1 : 0,
