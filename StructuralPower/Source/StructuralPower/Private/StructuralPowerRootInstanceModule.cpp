@@ -32,7 +32,7 @@
 #include "TimerManager.h"
 #include "UI/FGGameUI.h"
 #include "UI/FGInteractWidget.h"
-#include "UI/UStructuralPowerIdConfigWidget.h"
+#include "UI/FStructuralPowerIdPresenterFactory.h"
 
 FDelegateHandle UStructuralPowerRootInstanceModule::PostLoadMapHandle;
 
@@ -419,7 +419,7 @@ void UStructuralPowerRootInstanceModule::HandlePostLoadMap(UWorld* World)
 		return;
 	}
 
-	UStructuralPowerIdConfigWidget::ResetStaticsForMapLoad();
+	FStructuralPowerIdPresenterFactory::ResetForMapTravel();
 
 	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
 		[WorldWeak = TWeakObjectPtr<UWorld>(World)]()
@@ -483,12 +483,12 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 		AFGHUD::OpenInteractUI,
 		[](AFGHUD* Hud, TSubclassOf<UFGInteractWidget> /*WidgetClass*/, UObject* /*InteractObject*/)
 		{
-			UStructuralPowerIdConfigWidget::CloseActivePanel();
+			FStructuralPowerIdPresenterFactory::CloseActive();
 			if (IsValid(Hud))
 			{
 				if (AFGPlayerController* PC = Cast<AFGPlayerController>(Hud->GetOwningPlayerController()))
 				{
-					UStructuralPowerIdConfigWidget::ReleaseForVanillaInteract(PC);
+					FStructuralPowerIdPresenterFactory::ReleaseForVanillaInteract(PC);
 				}
 			}
 		});

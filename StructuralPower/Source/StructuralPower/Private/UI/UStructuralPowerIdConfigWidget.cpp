@@ -29,7 +29,9 @@
 #include "GameFramework/Pawn.h"
 #include "Input/Events.h"
 #include "Input/FStructuralPowerIdInput.h"
-#include "Network/UStructuralPowerRCO.h"
+#include "UI/FStructuralPowerIdApplyBridge.h"
+#include "UI/FStructuralPowerIdFieldMatrix.h"
+#include "UI/FStructuralPowerIdWidgetHelpers.h"
 #include "Config/FStructuralPowerModConfig.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Rules/FStructuralEligibilityRules.h"
@@ -42,6 +44,11 @@
 #include "UI/FGGameUI.h"
 #include "UI/Message/FGAudioMessage.h"
 #include "UI/UStructuralPowerIdOptionManager.h"
+
+using StructuralPowerIdUiHelpers::AddVBoxRow;
+using StructuralPowerIdUiHelpers::FormatIdOptionLabel;
+using StructuralPowerIdUiHelpers::MakeLabeledButton;
+using StructuralPowerIdUiHelpers::SetTextStyle;
 
 namespace
 {
@@ -152,75 +159,6 @@ static UPanelWidget* FindWindowBodyPanel(UUserWidget* Window)
 	});
 
 	return NamedSlotBody ? NamedSlotBody : NamedPanelBody;
-}
-
-static void SetTextStyle(UTextBlock* Text, const FString& Value, int32 Size, bool bBold = false)
-{
-	if (!IsValid(Text))
-	{
-		return;
-	}
-
-	FSlateFontInfo Font = Text->GetFont();
-	Font.Size = Size;
-	if (bBold)
-	{
-		Font.TypefaceFontName = FName(TEXT("Bold"));
-	}
-
-	Text->SetFont(Font);
-	Text->SetText(FText::FromString(Value));
-	Text->SetColorAndOpacity(FSlateColor(FLinearColor(0.92f, 0.94f, 0.96f, 1.0f)));
-	Text->SetAutoWrapText(true);
-}
-
-static FString FormatIdOptionLabel(const FName& Id)
-{
-	if (Id.IsNone())
-	{
-		return TEXT("(none)");
-	}
-
-	if (Id == StructuralPowerConstants::ControlBypass)
-	{
-		return TEXT("(bypass)");
-	}
-
-	if (Id == StructuralPowerConstants::ControlUnconfigured)
-	{
-		return TEXT("(unconfigured)");
-	}
-
-	return Id.ToString();
-}
-
-static UVerticalBoxSlot* AddVBoxRow(
-	UVerticalBox* Box,
-	UWidget* Child,
-	const FMargin& Padding = FMargin(0.0f, 6.0f))
-{
-	if (!IsValid(Box) || !IsValid(Child))
-	{
-		return nullptr;
-	}
-
-	Box->AddChild(Child);
-	if (UVerticalBoxSlot* Slot = Cast<UVerticalBoxSlot>(Child->Slot))
-	{
-		Slot->SetPadding(Padding);
-		Slot->SetHorizontalAlignment(HAlign_Fill);
-	}
-
-	return Cast<UVerticalBoxSlot>(Child->Slot);
-}
-
-static UButton* MakeLabeledButton(UWidgetTree* Tree, const TCHAR* Name, const TCHAR* Label)
-{
-	UButton* Button = Tree->ConstructWidget<UButton>(UButton::StaticClass(), Name);
-	UTextBlock* Text = Tree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *FString::Printf(TEXT("%sLabel"), Name));
-	SetTextStyle(Text, Label, 13, true);
-	Button->AddChild(Text);
-	return Button;
 }
 
 static void DismissBlockingGameMessages(AFGPlayerController* PC)
@@ -1116,153 +1054,44 @@ void UStructuralPowerIdConfigWidget::RebuildPanelContent()
 	ResetButton = nullptr;
 	ActiveIdsText = nullptr;
 
-	const bool bLight = FStructuralEligibilityRules::IsStructuralLightConsumer(TargetBuildable);
-	const bool bDual = OptionManager->NeedsDualFields();
-	if (!bLight && !bDual)
+	FStructuralPowerIdFieldMatrixWidgets BuiltWidgets;
+	if (!FStructuralPowerIdFieldMatrix::Build(
+			WidgetTree, ContentVBox, TargetBuildable, OptionManager, BuiltWidgets))
 	{
 		return;
 	}
 
-	UTextBlock* Subtitle = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("Subtitle"));
-	SetTextStyle(
-		Subtitle,
-		bDual
-			? TEXT("Set source and control ids for this endpoint.")
-			: TEXT("Set the source id for this endpoint."),
-		13);
-	AddVBoxRow(ContentVBox, Subtitle, FMargin(0.0f, 0.0f, 0.0f, 6.0f));
+	SuggestedSourceCombo = BuiltWidgets.SuggestedSourceCombo;
+	SuggestedControlCombo = BuiltWidgets.SuggestedControlCombo;
+	AssignSourceText = BuiltWidgets.AssignSourceText;
+	AssignControlText = BuiltWidgets.AssignControlText;
+	ApplyButton = BuiltWidgets.ApplyButton;
+	ResetButton = BuiltWidgets.ResetButton;
+	ActiveIdsText = BuiltWidgets.ActiveIdsText;
 
-	UTextBlock* Hint = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("HintText"));
-	const bool bGroupLighting = FStructuralPowerModConfig::IsGroupLightingEnabled();
-	const FString HintLine = bDual
-		? FString::Printf(
-			TEXT("Light source id must match panel control id. Group Lighting: %s."),
-			bGroupLighting ? TEXT("ON") : TEXT("OFF (enable in mod config or !lighting)"))
-		: FString::Printf(
-			TEXT("Set this light's source id; match it on a panel's control id. Group Lighting: %s."),
-			bGroupLighting ? TEXT("ON") : TEXT("OFF (enable in mod config or !lighting)"));
-	SetTextStyle(Hint, HintLine, 11);
-	AddVBoxRow(ContentVBox, Hint, FMargin(0.0f, 0.0f, 0.0f, 8.0f));
-
-	ActiveIdsText = WidgetTree->ConstructWidget<UTextBlock>(
-		UTextBlock::StaticClass(),
-		TEXT("ActiveIdsText"));
-	SetTextStyle(ActiveIdsText, TEXT("Active — loading…"), 12);
-	AddVBoxRow(ContentVBox, ActiveIdsText, FMargin(0.0f, 0.0f, 0.0f, 12.0f));
-
-	auto AddSuggestedSection = [&](
-		const TCHAR* SectionLabel,
-		const TCHAR* CustomLabel,
-		const TCHAR* ComboName,
-		const TCHAR* TextName,
-		TObjectPtr<UComboBoxString>& OutCombo,
-		TObjectPtr<UEditableTextBox>& OutText,
-		int32 OptionCount,
-		TFunctionRef<FName(int32)> GetOptionAt)
+	if (IsValid(SuggestedSourceCombo))
 	{
-		UTextBlock* SuggestedLabel = WidgetTree->ConstructWidget<UTextBlock>(
-			UTextBlock::StaticClass(),
-			*FString::Printf(TEXT("%sLabel"), ComboName));
-		SetTextStyle(SuggestedLabel, SectionLabel, 14, true);
-		AddVBoxRow(ContentVBox, SuggestedLabel, FMargin(0.0f, 8.0f, 0.0f, 4.0f));
+		SuggestedSourceCombo->OnSelectionChanged.AddDynamic(
+			this,
+			&UStructuralPowerIdConfigWidget::OnSuggestedSourceComboChanged);
+	}
 
-		USizeBox* ComboHost = WidgetTree->ConstructWidget<USizeBox>(
-			USizeBox::StaticClass(),
-			*FString::Printf(TEXT("%sHost"), ComboName));
-		ComboHost->SetMinDesiredHeight(36.0f);
-
-		OutCombo = WidgetTree->ConstructWidget<UComboBoxString>(
-			UComboBoxString::StaticClass(),
-			ComboName);
-		for (int32 Index = 0; Index < OptionCount; ++Index)
-		{
-			OutCombo->AddOption(FormatIdOptionLabel(GetOptionAt(Index)));
-		}
-
-		if (OptionCount > 0)
-		{
-			OutCombo->SetSelectedIndex(0);
-		}
-
-		ComboHost->AddChild(OutCombo);
-		AddVBoxRow(ContentVBox, ComboHost, FMargin(0.0f, 0.0f, 0.0f, 8.0f));
-
-		UTextBlock* CustomTextLabel = WidgetTree->ConstructWidget<UTextBlock>(
-			UTextBlock::StaticClass(),
-			*FString::Printf(TEXT("%sCustomLabel"), TextName));
-		SetTextStyle(CustomTextLabel, CustomLabel, 13, true);
-		AddVBoxRow(ContentVBox, CustomTextLabel, FMargin(0.0f, 0.0f, 0.0f, 4.0f));
-
-		USizeBox* TextHost = WidgetTree->ConstructWidget<USizeBox>(
-			USizeBox::StaticClass(),
-			*FString::Printf(TEXT("%sHost"), TextName));
-		TextHost->SetMinDesiredHeight(36.0f);
-
-		OutText = WidgetTree->ConstructWidget<UEditableTextBox>(
-			UEditableTextBox::StaticClass(),
-			TextName);
-		OutText->SetHintText(FText::FromString(TEXT("Enter id name")));
-		TextHost->AddChild(OutText);
-		AddVBoxRow(ContentVBox, TextHost, FMargin(0.0f, 0.0f, 0.0f, 12.0f));
-	};
-
-	AddSuggestedSection(
-		TEXT("Suggested source id"),
-		TEXT("Custom source id"),
-		TEXT("SuggestedSourceCombo"),
-		TEXT("AssignSourceText"),
-		SuggestedSourceCombo,
-		AssignSourceText,
-		OptionManager->GetSourceOptionCount(),
-		[this](int32 Index) { return OptionManager->GetSourceOptionAt(Index); });
-	SuggestedSourceCombo->OnSelectionChanged.AddDynamic(
-		this,
-		&UStructuralPowerIdConfigWidget::OnSuggestedSourceComboChanged);
-
-	if (bDual)
+	if (IsValid(SuggestedControlCombo))
 	{
-		AddSuggestedSection(
-			TEXT("Suggested control id"),
-			TEXT("Custom control id"),
-			TEXT("SuggestedControlCombo"),
-			TEXT("AssignControlText"),
-			SuggestedControlCombo,
-			AssignControlText,
-			OptionManager->GetControlOptionCount(),
-			[this](int32 Index) { return OptionManager->GetControlOptionAt(Index); });
 		SuggestedControlCombo->OnSelectionChanged.AddDynamic(
 			this,
 			&UStructuralPowerIdConfigWidget::OnSuggestedControlComboChanged);
 	}
 
-	UHorizontalBox* ButtonRow = WidgetTree->ConstructWidget<UHorizontalBox>(
-		UHorizontalBox::StaticClass(),
-		TEXT("ButtonRow"));
-
-	ApplyButton = MakeLabeledButton(WidgetTree, TEXT("ApplyButton"), TEXT("Apply"));
-	ApplyButton->OnClicked.AddDynamic(this, &UStructuralPowerIdConfigWidget::OnApplyTypedIdClicked);
-	ButtonRow->AddChild(ApplyButton);
-	if (UHorizontalBoxSlot* ApplySlot = Cast<UHorizontalBoxSlot>(ApplyButton->Slot))
+	if (IsValid(ApplyButton))
 	{
-		ApplySlot->SetPadding(FMargin(0.0f, 0.0f, 8.0f, 0.0f));
-		ApplySlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		ApplyButton->OnClicked.AddDynamic(this, &UStructuralPowerIdConfigWidget::OnApplyTypedIdClicked);
 	}
 
-	ResetButton = MakeLabeledButton(WidgetTree, TEXT("ResetButton"), TEXT("Reset"));
-	ResetButton->OnClicked.AddDynamic(this, &UStructuralPowerIdConfigWidget::OnResetIdClicked);
-	ButtonRow->AddChild(ResetButton);
-	if (UHorizontalBoxSlot* ResetSlot = Cast<UHorizontalBoxSlot>(ResetButton->Slot))
+	if (IsValid(ResetButton))
 	{
-		ResetSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		ResetButton->OnClicked.AddDynamic(this, &UStructuralPowerIdConfigWidget::OnResetIdClicked);
 	}
-
-	AddVBoxRow(ContentVBox, ButtonRow, FMargin(0.0f, 4.0f, 0.0f, 0.0f));
-
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] Id panel form built dual=%d sourceOpts=%d controlOpts=%d"),
-		bDual ? 1 : 0,
-		OptionManager->GetSourceOptionCount(),
-		OptionManager->GetControlOptionCount());
 
 	FlushPendingIdList();
 }
@@ -1275,23 +1104,7 @@ void UStructuralPowerIdConfigWidget::ApplySourceIndex(int32 Index)
 	}
 
 	AFGPlayerController* PC = GetOwningPlayer<AFGPlayerController>();
-	UStructuralPowerRCO* Rco = PC ? PC->GetRemoteCallObjectOfClass<UStructuralPowerRCO>() : nullptr;
-	if (!Rco)
-	{
-		return;
-	}
-
-	const FName Source = OptionManager->GetSourceIdFromIndex(Index);
-	if (Source.IsNone())
-	{
-		Rco->Server_SetEndpointIds(TargetBuildable, NAME_None, NAME_None, true, false);
-	}
-	else if (FStructuralPowerRouter::IsPlayerChosenIdValid(Source))
-	{
-		Rco->Server_SetEndpointIds(TargetBuildable, Source, NAME_None, false, false);
-	}
-
-	RequestIdList();
+	FStructuralPowerIdApplyBridge::ApplySourceIndex(PC, TargetBuildable, OptionManager, Index);
 }
 
 void UStructuralPowerIdConfigWidget::ApplyControlIndex(int32 Index)
@@ -1302,25 +1115,7 @@ void UStructuralPowerIdConfigWidget::ApplyControlIndex(int32 Index)
 	}
 
 	AFGPlayerController* PC = GetOwningPlayer<AFGPlayerController>();
-	UStructuralPowerRCO* Rco = PC ? PC->GetRemoteCallObjectOfClass<UStructuralPowerRCO>() : nullptr;
-	if (!Rco)
-	{
-		return;
-	}
-
-	const FName Control = OptionManager->GetControlIdFromIndex(Index);
-	if (Control.IsNone()
-		|| Control == StructuralPowerConstants::ControlBypass
-		|| Control == StructuralPowerConstants::ControlUnconfigured)
-	{
-		Rco->Server_SetEndpointIds(TargetBuildable, NAME_None, NAME_None, false, true);
-	}
-	else if (FStructuralPowerRouter::IsPlayerChosenIdValid(Control))
-	{
-		Rco->Server_SetEndpointIds(TargetBuildable, NAME_None, Control, false, false);
-	}
-
-	RequestIdList();
+	FStructuralPowerIdApplyBridge::ApplyControlIndex(PC, TargetBuildable, OptionManager, Index);
 }
 
 void UStructuralPowerIdConfigWidget::ApplySuggestedIndex(int32 Index)
@@ -1399,141 +1194,22 @@ void UStructuralPowerIdConfigWidget::OnSuggestedControlComboChanged(
 	}
 }
 
-static FName ParseTypedId(const UEditableTextBox* TextBox)
-{
-	if (!IsValid(TextBox))
-	{
-		return NAME_None;
-	}
-
-	const FString Trimmed = TextBox->GetText().ToString().TrimStartAndEnd();
-	return Trimmed.IsEmpty() ? NAME_None : FName(*Trimmed);
-}
-
-static bool HasTypedEntry(const UEditableTextBox* TextBox)
-{
-	return IsValid(TextBox) && !TextBox->GetText().ToString().TrimStartAndEnd().IsEmpty();
-}
-
 void UStructuralPowerIdConfigWidget::ApplyTypedIdsToServer()
 {
 	if (!IsValid(TargetBuildable) || !IsValid(OptionManager))
 	{
-		UE_LOG(LogStructuralPower, Warning, TEXT("[PWR] Id panel apply — missing target or option manager"));
 		return;
 	}
 
 	AFGPlayerController* PC = GetOwningPlayer<AFGPlayerController>();
-	UStructuralPowerRCO* Rco = PC ? PC->GetRemoteCallObjectOfClass<UStructuralPowerRCO>() : nullptr;
-	if (!Rco)
-	{
-		UE_LOG(LogStructuralPower, Warning, TEXT("[PWR] Id panel apply — RCO missing"));
-		return;
-	}
-
-	const bool bDual = OptionManager->NeedsDualFields();
-	bool bTouchSource = HasTypedEntry(AssignSourceText);
-	bool bTouchControl = bDual && HasTypedEntry(AssignControlText);
-
-	if (!bTouchSource && IsValid(SuggestedSourceCombo))
-	{
-		const FName ComboSource = OptionManager->GetSourceIdFromIndex(
-			SuggestedSourceCombo->GetSelectedIndex());
-		if (FStructuralPowerRouter::IsPlayerChosenIdValid(ComboSource))
-		{
-			bTouchSource = true;
-		}
-	}
-
-	if (bDual && !bTouchControl && IsValid(SuggestedControlCombo))
-	{
-		const FName ComboControl = OptionManager->GetControlIdFromIndex(
-			SuggestedControlCombo->GetSelectedIndex());
-		if (FStructuralPowerRouter::IsPlayerChosenIdValid(ComboControl))
-		{
-			bTouchControl = true;
-		}
-	}
-
-	if (!bDual && !bTouchSource)
-	{
-		UE_LOG(LogStructuralPower, Warning, TEXT("[PWR] Id panel apply — no source id selected or typed"));
-		return;
-	}
-
-	if (bDual && !bTouchSource && !bTouchControl)
-	{
-		UE_LOG(LogStructuralPower, Warning, TEXT("[PWR] Id panel apply — no ids selected or typed"));
-		return;
-	}
-
-	bool bClearSource = false;
-	bool bClearControl = false;
-	FName SourceToSet = NAME_None;
-	FName ControlToSet = NAME_None;
-
-	if (bTouchSource)
-	{
-		const FName TypedSource = HasTypedEntry(AssignSourceText)
-			? ParseTypedId(AssignSourceText)
-			: OptionManager->GetSourceIdFromIndex(SuggestedSourceCombo->GetSelectedIndex());
-		if (TypedSource.IsNone())
-		{
-			bClearSource = true;
-		}
-		else if (FStructuralPowerRouter::IsPlayerChosenIdValid(TypedSource))
-		{
-			SourceToSet = TypedSource;
-		}
-		else
-		{
-			UE_LOG(LogStructuralPower, Warning,
-				TEXT("[PWR] Id panel apply — rejected source id '%s'"),
-				*TypedSource.ToString());
-			return;
-		}
-	}
-
-	if (bTouchControl)
-	{
-		const FName TypedControl = HasTypedEntry(AssignControlText)
-			? ParseTypedId(AssignControlText)
-			: OptionManager->GetControlIdFromIndex(SuggestedControlCombo->GetSelectedIndex());
-		if (TypedControl.IsNone())
-		{
-			bClearControl = true;
-		}
-		else if (FStructuralPowerRouter::IsPlayerChosenIdValid(TypedControl))
-		{
-			ControlToSet = TypedControl;
-		}
-		else
-		{
-			UE_LOG(LogStructuralPower, Warning,
-				TEXT("[PWR] Id panel apply — rejected control id '%s'"),
-				*TypedControl.ToString());
-			return;
-		}
-	}
-
-	Rco->Server_SetEndpointIds(
+	FStructuralPowerIdApplyBridge::ApplyTypedIds(
+		PC,
 		TargetBuildable,
-		SourceToSet,
-		ControlToSet,
-		bClearSource,
-		bClearControl);
-
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] Id panel apply target=%s src=%s ctl=%s clearSrc=%d clearCtl=%d touchSrc=%d touchCtl=%d"),
-		*TargetBuildable->GetName(),
-		bClearSource ? TEXT("(clear)") : *SourceToSet.ToString(),
-		bClearControl ? TEXT("(clear)") : *ControlToSet.ToString(),
-		bClearSource ? 1 : 0,
-		bClearControl ? 1 : 0,
-		bTouchSource ? 1 : 0,
-		bTouchControl ? 1 : 0);
-
-	RequestIdList();
+		OptionManager,
+		SuggestedSourceCombo,
+		SuggestedControlCombo,
+		AssignSourceText,
+		AssignControlText);
 }
 
 void UStructuralPowerIdConfigWidget::OnApplyTypedIdClicked()
@@ -1559,21 +1235,8 @@ void UStructuralPowerIdConfigWidget::OnResetIdClicked()
 	}
 
 	AFGPlayerController* PC = GetOwningPlayer<AFGPlayerController>();
-	UStructuralPowerRCO* Rco = PC ? PC->GetRemoteCallObjectOfClass<UStructuralPowerRCO>() : nullptr;
-	if (!Rco)
-	{
-		return;
-	}
-
 	const bool bDual = IsValid(OptionManager) && OptionManager->NeedsDualFields();
-	Rco->Server_SetEndpointIds(
-		TargetBuildable,
-		NAME_None,
-		NAME_None,
-		/*bClearSource=*/true,
-		/*bClearControl=*/bDual);
-
-	RequestIdList();
+	FStructuralPowerIdApplyBridge::ResetEndpointIds(PC, TargetBuildable, bDual);
 }
 
 void UStructuralPowerIdConfigWidget::RequestIdList()
@@ -1585,10 +1248,7 @@ void UStructuralPowerIdConfigWidget::RequestIdList()
 
 	if (AFGPlayerController* PC = GetOwningPlayer<AFGPlayerController>())
 	{
-		if (UStructuralPowerRCO* Rco = PC->GetRemoteCallObjectOfClass<UStructuralPowerRCO>())
-		{
-			Rco->Server_RequestComponentIdList(TargetBuildable);
-		}
+		FStructuralPowerIdApplyBridge::RequestComponentIdList(PC, TargetBuildable);
 	}
 }
 

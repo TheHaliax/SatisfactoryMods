@@ -11,7 +11,7 @@
 #include "Rules/FStructuralEligibilityRules.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerLog.h"
-#include "UI/UStructuralPowerIdConfigWidget.h"
+#include "UI/FStructuralPowerIdPresenterFactory.h"
 
 void UStructuralPowerRCO::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -98,16 +98,7 @@ void UStructuralPowerRCO::Server_RequestComponentIdList_Implementation(AFGBuilda
 void UStructuralPowerRCO::Client_ReceiveComponentIdList_Implementation(
 	const FStructuralComponentIdList& List)
 {
-	UStructuralPowerIdConfigWidget* Widget = UStructuralPowerIdConfigWidget::GetActiveWidget();
-	if (!IsValid(Widget))
-	{
-		Widget = UStructuralPowerIdConfigWidget::GetPooledWindow();
-	}
-
-	if (IsValid(Widget))
-	{
-		Widget->ApplyComponentIdList(List);
-	}
+	FStructuralPowerIdPresenterFactory::Get().ApplyComponentIdList(List);
 
 	UE_LOG(LogStructuralPower, Log,
 		TEXT("[PWR] RCO ComponentIdList target=%s sources=%d controls=%d switchCtl=%d lightGrp=%d resolvedSrc=%s resolvedCtl=%s"),

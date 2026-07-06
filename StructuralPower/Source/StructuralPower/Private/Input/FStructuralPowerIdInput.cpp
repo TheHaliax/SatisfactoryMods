@@ -11,8 +11,8 @@
 #include "Framework/Application/SlateApplication.h"
 #include "StructuralPowerLog.h"
 #include "UI/FGGameUI.h"
+#include "UI/FStructuralPowerIdPresenterFactory.h"
 #include "UI/FStructuralIdConfigTarget.h"
-#include "UI/UStructuralPowerIdConfigWidget.h"
 
 FDelegateHandle FStructuralPowerIdInput::InputInitHandle;
 TSharedPtr<IInputProcessor> FStructuralPowerIdInput::HotkeyInputProcessor;
@@ -53,13 +53,9 @@ public:
 			return false;
 		}
 
-		if (UStructuralPowerIdConfigWidget* Active =
-				UStructuralPowerIdConfigWidget::GetActiveWidget())
+		if (FStructuralPowerIdPresenterFactory::IsTextFieldFocused())
 		{
-			if (IsValid(Active) && Active->IsTextFieldFocused())
-			{
-				return false;
-			}
+			return false;
 		}
 
 		AFGPlayerController* PC = ResolveLocalPlayerController();
@@ -189,7 +185,7 @@ void FStructuralPowerIdInput::NotifyPanelClosed(AFGPlayerController* PlayerContr
 
 void FStructuralPowerIdInput::EnsureGameInputUnblocked(AFGPlayerController* PlayerController)
 {
-	UStructuralPowerIdConfigWidget::ForceReleaseAllModalState(PlayerController);
+	FStructuralPowerIdPresenterFactory::ForceReleaseModalState(PlayerController);
 }
 
 void FStructuralPowerIdInput::RecoverAfterVanillaUiClosed(AFGPlayerController* PlayerController)
@@ -199,12 +195,9 @@ void FStructuralPowerIdInput::RecoverAfterVanillaUiClosed(AFGPlayerController* P
 		return;
 	}
 
-	if (UStructuralPowerIdConfigWidget* Window = UStructuralPowerIdConfigWidget::GetPooledWindow())
+	if (FStructuralPowerIdPresenterFactory::IsAnyPanelVisible())
 	{
-		if (IsValid(Window) && Window->IsPanelVisible())
-		{
-			return;
-		}
+		return;
 	}
 
 	if (UFGGameUI* GameUI = PlayerController->GetGameUI())
@@ -215,7 +208,7 @@ void FStructuralPowerIdInput::RecoverAfterVanillaUiClosed(AFGPlayerController* P
 		}
 	}
 
-	UStructuralPowerIdConfigWidget::ForceReleaseAllModalState(PlayerController);
+	FStructuralPowerIdPresenterFactory::ForceReleaseModalState(PlayerController);
 	EnsureInputReady(PlayerController);
 
 	UE_LOG(LogStructuralPower, Log, TEXT("[PWR] Id panel input recovered after vanilla UI"));
@@ -238,32 +231,28 @@ void FStructuralPowerIdInput::OpenIdPanelForController(AFGPlayerController* Play
 		return;
 	}
 
-	UStructuralPowerIdConfigWidget* Window =
-		UStructuralPowerIdConfigWidget::GetOrCreateWindow(PlayerController);
-	if (!IsValid(Window))
-	{
-		UE_LOG(LogStructuralPower, Warning, TEXT("[PWR] Id panel — failed to create window"));
-		return;
-	}
+	IStructuralPowerIdPresenter& Presenter = FStructuralPowerIdPresenterFactory::Get();
+	FStructuralPowerIdPresenterFactory::PrepareWindowForController(PlayerController);
+	FStructuralPowerIdPresenterFactory::NormalizeModalState();
 
-	Window->NormalizeModalState();
-
-	if (Window->IsPanelVisible())
+	if (FStructuralPowerIdPresenterFactory::IsAnyPanelVisible())
 	{
-		if (IsValid(Target) && Window->GetTargetBuildable() != Target)
+		AFGBuildable* CurrentTarget = FStructuralPowerIdPresenterFactory::GetOpenTarget();
+		if (IsValid(Target) && CurrentTarget != Target)
 		{
-			Window->RetargetTo(Target);
+			Presenter.RetargetTo(Target);
 			UE_LOG(LogStructuralPower, Log,
 				TEXT("[PWR] Id panel retargeted via I key target=%s"),
 				*Target->GetName());
 		}
 		else
 		{
-			Window->ClosePanel();
+			Presenter.Close();
 			UE_LOG(LogStructuralPower, Log, TEXT("[PWR] Id panel toggled closed"));
 		}
+
 		return;
 	}
 
-	Window->OpenForTarget(Target);
+	Presenter.OpenForTarget(Target);
 }
