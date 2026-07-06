@@ -5,6 +5,8 @@
 
 #include "CoreMinimal.h"
 
+#include "Core/EAttachContext.h"
+
 class AFGBuildableLightSource;
 class AStructuralPowerGraphSubsystem;
 
@@ -16,7 +18,10 @@ public:
 		AFGBuildableLightSource* Light,
 		bool bLocalPromoteOnly = false);
 
-	static void RestitchOnRoot(AStructuralPowerGraphSubsystem& Graph, int32 Root);
+	static void RestitchOnRoot(
+		AStructuralPowerGraphSubsystem& Graph,
+		int32 Root,
+		EAttachContext AttachContext);
 
 	static void TearDown(AStructuralPowerGraphSubsystem& Graph, AFGBuildableLightSource* Light);
 };

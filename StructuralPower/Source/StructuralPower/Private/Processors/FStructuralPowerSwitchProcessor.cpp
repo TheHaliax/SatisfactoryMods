@@ -10,6 +10,7 @@
 #include "Circuit/FStructuralCircuitPromotionScope.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
+#include "Core/EAttachContext.h"
 #include "Config/FStructuralPowerModConfig.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "FGCircuitConnectionComponent.h"
@@ -119,7 +120,7 @@ int32 FStructuralPowerSwitchProcessor::ResolveMountRoot(
 		return Root;
 	}
 
-	if (Graph.bBulkLoadDrainActive)
+	if (IsBulkLoadAttachContext(Graph.GetCurrentAttachContext()))
 	{
 		return INDEX_NONE;
 	}
@@ -340,14 +341,14 @@ void FStructuralPowerSwitchProcessor::ApplyRuntimeAttach(
 	UFGStructuralPowerConnectionComponent* OutletBus,
 	int32 Root,
 	const FStructuralNodeId& SwitchId,
-	bool bBulkLoad)
+	EAttachContext AttachContext)
 {
 	if (!IsValid(Switch) || !IsValid(OutletBus))
 	{
 		return;
 	}
 
-	if (bBulkLoad)
+	if (IsBulkLoadAttachContext(AttachContext))
 	{
 		Graph.LinkBusToVisibleConnections(Switch, OutletBus);
 		if (Root != INDEX_NONE)
@@ -388,7 +389,7 @@ void FStructuralPowerSwitchProcessor::RegisterOutletBase(
 	Graph.RegisterBuildableActor(Switch);
 	if (OutParentId.IsValid() && OutRoot != INDEX_NONE)
 	{
-		if (Graph.bBulkLoadDrainActive)
+		if (IsBulkLoadAttachContext(Graph.GetCurrentAttachContext()))
 		{
 			Graph.AddEndpointToRootIndex(OutRoot, EStructuralEndpointKind::Switch, Graph.MakeNodeId(Switch));
 		}
@@ -684,7 +685,10 @@ void FStructuralPowerSwitchProcessor::PropagateWiredFeedChange(
 		return;
 	}
 
-	Graph.ReEnergizeComponentRoots(AffectedRoots, /*bTearDownFirst=*/false);
+	Graph.ReEnergizeComponentRoots(
+		AffectedRoots,
+		/*bTearDownFirst=*/false,
+		EAttachContext::WireDelta);
 
 	for (int32 AffectedRoot : AffectedRoots)
 	{
@@ -713,7 +717,7 @@ void FStructuralPowerSwitchProcessor::OnStateChanged(
 		return;
 	}
 
-	if (Graph.bBulkLoadDrainActive)
+	if (IsBulkLoadAttachContext(Graph.GetCurrentAttachContext()))
 	{
 		return;
 	}
@@ -784,7 +788,7 @@ void FStructuralPowerSwitchProcessor::OnStateChanged(
 					OutletBus,
 					Root,
 					SwitchId,
-					/*bBulkLoad=*/false);
+					EAttachContext::Toggle);
 				if (Root != INDEX_NONE
 					&& bKeyedSubnet
 					&& FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
@@ -805,7 +809,7 @@ void FStructuralPowerSwitchProcessor::OnStateChanged(
 		if (Root != INDEX_NONE
 			&& FStructuralPowerModConfig::IsGroupLightingEnabled())
 		{
-			FStructuralPowerPanelProcessor::RestitchOnRoot(Graph, Root);
+			FStructuralPowerPanelProcessor::RestitchOnRoot(Graph, Root, EAttachContext::Toggle);
 		}
 
 		if (Root != INDEX_NONE
@@ -831,7 +835,7 @@ void FStructuralPowerSwitchProcessor::Process(
 		return;
 	}
 
-	const bool bBulk = Graph.bBulkLoadDrainActive;
+	const EAttachContext AttachContext = Graph.GetCurrentAttachContext();
 	const FStructuralOutletParentResolveParams ParentParams = Graph.MakeOutletParentResolveParams();
 	const FStructuralSwitchParentResolveResult ParentResolve =
 		FStructuralSwitchParentResolver::Resolve(
@@ -887,15 +891,14 @@ void FStructuralPowerSwitchProcessor::Process(
 
 	const bool bKeyedSubnet = HasAssignedControl(Graph, Switch);
 	const bool bWiredBridge = FStructuralSwitchParentResolver::IsWiredToStructureSide(Switch);
-	ApplyRuntimeAttach(Graph, Switch, OutletBus, Root, SwitchId, bBulk);
+	ApplyRuntimeAttach(Graph, Switch, OutletBus, Root, SwitchId, AttachContext);
 
 	LogSwitchOutlet(
 		OutletBus,
 		FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0,
-		bBulk ? TEXT("bulk")
-			: (bKeyedSubnet ? TEXT("keyed") : (bWiredBridge ? TEXT("wired") : TEXT("base"))));
+		AttachContextToString(AttachContext));
 
-	if (bBulk)
+	if (IsBulkLoadAttachContext(AttachContext))
 	{
 		return;
 	}

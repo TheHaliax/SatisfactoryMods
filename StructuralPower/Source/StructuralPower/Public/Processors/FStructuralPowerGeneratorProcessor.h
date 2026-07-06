@@ -4,30 +4,26 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
 #include "Core/EAttachContext.h"
 
-class AFGBuildableLightsControlPanel;
+class AFGBuildableGenerator;
 class AStructuralPowerGraphSubsystem;
 
-class STRUCTURALPOWER_API FStructuralPowerPanelProcessor
+/** M7 structural generator hosts — no-op until router flag enabled. */
+class STRUCTURALPOWER_API FStructuralPowerGeneratorProcessor
 {
 public:
 	static void Process(
 		AStructuralPowerGraphSubsystem& Graph,
-		AFGBuildableLightsControlPanel* Panel,
-		bool bLocalPromoteOnly = false);
+		AFGBuildableGenerator* Generator,
+		EAttachContext AttachContext);
 
 	static void RestitchOnRoot(
 		AStructuralPowerGraphSubsystem& Graph,
 		int32 Root,
 		EAttachContext AttachContext);
 
-	static void RestitchWithControlOnRoot(
+	static void TearDown(
 		AStructuralPowerGraphSubsystem& Graph,
-		int32 Root,
-		FName ControlId,
-		EAttachContext AttachContext);
-
-	static void TearDown(AStructuralPowerGraphSubsystem& Graph, AFGBuildableLightsControlPanel* Panel);
+		AFGBuildableGenerator* Generator);
 };

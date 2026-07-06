@@ -10,6 +10,7 @@
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "FGCircuitConnectionComponent.h"
 #include "FGPowerConnectionComponent.h"
+#include "Core/EAttachContext.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
 #include "Routing/EStructuralChannel.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
@@ -41,6 +42,7 @@ void FStructuralPowerLightProcessor::Process(
 	}
 
 	const FStructuralChannelKey ChannelKey = Graph.ResolveChannelKeyForBuildable(Light);
+	const EAttachContext AttachContext = Graph.GetCurrentAttachContext();
 	const FStructuralWallAnchor ParentAnchor = Graph.ResolveOutletAnchor(Light);
 	FStructuralNodeId ParentId;
 	const int32 Root = Graph.ResolveEndpointComponentRoot(Light, ParentAnchor, ParentId);
@@ -53,7 +55,7 @@ void FStructuralPowerLightProcessor::Process(
 	Graph.RegisterBuildableActor(Light);
 	if (Root != INDEX_NONE)
 	{
-		if (Graph.bBulkLoadDrainActive)
+		if (IsBulkLoadAttachContext(AttachContext))
 		{
 			Graph.AddEndpointToRootIndex(Root, EStructuralEndpointKind::Light, LightId);
 		}
@@ -133,7 +135,7 @@ void FStructuralPowerLightProcessor::Process(
 	}
 	if (bAttached)
 	{
-		if (bLocalPromoteOnly || Graph.bBulkLoadDrainActive)
+		if (bLocalPromoteOnly || IsBulkLoadAttachContext(AttachContext))
 		{
 			Graph.PromoteDirectHiddenLinks(Plug);
 		}
@@ -145,7 +147,11 @@ void FStructuralPowerLightProcessor::Process(
 
 	if (Root != INDEX_NONE && !ChannelKey.Source.IsNone())
 	{
-		FStructuralPowerPanelProcessor::RestitchWithControlOnRoot(Graph, Root, ChannelKey.Source);
+		FStructuralPowerPanelProcessor::RestitchWithControlOnRoot(
+			Graph,
+			Root,
+			ChannelKey.Source,
+			AttachContext);
 	}
 
 	if (bPanelFed && IsValid(Plug))
@@ -166,7 +172,7 @@ void FStructuralPowerLightProcessor::Process(
 			FStructuralCircuitPromotionUtil::ComponentCarriesPower(Plug) ? Plug : nullptr;
 		if (Seed)
 		{
-			if (bLocalPromoteOnly || Graph.bBulkLoadDrainActive)
+			if (bLocalPromoteOnly || IsBulkLoadAttachContext(AttachContext))
 			{
 				Graph.PromoteDirectHiddenLinks(Seed);
 			}
@@ -187,7 +193,8 @@ void FStructuralPowerLightProcessor::Process(
 
 void FStructuralPowerLightProcessor::RestitchOnRoot(
 	AStructuralPowerGraphSubsystem& Graph,
-	int32 Root)
+	int32 Root,
+	EAttachContext /*AttachContext*/)
 {
 	if (Root == INDEX_NONE || !FStructuralPowerModConfig::IsGroupLightingEnabled())
 	{

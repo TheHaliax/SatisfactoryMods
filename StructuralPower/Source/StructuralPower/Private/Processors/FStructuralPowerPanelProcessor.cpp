@@ -3,6 +3,7 @@
 
 #include "Processors/FStructuralPowerPanelProcessor.h"
 
+#include "Core/EAttachContext.h"
 #include "Attach/FStructuralPanelAttach.h"
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
@@ -54,6 +55,7 @@ void FStructuralPowerPanelProcessor::Process(
 	}
 
 	const FStructuralChannelKey ChannelKey = Graph.ResolveChannelKeyForBuildable(Panel);
+	const EAttachContext AttachContext = Graph.GetCurrentAttachContext();
 	const FStructuralWallAnchor ParentAnchor = Graph.ResolveOutletAnchor(Panel);
 	FStructuralNodeId ParentId;
 	const int32 Root = Graph.ResolveEndpointComponentRoot(Panel, ParentAnchor, ParentId);
@@ -71,7 +73,7 @@ void FStructuralPowerPanelProcessor::Process(
 	Graph.EnsurePanelListener(Panel);
 	if (Root != INDEX_NONE)
 	{
-		if (Graph.bBulkLoadDrainActive)
+		if (IsBulkLoadAttachContext(AttachContext))
 		{
 			Graph.AddEndpointToRootIndex(Root, EStructuralEndpointKind::Panel, PanelId);
 		}
@@ -235,7 +237,8 @@ void FStructuralPowerPanelProcessor::Process(
 
 void FStructuralPowerPanelProcessor::RestitchOnRoot(
 	AStructuralPowerGraphSubsystem& Graph,
-	int32 Root)
+	int32 Root,
+	EAttachContext /*AttachContext*/)
 {
 	if (Root == INDEX_NONE || !FStructuralPowerModConfig::IsGroupLightingEnabled())
 	{
@@ -274,7 +277,8 @@ void FStructuralPowerPanelProcessor::RestitchOnRoot(
 void FStructuralPowerPanelProcessor::RestitchWithControlOnRoot(
 	AStructuralPowerGraphSubsystem& Graph,
 	int32 Root,
-	FName ControlId)
+	FName ControlId,
+	EAttachContext /*AttachContext*/)
 {
 	if (Root == INDEX_NONE
 		|| !FStructuralPowerModConfig::IsGroupLightingEnabled()

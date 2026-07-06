@@ -4,6 +4,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Core/EAttachContext.h"
 #include "Core/FStructuralNodeId.h"
 #include "FGSaveInterface.h"
 #include "GameFramework/Info.h"
@@ -24,6 +25,7 @@
 
 class AFGBuildable;
 class AFGBuildableCircuitSwitch;
+class AFGBuildableGenerator;
 class AFGBuildableLightSource;
 class AFGBuildableLightsControlPanel;
 class AFGBuildablePowerPole;
@@ -31,6 +33,7 @@ class UFGCircuitConnectionComponent;
 class UFGPowerConnectionComponent;
 class UFGStructuralPowerConnectionComponent;
 class UWorld;
+class FStructuralPowerGeneratorProcessor;
 class FStructuralPowerLightProcessor;
 class FStructuralPowerPanelProcessor;
 class FStructuralPowerSwitchProcessor;
@@ -137,6 +140,8 @@ public:
 	/** While true, post-load drain uses cheap pole attach — no RestitchComponent. */
 	bool IsBulkLoadDrainActive() const { return bBulkLoadDrainActive; }
 
+	EAttachContext GetCurrentAttachContext() const;
+
 	void EnumerateTrackedLightsOnRoot(
 		int32 Root,
 		TFunctionRef<void(AFGBuildableLightSource*)> Visitor);
@@ -161,6 +166,7 @@ public:
 	virtual bool NeedTransform_Implementation() override { return false; }
 	virtual bool ShouldSave_Implementation() const override { return true; }
 
+	friend class FStructuralPowerGeneratorProcessor;
 	friend class FStructuralPowerLightProcessor;
 	friend class FStructuralPowerPanelProcessor;
 	friend class FStructuralPowerSwitchProcessor;
@@ -171,10 +177,11 @@ private:
 	void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
 	void ProcessOutlet(AFGBuildable* Buildable);
 	void ProcessPoleEndpoint(AFGBuildablePowerPole* Pole);
+	void ProcessGeneratorEndpoint(AFGBuildableGenerator* Generator);
 	void ProcessLightEndpoint(AFGBuildableLightSource* Light, bool bLocalPromoteOnly = false);
 	void ProcessPanelEndpoint(AFGBuildableLightsControlPanel* Panel, bool bLocalPromoteOnly = false);
-	void RestitchLightEndpointsForRoot(int32 Root);
-	void RestitchPanelEndpointsForRoot(int32 Root);
+	void RestitchLightEndpointsForRoot(int32 Root, EAttachContext AttachContext);
+	void RestitchPanelEndpointsForRoot(int32 Root, EAttachContext AttachContext);
 	void RestitchPanelsWithControlOnRoot(int32 Root, FName ControlId);
 	void TearDownLightStructuralLinks(AFGBuildableLightSource* Light);
 	void TearDownPanelStructuralLinks(AFGBuildableLightsControlPanel* Panel);
@@ -244,8 +251,11 @@ private:
 		AFGBuildable* Host,
 		UFGStructuralPowerConnectionComponent* Bus);
 	bool HasBridgeBusPeerMesh(UFGStructuralPowerConnectionComponent* Bus) const;
-	void RestitchComponent(int32 Root, bool bTearDownFirst);
-	void ReEnergizeComponentRoots(const TArray<int32>& Roots, bool bTearDownFirst);
+	void RestitchComponent(int32 Root, bool bTearDownFirst, EAttachContext AttachContext);
+	void ReEnergizeComponentRoots(
+		const TArray<int32>& Roots,
+		bool bTearDownFirst,
+		EAttachContext AttachContext);
 	bool EnsureParentRegisteredInGraph(
 		const FStructuralWallAnchor& Anchor,
 		FStructuralNodeId& OutParentId);

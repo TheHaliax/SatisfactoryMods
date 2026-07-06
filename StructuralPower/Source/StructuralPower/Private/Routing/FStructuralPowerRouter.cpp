@@ -11,6 +11,34 @@ bool FStructuralPowerRouter::UsesSourceControlModel(EStructuralChannel Tag)
 	return Tag == EStructuralChannel::Light || Tag == EStructuralChannel::Switch;
 }
 
+bool FStructuralPowerRouter::IsStructuralGeneratorRoutingEnabled()
+{
+	return false;
+}
+
+bool FStructuralPowerRouter::IsGeneratorChannel(const EStructuralChannel Tag)
+{
+	return Tag == EStructuralChannel::Generator;
+}
+
+bool FStructuralPowerRouter::UsesLegacyEffectiveIdModel(const EStructuralChannel Tag)
+{
+	if (Tag == EStructuralChannel::Structure || UsesSourceControlModel(Tag))
+	{
+		return false;
+	}
+
+	if (IsGeneratorChannel(Tag))
+	{
+		return IsStructuralGeneratorRoutingEnabled();
+	}
+
+	return Tag == EStructuralChannel::Extractor
+		|| Tag == EStructuralChannel::Manufacturer
+		|| Tag == EStructuralChannel::Transport
+		|| Tag == EStructuralChannel::Misc;
+}
+
 bool FStructuralPowerRouter::IsReservedSentinel(FName Id)
 {
 	return Id == StructuralPowerConstants::ControlBypass
@@ -41,6 +69,11 @@ bool FStructuralPowerRouter::ShouldRouteChannelLink(
 	if (UsesSourceControlModel(A.Tag))
 	{
 		return !A.Source.IsNone() && A.Source == B.Source;
+	}
+
+	if (UsesLegacyEffectiveIdModel(A.Tag))
+	{
+		return !A.EffectiveId.IsNone() && A.EffectiveId == B.EffectiveId;
 	}
 
 	return !A.EffectiveId.IsNone() && A.EffectiveId == B.EffectiveId;

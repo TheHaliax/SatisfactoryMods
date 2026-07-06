@@ -4,6 +4,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Core/EAttachContext.h"
 #include "Core/FStructuralNodeId.h"
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Lightweight/FStructuralLightweightTypes.h"
@@ -77,7 +78,7 @@ private:
 		UFGStructuralPowerConnectionComponent* OutletBus,
 		int32 Root,
 		const FStructuralNodeId& SwitchId,
-		bool bBulkLoad);
+		EAttachContext AttachContext);
 
 	static void ApplyAdvancedAttach(
 		AStructuralPowerGraphSubsystem& Graph,

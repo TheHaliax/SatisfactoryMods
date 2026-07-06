@@ -5,7 +5,9 @@
 
 #include "Attach/FStructuralDeviceAttach.h"
 #include "Attach/FStructuralPanelAttach.h"
+#include "Core/EAttachContext.h"
 #include "Buildables/FGBuildable.h"
+#include "Buildables/FGBuildableGenerator.h"
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Buildables/FGBuildableCircuitBridge.h"
@@ -38,6 +40,7 @@
 #include "Network/UStructuralPowerPanelListener.h"
 #include "Panel/FStructuralPanelControlledSync.h"
 #include "Panel/FStructuralPanelPortResolver.h"
+#include "Processors/FStructuralPowerGeneratorProcessor.h"
 #include "Processors/FStructuralPowerLightProcessor.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
 #include "Processors/FStructuralPowerSwitchProcessor.h"
@@ -1099,6 +1102,11 @@ int32 AStructuralPowerGraphSubsystem::ResolvePoleComponentRoot(
 	FStructuralNodeId& OutParentId)
 {
 	return ResolveBridgeComponentRootBulk(Pole, Anchor, OutParentId);
+}
+
+EAttachContext AStructuralPowerGraphSubsystem::GetCurrentAttachContext() const
+{
+	return AttachContextFromBulkDrain(bBulkLoadDrainActive);
 }
 
 void AStructuralPowerGraphSubsystem::FinishBulkLoadDrain()
@@ -2566,7 +2574,10 @@ void AStructuralPowerGraphSubsystem::EnsurePanelListener(AFGBuildableLightsContr
 	Listener->BindSubsystem(this, Panel);
 }
 
-void AStructuralPowerGraphSubsystem::RestitchComponent(int32 Root, bool bTearDownFirst)
+void AStructuralPowerGraphSubsystem::RestitchComponent(
+	int32 Root,
+	bool bTearDownFirst,
+	EAttachContext /*AttachContext*/)
 {
 	if (Root == INDEX_NONE)
 	{
@@ -2618,7 +2629,10 @@ void AStructuralPowerGraphSubsystem::RestitchComponent(int32 Root, bool bTearDow
 		});
 }
 
-void AStructuralPowerGraphSubsystem::ReEnergizeComponentRoots(const TArray<int32>& Roots, bool bTearDownFirst)
+void AStructuralPowerGraphSubsystem::ReEnergizeComponentRoots(
+	const TArray<int32>& Roots,
+	bool bTearDownFirst,
+	EAttachContext AttachContext)
 {
 	TSet<int32> Done;
 	for (int32 Root : Roots)
@@ -2628,9 +2642,13 @@ void AStructuralPowerGraphSubsystem::ReEnergizeComponentRoots(const TArray<int32
 			continue;
 		}
 		Done.Add(Root);
-		RestitchComponent(Root, bTearDownFirst);
-		RestitchLightEndpointsForRoot(Root);
-		RestitchPanelEndpointsForRoot(Root);
+		RestitchComponent(Root, bTearDownFirst, AttachContext);
+		RestitchLightEndpointsForRoot(Root, AttachContext);
+		RestitchPanelEndpointsForRoot(Root, AttachContext);
+		if (FStructuralPowerRouter::IsStructuralGeneratorRoutingEnabled())
+		{
+			FStructuralPowerGeneratorProcessor::RestitchOnRoot(*this, Root, AttachContext);
+		}
 	}
 }
 
@@ -2657,7 +2675,7 @@ void AStructuralPowerGraphSubsystem::ProcessStructure(AFGBuildable* Buildable)
 		const int32 Root = StructureGraph.FindRoot(MakeNodeId(Buildable));
 		TArray<int32> Roots;
 		Roots.Add(Root);
-		ReEnergizeComponentRoots(Roots, /*bTearDownFirst=*/false);
+		ReEnergizeComponentRoots(Roots, /*bTearDownFirst=*/false, EAttachContext::RuntimePlace);
 
 		UE_LOG(LogStructuralPower, Verbose,
 			TEXT("[PWR] structure %s fused %d component(s) -> root %d"),
@@ -2693,7 +2711,7 @@ void AStructuralPowerGraphSubsystem::ProcessLightweightStructure(const FStructur
 		const int32 Root = StructureGraph.FindRoot(FStructuralLightweightIndex::MakeNodeId(Key));
 		TArray<int32> Roots;
 		Roots.Add(Root);
-		ReEnergizeComponentRoots(Roots, /*bTearDownFirst=*/false);
+		ReEnergizeComponentRoots(Roots, /*bTearDownFirst=*/false, EAttachContext::RuntimePlace);
 	}
 }
 
@@ -2720,6 +2738,12 @@ void AStructuralPowerGraphSubsystem::ProcessOutlet(AFGBuildable* Buildable)
 	if (FStructuralEligibilityRules::IsStructuralLightConsumer(Buildable))
 	{
 		ProcessLightEndpoint(Cast<AFGBuildableLightSource>(Buildable));
+		return;
+	}
+
+	if (AFGBuildableGenerator* Generator = Cast<AFGBuildableGenerator>(Buildable))
+	{
+		ProcessGeneratorEndpoint(Generator);
 		return;
 	}
 
@@ -2906,19 +2930,32 @@ void AStructuralPowerGraphSubsystem::ProcessPanelEndpoint(
 	FStructuralPowerPanelProcessor::Process(*this, Panel, bLocalPromoteOnly);
 }
 
-void AStructuralPowerGraphSubsystem::RestitchPanelEndpointsForRoot(int32 Root)
+void AStructuralPowerGraphSubsystem::RestitchPanelEndpointsForRoot(
+	int32 Root,
+	EAttachContext AttachContext)
 {
-	FStructuralPowerPanelProcessor::RestitchOnRoot(*this, Root);
+	FStructuralPowerPanelProcessor::RestitchOnRoot(*this, Root, AttachContext);
 }
 
 void AStructuralPowerGraphSubsystem::RestitchPanelsWithControlOnRoot(int32 Root, FName ControlId)
 {
-	FStructuralPowerPanelProcessor::RestitchWithControlOnRoot(*this, Root, ControlId);
+	FStructuralPowerPanelProcessor::RestitchWithControlOnRoot(
+		*this,
+		Root,
+		ControlId,
+		GetCurrentAttachContext());
 }
 
-void AStructuralPowerGraphSubsystem::RestitchLightEndpointsForRoot(int32 Root)
+void AStructuralPowerGraphSubsystem::RestitchLightEndpointsForRoot(
+	int32 Root,
+	EAttachContext AttachContext)
 {
-	FStructuralPowerLightProcessor::RestitchOnRoot(*this, Root);
+	FStructuralPowerLightProcessor::RestitchOnRoot(*this, Root, AttachContext);
+}
+
+void AStructuralPowerGraphSubsystem::ProcessGeneratorEndpoint(AFGBuildableGenerator* Generator)
+{
+	FStructuralPowerGeneratorProcessor::Process(*this, Generator, GetCurrentAttachContext());
 }
 
 void AStructuralPowerGraphSubsystem::EnumerateTrackedLightsOnRoot(
@@ -3073,14 +3110,14 @@ void AStructuralPowerGraphSubsystem::OnBuildableRemoved(AFGBuildable* Buildable)
 		{
 			TArray<int32> Roots;
 			Roots.Add(OldRoot);
-			ReEnergizeComponentRoots(Roots, /*bTearDownFirst=*/true);
+			ReEnergizeComponentRoots(Roots, /*bTearDownFirst=*/true, EAttachContext::WireDelta);
 		}
 	}
 	else if (StructureGraph.IsTracked(NodeId))
 	{
 		TArray<int32> AffectedRoots;
 		StructureGraph.RemoveNode(NodeId, AffectedRoots);
-		ReEnergizeComponentRoots(AffectedRoots, /*bTearDownFirst=*/true);
+		ReEnergizeComponentRoots(AffectedRoots, /*bTearDownFirst=*/true, EAttachContext::WireDelta);
 	}
 
 	PlacementQueue.RemoveBuildable(Buildable);
@@ -3098,7 +3135,7 @@ void AStructuralPowerGraphSubsystem::OnLightweightRemoved(const FStructuralLight
 	{
 		TArray<int32> AffectedRoots;
 		StructureGraph.RemoveNode(NodeId, AffectedRoots);
-		ReEnergizeComponentRoots(AffectedRoots, /*bTearDownFirst=*/true);
+		ReEnergizeComponentRoots(AffectedRoots, /*bTearDownFirst=*/true, EAttachContext::WireDelta);
 	}
 
 	LightweightIndex.UnregisterMember(Key);
