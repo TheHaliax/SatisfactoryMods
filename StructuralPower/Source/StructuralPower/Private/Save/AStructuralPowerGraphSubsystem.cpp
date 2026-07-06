@@ -1109,6 +1109,21 @@ EAttachContext AStructuralPowerGraphSubsystem::GetCurrentAttachContext() const
 	return AttachContextFromBulkDrain(bBulkLoadDrainActive);
 }
 
+FStructuralPowerContext AStructuralPowerGraphSubsystem::MakeProcessorContext(
+	const EAttachContext AttachContext,
+	const int32 SiteRoot) const
+{
+	return FStructuralPowerContext(
+		const_cast<AStructuralPowerGraphSubsystem&>(*this),
+		AttachContext,
+		SiteRoot);
+}
+
+FStructuralPowerContext AStructuralPowerGraphSubsystem::GetProcessorContext() const
+{
+	return MakeProcessorContext(GetCurrentAttachContext());
+}
+
 void AStructuralPowerGraphSubsystem::FinishBulkLoadDrain()
 {
 	if (!bBulkLoadDrainActive)
@@ -1160,7 +1175,8 @@ void AStructuralPowerGraphSubsystem::FinishBulkLoadDrain()
 			}
 
 			const FName SwitchControl = ResolveControl(Switch, EStructuralChannel::Switch);
-			FStructuralPowerSwitchProcessor::RestitchKeyedConsumersOnRoot(*this, Root, SwitchControl);
+			FStructuralPowerContext Ctx = MakeProcessorContext(EAttachContext::BulkLoad, Root);
+			FStructuralPowerSwitchProcessor::RestitchKeyedConsumersOnRoot(Ctx, Root, SwitchControl);
 		}
 	}
 
@@ -1455,9 +1471,10 @@ void AStructuralPowerGraphSubsystem::SetEndpointIds(
 	else if (bIsSwitch && bManualSwitchGroups)
 	{
 		AFGBuildableCircuitSwitch* Switch = Cast<AFGBuildableCircuitSwitch>(Buildable);
-		FStructuralPowerSwitchProcessor::Process(*this, Switch);
+		FStructuralPowerContext Ctx = MakeProcessorContext(EAttachContext::RuntimePlace, Root);
+		FStructuralPowerSwitchProcessor::Process(Ctx, Switch);
 		const FName SwitchControl = ResolveControl(Switch, EStructuralChannel::Switch);
-		FStructuralPowerSwitchProcessor::RestitchKeyedConsumersOnRoot(*this, Root, SwitchControl);
+		FStructuralPowerSwitchProcessor::RestitchKeyedConsumersOnRoot(Ctx, Root, SwitchControl);
 	}
 }
 
@@ -2547,7 +2564,8 @@ bool AStructuralPowerGraphSubsystem::ShouldMeshEndpoints(
 
 void AStructuralPowerGraphSubsystem::OnSwitchStateChanged(AFGBuildableCircuitSwitch* Switch)
 {
-	FStructuralPowerSwitchProcessor::OnStateChanged(*this, Switch);
+	FStructuralPowerContext Ctx = MakeProcessorContext(EAttachContext::Toggle);
+	FStructuralPowerSwitchProcessor::OnStateChanged(Ctx, Switch);
 }
 
 void AStructuralPowerGraphSubsystem::EnsurePanelListener(AFGBuildableLightsControlPanel* Panel)
@@ -2579,14 +2597,15 @@ void AStructuralPowerGraphSubsystem::EnsurePanelListener(AFGBuildableLightsContr
 void AStructuralPowerGraphSubsystem::RestitchComponent(
 	int32 Root,
 	bool bTearDownFirst,
-	EAttachContext /*AttachContext*/)
+	EAttachContext AttachContext)
 {
 	if (Root == INDEX_NONE)
 	{
 		return;
 	}
 
-	FStructuralPowerSwitchProcessor::StripInactiveLinksOnRoot(*this, Root);
+	FStructuralPowerContext Ctx = MakeProcessorContext(AttachContext, Root);
+	FStructuralPowerSwitchProcessor::StripInactiveLinksOnRoot(Ctx, Root);
 	RefreshBridgeEndpointRootIndex();
 
 	FStructuralSiteBusMesh::Remesh(
@@ -2649,7 +2668,8 @@ void AStructuralPowerGraphSubsystem::ReEnergizeComponentRoots(
 		RestitchPanelEndpointsForRoot(Root, AttachContext);
 		if (FStructuralPowerRouter::IsStructuralGeneratorRoutingEnabled())
 		{
-			FStructuralPowerGeneratorProcessor::RestitchOnRoot(*this, Root, AttachContext);
+			FStructuralPowerContext Ctx = MakeProcessorContext(AttachContext, Root);
+			FStructuralPowerGeneratorProcessor::RestitchOnRoot(Ctx, Root);
 		}
 	}
 }
@@ -2763,7 +2783,8 @@ void AStructuralPowerGraphSubsystem::ProcessOutlet(AFGBuildable* Buildable)
 	if (FStructuralPowerModConfig::IsGatePowerSwitchesEnabled()
 		&& FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable))
 	{
-		FStructuralPowerSwitchProcessor::Process(*this, Cast<AFGBuildableCircuitSwitch>(Buildable));
+		FStructuralPowerContext Ctx = GetProcessorContext();
+		FStructuralPowerSwitchProcessor::Process(Ctx, Cast<AFGBuildableCircuitSwitch>(Buildable));
 		return;
 	}
 
@@ -2909,55 +2930,59 @@ void AStructuralPowerGraphSubsystem::ProcessPoleEndpoint(AFGBuildablePowerPole* 
 
 void AStructuralPowerGraphSubsystem::TearDownLightStructuralLinks(AFGBuildableLightSource* Light)
 {
-	FStructuralPowerLightProcessor::TearDown(*this, Light);
+	FStructuralPowerContext Ctx = GetProcessorContext();
+	FStructuralPowerLightProcessor::TearDown(Ctx, Light);
 }
 
 void AStructuralPowerGraphSubsystem::ProcessLightEndpoint(
 	AFGBuildableLightSource* Light,
 	bool bLocalPromoteOnly)
 {
-	FStructuralPowerLightProcessor::Process(*this, Light, bLocalPromoteOnly);
+	FStructuralPowerContext Ctx = GetProcessorContext();
+	FStructuralPowerLightProcessor::Process(Ctx, Light, bLocalPromoteOnly);
 }
 
 void AStructuralPowerGraphSubsystem::TearDownPanelStructuralLinks(
 	AFGBuildableLightsControlPanel* Panel)
 {
-	FStructuralPowerPanelProcessor::TearDown(*this, Panel);
+	FStructuralPowerContext Ctx = GetProcessorContext();
+	FStructuralPowerPanelProcessor::TearDown(Ctx, Panel);
 }
 
 void AStructuralPowerGraphSubsystem::ProcessPanelEndpoint(
 	AFGBuildableLightsControlPanel* Panel,
 	bool bLocalPromoteOnly)
 {
-	FStructuralPowerPanelProcessor::Process(*this, Panel, bLocalPromoteOnly);
+	FStructuralPowerContext Ctx = GetProcessorContext();
+	FStructuralPowerPanelProcessor::Process(Ctx, Panel, bLocalPromoteOnly);
 }
 
 void AStructuralPowerGraphSubsystem::RestitchPanelEndpointsForRoot(
 	int32 Root,
 	EAttachContext AttachContext)
 {
-	FStructuralPowerPanelProcessor::RestitchOnRoot(*this, Root, AttachContext);
+	FStructuralPowerContext Ctx = MakeProcessorContext(AttachContext, Root);
+	FStructuralPowerPanelProcessor::RestitchOnRoot(Ctx, Root);
 }
 
 void AStructuralPowerGraphSubsystem::RestitchPanelsWithControlOnRoot(int32 Root, FName ControlId)
 {
-	FStructuralPowerPanelProcessor::RestitchWithControlOnRoot(
-		*this,
-		Root,
-		ControlId,
-		GetCurrentAttachContext());
+	FStructuralPowerContext Ctx = MakeProcessorContext(GetCurrentAttachContext(), Root);
+	FStructuralPowerPanelProcessor::RestitchWithControlOnRoot(Ctx, Root, ControlId);
 }
 
 void AStructuralPowerGraphSubsystem::RestitchLightEndpointsForRoot(
 	int32 Root,
 	EAttachContext AttachContext)
 {
-	FStructuralPowerLightProcessor::RestitchOnRoot(*this, Root, AttachContext);
+	FStructuralPowerContext Ctx = MakeProcessorContext(AttachContext, Root);
+	FStructuralPowerLightProcessor::RestitchOnRoot(Ctx, Root);
 }
 
 void AStructuralPowerGraphSubsystem::ProcessGeneratorEndpoint(AFGBuildableGenerator* Generator)
 {
-	FStructuralPowerGeneratorProcessor::Process(*this, Generator, GetCurrentAttachContext());
+	FStructuralPowerContext Ctx = GetProcessorContext();
+	FStructuralPowerGeneratorProcessor::Process(Ctx, Generator);
 }
 
 void AStructuralPowerGraphSubsystem::EnumerateTrackedLightsOnRoot(
@@ -3081,7 +3106,8 @@ void AStructuralPowerGraphSubsystem::OnBuildableRemoved(AFGBuildable* Buildable)
 		{
 			if (Tracked->Kind == EStructuralEndpointKind::Switch)
 			{
-				FStructuralPowerSwitchProcessor::TearDown(*this, Host);
+				FStructuralPowerContext Ctx = GetProcessorContext();
+				FStructuralPowerSwitchProcessor::TearDown(Ctx, Host);
 			}
 			else if (Tracked->Kind == EStructuralEndpointKind::Light)
 			{

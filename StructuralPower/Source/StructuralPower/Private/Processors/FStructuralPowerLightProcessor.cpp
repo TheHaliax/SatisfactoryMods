@@ -13,11 +13,12 @@
 #include "Core/EAttachContext.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
 #include "Routing/EStructuralChannel.h"
+#include "Core/FStructuralPowerContext.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerLog.h"
 
 void FStructuralPowerLightProcessor::TearDown(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralPowerContext& Ctx,
 	AFGBuildableLightSource* Light)
 {
 	if (!IsValid(Light))
@@ -32,7 +33,7 @@ void FStructuralPowerLightProcessor::TearDown(
 }
 
 void FStructuralPowerLightProcessor::Process(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralPowerContext& Ctx,
 	AFGBuildableLightSource* Light,
 	bool bLocalPromoteOnly)
 {
@@ -41,27 +42,27 @@ void FStructuralPowerLightProcessor::Process(
 		return;
 	}
 
-	const FStructuralChannelKey ChannelKey = Graph.ResolveChannelKeyForBuildable(Light);
-	const EAttachContext AttachContext = Graph.GetCurrentAttachContext();
-	const FStructuralWallAnchor ParentAnchor = Graph.ResolveOutletAnchor(Light);
+	const FStructuralChannelKey ChannelKey = Ctx.Graph().ResolveChannelKeyForBuildable(Light);
+	const EAttachContext AttachContext = Ctx.GetAttachContext();
+	const FStructuralWallAnchor ParentAnchor = Ctx.Graph().ResolveOutletAnchor(Light);
 	FStructuralNodeId ParentId;
-	const int32 Root = Graph.ResolveEndpointComponentRoot(Light, ParentAnchor, ParentId);
+	const int32 Root = Ctx.Graph().ResolveEndpointComponentRoot(Light, ParentAnchor, ParentId);
 
-	const FStructuralNodeId LightId = Graph.MakeNodeId(Light);
-	FTrackedEndpoint& Tracked = Graph.TrackedEndpoints.FindOrAdd(LightId);
+	const FStructuralNodeId LightId = Ctx.Graph().MakeNodeId(Light);
+	FTrackedEndpoint& Tracked = Ctx.Graph().TrackedEndpoints.FindOrAdd(LightId);
 	Tracked.Actor = Light;
 	Tracked.ParentId = ParentId;
 	Tracked.Kind = EStructuralEndpointKind::Light;
-	Graph.RegisterBuildableActor(Light);
+	Ctx.Graph().RegisterBuildableActor(Light);
 	if (Root != INDEX_NONE)
 	{
 		if (IsBulkLoadAttachContext(AttachContext))
 		{
-			Graph.AddEndpointToRootIndex(Root, EStructuralEndpointKind::Light, LightId);
+			Ctx.Graph().AddEndpointToRootIndex(Root, EStructuralEndpointKind::Light, LightId);
 		}
 		else
 		{
-			Graph.MarkBridgeEndpointRootIndexDirty();
+			Ctx.Graph().MarkBridgeEndpointRootIndexDirty();
 		}
 	}
 
@@ -97,25 +98,25 @@ void FStructuralPowerLightProcessor::Process(
 		return;
 	}
 
-	if (Root == INDEX_NONE || !Graph.DoesComponentRootCarryPower(Root))
+	if (Root == INDEX_NONE || !Ctx.Graph().DoesComponentRootCarryPower(Root))
 	{
 		FStructuralPowerTrace::LogPlacementSkip(Light, TEXT("light_no_component_feed"));
 		LogLightOutlet(0, INDEX_NONE, TEXT("-"));
 		return;
 	}
 
-	const bool bPanelFed = Graph.IsPanelDownstreamLight(Root, ChannelKey);
+	const bool bPanelFed = Ctx.Graph().IsPanelDownstreamLight(Root, ChannelKey);
 
 	const bool bAttached = FStructuralDeviceAttach::TryAttachConsumer(
-		Graph,
+		Ctx.Graph(),
 		Light,
 		Plug,
 		Root,
 		ChannelKey);
 	if (!bAttached)
 	{
-		if (Graph.IsDirectSwitchFedLight(Root, ChannelKey)
-			&& Graph.IsSwitchFeedOpen(Root, ChannelKey.Source))
+		if (Ctx.Graph().IsDirectSwitchFedLight(Root, ChannelKey)
+			&& Ctx.Graph().IsSwitchFeedOpen(Root, ChannelKey.Source))
 		{
 			FStructuralPowerTrace::LogPlacementSkip(
 				Light,
@@ -138,21 +139,17 @@ void FStructuralPowerLightProcessor::Process(
 	{
 		if (bLocalPromoteOnly || IsBulkLoadAttachContext(AttachContext))
 		{
-			Graph.PromoteDirectHiddenLinks(Plug);
+			Ctx.Graph().PromoteDirectHiddenLinks(Plug);
 		}
 		else
 		{
-			Graph.PromoteStructuralMeshFrom(Plug);
+			Ctx.Graph().PromoteStructuralMeshFrom(Plug);
 		}
 	}
 
 	if (Root != INDEX_NONE && !ChannelKey.Source.IsNone())
 	{
-		FStructuralPowerPanelProcessor::RestitchWithControlOnRoot(
-			Graph,
-			Root,
-			ChannelKey.Source,
-			AttachContext);
+		FStructuralPowerPanelProcessor::RestitchWithControlOnRoot(Ctx, Root, ChannelKey.Source);
 	}
 
 	if (bPanelFed && IsValid(Plug))
@@ -175,11 +172,11 @@ void FStructuralPowerLightProcessor::Process(
 		{
 			if (bLocalPromoteOnly || IsBulkLoadAttachContext(AttachContext))
 			{
-				Graph.PromoteDirectHiddenLinks(Seed);
+				Ctx.Graph().PromoteDirectHiddenLinks(Seed);
 			}
 			else
 			{
-				Graph.PromoteStructuralMeshFrom(Seed);
+				Ctx.Graph().PromoteStructuralMeshFrom(Seed);
 			}
 		}
 	}
@@ -193,19 +190,18 @@ void FStructuralPowerLightProcessor::Process(
 }
 
 void FStructuralPowerLightProcessor::RestitchOnRoot(
-	AStructuralPowerGraphSubsystem& Graph,
-	int32 Root,
-	EAttachContext /*AttachContext*/)
+	FStructuralPowerContext& Ctx,
+	int32 Root)
 {
 	if (Root == INDEX_NONE || !FStructuralPowerModConfig::IsGroupLightingEnabled())
 	{
 		return;
 	}
 
-	Graph.RefreshBridgeEndpointRootIndex();
+	Ctx.Graph().RefreshBridgeEndpointRootIndex();
 
 	const TArray<FStructuralNodeId>* LightIds =
-		Graph.EndpointIndex.Get(Root, EStructuralEndpointKind::Light);
+		Ctx.Graph().EndpointIndex.Get(Root, EStructuralEndpointKind::Light);
 	if (!LightIds || LightIds->Num() == 0)
 	{
 		return;
@@ -214,7 +210,7 @@ void FStructuralPowerLightProcessor::RestitchOnRoot(
 	const TArray<FStructuralNodeId> LightIdsSnapshot = *LightIds;
 	for (const FStructuralNodeId& LightId : LightIdsSnapshot)
 	{
-		const FTrackedEndpoint* Tracked = Graph.TrackedEndpoints.Find(LightId);
+		const FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(LightId);
 		if (!Tracked)
 		{
 			continue;
@@ -222,7 +218,7 @@ void FStructuralPowerLightProcessor::RestitchOnRoot(
 
 		if (AFGBuildableLightSource* Light = Cast<AFGBuildableLightSource>(Tracked->Actor.Get()))
 		{
-			Process(Graph, Light);
+			Process(Ctx, Light);
 		}
 	}
 }

@@ -4,26 +4,17 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Core/EAttachContext.h"
 
 class AFGBuildableGenerator;
-class AStructuralPowerGraphSubsystem;
+struct FStructuralPowerContext;
 
 /** AFGBuildableGenerator host — no-op until router enables M7 routing. PRE-2.2 Part II. */
 class STRUCTURALPOWER_API FStructuralPowerGeneratorProcessor
 {
 public:
-	static void Process(
-		AStructuralPowerGraphSubsystem& Graph,
-		AFGBuildableGenerator* Generator,
-		EAttachContext AttachContext);
+	static void Process(FStructuralPowerContext& Ctx, AFGBuildableGenerator* Generator);
 
-	static void RestitchOnRoot(
-		AStructuralPowerGraphSubsystem& Graph,
-		int32 Root,
-		EAttachContext AttachContext);
+	static void RestitchOnRoot(FStructuralPowerContext& Ctx, int32 Root);
 
-	static void TearDown(
-		AStructuralPowerGraphSubsystem& Graph,
-		AFGBuildableGenerator* Generator);
+	static void TearDown(FStructuralPowerContext& Ctx, AFGBuildableGenerator* Generator);
 };

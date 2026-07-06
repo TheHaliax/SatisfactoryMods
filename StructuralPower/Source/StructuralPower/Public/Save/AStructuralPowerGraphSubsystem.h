@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "Core/EAttachContext.h"
+#include "Core/FStructuralPowerContext.h"
 #include "Core/FStructuralNodeId.h"
 #include "FGSaveInterface.h"
 #include "GameFramework/Info.h"
@@ -141,6 +142,12 @@ public:
 	bool IsBulkLoadDrainActive() const { return bBulkLoadDrainActive; }
 
 	EAttachContext GetCurrentAttachContext() const;
+
+	FStructuralPowerContext MakeProcessorContext(
+		EAttachContext AttachContext,
+		int32 SiteRoot = INDEX_NONE) const;
+
+	FStructuralPowerContext GetProcessorContext() const;
 
 	void EnumerateTrackedLightsOnRoot(
 		int32 Root,

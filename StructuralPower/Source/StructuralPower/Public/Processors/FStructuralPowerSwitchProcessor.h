@@ -13,54 +13,54 @@ class AFGBuildable;
 class AFGBuildableCircuitSwitch;
 class AFGBuildableLightSource;
 class AFGBuildableLightsControlPanel;
-class AStructuralPowerGraphSubsystem;
+struct FStructuralPowerContext;
 class UFGStructuralPowerConnectionComponent;
 
 /** AFGBuildableCircuitSwitch router — PRE-2.2 Part II role=router (gateway when wired). */
 class STRUCTURALPOWER_API FStructuralPowerSwitchProcessor
 {
 public:
-	static void Process(AStructuralPowerGraphSubsystem& Graph, AFGBuildableCircuitSwitch* Switch);
+	static void Process(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 
-	static void OnStateChanged(AStructuralPowerGraphSubsystem& Graph, AFGBuildableCircuitSwitch* Switch);
+	static void OnStateChanged(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 
-	static void TearDown(AStructuralPowerGraphSubsystem& Graph, AFGBuildable* Host);
+	static void TearDown(FStructuralPowerContext& Ctx, AFGBuildable* Host);
 
-	static void StripInactiveLinksOnRoot(AStructuralPowerGraphSubsystem& Graph, int32 Root);
+	static void StripInactiveLinksOnRoot(FStructuralPowerContext& Ctx, int32 Root);
 
 	static void RestitchKeyedConsumersOnRoot(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralPowerContext& Ctx,
 		int32 Root,
 		FName SwitchControlId,
 		bool bLocalPromoteOnly = false);
 
-	static void RestitchActiveKeyedConsumersOnRoot(AStructuralPowerGraphSubsystem& Graph, int32 Root);
+	static void RestitchActiveKeyedConsumersOnRoot(FStructuralPowerContext& Ctx, int32 Root);
 
 	static void PropagateWiredFeedChange(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch,
 		int32 LocalRoot);
 
 	static bool HasAssignedControl(
-		const AStructuralPowerGraphSubsystem& Graph,
+		const FStructuralPowerContext& Ctx,
 		const AFGBuildableCircuitSwitch* Switch);
 
 	static bool NeedsAdvancedWork(
-		const AStructuralPowerGraphSubsystem& Graph,
+		const FStructuralPowerContext& Ctx,
 		const AFGBuildableCircuitSwitch* Switch);
 
 	static bool ShouldInjectStructuralPath(const AFGBuildableCircuitSwitch* Switch);
 
 private:
 	static int32 ResolveMountRoot(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralPowerContext& Ctx,
 		const FStructuralWallAnchor& Anchor,
 		FStructuralNodeId& OutParentId);
 
-	static void EnsureListener(AStructuralPowerGraphSubsystem& Graph, AFGBuildableCircuitSwitch* Switch);
+	static void EnsureListener(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 
 	static void RegisterOutletBase(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch,
 		const FStructuralWallAnchor& ParentAnchor,
 		FTrackedEndpoint& InOutTracked,
@@ -68,13 +68,13 @@ private:
 		FStructuralNodeId& OutParentId);
 
 	static void ApplyBaseOutletAttach(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch,
 		UFGStructuralPowerConnectionComponent* OutletBus,
 		int32 Root);
 
 	static void ApplyRuntimeAttach(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch,
 		UFGStructuralPowerConnectionComponent* OutletBus,
 		int32 Root,
@@ -82,7 +82,7 @@ private:
 		EAttachContext AttachContext);
 
 	static void ApplyAdvancedAttach(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch,
 		UFGStructuralPowerConnectionComponent* OutletBus,
 		int32 Root,
@@ -90,14 +90,14 @@ private:
 		bool bKeyedSubnet);
 
 	static void RestitchKeyedSubnet(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch,
 		UFGStructuralPowerConnectionComponent* OutletBus,
 		int32 ComponentRoot,
 		const FStructuralNodeId& SwitchNodeId);
 
 	static void LogConsumerRestitchSummary(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch,
 		int32 Root,
 		FName SwitchControlId,

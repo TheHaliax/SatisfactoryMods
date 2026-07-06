@@ -4,13 +4,12 @@
 #include "Processors/FStructuralPowerGeneratorProcessor.h"
 
 #include "Buildables/FGBuildableGenerator.h"
+#include "Core/FStructuralPowerContext.h"
 #include "Routing/FStructuralPowerRouter.h"
-#include "Save/AStructuralPowerGraphSubsystem.h"
 
 void FStructuralPowerGeneratorProcessor::Process(
-	AStructuralPowerGraphSubsystem& /*Graph*/,
-	AFGBuildableGenerator* /*Generator*/,
-	const EAttachContext /*AttachContext*/)
+	FStructuralPowerContext& /*Ctx*/,
+	AFGBuildableGenerator* /*Generator*/)
 {
 	if (!FStructuralPowerRouter::IsStructuralGeneratorRoutingEnabled())
 	{
@@ -19,9 +18,8 @@ void FStructuralPowerGeneratorProcessor::Process(
 }
 
 void FStructuralPowerGeneratorProcessor::RestitchOnRoot(
-	AStructuralPowerGraphSubsystem& /*Graph*/,
-	const int32 /*Root*/,
-	const EAttachContext /*AttachContext*/)
+	FStructuralPowerContext& /*Ctx*/,
+	int32 /*Root*/)
 {
 	if (!FStructuralPowerRouter::IsStructuralGeneratorRoutingEnabled())
 	{
@@ -30,7 +28,7 @@ void FStructuralPowerGeneratorProcessor::RestitchOnRoot(
 }
 
 void FStructuralPowerGeneratorProcessor::TearDown(
-	AStructuralPowerGraphSubsystem& /*Graph*/,
+	FStructuralPowerContext& /*Ctx*/,
 	AFGBuildableGenerator* /*Generator*/)
 {
 	if (!FStructuralPowerRouter::IsStructuralGeneratorRoutingEnabled())

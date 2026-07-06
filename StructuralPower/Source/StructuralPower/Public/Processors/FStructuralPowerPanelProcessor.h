@@ -5,30 +5,24 @@
 
 #include "CoreMinimal.h"
 
-#include "Core/EAttachContext.h"
-
 class AFGBuildableLightsControlPanel;
-class AStructuralPowerGraphSubsystem;
+struct FStructuralPowerContext;
 
 /** AFGBuildableLightsControlPanel host — PRE-2.2 Part II role=host. */
 class STRUCTURALPOWER_API FStructuralPowerPanelProcessor
 {
 public:
 	static void Process(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralPowerContext& Ctx,
 		AFGBuildableLightsControlPanel* Panel,
 		bool bLocalPromoteOnly = false);
 
-	static void RestitchOnRoot(
-		AStructuralPowerGraphSubsystem& Graph,
-		int32 Root,
-		EAttachContext AttachContext);
+	static void RestitchOnRoot(FStructuralPowerContext& Ctx, int32 Root);
 
 	static void RestitchWithControlOnRoot(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralPowerContext& Ctx,
 		int32 Root,
-		FName ControlId,
-		EAttachContext AttachContext);
+		FName ControlId);
 
-	static void TearDown(AStructuralPowerGraphSubsystem& Graph, AFGBuildableLightsControlPanel* Panel);
+	static void TearDown(FStructuralPowerContext& Ctx, AFGBuildableLightsControlPanel* Panel);
 };
