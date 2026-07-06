@@ -30,6 +30,8 @@ class UFGCircuitConnectionComponent;
 class UFGPowerConnectionComponent;
 class UFGStructuralPowerConnectionComponent;
 class UWorld;
+class FStructuralPowerLightProcessor;
+class FStructuralPowerPanelProcessor;
 
 /** DR-010 hoverpack geometry tether query result. */
 struct FStructuralHoverpackAnchorQuery
@@ -115,6 +117,12 @@ public:
 	void GetGraphStats(int32& OutComponents, int32& OutLargest) { StructureGraph.GetComponentStats(OutComponents, OutLargest); }
 
 	bool DoesComponentRootCarryPower(int32 ComponentRoot) const;
+	bool FindNearestStructureAnchorForEquipment(
+		const FVector& QueryLoc,
+		float MaxHorizontal,
+		float MaxVertical,
+		FVector& OutAnchor,
+		int32& OutComponentRoot) const;
 	bool QueryHoverpackStructuralAnchor(
 		const FVector& QueryLoc,
 		float MaxHorizontal,
@@ -150,6 +158,9 @@ public:
 	virtual void GatherDependencies_Implementation(TArray<UObject*>& out_dependentObjects) override {}
 	virtual bool NeedTransform_Implementation() override { return false; }
 	virtual bool ShouldSave_Implementation() const override { return true; }
+
+	friend class FStructuralPowerLightProcessor;
+	friend class FStructuralPowerPanelProcessor;
 
 private:
 	void ProcessStructure(AFGBuildable* Buildable);

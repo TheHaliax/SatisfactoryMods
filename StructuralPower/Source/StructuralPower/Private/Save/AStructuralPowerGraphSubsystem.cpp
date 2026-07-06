@@ -11,11 +11,14 @@
 #include "Buildables/FGBuildableCircuitBridge.h"
 #include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Buildables/FGBuildablePowerPole.h"
+#include "Circuit/FStructuralCircuitPromotionScope.h"
+#include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Circuit/FStructuralHiddenConnectionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "Config/FStructuralPowerModConfig.h"
 #include "Diagnostics/FStructuralPowerDiagnostics.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
+#include "Equipment/FStructuralEquipmentBridgeRegistry.h"
 #include "Engine/World.h"
 #include "FGBuildableSubsystem.h"
 #include "FGCircuitConnectionComponent.h"
@@ -35,96 +38,14 @@
 #include "Network/UStructuralPowerPanelListener.h"
 #include "Panel/FStructuralPanelControlledSync.h"
 #include "Panel/FStructuralPanelPortResolver.h"
+#include "Processors/FStructuralPowerLightProcessor.h"
+#include "Processors/FStructuralPowerPanelProcessor.h"
 #include "Reconcile/FStructuralSiteBusMesh.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "Session/FStructuralPowerSessionSettings.h"
 #include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
 #include "HAL/PlatformTime.h"
-
-namespace
-{
-static bool ComponentCarriesPower(const UFGPowerConnectionComponent* Component)
-{
-	if (!IsValid(Component))
-	{
-		return false;
-	}
-
-	if (Component->GetCircuitID() != INDEX_NONE || Component->IsConnected())
-	{
-		return true;
-	}
-
-	return !Component->IsHidden() && Component->GetNumConnections() > 0;
-}
-
-/** Vanilla parity: circuit present and connector reports live power (fuse / no production = false). */
-static bool ConnectorSuppliesPower(const UFGPowerConnectionComponent* Component)
-{
-	return ComponentCarriesPower(Component) && Component->HasPower();
-}
-
-static void PromoteCircuitLink(
-	UFGPowerConnectionComponent* A,
-	UFGPowerConnectionComponent* B,
-	ELogVerbosity::Type PromoteVerbosity = ELogVerbosity::Log)
-{
-	if (!IsValid(A) || !IsValid(B))
-	{
-		return;
-	}
-
-	const int32 CircuitA = A->GetCircuitID();
-	const int32 CircuitB = B->GetCircuitID();
-	if (CircuitA != INDEX_NONE && CircuitA == CircuitB)
-	{
-		return;
-	}
-
-	if (!ComponentCarriesPower(A) && !ComponentCarriesPower(B))
-	{
-		return;
-	}
-
-	if (UWorld* World = A->GetWorld())
-	{
-		if (AFGCircuitSubsystem* CircuitSubsystem = AFGCircuitSubsystem::Get(World))
-		{
-			CircuitSubsystem->ConnectComponents(A, B);
-			FStructuralPowerTrace::LogLinkOp(
-				TEXT("promote"),
-				A,
-				B,
-				true,
-				TEXT("ConnectComponents"),
-				PromoteVerbosity);
-		}
-	}
-}
-
-struct FCircuitPromotionScope
-{
-	AStructuralPowerGraphSubsystem* Graph = nullptr;
-
-	explicit FCircuitPromotionScope(AStructuralPowerGraphSubsystem* InGraph)
-		: Graph(InGraph)
-	{
-		if (Graph)
-		{
-			Graph->BeginCircuitPromotion();
-		}
-	}
-
-	~FCircuitPromotionScope()
-	{
-		if (Graph)
-		{
-			Graph->EndCircuitPromotion();
-		}
-	}
-};
-}
 
 AStructuralPowerGraphSubsystem::AStructuralPowerGraphSubsystem()
 {
@@ -669,8 +590,8 @@ bool AStructuralPowerGraphSubsystem::LinkHiddenPair(
 
 	if (A->HasHiddenConnection(B))
 	{
-		FCircuitPromotionScope PromotionScope(this);
-		PromoteCircuitLink(A, B, ELogVerbosity::Verbose);
+		FStructuralCircuitPromotionScope PromotionScope(this);
+		FStructuralCircuitPromotionUtil::PromoteCircuitLink(A, B, ELogVerbosity::Verbose);
 		return false;
 	}
 
@@ -703,8 +624,8 @@ bool AStructuralPowerGraphSubsystem::LinkHiddenPair(
 
 	if (bAdded)
 	{
-		FCircuitPromotionScope PromotionScope(this);
-		PromoteCircuitLink(A, B);
+		FStructuralCircuitPromotionScope PromotionScope(this);
+		FStructuralCircuitPromotionUtil::PromoteCircuitLink(A, B);
 	}
 
 	return bAdded;
@@ -753,8 +674,8 @@ bool AStructuralPowerGraphSubsystem::LinkHiddenPairLocal(
 
 	if (bAdded)
 	{
-		FCircuitPromotionScope PromotionScope(this);
-		PromoteCircuitLink(A, B, ELogVerbosity::Verbose);
+		FStructuralCircuitPromotionScope PromotionScope(this);
+		FStructuralCircuitPromotionUtil::PromoteCircuitLink(A, B, ELogVerbosity::Verbose);
 	}
 
 	return bAdded;
@@ -827,7 +748,7 @@ int32 AStructuralPowerGraphSubsystem::ResolveBridgeRootFromAnchor(
 
 void AStructuralPowerGraphSubsystem::PromoteStructuralMeshFrom(UFGPowerConnectionComponent* Seed)
 {
-	if (!IsValid(Seed) || !ComponentCarriesPower(Seed))
+	if (!IsValid(Seed) || !FStructuralCircuitPromotionUtil::ComponentCarriesPower(Seed))
 	{
 		return;
 	}
@@ -850,7 +771,7 @@ void AStructuralPowerGraphSubsystem::PromoteStructuralMeshFrom(UFGPowerConnectio
 		return;
 	}
 
-	FCircuitPromotionScope PromotionScope(this);
+	FStructuralCircuitPromotionScope PromotionScope(this);
 
 	TSet<UFGPowerConnectionComponent*> Visited;
 	Visited.Add(Seed);
@@ -909,12 +830,12 @@ void AStructuralPowerGraphSubsystem::PromoteStructuralMeshFrom(UFGPowerConnectio
 
 void AStructuralPowerGraphSubsystem::PromoteDirectHiddenLinks(UFGPowerConnectionComponent* Seed)
 {
-	if (!IsValid(Seed) || !ComponentCarriesPower(Seed))
+	if (!IsValid(Seed) || !FStructuralCircuitPromotionUtil::ComponentCarriesPower(Seed))
 	{
 		return;
 	}
 
-	FCircuitPromotionScope PromotionScope(this);
+	FStructuralCircuitPromotionScope PromotionScope(this);
 
 	TArray<UFGCircuitConnectionComponent*> HiddenLinks;
 	Seed->GetHiddenConnections(HiddenLinks);
@@ -927,7 +848,7 @@ void AStructuralPowerGraphSubsystem::PromoteDirectHiddenLinks(UFGPowerConnection
 			continue;
 		}
 
-		PromoteCircuitLink(Seed, Other, ELogVerbosity::Verbose);
+		FStructuralCircuitPromotionUtil::PromoteCircuitLink(Seed, Other, ELogVerbosity::Verbose);
 	}
 }
 
@@ -938,7 +859,7 @@ bool AStructuralPowerGraphSubsystem::IsPanelSupplyLinkedAndLive(
 	return IsValid(InputPower)
 		&& IsValid(Feed)
 		&& InputPower->HasHiddenConnection(Feed)
-		&& ConnectorSuppliesPower(InputPower);
+		&& FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower);
 }
 
 void AStructuralPowerGraphSubsystem::PromotePanelSupplyConnection(
@@ -951,14 +872,14 @@ void AStructuralPowerGraphSubsystem::PromotePanelSupplyConnection(
 		return;
 	}
 
-	if (!ConnectorSuppliesPower(InputPower))
+	if (!FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower))
 	{
-		PromoteCircuitLink(Feed, InputPower);
+		FStructuralCircuitPromotionUtil::PromoteCircuitLink(Feed, InputPower);
 	}
 
-	UFGPowerConnectionComponent* Seed = ConnectorSuppliesPower(InputPower)
+	UFGPowerConnectionComponent* Seed = FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower)
 		? InputPower
-		: (ComponentCarriesPower(Feed) ? Feed : nullptr);
+		: (FStructuralCircuitPromotionUtil::ComponentCarriesPower(Feed) ? Feed : nullptr);
 	if (!Seed)
 	{
 		if (UFGStructuralPowerConnectionComponent* FeedBus =
@@ -992,7 +913,7 @@ void AStructuralPowerGraphSubsystem::PromoteOutletBusIfPowered(
 		return;
 	}
 
-	UFGStructuralPowerConnectionComponent* Seed = ComponentCarriesPower(OutletBus)
+	UFGStructuralPowerConnectionComponent* Seed = FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus)
 		? OutletBus
 		: FindPoweredHiddenReachable(OutletBus);
 	if (!Seed)
@@ -1034,7 +955,7 @@ void AStructuralPowerGraphSubsystem::ApplyLocalBridgeBusAttach(
 				if (UFGPowerConnectionComponent* Visible =
 						Cast<UFGPowerConnectionComponent>(Conn0))
 				{
-					if (IsValid(Visible) && ComponentCarriesPower(Visible))
+					if (IsValid(Visible) && FStructuralCircuitPromotionUtil::ComponentCarriesPower(Visible))
 					{
 						FeedPower = Visible;
 					}
@@ -1047,7 +968,7 @@ void AStructuralPowerGraphSubsystem::ApplyLocalBridgeBusAttach(
 					if (UFGPowerConnectionComponent* Visible =
 							Cast<UFGPowerConnectionComponent>(Conn1))
 					{
-						if (IsValid(Visible) && ComponentCarriesPower(Visible))
+						if (IsValid(Visible) && FStructuralCircuitPromotionUtil::ComponentCarriesPower(Visible))
 						{
 							FeedPower = Visible;
 						}
@@ -1246,7 +1167,7 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindPower
 		return nullptr;
 	}
 
-	if (ComponentCarriesPower(StartHidden))
+	if (FStructuralCircuitPromotionUtil::ComponentCarriesPower(StartHidden))
 	{
 		return StartHidden;
 	}
@@ -1260,7 +1181,7 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindPower
 	while (QueueHead < Queue.Num() && Visited.Num() <= MaxHiddenHops)
 	{
 		UFGPowerConnectionComponent* Current = Queue[QueueHead++];
-		if (ComponentCarriesPower(Current))
+		if (FStructuralCircuitPromotionUtil::ComponentCarriesPower(Current))
 		{
 			return Cast<UFGStructuralPowerConnectionComponent>(Current);
 		}
@@ -1983,7 +1904,7 @@ void AStructuralPowerGraphSubsystem::LogPanelReconcileSummary(
 	const UFGPowerConnectionComponent* InputPower =
 		FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
 	const int32 BusCircuit = IsValid(InputPower) ? InputPower->GetCircuitID() : INDEX_NONE;
-	const int32 Powered = ConnectorSuppliesPower(InputPower) ? 1 : 0;
+	const int32 Powered = FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower) ? 1 : 0;
 	const int32 Controlled =
 		Panel->GetControlledBuildables(AFGBuildableLightSource::StaticClass()).Num();
 
@@ -2047,7 +1968,7 @@ void AStructuralPowerGraphSubsystem::LogSwitchConsumerRestitchSummary(
 
 		const UFGPowerConnectionComponent* InputPower =
 			FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
-		if (!ConnectorSuppliesPower(InputPower))
+		if (!FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower))
 		{
 			return;
 		}
@@ -2085,7 +2006,7 @@ void AStructuralPowerGraphSubsystem::LogSwitchConsumerRestitchSummary(
 		{
 			if (UFGPowerConnectionComponent* Plug = FStructuralDeviceAttach::FindLightWireConnection(Light))
 			{
-				if (ConnectorSuppliesPower(Plug))
+				if (FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(Plug))
 				{
 					++LitCount;
 				}
@@ -2400,7 +2321,7 @@ UFGCircuitConnectionComponent* AStructuralPowerGraphSubsystem::GetComponentSourc
 		UFGCircuitConnectionComponent* Cached = CachedEntry->Get();
 		if (IsValid(Cached)
 			&& Cached->GetOwner() != ExcludeHost
-			&& ComponentCarriesPower(Cast<UFGPowerConnectionComponent>(Cached)))
+			&& FStructuralCircuitPromotionUtil::ComponentCarriesPower(Cast<UFGPowerConnectionComponent>(Cached)))
 		{
 			return Cached;
 		}
@@ -2429,7 +2350,7 @@ UFGCircuitConnectionComponent* AStructuralPowerGraphSubsystem::GetComponentSourc
 		{
 			if (UFGStructuralPowerConnectionComponent* Bus = FindBusConnector(Host))
 			{
-				if (!PoweredBus && ComponentCarriesPower(Bus))
+				if (!PoweredBus && FStructuralCircuitPromotionUtil::ComponentCarriesPower(Bus))
 				{
 					PoweredBus = Bus;
 				}
@@ -2440,7 +2361,7 @@ UFGCircuitConnectionComponent* AStructuralPowerGraphSubsystem::GetComponentSourc
 		{
 			for (UFGPowerConnectionComponent* Visible : Pole->GetPowerConnections())
 			{
-				if (IsValid(Visible) && !Visible->IsHidden() && ComponentCarriesPower(Visible))
+				if (IsValid(Visible) && !Visible->IsHidden() && FStructuralCircuitPromotionUtil::ComponentCarriesPower(Visible))
 				{
 					PoweredVisible = Visible;
 					return;
@@ -2455,7 +2376,7 @@ UFGCircuitConnectionComponent* AStructuralPowerGraphSubsystem::GetComponentSourc
 				{
 					if (UFGPowerConnectionComponent* Visible = Cast<UFGPowerConnectionComponent>(Conn0))
 					{
-						if (IsValid(Visible) && ComponentCarriesPower(Visible))
+						if (IsValid(Visible) && FStructuralCircuitPromotionUtil::ComponentCarriesPower(Visible))
 						{
 							PoweredVisible = Visible;
 							return;
@@ -2468,7 +2389,7 @@ UFGCircuitConnectionComponent* AStructuralPowerGraphSubsystem::GetComponentSourc
 					{
 						if (UFGPowerConnectionComponent* Visible = Cast<UFGPowerConnectionComponent>(Conn1))
 						{
-							if (IsValid(Visible) && ComponentCarriesPower(Visible))
+							if (IsValid(Visible) && FStructuralCircuitPromotionUtil::ComponentCarriesPower(Visible))
 							{
 								PoweredVisible = Visible;
 							}
@@ -2638,10 +2559,25 @@ bool AStructuralPowerGraphSubsystem::DoesComponentRootCarryPower(int32 Component
 	if (UFGCircuitConnectionComponent* Source = const_cast<AStructuralPowerGraphSubsystem*>(this)
 			->GetComponentSourceConnector(ComponentRoot, nullptr))
 	{
-		return ComponentCarriesPower(Cast<UFGPowerConnectionComponent>(Source));
+		return FStructuralCircuitPromotionUtil::ComponentCarriesPower(Cast<UFGPowerConnectionComponent>(Source));
 	}
 
 	return false;
+}
+
+bool AStructuralPowerGraphSubsystem::FindNearestStructureAnchorForEquipment(
+	const FVector& QueryLoc,
+	float MaxHorizontal,
+	float MaxVertical,
+	FVector& OutAnchor,
+	int32& OutComponentRoot) const
+{
+	return StructureGraph.FindNearestStructureAnchor(
+		QueryLoc,
+		MaxHorizontal,
+		MaxVertical,
+		OutAnchor,
+		OutComponentRoot);
 }
 
 bool AStructuralPowerGraphSubsystem::QueryHoverpackStructuralAnchor(
@@ -2650,41 +2586,12 @@ bool AStructuralPowerGraphSubsystem::QueryHoverpackStructuralAnchor(
 	float MaxVertical,
 	FStructuralHoverpackAnchorQuery& Out) const
 {
-	Out = FStructuralHoverpackAnchorQuery{};
-
-	if (MaxHorizontal <= 0.0f
-		|| MaxVertical <= 0.0f
-		|| !FStructuralPowerSessionSettings::IsPropagationEnabled()
-		|| !FStructuralPowerModConfig::IsHoverpackStructuralEnabled())
-	{
-		return false;
-	}
-
-	int32 ComponentRoot = INDEX_NONE;
-	if (!StructureGraph.FindNearestStructureAnchor(
-			QueryLoc,
-			MaxHorizontal,
-			MaxVertical,
-			Out.Anchor,
-			ComponentRoot))
-	{
-		return false;
-	}
-
-	Out.ComponentRoot = ComponentRoot;
-
-	if (UFGCircuitConnectionComponent* Source = const_cast<AStructuralPowerGraphSubsystem*>(this)
-			->GetComponentSourceConnector(ComponentRoot, nullptr))
-	{
-		if (UFGPowerConnectionComponent* Feed = Cast<UFGPowerConnectionComponent>(Source))
-		{
-			Out.FeedConnector = Feed;
-			Out.bPowered = ConnectorSuppliesPower(Feed);
-		}
-	}
-
-	Out.bFound = true;
-	return true;
+	return FStructuralEquipmentBridgeRegistry::Get().QueryHoverpackStructuralAnchor(
+		*const_cast<AStructuralPowerGraphSubsystem*>(this),
+		QueryLoc,
+		MaxHorizontal,
+		MaxVertical,
+		Out);
 }
 
 void AStructuralPowerGraphSubsystem::TearDownSwitchStructuralLinks(AFGBuildable* Host)
@@ -2953,7 +2860,7 @@ void AStructuralPowerGraphSubsystem::RestitchSwitchKeyedSubnet(
 		}
 	});
 
-	UFGStructuralPowerConnectionComponent* Seed = ComponentCarriesPower(OutletBus)
+	UFGStructuralPowerConnectionComponent* Seed = FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus)
 		? OutletBus
 		: FindPoweredHiddenReachable(OutletBus);
 	if (Seed)
@@ -2983,7 +2890,7 @@ void AStructuralPowerGraphSubsystem::OnSwitchStateChanged(AFGBuildableCircuitSwi
 	const FStructuralNodeId SwitchId = MakeNodeId(Switch);
 	if (FTrackedEndpoint* Tracked = TrackedEndpoints.Find(SwitchId))
 	{
-		FCircuitPromotionScope PromotionScope(this);
+		FStructuralCircuitPromotionScope PromotionScope(this);
 
 		FStructuralNodeId ParentId = Tracked->ParentId;
 		int32 Root = FindRootForTrackedEndpoint(*Tracked);
@@ -3120,7 +3027,7 @@ void AStructuralPowerGraphSubsystem::RestitchComponent(int32 Root, bool bTearDow
 		},
 		[](const UFGPowerConnectionComponent* Component)
 		{
-			return ComponentCarriesPower(Component);
+			return FStructuralCircuitPromotionUtil::ComponentCarriesPower(Component);
 		},
 		[this](UFGStructuralPowerConnectionComponent* StartHidden)
 		{
@@ -3425,7 +3332,7 @@ void AStructuralPowerGraphSubsystem::ProcessPoleWireDelta(AFGBuildablePowerPole*
 		*Pole->GetName(),
 		Root,
 		OutletBus->GetCircuitID(),
-		ComponentCarriesPower(OutletBus) ? 1 : 0);
+		FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0);
 }
 
 void AStructuralPowerGraphSubsystem::ProcessPoleEndpoint(AFGBuildablePowerPole* Pole)
@@ -3494,7 +3401,7 @@ void AStructuralPowerGraphSubsystem::ProcessPoleEndpoint(AFGBuildablePowerPole* 
 			Root,
 			ParentAnchor.IsValid() ? 1 : 0,
 			OutletBus->GetCircuitID(),
-			ComponentCarriesPower(OutletBus) ? 1 : 0,
+			FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0,
 			StructuralChannelToString(EStructuralChannel::Structure),
 			TEXT("-"));
 	}
@@ -3506,7 +3413,7 @@ void AStructuralPowerGraphSubsystem::ProcessPoleEndpoint(AFGBuildablePowerPole* 
 			Root,
 			ParentAnchor.IsValid() ? 1 : 0,
 			OutletBus->GetCircuitID(),
-			ComponentCarriesPower(OutletBus) ? 1 : 0,
+			FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0,
 			StructuralChannelToString(EStructuralChannel::Structure),
 			TEXT("-"));
 	}
@@ -3605,7 +3512,7 @@ void AStructuralPowerGraphSubsystem::ApplySwitchAdvancedAttach(
 	{
 		if (UFGPowerConnectionComponent* Visible = Cast<UFGPowerConnectionComponent>(Conn0))
 		{
-			if (IsValid(Visible) && ComponentCarriesPower(Visible))
+			if (IsValid(Visible) && FStructuralCircuitPromotionUtil::ComponentCarriesPower(Visible))
 			{
 				FeedPower = Visible;
 			}
@@ -3617,7 +3524,7 @@ void AStructuralPowerGraphSubsystem::ApplySwitchAdvancedAttach(
 		{
 			if (UFGPowerConnectionComponent* Visible = Cast<UFGPowerConnectionComponent>(Conn1))
 			{
-				if (IsValid(Visible) && ComponentCarriesPower(Visible))
+				if (IsValid(Visible) && FStructuralCircuitPromotionUtil::ComponentCarriesPower(Visible))
 				{
 					FeedPower = Visible;
 				}
@@ -3755,7 +3662,7 @@ void AStructuralPowerGraphSubsystem::ProcessSwitchEndpoint(AFGBuildableCircuitSw
 
 	LogSwitchOutlet(
 		OutletBus,
-		ComponentCarriesPower(OutletBus) ? 1 : 0,
+		FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0,
 		bBulk ? TEXT("bulk")
 			: (bKeyedSubnet ? TEXT("keyed") : (bWiredBridge ? TEXT("wired") : TEXT("base"))));
 
@@ -3774,461 +3681,37 @@ void AStructuralPowerGraphSubsystem::ProcessSwitchEndpoint(AFGBuildableCircuitSw
 
 void AStructuralPowerGraphSubsystem::TearDownLightStructuralLinks(AFGBuildableLightSource* Light)
 {
-	if (!IsValid(Light))
-	{
-		return;
-	}
-
-	if (UFGPowerConnectionComponent* Plug = FStructuralDeviceAttach::FindLightWireConnection(Light))
-	{
-		FStructuralDeviceAttach::TearDownConsumerLinks(Plug);
-	}
+	FStructuralPowerLightProcessor::TearDown(*this, Light);
 }
 
 void AStructuralPowerGraphSubsystem::ProcessLightEndpoint(
 	AFGBuildableLightSource* Light,
 	bool bLocalPromoteOnly)
 {
-	if (!IsValid(Light))
-	{
-		return;
-	}
-
-	const FStructuralChannelKey ChannelKey = ResolveChannelKeyForBuildable(Light);
-	const FStructuralWallAnchor ParentAnchor = ResolveOutletAnchor(Light);
-	FStructuralNodeId ParentId;
-	const int32 Root = ResolveEndpointComponentRoot(Light, ParentAnchor, ParentId);
-
-	const FStructuralNodeId LightId = MakeNodeId(Light);
-	FTrackedEndpoint& Tracked = TrackedEndpoints.FindOrAdd(LightId);
-	Tracked.Actor = Light;
-	Tracked.ParentId = ParentId;
-	Tracked.Kind = EStructuralEndpointKind::Light;
-	RegisterBuildableActor(Light);
-	if (Root != INDEX_NONE)
-	{
-		if (bBulkLoadDrainActive)
-		{
-			AddEndpointToRootIndex(Root, EStructuralEndpointKind::Light, LightId);
-		}
-		else
-		{
-			MarkBridgeEndpointRootIndexDirty();
-		}
-	}
-
-	UFGPowerConnectionComponent* Plug = FStructuralDeviceAttach::FindLightWireConnection(Light);
-	if (!IsValid(Plug))
-	{
-		FStructuralPowerTrace::LogPlacementSkip(Light, TEXT("light_plug_missing"));
-		return;
-	}
-
-	FStructuralDeviceAttach::TearDownConsumerLinks(Plug);
-
-	auto LogLightOutlet = [&](int32 Powered, int32 BusCircuit, const TCHAR* Path)
-	{
-		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] light %s root=%d parentValid=%d busCircuit=%d powered=%d tag=%s"
-				" source=%s control=%s wirePort=- path=%s"),
-			*Light->GetName(),
-			Root,
-			ParentAnchor.IsValid() ? 1 : 0,
-			BusCircuit,
-			Powered,
-			StructuralChannelToString(ChannelKey.Tag),
-			*FStructuralPowerTrace::FormatSourceForTrace(ChannelKey),
-			*FStructuralPowerTrace::FormatControlForTrace(ChannelKey),
-			Path);
-	};
-
-	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
-	{
-		LogLightOutlet(0, INDEX_NONE, TEXT("-"));
-		return;
-	}
-
-	if (Root == INDEX_NONE || !DoesComponentRootCarryPower(Root))
-	{
-		FStructuralPowerTrace::LogPlacementSkip(Light, TEXT("light_no_component_feed"));
-		LogLightOutlet(0, INDEX_NONE, TEXT("-"));
-		return;
-	}
-
-	const bool bPanelFed = IsPanelDownstreamLight(Root, ChannelKey);
-
-	const bool bAttached = FStructuralDeviceAttach::TryAttachConsumer(
-		*this,
-		Light,
-		Plug,
-		Root,
-		ChannelKey);
-	if (!bAttached)
-	{
-		if (IsDirectSwitchFedLight(Root, ChannelKey) && IsSwitchFeedOpen(Root, ChannelKey.Source))
-		{
-			FStructuralPowerTrace::LogPlacementSkip(
-				Light,
-				TEXT("light_switch_open"),
-				ELogVerbosity::Verbose);
-		}
-		else if (bPanelFed)
-		{
-			FStructuralPowerTrace::LogPlacementSkip(
-				Light,
-				TEXT("light_panel_fed"),
-				ELogVerbosity::Verbose);
-		}
-		else
-		{
-			FStructuralPowerTrace::LogPlacementSkip(Light, TEXT("light_attach_failed"));
-		}
-	}
-	if (bAttached)
-	{
-		if (bLocalPromoteOnly || bBulkLoadDrainActive)
-		{
-			PromoteDirectHiddenLinks(Plug);
-		}
-		else
-		{
-			PromoteStructuralMeshFrom(Plug);
-		}
-	}
-
-	if (Root != INDEX_NONE && !ChannelKey.Source.IsNone())
-	{
-		RestitchPanelsWithControlOnRoot(Root, ChannelKey.Source);
-	}
-
-	if (bPanelFed && IsValid(Plug))
-	{
-		TArray<UFGCircuitConnectionComponent*> HiddenLinks;
-		Plug->GetHiddenConnections(HiddenLinks);
-		for (UFGCircuitConnectionComponent* OtherRaw : HiddenLinks)
-		{
-			UFGPowerConnectionComponent* Other = Cast<UFGPowerConnectionComponent>(OtherRaw);
-			if (IsValid(Other) && ComponentCarriesPower(Other))
-			{
-				PromoteCircuitLink(Other, Plug);
-			}
-		}
-
-		UFGPowerConnectionComponent* Seed = ComponentCarriesPower(Plug) ? Plug : nullptr;
-		if (Seed)
-		{
-			if (bLocalPromoteOnly || bBulkLoadDrainActive)
-			{
-				PromoteDirectHiddenLinks(Seed);
-			}
-			else
-			{
-				PromoteStructuralMeshFrom(Seed);
-			}
-		}
-	}
-
-	const int32 BusCircuit = Plug->GetCircuitID();
-	const int32 Powered = ConnectorSuppliesPower(Plug) ? 1 : 0;
-	LogLightOutlet(
-		Powered,
-		BusCircuit,
-		bPanelFed ? TEXT("panel_downstream") : (bAttached ? TEXT("direct") : TEXT("-")));
+	FStructuralPowerLightProcessor::Process(*this, Light, bLocalPromoteOnly);
 }
 
 void AStructuralPowerGraphSubsystem::TearDownPanelStructuralLinks(
 	AFGBuildableLightsControlPanel* Panel)
 {
-	if (!IsValid(Panel))
-	{
-		return;
-	}
-
-	FStructuralPanelPorts Ports;
-	if (FStructuralPanelPortResolver::Resolve(Panel, Ports))
-	{
-		FStructuralPanelAttach::TearDownLinks(Panel, Ports);
-	}
+	FStructuralPowerPanelProcessor::TearDown(*this, Panel);
 }
 
 void AStructuralPowerGraphSubsystem::ProcessPanelEndpoint(
 	AFGBuildableLightsControlPanel* Panel,
 	bool bLocalPromoteOnly)
 {
-	if (!IsValid(Panel))
-	{
-		return;
-	}
-
-	FCircuitPromotionScope PromotionScope(this);
-
-	FStructuralPanelPorts Ports;
-	if (!FStructuralPanelPortResolver::Resolve(Panel, Ports))
-	{
-		FStructuralPowerTrace::LogPlacementSkip(Panel, TEXT("panel_ports_unresolved"));
-		return;
-	}
-
-	const FStructuralChannelKey ChannelKey = ResolveChannelKeyForBuildable(Panel);
-	const FStructuralWallAnchor ParentAnchor = ResolveOutletAnchor(Panel);
-	FStructuralNodeId ParentId;
-	const int32 Root = ResolveEndpointComponentRoot(Panel, ParentAnchor, ParentId);
-
-	const FStructuralNodeId PanelId = MakeNodeId(Panel);
-	FTrackedEndpoint& Tracked = TrackedEndpoints.FindOrAdd(PanelId);
-	const bool bRoutingUnchanged = Tracked.bPanelLinksReady
-		&& Tracked.CachedPanelRoot == Root
-		&& Tracked.CachedPanelKey == ChannelKey;
-
-	Tracked.Actor = Panel;
-	Tracked.ParentId = ParentId;
-	Tracked.Kind = EStructuralEndpointKind::Panel;
-	RegisterBuildableActor(Panel);
-	EnsurePanelListener(Panel);
-	if (Root != INDEX_NONE)
-	{
-		if (bBulkLoadDrainActive)
-		{
-			AddEndpointToRootIndex(Root, EStructuralEndpointKind::Panel, PanelId);
-		}
-		else
-		{
-			MarkBridgeEndpointRootIndexDirty();
-		}
-	}
-
-	auto LogPanelOutlet = [&](int32 Powered, int32 BusCircuit)
-	{
-		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[PWR] panel %s root=%d parentValid=%d busCircuit=%d powered=%d tag=%s"
-				" source=%s control=%s wirePort=-"),
-			*Panel->GetName(),
-			Root,
-			ParentAnchor.IsValid() ? 1 : 0,
-			BusCircuit,
-			Powered,
-			StructuralChannelToString(ChannelKey.Tag),
-			*FStructuralPowerTrace::FormatSourceForTrace(ChannelKey),
-			*FStructuralPowerTrace::FormatControlForTrace(ChannelKey));
-	};
-
-	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
-	{
-		if (!bRoutingUnchanged)
-		{
-			FStructuralPanelAttach::TearDownLinks(Panel, Ports);
-			Tracked.bPanelLinksReady = false;
-		}
-
-		LogPanelOutlet(0, INDEX_NONE);
-		return;
-	}
-
-	if (bRoutingUnchanged)
-	{
-		const UFGPowerConnectionComponent* InputPower =
-			FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
-		if (!ConnectorSuppliesPower(InputPower))
-		{
-			Tracked.bPanelLinksReady = false;
-			Tracked.bDownstreamLinksReady = false;
-		}
-		else
-		{
-			const int32 BusCircuit = IsValid(InputPower) ? InputPower->GetCircuitID() : INDEX_NONE;
-			const int32 Powered = ConnectorSuppliesPower(InputPower) ? 1 : 0;
-			LogPanelOutlet(Powered, BusCircuit);
-
-			const bool bDownstreamUnchanged = Tracked.bDownstreamLinksReady
-				&& Tracked.CachedDownstreamControl == ChannelKey.Control;
-			if (Root != INDEX_NONE
-				&& ChannelKey.Control != StructuralPowerConstants::ControlUnconfigured)
-			{
-				if (!bDownstreamUnchanged)
-				{
-					FStructuralPanelAttach::RestitchDownstream(
-						*this,
-						Panel,
-						Ports,
-						Root,
-						ChannelKey.Control);
-					Tracked.bDownstreamLinksReady = true;
-					Tracked.CachedDownstreamControl = ChannelKey.Control;
-				}
-				else
-				{
-					FStructuralPanelControlledSync::ApplyKeyedSubnet(*this, Panel);
-				}
-			}
-
-			return;
-		}
-	}
-
-	FStructuralPanelAttach::TearDownLinks(Panel, Ports);
-	Tracked.bDownstreamLinksReady = false;
-	Tracked.CachedDownstreamControl = NAME_None;
-
-	UFGPowerConnectionComponent* InputPower =
-		FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
-
-	bool bSupplyReady = false;
-	if (Root != INDEX_NONE && DoesComponentRootCarryPower(Root))
-	{
-		if (FStructuralPanelAttach::SupplyAlreadyLinked(*this, Panel, Ports, Root, ChannelKey))
-		{
-			bSupplyReady = true;
-		}
-		else
-		{
-			bSupplyReady = FStructuralPanelAttach::TryLinkSupply(
-				*this,
-				Panel,
-				Ports,
-				Root,
-				ChannelKey);
-		}
-	}
-
-	if (bSupplyReady && IsValid(InputPower))
-	{
-		UFGPowerConnectionComponent* Feed =
-			ResolveSubnetFeedConnector(Root, ChannelKey);
-		if (IsValid(Feed))
-		{
-			PromotePanelSupplyConnection(InputPower, Feed, bLocalPromoteOnly);
-		}
-	}
-
-	if (Root != INDEX_NONE
-		&& ChannelKey.Control != StructuralPowerConstants::ControlUnconfigured)
-	{
-		const bool bDownstreamUnchanged = Tracked.bDownstreamLinksReady
-			&& Tracked.CachedDownstreamControl == ChannelKey.Control;
-		if (!bDownstreamUnchanged)
-		{
-			FStructuralPanelAttach::RestitchDownstream(
-				*this,
-				Panel,
-				Ports,
-				Root,
-				ChannelKey.Control);
-		}
-		else
-		{
-			FStructuralPanelControlledSync::ApplyKeyedSubnet(*this, Panel);
-		}
-
-		Tracked.bDownstreamLinksReady = true;
-		Tracked.CachedDownstreamControl = ChannelKey.Control;
-	}
-	else
-	{
-		Tracked.bDownstreamLinksReady = false;
-		Tracked.CachedDownstreamControl = NAME_None;
-	}
-
-	Tracked.CachedPanelKey = ChannelKey;
-	Tracked.CachedPanelRoot = Root;
-	Tracked.bPanelLinksReady = true;
-
-	const int32 BusCircuit = IsValid(InputPower) ? InputPower->GetCircuitID() : INDEX_NONE;
-	const int32 Powered = ConnectorSuppliesPower(InputPower) ? 1 : 0;
-	const int32 Controlled = Panel->GetControlledBuildables(AFGBuildableLightSource::StaticClass()).Num();
-	UE_LOG(LogStructuralPower, Verbose,
-		TEXT("[PWR] panel %s root=%d powered=%d busCircuit=%d source=%s control=%s controlled=%d"),
-		*Panel->GetName(),
-		Root,
-		Powered,
-		BusCircuit,
-		*FStructuralPowerTrace::FormatSourceForTrace(ChannelKey),
-		*FStructuralPowerTrace::FormatControlForTrace(ChannelKey),
-		Controlled);
+	FStructuralPowerPanelProcessor::Process(*this, Panel, bLocalPromoteOnly);
 }
 
 void AStructuralPowerGraphSubsystem::RestitchPanelEndpointsForRoot(int32 Root)
 {
-	if (Root == INDEX_NONE || !FStructuralPowerModConfig::IsGroupLightingEnabled())
-	{
-		return;
-	}
-
-	RefreshBridgeEndpointRootIndex();
-
-	const TArray<FStructuralNodeId>* PanelIds =
-		EndpointIndex.Get(Root, EStructuralEndpointKind::Panel);
-	if (!PanelIds || PanelIds->Num() == 0)
-	{
-		return;
-	}
-
-	// Snapshot — ProcessPanelEndpoint can rebuild EndpointIndex mid-loop.
-	const TArray<FStructuralNodeId> PanelIdsSnapshot = *PanelIds;
-	for (const FStructuralNodeId& PanelId : PanelIdsSnapshot)
-	{
-		const FTrackedEndpoint* Tracked = TrackedEndpoints.Find(PanelId);
-		if (!Tracked)
-		{
-			continue;
-		}
-
-		if (AFGBuildableLightsControlPanel* Panel =
-				Cast<AFGBuildableLightsControlPanel>(Tracked->Actor.Get()))
-		{
-			FTrackedEndpoint& Mutable = TrackedEndpoints.FindOrAdd(PanelId);
-			Mutable.bPanelLinksReady = false;
-			Mutable.bDownstreamLinksReady = false;
-			ProcessPanelEndpoint(Panel);
-		}
-	}
+	FStructuralPowerPanelProcessor::RestitchOnRoot(*this, Root);
 }
 
 void AStructuralPowerGraphSubsystem::RestitchPanelsWithControlOnRoot(int32 Root, FName ControlId)
 {
-	if (Root == INDEX_NONE
-		|| !FStructuralPowerModConfig::IsGroupLightingEnabled()
-		|| ControlId.IsNone()
-		|| ControlId == StructuralPowerConstants::ControlUnconfigured)
-	{
-		return;
-	}
-
-	RefreshBridgeEndpointRootIndex();
-
-	const TArray<FStructuralNodeId>* PanelIds =
-		EndpointIndex.Get(Root, EStructuralEndpointKind::Panel);
-	if (!PanelIds || PanelIds->Num() == 0)
-	{
-		return;
-	}
-
-	const TArray<FStructuralNodeId> PanelIdsSnapshot = *PanelIds;
-	for (const FStructuralNodeId& PanelId : PanelIdsSnapshot)
-	{
-		const FTrackedEndpoint* Tracked = TrackedEndpoints.Find(PanelId);
-		if (!Tracked)
-		{
-			continue;
-		}
-
-		AFGBuildableLightsControlPanel* Panel =
-			Cast<AFGBuildableLightsControlPanel>(Tracked->Actor.Get());
-		if (!IsValid(Panel))
-		{
-			continue;
-		}
-
-		const FStructuralChannelKey PanelKey = ResolveChannelKeyForBuildable(Panel);
-		if (PanelKey.Control != ControlId)
-		{
-			continue;
-		}
-
-		FTrackedEndpoint& Mutable = TrackedEndpoints.FindOrAdd(PanelId);
-		Mutable.bPanelLinksReady = false;
-		Mutable.bDownstreamLinksReady = false;
-		ProcessPanelEndpoint(Panel);
-	}
+	FStructuralPowerPanelProcessor::RestitchWithControlOnRoot(*this, Root, ControlId);
 }
 
 void AStructuralPowerGraphSubsystem::RestitchSwitchKeyedConsumersOnRoot(
@@ -4326,34 +3809,7 @@ void AStructuralPowerGraphSubsystem::RestitchSwitchKeyedConsumersOnRoot(
 
 void AStructuralPowerGraphSubsystem::RestitchLightEndpointsForRoot(int32 Root)
 {
-	if (Root == INDEX_NONE || !FStructuralPowerModConfig::IsGroupLightingEnabled())
-	{
-		return;
-	}
-
-	RefreshBridgeEndpointRootIndex();
-
-	const TArray<FStructuralNodeId>* LightIds =
-		EndpointIndex.Get(Root, EStructuralEndpointKind::Light);
-	if (!LightIds || LightIds->Num() == 0)
-	{
-		return;
-	}
-
-	const TArray<FStructuralNodeId> LightIdsSnapshot = *LightIds;
-	for (const FStructuralNodeId& LightId : LightIdsSnapshot)
-	{
-		const FTrackedEndpoint* Tracked = TrackedEndpoints.Find(LightId);
-		if (!Tracked)
-		{
-			continue;
-		}
-
-		if (AFGBuildableLightSource* Light = Cast<AFGBuildableLightSource>(Tracked->Actor.Get()))
-		{
-			ProcessLightEndpoint(Light);
-		}
-	}
+	FStructuralPowerLightProcessor::RestitchOnRoot(*this, Root);
 }
 
 void AStructuralPowerGraphSubsystem::EnumerateTrackedLightsOnRoot(

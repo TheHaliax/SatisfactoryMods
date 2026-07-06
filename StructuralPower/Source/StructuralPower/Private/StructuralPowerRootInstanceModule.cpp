@@ -20,7 +20,7 @@
 #include "Lightweight/FStructuralLightweightTypes.h"
 #include "Network/UStructuralPowerRCO.h"
 #include "Patching/NativeHookManager.h"
-#include "Equipment/FStructuralHoverpackBridge.h"
+#include "Equipment/FStructuralEquipmentBridgeRegistry.h"
 #include "FGHUD.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "Panel/FStructuralPanelControlledSync.h"
@@ -461,7 +461,7 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 #if WITH_EDITOR
 	UE_LOG(LogStructuralPower, Log, TEXT("StructuralPower: skipping hooks in editor"));
 #else
-	FStructuralHoverpackBridge::RegisterHooks();
+	FStructuralEquipmentBridgeRegistry::Get().Initialize();
 	FStructuralPowerIdInput::Register();
 
 	SUBSCRIBE_METHOD_AFTER(
