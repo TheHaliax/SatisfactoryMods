@@ -11,34 +11,9 @@
 #include "Buildables/FGBuildableWall.h"
 #include "StructuralPowerConstants.h"
 
-namespace FStructuralOutletParentHeuristics
+namespace
 {
-bool IsWallMountedSwitch(const AFGBuildable* Outlet);
-bool IsGroundPoleOnFoundationFootprint(
-	const FVector& AnchorLocation,
-	const FBox& Bounds,
-	TSubclassOf<AFGBuildable> BuildableClass);
-bool IsGroundPoleInFoundationVerticalBand(
-	const FVector& AnchorLocation,
-	const FBox& Bounds,
-	TSubclassOf<AFGBuildable> BuildableClass);
-bool IsGroundPoleParentCandidate(
-	const FVector& AnchorLocation,
-	const FBox& Bounds,
-	TSubclassOf<AFGBuildable> BuildableClass);
-FBox ExpandBoundsForClass(const FBox& Bounds, TSubclassOf<AFGBuildable> BuildableClass);
-
-bool IsPreferredWallClass(const AFGBuildable* Buildable)
-{
-	return Buildable->IsA<AFGBuildableWall>() || Buildable->IsA<AFGBuildableCornerWall>();
-}
-
-bool IsPreferredFoundationClass(const AFGBuildable* Buildable)
-{
-	return Buildable->IsA<AFGBuildableFoundation>() || Buildable->IsA<AFGBuildableRamp>();
-}
-
-bool IsWallMountedSwitch(const AFGBuildable* Outlet)
+static bool IsWallMountedSwitch(const AFGBuildable* Outlet)
 {
 	const AFGBuildableCircuitSwitch* Switch = Cast<AFGBuildableCircuitSwitch>(Outlet);
 	if (!IsValid(Switch))
@@ -48,6 +23,137 @@ bool IsWallMountedSwitch(const AFGBuildable* Outlet)
 
 	// Satisfactory wall-snapped buildables carry a mostly horizontal face normal.
 	return FMath::Abs(Switch->GetActorUpVector().Z) < 0.5f;
+}
+
+static bool IsPreferredWallClass(const AFGBuildable* Buildable)
+{
+	return Buildable->IsA<AFGBuildableWall>() || Buildable->IsA<AFGBuildableCornerWall>();
+}
+
+static bool IsPreferredFoundationClass(const AFGBuildable* Buildable)
+{
+	return Buildable->IsA<AFGBuildableFoundation>() || Buildable->IsA<AFGBuildableRamp>();
+}
+
+static bool IsGroundPoleOnFoundationFootprint(
+	const FVector& AnchorLocation,
+	const FBox& Bounds,
+	TSubclassOf<AFGBuildable> BuildableClass)
+{
+	if (!Bounds.IsValid || !BuildableClass)
+	{
+		return false;
+	}
+
+	const AFGBuildable* CDO = BuildableClass->GetDefaultObject<AFGBuildable>();
+	if (!IsPreferredFoundationClass(CDO))
+	{
+		return false;
+	}
+
+	const float Gap = StructuralPowerConstants::StructuralConnectivityGapCm;
+	if (AnchorLocation.X < (Bounds.Min.X - Gap) || AnchorLocation.X > (Bounds.Max.X + Gap)
+		|| AnchorLocation.Y < (Bounds.Min.Y - Gap) || AnchorLocation.Y > (Bounds.Max.Y + Gap))
+	{
+		return false;
+	}
+
+	const float TopZ = Bounds.Max.Z;
+	return AnchorLocation.Z >= (TopZ - Gap)
+		&& AnchorLocation.Z <= (TopZ + StructuralPowerConstants::GroundPoleFoundationVerticalReachCm);
+}
+
+static bool IsGroundPoleInFoundationVerticalBand(
+	const FVector& AnchorLocation,
+	const FBox& Bounds,
+	TSubclassOf<AFGBuildable> BuildableClass)
+{
+	if (!Bounds.IsValid || !BuildableClass)
+	{
+		return false;
+	}
+
+	const AFGBuildable* CDO = BuildableClass->GetDefaultObject<AFGBuildable>();
+	if (!IsPreferredFoundationClass(CDO))
+	{
+		return false;
+	}
+
+	const float TopZ = Bounds.Max.Z;
+	const float Gap = StructuralPowerConstants::StructuralConnectivityGapCm;
+	const float Below = StructuralPowerConstants::GroundPoleFoundationVerticalBandBelowCm;
+	return AnchorLocation.Z >= (TopZ - Gap - Below)
+		&& AnchorLocation.Z <= (TopZ + StructuralPowerConstants::GroundPoleFoundationVerticalReachCm);
+}
+
+static bool IsGroundPoleParentCandidate(
+	const FVector& AnchorLocation,
+	const FBox& Bounds,
+	TSubclassOf<AFGBuildable> BuildableClass)
+{
+	if (!Bounds.IsValid || !BuildableClass)
+	{
+		return false;
+	}
+
+	if (IsGroundPoleOnFoundationFootprint(AnchorLocation, Bounds, BuildableClass))
+	{
+		return true;
+	}
+
+	if (!IsGroundPoleInFoundationVerticalBand(AnchorLocation, Bounds, BuildableClass))
+	{
+		return false;
+	}
+
+	const FVector Closest = Bounds.GetClosestPointTo(AnchorLocation);
+	if (FVector::DistSquared2D(AnchorLocation, Closest) > StructuralPowerConstants::MaxOutletParentDistCmSq)
+	{
+		return false;
+	}
+
+	return Bounds.ComputeSquaredDistanceToPoint(AnchorLocation)
+		<= StructuralPowerConstants::MaxOutletParentDistCmSq;
+}
+
+static FBox ExpandBoundsForClass(const FBox& Bounds, TSubclassOf<AFGBuildable> BuildableClass)
+{
+	if (!Bounds.IsValid)
+	{
+		return Bounds;
+	}
+
+	FBox Expanded = Bounds.ExpandBy(StructuralPowerConstants::StructuralConnectivityGapCm);
+	const AFGBuildable* CDO = BuildableClass ? BuildableClass->GetDefaultObject<AFGBuildable>() : nullptr;
+	if (!CDO)
+	{
+		return Expanded;
+	}
+
+	if (IsPreferredWallClass(CDO))
+	{
+		Expanded.Min.Z -= 100.0f;
+		Expanded.Max.Z += 100.0f;
+	}
+	else if (IsPreferredFoundationClass(CDO))
+	{
+		Expanded.Max.Z += StructuralPowerConstants::GroundPoleFoundationVerticalReachCm;
+	}
+
+	return Expanded;
+}
+} // namespace
+
+namespace FStructuralOutletParentHeuristics
+{
+bool IsPreferredWallClass(const AFGBuildable* Buildable)
+{
+	return ::IsPreferredWallClass(Buildable);
+}
+
+bool IsPreferredFoundationClass(const AFGBuildable* Buildable)
+{
+	return ::IsPreferredFoundationClass(Buildable);
 }
 
 bool PrefersFoundationAnchor(const AFGBuildable* Outlet)
@@ -119,114 +225,6 @@ FVector GetOutletAnchorLocation(const AFGBuildable* Outlet)
 	FVector Foot = Outlet->GetActorLocation();
 	Foot.Z = Origin.Z - Extent.Z;
 	return Foot;
-}
-
-bool IsGroundPoleOnFoundationFootprint(
-	const FVector& AnchorLocation,
-	const FBox& Bounds,
-	TSubclassOf<AFGBuildable> BuildableClass)
-{
-	if (!Bounds.IsValid || !BuildableClass)
-	{
-		return false;
-	}
-
-	const AFGBuildable* CDO = BuildableClass->GetDefaultObject<AFGBuildable>();
-	if (!IsPreferredFoundationClass(CDO))
-	{
-		return false;
-	}
-
-	const float Gap = StructuralPowerConstants::StructuralConnectivityGapCm;
-	if (AnchorLocation.X < (Bounds.Min.X - Gap) || AnchorLocation.X > (Bounds.Max.X + Gap)
-		|| AnchorLocation.Y < (Bounds.Min.Y - Gap) || AnchorLocation.Y > (Bounds.Max.Y + Gap))
-	{
-		return false;
-	}
-
-	const float TopZ = Bounds.Max.Z;
-	return AnchorLocation.Z >= (TopZ - Gap)
-		&& AnchorLocation.Z <= (TopZ + StructuralPowerConstants::GroundPoleFoundationVerticalReachCm);
-}
-
-bool IsGroundPoleInFoundationVerticalBand(
-	const FVector& AnchorLocation,
-	const FBox& Bounds,
-	TSubclassOf<AFGBuildable> BuildableClass)
-{
-	if (!Bounds.IsValid || !BuildableClass)
-	{
-		return false;
-	}
-
-	const AFGBuildable* CDO = BuildableClass->GetDefaultObject<AFGBuildable>();
-	if (!IsPreferredFoundationClass(CDO))
-	{
-		return false;
-	}
-
-	const float TopZ = Bounds.Max.Z;
-	const float Gap = StructuralPowerConstants::StructuralConnectivityGapCm;
-	const float Below = StructuralPowerConstants::GroundPoleFoundationVerticalBandBelowCm;
-	return AnchorLocation.Z >= (TopZ - Gap - Below)
-		&& AnchorLocation.Z <= (TopZ + StructuralPowerConstants::GroundPoleFoundationVerticalReachCm);
-}
-
-bool IsGroundPoleParentCandidate(
-	const FVector& AnchorLocation,
-	const FBox& Bounds,
-	TSubclassOf<AFGBuildable> BuildableClass)
-{
-	if (!Bounds.IsValid || !BuildableClass)
-	{
-		return false;
-	}
-
-	if (IsGroundPoleOnFoundationFootprint(AnchorLocation, Bounds, BuildableClass))
-	{
-		return true;
-	}
-
-	if (!IsGroundPoleInFoundationVerticalBand(AnchorLocation, Bounds, BuildableClass))
-	{
-		return false;
-	}
-
-	const FVector Closest = Bounds.GetClosestPointTo(AnchorLocation);
-	if (FVector::DistSquared2D(AnchorLocation, Closest) > StructuralPowerConstants::MaxOutletParentDistCmSq)
-	{
-		return false;
-	}
-
-	return Bounds.ComputeSquaredDistanceToPoint(AnchorLocation)
-		<= StructuralPowerConstants::MaxOutletParentDistCmSq;
-}
-
-FBox ExpandBoundsForClass(const FBox& Bounds, TSubclassOf<AFGBuildable> BuildableClass)
-{
-	if (!Bounds.IsValid)
-	{
-		return Bounds;
-	}
-
-	FBox Expanded = Bounds.ExpandBy(StructuralPowerConstants::StructuralConnectivityGapCm);
-	const AFGBuildable* CDO = BuildableClass ? BuildableClass->GetDefaultObject<AFGBuildable>() : nullptr;
-	if (!CDO)
-	{
-		return Expanded;
-	}
-
-	if (IsPreferredWallClass(CDO))
-	{
-		Expanded.Min.Z -= 100.0f;
-		Expanded.Max.Z += 100.0f;
-	}
-	else if (IsPreferredFoundationClass(CDO))
-	{
-		Expanded.Max.Z += StructuralPowerConstants::GroundPoleFoundationVerticalReachCm;
-	}
-
-	return Expanded;
 }
 
 bool IsOutletNearBounds(const FBox& Bounds, TSubclassOf<AFGBuildable> BuildableClass, const AFGBuildable* Outlet)

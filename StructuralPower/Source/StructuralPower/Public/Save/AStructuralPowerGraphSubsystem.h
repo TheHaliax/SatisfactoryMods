@@ -99,7 +99,6 @@ public:
 	FStructuralChannelKey ResolveChannelKeyForBuildable(AFGBuildable* Buildable);
 	FName ResolveSource(AFGBuildable* Buildable, EStructuralChannel Tag);
 	FName ResolveControl(AFGBuildable* Buildable, EStructuralChannel Tag);
-	FName ResolveEffectiveId(AFGBuildable* Buildable, EStructuralChannel Tag);
 	void SetEndpointIds(
 		AFGBuildable* Buildable,
 		FName Source,

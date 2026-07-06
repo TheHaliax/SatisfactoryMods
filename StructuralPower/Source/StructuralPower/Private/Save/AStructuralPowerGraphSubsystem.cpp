@@ -1396,7 +1396,31 @@ FName AStructuralPowerGraphSubsystem::ResolveSource(
 		return NAME_None;
 	}
 
-	return ResolveEffectiveId(Buildable, Tag);
+	if (const FStructuralEndpointOverrides* Overrides = PlayerEndpointOverrides.Find(MakeNodeId(Buildable));
+		Overrides && !Overrides->SourceOverride.IsNone())
+	{
+		return Overrides->SourceOverride;
+	}
+
+	if (Tag == EStructuralChannel::Switch)
+	{
+		if (const AFGBuildableCircuitSwitch* Switch = Cast<AFGBuildableCircuitSwitch>(Buildable))
+		{
+			const FName Control = FStructuralPowerRouter::ResolveSwitchControlFromTag(Switch);
+			if (Control != StructuralPowerConstants::ControlBypass)
+			{
+				return Control;
+			}
+		}
+	}
+
+	if (const FStructuralComponentKey ComponentKey = MakeComponentKeyForBuildable(Buildable);
+		ComponentKey.IsValid())
+	{
+		return GetOrCreateComponentDefaultId(ComponentKey);
+	}
+
+	return NAME_None;
 }
 
 FName AStructuralPowerGraphSubsystem::ResolveControl(
@@ -1432,52 +1456,6 @@ FName AStructuralPowerGraphSubsystem::ResolveControl(
 	return NAME_None;
 }
 
-FName AStructuralPowerGraphSubsystem::ResolveEffectiveId(
-	AFGBuildable* Buildable,
-	EStructuralChannel Tag)
-{
-	if (!IsValid(Buildable))
-	{
-		return NAME_None;
-	}
-
-	if (FStructuralPowerRouter::UsesSourceControlModel(Tag))
-	{
-		return ResolveSource(Buildable, Tag);
-	}
-
-	if (Tag == EStructuralChannel::Structure)
-	{
-		return NAME_None;
-	}
-
-	if (const FStructuralEndpointOverrides* Overrides = PlayerEndpointOverrides.Find(MakeNodeId(Buildable));
-		Overrides && !Overrides->SourceOverride.IsNone())
-	{
-		return Overrides->SourceOverride;
-	}
-
-	if (Tag == EStructuralChannel::Switch)
-	{
-		if (const AFGBuildableCircuitSwitch* Switch = Cast<AFGBuildableCircuitSwitch>(Buildable))
-		{
-			const FName Control = FStructuralPowerRouter::ResolveSwitchControlFromTag(Switch);
-			if (Control != StructuralPowerConstants::ControlBypass)
-			{
-				return Control;
-			}
-		}
-	}
-
-	if (const FStructuralComponentKey ComponentKey = MakeComponentKeyForBuildable(Buildable);
-		ComponentKey.IsValid())
-	{
-		return GetOrCreateComponentDefaultId(ComponentKey);
-	}
-
-	return NAME_None;
-}
-
 FStructuralChannelKey AStructuralPowerGraphSubsystem::ResolveChannelKeyForBuildable(
 	AFGBuildable* Buildable)
 {
@@ -1496,7 +1474,7 @@ FStructuralChannelKey AStructuralPowerGraphSubsystem::ResolveChannelKeyForBuilda
 	}
 	else
 	{
-		Key.EffectiveId = ResolveEffectiveId(Buildable, Key.Tag);
+		Key.EffectiveId = ResolveSource(Buildable, Key.Tag);
 	}
 
 	return Key;
@@ -3554,7 +3532,7 @@ void AStructuralPowerGraphSubsystem::ProcessPanelEndpoint(AFGBuildableLightsCont
 	const int32 BusCircuit = IsValid(InputPower) ? InputPower->GetCircuitID() : INDEX_NONE;
 	const int32 Powered = ConnectorSuppliesPower(InputPower) ? 1 : 0;
 	const int32 Controlled = Panel->GetControlledBuildables(AFGBuildableLightSource::StaticClass()).Num();
-	UE_LOG(LogStructuralPower, Log,
+	UE_LOG(LogStructuralPower, Verbose,
 		TEXT("[PWR] panel %s root=%d powered=%d busCircuit=%d source=%s control=%s controlled=%d"),
 		*Panel->GetName(),
 		Root,

@@ -433,8 +433,12 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 		FStructuralPowerModConfig::SyncRuntimeFromConfigManager(GetGameInstance());
 #if !WITH_EDITOR
 		UE_LOG(LogStructuralPower, Log,
-			TEXT("StructuralPower v2.2.0 — lighting + Id panel (I) (GroupLighting %s)"),
-			FStructuralPowerModConfig::IsGroupLightingEnabled() ? TEXT("on") : TEXT("off"));
+			TEXT("StructuralPower v2.2.0 — lighting + Id panel (I)"
+				" (groupLighting=%s propagation=%s gateSwitches=%s manualGroups=%s)"),
+			FStructuralPowerModConfig::IsGroupLightingEnabled() ? TEXT("on") : TEXT("off"),
+			FStructuralPowerModConfig::IsPropagationEnabled() ? TEXT("on") : TEXT("off"),
+			FStructuralPowerModConfig::IsGatePowerSwitchesEnabled() ? TEXT("on") : TEXT("off"),
+			FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled() ? TEXT("on") : TEXT("off"));
 #endif
 	}
 
