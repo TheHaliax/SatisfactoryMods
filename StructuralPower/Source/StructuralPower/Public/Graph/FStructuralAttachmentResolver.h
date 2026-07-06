@@ -4,13 +4,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Core/FStructuralNodeId.h"
+#include "Graph/FStructuralOutletParentResolver.h"
 #include "Lightweight/FStructuralLightweightTypes.h"
-
-class AFGBuildable;
-class UWorld;
-class FStructuralConnectivityGraph;
-class FStructuralLightweightIndex;
 
 struct FStructuralComponentResolveResult
 {
@@ -28,6 +23,11 @@ public:
 		AFGBuildable* Buildable,
 		UWorld* World,
 		const FStructuralLightweightIndex& LightweightIndex);
+
+	static FStructuralWallAnchor ResolveStructuralParent(
+		AFGBuildable* Buildable,
+		UWorld* World,
+		const FStructuralOutletParentResolveParams& Params);
 
 	static FStructuralComponentResolveResult ResolveStructuralComponent(
 		const FStructuralConnectivityGraph& Graph,

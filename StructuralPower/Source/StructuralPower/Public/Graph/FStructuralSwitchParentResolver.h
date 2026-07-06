@@ -4,12 +4,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Lightweight/FStructuralLightweightTypes.h"
-
-class AFGBuildableCircuitSwitch;
-class FStructuralConnectivityGraph;
-class FStructuralLightweightIndex;
-class UWorld;
+#include "Graph/FStructuralOutletParentResolver.h"
+#include "Lightweight/FStructuralLightweightIndex.h"
 
 struct FStructuralSwitchParentResolveResult
 {
@@ -29,7 +25,8 @@ public:
 		UWorld* World,
 		const FStructuralConnectivityGraph& Graph,
 		const FStructuralLightweightIndex& LightweightIndex,
-		bool bPreferWirePort = false);
+		bool bPreferWirePort = false,
+		const FStructuralOutletParentResolveParams* ParentResolveParams = nullptr);
 
 	/** True when a wire port connects to a non-grid structure-side neighbor (DR-012 wired path). */
 	static bool IsWiredToStructureSide(

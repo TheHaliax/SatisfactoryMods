@@ -78,6 +78,22 @@ void FStructuralEndpointIndex::ForEachOnRoot(
 	}
 }
 
+void FStructuralEndpointIndex::ForEachEndpoint(
+	EStructuralEndpointKind Kind,
+	TFunctionRef<void(const FStructuralNodeId& EndpointId)> Visitor) const
+{
+	for (const TPair<int32, TMap<EStructuralEndpointKind, TArray<FStructuralNodeId>>>& RootPair : ByRoot)
+	{
+		if (const TArray<FStructuralNodeId>* Endpoints = RootPair.Value.Find(Kind))
+		{
+			for (const FStructuralNodeId& EndpointId : *Endpoints)
+			{
+				Visitor(EndpointId);
+			}
+		}
+	}
+}
+
 void FStructuralEndpointIndex::ForEachBridgeOnRoot(
 	int32 Root,
 	TFunctionRef<void(const FStructuralNodeId& EndpointId)> Visitor) const

@@ -31,6 +31,10 @@ public:
 		int32 Root,
 		TFunctionRef<void(const FStructuralNodeId& EndpointId)> Visitor) const;
 
+	void ForEachEndpoint(
+		EStructuralEndpointKind Kind,
+		TFunctionRef<void(const FStructuralNodeId& EndpointId)> Visitor) const;
+
 private:
 	TMap<int32, TMap<EStructuralEndpointKind, TArray<FStructuralNodeId>>> ByRoot;
 };

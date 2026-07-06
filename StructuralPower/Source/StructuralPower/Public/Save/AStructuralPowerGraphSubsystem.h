@@ -11,6 +11,8 @@
 #include "Graph/FStructuralConnectivityGraph.h"
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Graph/FStructuralEndpointIndex.h"
+#include "Graph/FStructuralBusMemberSpatialIndex.h"
+#include "Graph/FStructuralOutletParentResolver.h"
 #include "Graph/FStructuralSwitchParentResolver.h"
 #include "Routing/EStructuralChannel.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
@@ -226,6 +228,7 @@ private:
 		EStructuralEndpointKind Kind,
 		const FStructuralNodeId& EndpointId);
 	void ApplyKeyedSubnetAllPanels();
+	void CollectKnownPanelEndpoints(TArray<AFGBuildableLightsControlPanel*>& OutPanels);
 	void FinishBulkLoadDrain();
 	void ReconcileAllPanelEndpoints();
 	void MaybeRunPostLoadLightReconcile();
@@ -295,6 +298,7 @@ private:
 	void RebuildLightweightIndex(UWorld* World);
 	void PurgeSavedOutletBusMesh(UWorld* World);
 	static FStructuralNodeId MakeParentNodeId(const FStructuralWallAnchor& Anchor);
+	FStructuralOutletParentResolveParams MakeOutletParentResolveParams() const;
 
 	void CompactPendingJobQueues();
 	bool IsBuildableAlreadyPending(AFGBuildable* Buildable, EStructuralPlacementJobType JobType) const;
@@ -302,6 +306,7 @@ private:
 
 	FStructuralConnectivityGraph StructureGraph;
 	FStructuralLightweightIndex LightweightIndex;
+	FStructuralBusMemberSpatialIndex BusMemberSpatialIndex;
 	TMap<FStructuralNodeId, FTrackedEndpoint> TrackedEndpoints;
 	TMap<FStructuralNodeId, TWeakObjectPtr<AFGBuildable>> RegisteredBuildables;
 

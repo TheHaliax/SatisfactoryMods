@@ -54,7 +54,8 @@ static bool IsGridSideNeighbor(const AFGBuildable* Neighbor)
 static FStructuralWallAnchor AnchorFromStructureNeighbor(
 	AFGBuildable* Neighbor,
 	UWorld* World,
-	const FStructuralLightweightIndex& LightweightIndex)
+	const FStructuralLightweightIndex& LightweightIndex,
+	const FStructuralOutletParentResolveParams* ParentResolveParams)
 {
 	if (!IsValid(Neighbor))
 	{
@@ -72,6 +73,14 @@ static FStructuralWallAnchor AnchorFromStructureNeighbor(
 	if (FStructuralEligibilityRules::IsPowerBridgePole(Neighbor)
 		|| FStructuralEligibilityRules::IsPowerBridgeSwitch(Neighbor))
 	{
+		if (ParentResolveParams)
+		{
+			return FStructuralAttachmentResolver::ResolveStructuralParent(
+				Neighbor,
+				World,
+				*ParentResolveParams);
+		}
+
 		return FStructuralAttachmentResolver::ResolveStructuralParent(
 			Neighbor,
 			World,
@@ -84,7 +93,8 @@ static FStructuralWallAnchor AnchorFromStructureNeighbor(
 static FStructuralSwitchParentResolveResult TryResolveFromWiredPorts(
 	AFGBuildableCircuitSwitch* Switch,
 	UWorld* World,
-	const FStructuralLightweightIndex& LightweightIndex)
+	const FStructuralLightweightIndex& LightweightIndex,
+	const FStructuralOutletParentResolveParams* ParentResolveParams)
 {
 	FStructuralSwitchParentResolveResult Result;
 
@@ -107,7 +117,8 @@ static FStructuralSwitchParentResolveResult TryResolveFromWiredPorts(
 		const FStructuralWallAnchor Anchor = AnchorFromStructureNeighbor(
 			Neighbor,
 			World,
-			LightweightIndex);
+			LightweightIndex,
+			ParentResolveParams);
 		if (!Anchor.IsValid())
 		{
 			continue;
@@ -168,7 +179,8 @@ FStructuralSwitchParentResolveResult FStructuralSwitchParentResolver::Resolve(
 	UWorld* World,
 	const FStructuralConnectivityGraph& Graph,
 	const FStructuralLightweightIndex& LightweightIndex,
-	bool bPreferWirePort)
+	bool bPreferWirePort,
+	const FStructuralOutletParentResolveParams* ParentResolveParams)
 {
 	FStructuralSwitchParentResolveResult Result;
 	if (!IsValid(Switch) || !IsValid(World))
@@ -180,7 +192,7 @@ FStructuralSwitchParentResolveResult FStructuralSwitchParentResolver::Resolve(
 
 	if (bPreferWirePort)
 	{
-		Result = TryResolveFromWiredPorts(Switch, World, LightweightIndex);
+		Result = TryResolveFromWiredPorts(Switch, World, LightweightIndex, ParentResolveParams);
 		if (Result.IsValid())
 		{
 			UE_LOG(LogStructuralPower, Log,
@@ -196,10 +208,20 @@ FStructuralSwitchParentResolveResult FStructuralSwitchParentResolver::Resolve(
 		}
 	}
 
-	Result.Anchor = FStructuralAttachmentResolver::ResolveStructuralParent(
-		Switch,
-		World,
-		LightweightIndex);
+	if (ParentResolveParams)
+	{
+		Result.Anchor = FStructuralAttachmentResolver::ResolveStructuralParent(
+			Switch,
+			World,
+			*ParentResolveParams);
+	}
+	else
+	{
+		Result.Anchor = FStructuralAttachmentResolver::ResolveStructuralParent(
+			Switch,
+			World,
+			LightweightIndex);
+	}
 	if (Result.IsValid())
 	{
 		UE_LOG(LogStructuralPower, Log,
@@ -210,7 +232,7 @@ FStructuralSwitchParentResolveResult FStructuralSwitchParentResolver::Resolve(
 
 	if (!bPreferWirePort)
 	{
-		Result = TryResolveFromWiredPorts(Switch, World, LightweightIndex);
+		Result = TryResolveFromWiredPorts(Switch, World, LightweightIndex, ParentResolveParams);
 		if (Result.IsValid())
 		{
 			UE_LOG(LogStructuralPower, Log,

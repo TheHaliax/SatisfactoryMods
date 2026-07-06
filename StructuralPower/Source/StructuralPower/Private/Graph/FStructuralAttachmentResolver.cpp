@@ -14,7 +14,17 @@ FStructuralWallAnchor FStructuralAttachmentResolver::ResolveStructuralParent(
 	UWorld* World,
 	const FStructuralLightweightIndex& LightweightIndex)
 {
-	return FStructuralOutletParentResolver::Resolve(Buildable, World, LightweightIndex);
+	FStructuralOutletParentResolveParams Params;
+	Params.LightweightIndex = &LightweightIndex;
+	return FStructuralOutletParentResolver::Resolve(Buildable, World, Params);
+}
+
+FStructuralWallAnchor FStructuralAttachmentResolver::ResolveStructuralParent(
+	AFGBuildable* Buildable,
+	UWorld* World,
+	const FStructuralOutletParentResolveParams& Params)
+{
+	return FStructuralOutletParentResolver::Resolve(Buildable, World, Params);
 }
 
 FStructuralComponentResolveResult FStructuralAttachmentResolver::ResolveStructuralComponent(

@@ -164,6 +164,36 @@ static void HandleSwitchBeginPlay(AFGBuildableCircuitSwitch* Switch)
 		}));
 }
 
+static void EnqueuePanelOutletWhenReady(
+	TWeakObjectPtr<UWorld> WorldWeak,
+	TWeakObjectPtr<AFGBuildableLightsControlPanel> PanelWeak)
+{
+	AFGBuildableLightsControlPanel* PanelPtr = PanelWeak.Get();
+	UWorld* WorldPtr = WorldWeak.Get();
+	if (!IsValid(PanelPtr) || !IsValid(WorldPtr))
+	{
+		return;
+	}
+
+	AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::GetOrCreate(WorldPtr);
+	if (!Graph)
+	{
+		return;
+	}
+
+	if (Graph->IsBulkLoadDrainActive())
+	{
+		WorldPtr->GetTimerManager().SetTimerForNextTick(
+			FTimerDelegate::CreateStatic(&EnqueuePanelOutletWhenReady, WorldWeak, PanelWeak));
+		return;
+	}
+
+	Graph->EnqueuePlacement(
+		PanelPtr,
+		EStructuralPlacementJobType::Outlet,
+		/*bDefer=*/true);
+}
+
 static void HandlePanelBeginPlay(AFGBuildableLightsControlPanel* Panel)
 {
 	if (!IsValid(Panel) || !Panel->HasAuthority())
@@ -181,30 +211,10 @@ static void HandlePanelBeginPlay(AFGBuildableLightsControlPanel* Panel)
 		TEXT("[PWR] panel BeginPlay %s — enqueue outlet"),
 		*Panel->GetName());
 
-	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
-		[WorldWeak = TWeakObjectPtr<UWorld>(World),
-			PanelWeak = TWeakObjectPtr<AFGBuildableLightsControlPanel>(Panel)]()
-		{
-			if (AFGBuildableLightsControlPanel* PanelPtr = PanelWeak.Get())
-			{
-				if (UWorld* WorldPtr = WorldWeak.Get())
-				{
-					if (AStructuralPowerGraphSubsystem* Graph =
-						AStructuralPowerGraphSubsystem::GetOrCreate(WorldPtr))
-					{
-						if (Graph->IsBulkLoadDrainActive())
-						{
-							return;
-						}
-
-						Graph->EnqueuePlacement(
-							PanelPtr,
-							EStructuralPlacementJobType::Outlet,
-							/*bDefer=*/true);
-					}
-				}
-			}
-		}));
+	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateStatic(
+		&EnqueuePanelOutletWhenReady,
+		TWeakObjectPtr<UWorld>(World),
+		TWeakObjectPtr<AFGBuildableLightsControlPanel>(Panel)));
 }
 
 static void HandleLightBeginPlay(AFGBuildableLightSource* Light)

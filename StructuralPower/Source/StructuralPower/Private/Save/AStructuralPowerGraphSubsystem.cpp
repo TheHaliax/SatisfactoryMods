@@ -26,6 +26,7 @@
 #include "Graph/FStructuralAttachmentResolver.h"
 #include "Graph/FStructuralOutletParentResolver.h"
 #include "Graph/FStructuralEndpointIndex.h"
+#include "Graph/FStructuralBusMemberSpatialIndex.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Kismet/GameplayStatics.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
@@ -372,7 +373,28 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCrea
 
 FStructuralWallAnchor AStructuralPowerGraphSubsystem::ResolveOutletAnchor(AFGBuildable* Outlet) const
 {
-	return FStructuralAttachmentResolver::ResolveStructuralParent(Outlet, GetWorld(), LightweightIndex);
+	return FStructuralAttachmentResolver::ResolveStructuralParent(
+		Outlet,
+		GetWorld(),
+		MakeOutletParentResolveParams());
+}
+
+FStructuralOutletParentResolveParams AStructuralPowerGraphSubsystem::MakeOutletParentResolveParams() const
+{
+	FStructuralOutletParentResolveParams Params;
+	Params.LightweightIndex = &LightweightIndex;
+	Params.BusMemberIndex = &BusMemberSpatialIndex;
+	Params.StructureGraph = &StructureGraph;
+	Params.bAllowLiveScan = !bBulkLoadDrainActive;
+	Params.ResolveActorFromNodeId = [this](const FStructuralNodeId& NodeId) -> AFGBuildable*
+	{
+		if (const TWeakObjectPtr<AFGBuildable>* Entry = RegisteredBuildables.Find(NodeId))
+		{
+			return Entry->Get();
+		}
+		return nullptr;
+	};
+	return Params;
 }
 
 FStructuralComponentResolveResult AStructuralPowerGraphSubsystem::ResolveStructuralComponentAt(
@@ -1842,6 +1864,71 @@ void AStructuralPowerGraphSubsystem::MaybeRunPostLoadLightReconcile()
 	}
 }
 
+void AStructuralPowerGraphSubsystem::CollectKnownPanelEndpoints(
+	TArray<AFGBuildableLightsControlPanel*>& OutPanels)
+{
+	OutPanels.Reset();
+	TSet<AFGBuildableLightsControlPanel*> Seen;
+
+	auto ConsiderPanel = [&](AFGBuildableLightsControlPanel* Panel)
+	{
+		if (!IsValid(Panel) || !Panel->HasAuthority() || Seen.Contains(Panel))
+		{
+			return;
+		}
+
+		Seen.Add(Panel);
+		OutPanels.Add(Panel);
+	};
+
+	RefreshBridgeEndpointRootIndex();
+
+	EndpointIndex.ForEachEndpoint(EStructuralEndpointKind::Panel, [&](const FStructuralNodeId& PanelId)
+	{
+		if (const FTrackedEndpoint* Tracked = TrackedEndpoints.Find(PanelId))
+		{
+			ConsiderPanel(Cast<AFGBuildableLightsControlPanel>(Tracked->Actor.Get()));
+		}
+	});
+
+	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : TrackedEndpoints)
+	{
+		if (Pair.Value.Kind != EStructuralEndpointKind::Panel)
+		{
+			continue;
+		}
+
+		ConsiderPanel(Cast<AFGBuildableLightsControlPanel>(Pair.Value.Actor.Get()));
+	}
+
+	for (int32 Index = PendingJobsHead; Index < PendingJobs.Num(); ++Index)
+	{
+		const FDeferredPlacementJob& Job = PendingJobs[Index];
+		if (Job.JobType != EStructuralPlacementJobType::Outlet)
+		{
+			continue;
+		}
+
+		ConsiderPanel(Cast<AFGBuildableLightsControlPanel>(Job.Buildable.Get()));
+	}
+
+	if (Seen.Num() > 0)
+	{
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World))
+		{
+			for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef())
+			{
+				ConsiderPanel(Cast<AFGBuildableLightsControlPanel>(Buildable));
+			}
+		}
+	}
+}
+
 void AStructuralPowerGraphSubsystem::ReconcileAllPanelEndpoints()
 {
 	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
@@ -1849,33 +1936,21 @@ void AStructuralPowerGraphSubsystem::ReconcileAllPanelEndpoints()
 		return;
 	}
 
-	UWorld* World = GetWorld();
-	AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World);
-	if (!IsValid(BuildableSubsystem))
-	{
-		return;
-	}
+	TArray<AFGBuildableLightsControlPanel*> Panels;
+	CollectKnownPanelEndpoints(Panels);
 
-	int32 PanelCount = 0;
-	for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef())
+	for (AFGBuildableLightsControlPanel* Panel : Panels)
 	{
-		AFGBuildableLightsControlPanel* Panel = Cast<AFGBuildableLightsControlPanel>(Buildable);
-		if (!IsValid(Panel) || !Panel->HasAuthority())
-		{
-			continue;
-		}
-
 		const FStructuralNodeId PanelId = MakeNodeId(Panel);
 		FTrackedEndpoint& Tracked = TrackedEndpoints.FindOrAdd(PanelId);
 		Tracked.bPanelLinksReady = false;
 		Tracked.bDownstreamLinksReady = false;
 		ProcessPanelEndpoint(Panel);
-		++PanelCount;
 	}
 
 	UE_LOG(LogStructuralPower, Log,
 		TEXT("[PWR] Post-load panel reconcile complete — %d panel(s)"),
-		PanelCount);
+		Panels.Num());
 
 	ApplyKeyedSubnetAllPanels();
 }
@@ -1887,22 +1962,12 @@ void AStructuralPowerGraphSubsystem::ApplyKeyedSubnetAllPanels()
 		return;
 	}
 
-	UWorld* World = GetWorld();
-	AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World);
-	if (!IsValid(BuildableSubsystem))
-	{
-		return;
-	}
+	TArray<AFGBuildableLightsControlPanel*> Panels;
+	CollectKnownPanelEndpoints(Panels);
 
-	for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef())
+	for (AFGBuildableLightsControlPanel* Panel : Panels)
 	{
-		if (AFGBuildableLightsControlPanel* Panel = Cast<AFGBuildableLightsControlPanel>(Buildable))
-		{
-			if (IsValid(Panel) && Panel->HasAuthority())
-			{
-				FStructuralPanelControlledSync::ApplyKeyedSubnet(*this, Panel);
-			}
-		}
+		FStructuralPanelControlledSync::ApplyKeyedSubnet(*this, Panel);
 	}
 }
 
@@ -2667,13 +2732,15 @@ void AStructuralPowerGraphSubsystem::OnSwitchStateChanged(AFGBuildableCircuitSwi
 		int32 Root = FindRootForTrackedEndpoint(*Tracked);
 		if (Root == INDEX_NONE)
 		{
+			const FStructuralOutletParentResolveParams ParentParams = MakeOutletParentResolveParams();
 			const FStructuralSwitchParentResolveResult ParentResolve =
 				FStructuralSwitchParentResolver::Resolve(
 					Switch,
 					GetWorld(),
 					StructureGraph,
 					LightweightIndex,
-					/*bPreferWirePort=*/false);
+					/*bPreferWirePort=*/false,
+					&ParentParams);
 			Root = ResolveSwitchMountRoot(ParentResolve.Anchor, ParentId);
 			if (ParentResolve.IsValid())
 			{
@@ -3269,12 +3336,15 @@ void AStructuralPowerGraphSubsystem::ProcessSwitchEndpoint(AFGBuildableCircuitSw
 	}
 
 	const bool bBulk = bBulkLoadDrainActive;
+	const FStructuralOutletParentResolveParams ParentParams = MakeOutletParentResolveParams();
 	const FStructuralSwitchParentResolveResult ParentResolve =
 		FStructuralSwitchParentResolver::Resolve(
 			Switch,
 			GetWorld(),
 			StructureGraph,
-			LightweightIndex);
+			LightweightIndex,
+			/*bPreferWirePort=*/false,
+			&ParentParams);
 	const FStructuralWallAnchor ParentAnchor = ParentResolve.Anchor;
 
 	const FStructuralNodeId SwitchId = MakeNodeId(Switch);
@@ -4066,6 +4136,10 @@ void AStructuralPowerGraphSubsystem::RegisterBuildableActor(AFGBuildable* Builda
 	}
 
 	RegisteredBuildables.Add(MakeNodeId(Buildable), Buildable);
+	if (FStructuralEligibilityRules::IsBusMember(Buildable))
+	{
+		BusMemberSpatialIndex.RegisterMember(Buildable);
+	}
 }
 
 void AStructuralPowerGraphSubsystem::UnregisterBuildableActor(const FStructuralNodeId& NodeId)
@@ -4075,17 +4149,28 @@ void AStructuralPowerGraphSubsystem::UnregisterBuildableActor(const FStructuralN
 		return;
 	}
 
+	if (const TWeakObjectPtr<AFGBuildable>* Entry = RegisteredBuildables.Find(NodeId))
+	{
+		if (AFGBuildable* Buildable = Entry->Get())
+		{
+			BusMemberSpatialIndex.UnregisterMember(Buildable);
+		}
+	}
+
 	RegisteredBuildables.Remove(NodeId);
 }
 
 void AStructuralPowerGraphSubsystem::RebuildBuildableRegistry(UWorld* World)
 {
 	RegisteredBuildables.Reset();
+	BusMemberSpatialIndex.Reset();
 
 	if (!IsValid(World))
 	{
 		return;
 	}
+
+	BusMemberSpatialIndex.RebuildFromWorld(World);
 
 	AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World);
 	if (!IsValid(BuildableSubsystem))
