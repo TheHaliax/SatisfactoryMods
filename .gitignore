@@ -32,6 +32,9 @@ tools/*
 # Local development notes (roadmap, research, scratch specs) — not for repo
 development/
 
+# Personal monorepo-wide planning (future mods, cross-project notes) — not for repo
+monodev/
+
 # OS
 Thumbs.db
 Desktop.ini
