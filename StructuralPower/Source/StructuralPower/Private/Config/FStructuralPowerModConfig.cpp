@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Haliax
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "Config/UStructuralPowerModConfiguration.h"
-
 #include "Config/FStructuralPowerModConfig.h"
 
+#include "Config/UStructuralPowerModConfiguration.h"
 #include "Configuration/ConfigManager.h"
+#include "Save/AStructuralPowerGraphSubsystem.h"
 #include "Configuration/ConfigProperty.h"
 #include "Configuration/Properties/ConfigPropertyBool.h"
 #include "Configuration/Properties/ConfigPropertyFloat.h"
@@ -52,6 +52,12 @@ static TAutoConsoleVariable<int32> CVarStructuralPowerEnableHoverpackStructural(
 	TEXT("StructuralPower.EnableHoverpackStructural"),
 	1,
 	TEXT("1 = hoverpack structural geometry tether (v2.1); 0 = vanilla only"),
+	ECVF_Default);
+
+static TAutoConsoleVariable<int32> CVarStructuralPowerGroupLighting(
+	TEXT("StructuralPower.GroupLighting"),
+	0,
+	TEXT("1 = lights draw structural power on powered foundations (v2.2 M3); 0 = wire required"),
 	ECVF_Default);
 
 static TAutoConsoleVariable<float> CVarStructuralPowerHoverpackHorizontalMultiplier(
@@ -135,6 +141,8 @@ static void ApplyCvarsFromLegacyJson(const TSharedPtr<FJsonObject>& Object)
 		ParseBoolField(Object, TEXT("PowerSwitchManualGroups"), true) ? 1 : 0);
 	CVarStructuralPowerEnableHoverpackStructural->Set(
 		ParseBoolField(Object, TEXT("EnableHoverpackStructural"), true) ? 1 : 0);
+	CVarStructuralPowerGroupLighting->Set(
+		ParseBoolField(Object, TEXT("GroupLighting"), false) ? 1 : 0);
 
 	float Horizontal = ParseFloatField(Object, TEXT("HoverpackStructuralHorizontalMultiplier"), -1.0f);
 	float Vertical = ParseFloatField(Object, TEXT("HoverpackStructuralVerticalMultiplier"), -1.0f);
@@ -164,6 +172,9 @@ static TSharedPtr<FJsonObject> BuildLegacyJsonFromCvars()
 	Object->SetBoolField(
 		TEXT("EnableHoverpackStructural"),
 		CVarStructuralPowerEnableHoverpackStructural.GetValueOnGameThread() != 0);
+	Object->SetBoolField(
+		TEXT("GroupLighting"),
+		CVarStructuralPowerGroupLighting.GetValueOnGameThread() != 0);
 	Object->SetNumberField(
 		TEXT("HoverpackStructuralHorizontalMultiplier"),
 		ClampHoverpackMultiplier(CVarStructuralPowerHoverpackHorizontalMultiplier.GetValueOnGameThread()));
@@ -402,6 +413,7 @@ void FStructuralPowerModConfig::RegisterConsoleVariables()
 	CVarStructuralPowerGatePowerSwitches.AsVariable();
 	CVarStructuralPowerSwitchManualGroups.AsVariable();
 	CVarStructuralPowerEnableHoverpackStructural.AsVariable();
+	CVarStructuralPowerGroupLighting.AsVariable();
 	CVarStructuralPowerHoverpackHorizontalMultiplier.AsVariable();
 	CVarStructuralPowerHoverpackVerticalMultiplier.AsVariable();
 }
@@ -476,6 +488,10 @@ void FStructuralPowerModConfig::ApplyFromConfigRoot(UConfigPropertySection* Root
 	{
 		CVarStructuralPowerEnableHoverpackStructural->Set(Prop->Value ? 1 : 0);
 	}
+	if (UConfigPropertyBool* Prop = FindBoolProperty(Root, TEXT("GroupLighting")))
+	{
+		CVarStructuralPowerGroupLighting->Set(Prop->Value ? 1 : 0);
+	}
 	if (UConfigPropertyFloat* Prop = FindFloatProperty(Root, TEXT("HoverpackStructuralHorizontalMultiplier")))
 	{
 		CVarStructuralPowerHoverpackHorizontalMultiplier->Set(ClampHoverpackMultiplier(Prop->Value));
@@ -526,6 +542,11 @@ void FStructuralPowerModConfig::PushToConfigRoot(UConfigPropertySection* Root)
 	if (UConfigPropertyBool* Prop = FindBoolProperty(Root, TEXT("EnableHoverpackStructural")))
 	{
 		Prop->Value = CVarStructuralPowerEnableHoverpackStructural.GetValueOnGameThread() != 0;
+		NotifyConfigPropertyChanged(Prop);
+	}
+	if (UConfigPropertyBool* Prop = FindBoolProperty(Root, TEXT("GroupLighting")))
+	{
+		Prop->Value = CVarStructuralPowerGroupLighting.GetValueOnGameThread() != 0;
 		NotifyConfigPropertyChanged(Prop);
 	}
 	if (UConfigPropertyFloat* Prop = FindFloatProperty(Root, TEXT("HoverpackStructuralHorizontalMultiplier")))
@@ -640,7 +661,8 @@ bool FStructuralPowerModConfig::TryApplySetCommand(const TArray<FString>& Args, 
 		|| SetBool(CVarStructuralPowerTrace, TEXT("Trace"))
 		|| SetBool(CVarStructuralPowerGatePowerSwitches, TEXT("GatePowerSwitches"))
 		|| SetBool(CVarStructuralPowerSwitchManualGroups, TEXT("PowerSwitchManualGroups"))
-		|| SetBool(CVarStructuralPowerEnableHoverpackStructural, TEXT("EnableHoverpackStructural")))
+		|| SetBool(CVarStructuralPowerEnableHoverpackStructural, TEXT("EnableHoverpackStructural"))
+		|| SetBool(CVarStructuralPowerGroupLighting, TEXT("GroupLighting")))
 	{
 		bChanged = true;
 	}
@@ -689,6 +711,15 @@ bool FStructuralPowerModConfig::TryApplySetCommand(const TArray<FString>& Args, 
 		SaveLegacyToDisk();
 	}
 
+	if (Key.Equals(TEXT("GroupLighting"), ESearchCase::IgnoreCase)
+		&& IsValid(World))
+	{
+		if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::Find(World))
+		{
+			Graph->ReconcileAllLightConsumers();
+		}
+	}
+
 	return bChanged;
 }
 
@@ -710,6 +741,11 @@ bool FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled()
 bool FStructuralPowerModConfig::IsHoverpackStructuralEnabled()
 {
 	return CVarStructuralPowerEnableHoverpackStructural.GetValueOnGameThread() != 0;
+}
+
+bool FStructuralPowerModConfig::IsGroupLightingEnabled()
+{
+	return CVarStructuralPowerGroupLighting.GetValueOnGameThread() != 0;
 }
 
 float FStructuralPowerModConfig::GetHoverpackHorizontalMultiplier()

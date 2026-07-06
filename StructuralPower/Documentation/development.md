@@ -19,7 +19,9 @@ Junction or copy `StructuralPower/` into your SML StarterProject `Mods/` folder 
 
 ## Dev build (fast iteration)
 
-Use your local pack script or Alpakit **Development** / Win64 Shipping against StarterProject.
+```powershell
+powershell -File tools/pack-structuralpower.ps1 -Config Shipping
+```
 
 Deploy cooked output to:
 
@@ -54,6 +56,14 @@ Full checklist: [release.md](release.md).
 | Eligibility rules | `FStructuralEligibilityRules.cpp` |
 | Factory tick drain | `UStructuralPowerFactoryTickHandler.cpp` |
 | Diagnostics | `FStructuralPowerDiagnostics.cpp` |
+| **v2.2 — I-key input** | `FStructuralPowerIdInput.cpp` |
+| **v2.2 — Id panel UI** | `UStructuralPowerIdConfigWidget.cpp`, `UStructuralPowerIdOptionManager.cpp` |
+| **v2.2 — Panel attach / control bus** | `FStructuralPanelAttach.cpp` |
+| **v2.2 — Keyed panel sync** | `FStructuralPanelControlledSync.cpp`, `UStructuralPowerPanelListener.cpp` |
+| **v2.2 — Light consumer attach** | `FStructuralDeviceAttach.cpp` |
+| **v2.2 — Routing / id pools** | `FStructuralPowerRouter.cpp`, `EStructuralChannel.h`, `CollectIdsOnComponent` |
+
+Feature notes: [v2.2.md](v2.2.md). Roadmap: [../README.md#roadmap](../README.md#roadmap).
 
 ## License
 

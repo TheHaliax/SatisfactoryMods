@@ -10,6 +10,7 @@
 #include "Graph/FStructuralAttachmentResolver.h"
 #include "Graph/FStructuralConnectivityGraph.h"
 #include "Graph/FStructuralEndpointTypes.h"
+#include "Graph/FStructuralSwitchParentResolver.h"
 #include "Routing/EStructuralChannel.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
 #include "Lightweight/FStructuralLightweightTypes.h"
@@ -17,6 +18,8 @@
 
 class AFGBuildable;
 class AFGBuildableCircuitSwitch;
+class AFGBuildableLightSource;
+class AFGBuildableLightsControlPanel;
 class AFGBuildablePowerPole;
 class UFGCircuitConnectionComponent;
 class UFGPowerConnectionComponent;
@@ -58,6 +61,7 @@ public:
 	static AStructuralPowerGraphSubsystem* Find(UWorld* World);
 	static FStructuralNodeId MakeNodeId(const AFGBuildable* Buildable);
 	static UFGStructuralPowerConnectionComponent* FindBusConnector(const AFGBuildable* Host);
+	static UFGStructuralPowerConnectionComponent* FindPanelControlBus(const AFGBuildable* Host);
 	static UFGStructuralPowerConnectionComponent* FindOutletBusConnector(const AFGBuildablePowerPole* Outlet);
 	/** Remove saved/runtime outlet bus + switch listener before CircuitBridge BeginPlay. */
 	static void StripPersistedEndpointModComponents(AFGBuildable* Host);
@@ -69,7 +73,9 @@ public:
 	void OnBuildableRemoved(AFGBuildable* Buildable);
 	void OnLightweightRemoved(const FStructuralLightweightKey& Key);
 	void ProcessWallOutletAfterWire(AFGBuildablePowerPole* Pole);
+	void ProcessPoleWireDelta(AFGBuildablePowerPole* Pole);
 	void OnSwitchStateChanged(AFGBuildableCircuitSwitch* Switch);
+	void ReconcileAllLightConsumers();
 	void RunDiagnostics() const;
 
 	FStructuralWallAnchor ResolveOutletAnchor(AFGBuildable* Outlet) const;
@@ -82,15 +88,29 @@ public:
 		int32 ComponentRoot,
 		const AFGBuildable* ExcludeHost = nullptr);
 
+	/** DR-002/011 — default bus or switch-gated outlet bus for keyed Source ids. */
+	UFGPowerConnectionComponent* ResolveSubnetFeedConnector(
+		int32 ComponentRoot,
+		const FStructuralChannelKey& DeviceKey);
+
 	FStructuralComponentKey MakeComponentKeyForRoot(int32 ComponentRoot) const;
+	FStructuralComponentKey MakeComponentKeyForBuildable(const AFGBuildable* Buildable) const;
+	int32 GetEndpointComponentRoot(AFGBuildable* Endpoint);
 	FStructuralChannelKey ResolveChannelKeyForBuildable(AFGBuildable* Buildable);
+	FName ResolveSource(AFGBuildable* Buildable, EStructuralChannel Tag);
+	FName ResolveControl(AFGBuildable* Buildable, EStructuralChannel Tag);
 	FName ResolveEffectiveId(AFGBuildable* Buildable, EStructuralChannel Tag);
-	void SetPlayerOverrideId(AFGBuildable* Buildable, FName PlayerOverrideId);
-	FName GetPlayerOverrideId(const AFGBuildable* Buildable) const;
+	void SetEndpointIds(
+		AFGBuildable* Buildable,
+		FName Source,
+		FName Control,
+		bool bClearSource,
+		bool bClearControl);
+	bool GetEndpointOverrides(const AFGBuildable* Buildable, FStructuralEndpointOverrides& Out) const;
+	bool CollectIdsOnComponent(const FStructuralComponentKey& Key, FStructuralComponentIdList& Out) const;
 	FName GetOrCreateComponentDefaultId(const FStructuralComponentKey& ComponentKey);
 
 	int32 GetStructureNodeCount() const { return StructureGraph.GetNodeCount(); }
-	int32 GetTrackedEndpointCount() const { return TrackedEndpoints.Num(); }
 	int32 GetTrackedPoleCount() const { return TrackedEndpoints.Num(); }
 	int32 GetTrackedLightweightCount() const { return LightweightIndex.GetTrackedCount(); }
 	int32 GetPendingJobCount() const
@@ -98,6 +118,7 @@ public:
 		return (PendingJobs.Num() - PendingJobsHead)
 			+ (PendingLightweightJobs.Num() - PendingLightweightJobsHead);
 	}
+	bool IsBuildablePlacementPending(AFGBuildable* Buildable) const;
 	void GetGraphStats(int32& OutComponents, int32& OutLargest) { StructureGraph.GetComponentStats(OutComponents, OutLargest); }
 
 	bool DoesComponentRootCarryPower(int32 ComponentRoot) const;
@@ -106,6 +127,24 @@ public:
 		float MaxHorizontal,
 		float MaxVertical,
 		FStructuralHoverpackAnchorQuery& Out) const;
+
+	/** True while mod is calling ConnectComponents — suppresses switch/panel circuit-refresh enqueue. */
+	bool ShouldDeferSwitchCircuitRefresh() const { return CircuitPromotionDepth > 0; }
+
+	/** While true, post-load drain uses cheap pole attach — no RestitchComponent. */
+	bool IsBulkLoadDrainActive() const { return bBulkLoadDrainActive; }
+
+	void EnumerateTrackedLightsOnRoot(
+		int32 Root,
+		TFunctionRef<void(AFGBuildableLightSource*)> Visitor) const;
+
+	void BeginCircuitPromotion();
+	void EndCircuitPromotion();
+
+	bool LinkHiddenPair(UFGPowerConnectionComponent* A, UFGPowerConnectionComponent* B);
+	void PromoteStructuralMeshFrom(UFGPowerConnectionComponent* Seed);
+	UFGStructuralPowerConnectionComponent* GetOrCreatePanelControlBus(
+		AFGBuildableLightsControlPanel* Panel);
 
 	// IFGSaveInterface — geometry rebuilds on load; Id registry (DR-009) persists here.
 	virtual void PreSaveGame_Implementation(int32 saveVersion, int32 gameVersion) override {}
@@ -128,6 +167,14 @@ private:
 	void ProcessOutlet(AFGBuildable* Buildable);
 	void ProcessPoleEndpoint(AFGBuildablePowerPole* Pole);
 	void ProcessSwitchEndpoint(AFGBuildableCircuitSwitch* Switch);
+	void ProcessLightEndpoint(AFGBuildableLightSource* Light);
+	void ProcessPanelEndpoint(AFGBuildableLightsControlPanel* Panel);
+	void RestitchLightEndpointsForRoot(int32 Root);
+	void RestitchPanelEndpointsForRoot(int32 Root);
+	void RestitchPanelsWithControlOnRoot(int32 Root, FName ControlId);
+	void RestitchSwitchKeyedConsumersOnRoot(int32 Root, FName SwitchControlId);
+	void TearDownLightStructuralLinks(AFGBuildableLightSource* Light);
+	void TearDownPanelStructuralLinks(AFGBuildableLightsControlPanel* Panel);
 
 	UFGStructuralPowerConnectionComponent* GetOrCreateBusConnector(AFGBuildable* Host);
 	UFGStructuralPowerConnectionComponent* GetOrCreateOutletBusConnector(AFGBuildablePowerPole* Outlet);
@@ -135,8 +182,52 @@ private:
 		AFGBuildable* Endpoint,
 		const FStructuralWallAnchor& Anchor,
 		FStructuralNodeId& OutParentId);
+	int32 ResolvePoleComponentRoot(
+		AFGBuildablePowerPole* Pole,
+		const FStructuralWallAnchor& Anchor,
+		FStructuralNodeId& OutParentId);
+	int32 ResolveBridgeComponentRootBulk(
+		AFGBuildable* Host,
+		const FStructuralWallAnchor& Anchor,
+		FStructuralNodeId& OutParentId);
+	int32 ResolveBridgeHostComponentRoot(
+		AFGBuildable* Host,
+		FStructuralNodeId* OutParentId = nullptr);
+	void PromoteDirectHiddenLinks(UFGPowerConnectionComponent* Seed);
+	void PromoteOutletBusIfPowered(
+		UFGStructuralPowerConnectionComponent* OutletBus,
+		bool bLocalPromoteOnly = false);
+	void ApplyLocalBridgeBusAttach(
+		AFGBuildable* Host,
+		UFGStructuralPowerConnectionComponent* OutletBus,
+		int32 Root,
+		const FStructuralNodeId& SelfId,
+		const AFGBuildable* FeedExcludeHost = nullptr);
+	bool LinkHiddenPairLocal(UFGPowerConnectionComponent* A, UFGPowerConnectionComponent* B);
+	bool TryMeshPeerBusOnComponent(
+		AFGBuildable* Host,
+		UFGStructuralPowerConnectionComponent* OutletBus,
+		int32 Root,
+		const FStructuralNodeId& SelfId,
+		bool bBridgePeersOnly);
+	int32 FindRootForTrackedEndpoint(const FTrackedEndpoint& Tracked) const;
+	int32 ResolveBridgeRootFromAnchor(
+		AFGBuildable* Host,
+		const FStructuralWallAnchor& Anchor,
+		FStructuralNodeId& OutParentId,
+		bool bPreferBulkResolve);
+	void MarkBridgeEndpointRootIndexDirty();
+	void RefreshBridgeEndpointRootIndex();
+	void ApplyKeyedSubnetAllPanels();
+	void FinishBulkLoadDrain();
+	void ReconcileAllPanelEndpoints();
+	void MaybeRunPostLoadLightReconcile();
 	FStructuralComponentKey MakeComponentKeyForParent(const FStructuralNodeId& ParentId) const;
 	void LinkBusToVisibleConnections(AFGBuildable* Host, UFGStructuralPowerConnectionComponent* Bus);
+	void LinkBusToVisibleConnectionsLocal(
+		AFGBuildable* Host,
+		UFGStructuralPowerConnectionComponent* Bus);
+	bool HasBridgeBusPeerMesh(UFGStructuralPowerConnectionComponent* Bus) const;
 	void RestitchComponent(int32 Root, bool bTearDownFirst);
 	void ReEnergizeComponentRoots(const TArray<int32>& Roots, bool bTearDownFirst);
 	void RestitchSwitchKeyedSubnet(
@@ -150,16 +241,43 @@ private:
 	void TearDownSwitchStructuralLinks(AFGBuildable* Host);
 	void StripInactiveSwitchStructuralLinks(int32 Root);
 	void EnsureSwitchListener(AFGBuildableCircuitSwitch* Switch);
-	static bool ShouldEndpointParticipateInRestitch(
+	void EnsurePanelListener(AFGBuildableLightsControlPanel* Panel);
+	bool ShouldEndpointParticipateInRestitch(
 		AFGBuildable* Host,
 		EStructuralEndpointKind Kind);
 	bool ShouldMeshEndpoints(
 		AFGBuildable* HostA,
 		AFGBuildable* HostB,
 		int32 ComponentRoot) const;
+	bool ShouldInjectSwitchStructuralPath(const AFGBuildableCircuitSwitch* Switch) const;
+	bool SwitchHasAssignedControl(const AFGBuildableCircuitSwitch* Switch) const;
+	bool SwitchNeedsAdvancedWork(const AFGBuildableCircuitSwitch* Switch) const;
+	int32 ResolveSwitchMountRoot(
+		const FStructuralWallAnchor& Anchor,
+		FStructuralNodeId& OutParentId);
+	void RegisterSwitchOutletBase(
+		AFGBuildableCircuitSwitch* Switch,
+		const FStructuralWallAnchor& ParentAnchor,
+		FTrackedEndpoint& InOutTracked,
+		int32& OutRoot,
+		FStructuralNodeId& OutParentId);
+	void ApplySwitchBaseOutletAttach(
+		AFGBuildableCircuitSwitch* Switch,
+		UFGStructuralPowerConnectionComponent* OutletBus,
+		int32 Root);
+	void ApplySwitchRuntimeAttach(
+		AFGBuildableCircuitSwitch* Switch,
+		UFGStructuralPowerConnectionComponent* OutletBus,
+		int32 Root,
+		const FStructuralNodeId& SwitchId,
+		bool bBulkLoad);
+	void ApplySwitchAdvancedAttach(
+		AFGBuildableCircuitSwitch* Switch,
+		UFGStructuralPowerConnectionComponent* OutletBus,
+		int32 Root,
+		const FStructuralNodeId& SwitchId,
+		bool bKeyedSubnet);
 
-	bool LinkHiddenPair(UFGPowerConnectionComponent* A, UFGPowerConnectionComponent* B);
-	void PromoteStructuralMeshFrom(UFGPowerConnectionComponent* Seed);
 	UFGStructuralPowerConnectionComponent* FindPoweredHiddenReachable(
 		UFGStructuralPowerConnectionComponent* StartHidden,
 		int32 MaxHiddenHops = 512) const;
@@ -184,10 +302,17 @@ private:
 	TMap<FStructuralComponentKey, FName> ComponentDefaultIds;
 
 	UPROPERTY(SaveGame)
-	TMap<FStructuralNodeId, FName> PlayerOverrideIds;
+	TMap<FStructuralNodeId, FStructuralEndpointOverrides> PlayerEndpointOverrides;
 	TArray<FDeferredPlacementJob> PendingJobs;
 	TArray<FStructuralLightweightKey> PendingLightweightJobs;
 	int32 PendingJobsHead = 0;
 	int32 PendingLightweightJobsHead = 0;
+	int32 CircuitPromotionDepth = 0;
 	bool bPostLoadRebuilt = false;
+	bool bPendingPostLoadLightReconcile = false;
+	bool bBulkLoadDrainActive = false;
+	bool bBridgeEndpointRootIndexDirty = true;
+	TMap<int32, TArray<FStructuralNodeId>> BridgeEndpointsByRoot;
+	/** Feed connector cache per component root — invalidated with the root index. */
+	TMap<int32, TWeakObjectPtr<UFGCircuitConnectionComponent>> SourceConnectorByRoot;
 };

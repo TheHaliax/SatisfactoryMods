@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.2.0 — 2026-07-05
+Structural lighting, named light groups, and unified device Id config (I key).
+- **Structural lighting (M3):** lights on powered structure draw from the bus — no per-foundation wire daisy-chain. **Opt-in** — default OFF (`GroupLighting` in Debug or `!lighting`)
+- **Light control panels (M4):** multiple independent keyed zones per structure; panel `Control` id names a light group; lights use matching `Source` id
+- **Id config panel (DR-013):** press **I** while looking at a light, power switch, or lights control panel — assign **Source** and **Control** ids from structure-scoped dropdowns or typed names
+- **Switch subnets:** keyed panels/lights can use a switch **Control** id as **Source** — power follows switch ON/OFF when Mode B (`PowerSwitchManualGroups`) is on
+- **Per-panel control bus (DR-006):** keyed downstream links isolated from structural outlet mesh — vanilla E panel settings no longer bleed to all lights on structure
+- **Save/reload:** strip persisted mod bus components before `CircuitBridge` BeginPlay; Slate-only I-key input (no Enhanced Input mapping context on load travel)
+- **Chat:** `!lighting` — toggle structural lighting on the server
+- **Console / cfg:** `GroupLighting` key mirrors mod menu (Debug section)
+- Per-device **Source/Control** overrides remain in world save (RCO), not `.cfg`
+
 ## 2.1.0 — 2026-07-04
 Switches, hoverpack structural tether, SML pause-menu config, and UtilityMod-style chat commands.
 - **Power switches:** structural gating with Mode B keyed subnets by default (Mode A whole-component via config)

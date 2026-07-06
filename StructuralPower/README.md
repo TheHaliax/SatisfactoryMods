@@ -1,8 +1,10 @@
 # StructuralPower
 
-**Version 2.1.0** · Satisfactory 1.2 (≥491125) · SML ^3.12.0
+**Version 2.2.0** · Satisfactory 1.2 (≥491125) · SML ^3.12.0
 
-Structural Power adds a hidden power network through structural pieces — foundations, walls, ramps, and bridge poles — so you can power outlets and poles without running visible wires along every segment. **v2.1** adds structural **power-switch gating** and a **hoverpack structural tether** so you can fly from powered geometry without peppering poles.
+Structural Power adds a hidden power network through structural pieces — foundations, walls, ramps, and bridge poles — so you can power outlets and poles without running visible wires along every segment. **v2.2** adds opt-in **structural lighting** and **named light groups**. **v2.1** adds structural **power-switch gating** and a **hoverpack structural tether**.
+
+> **Welcome back if v2.1 put you off:** **v2.0.0** introduced **retroactive wiring on existing saves** — your base could join the bus on load without rebuilding. **v2.1.0** built on that with switches and hoverpack, but changed how existing saves are processed on load — and on many bases that **broke first-time use entirely**. That was unintentional, and I’m sorry for the inconvenience. **v2.2.0 fixes legacy load** while keeping retroactive support — if you bounced on v2.1, this is the version worth another shot.
 
 ## How it works
 
@@ -10,6 +12,7 @@ Structural Power adds a hidden power network through structural pieces — found
 - Wire one structural outlet to your grid; connected structure shares the bus
 - Ground poles, wall outlets, and towers bridge to the nearest powered structure
 - Connectivity is rebuilt from world geometry on load — nothing structural is persisted, so saves can't carry stale links
+- **Structural lighting** (v2.2, opt-in) — lights on powered foundations draw from the bus; use **I** to assign Source/Control ids for groups and switch subnets
 - **Power switches** (v2.1) gate keyed subnets on structures — optional pole bridge; Mode B keyed subnets by default
 - **Hoverpack** (v2.1) tethers from nearby **powered structure** geometry — adjustable horizontal/vertical reach on the server
 
@@ -19,12 +22,13 @@ Type in the in-game chat on the **server or listen host** (dedicated-server oper
 
 Available commands (`[]` — required argument):
 
+- `!lighting` — toggle **structural lighting** (v2.2; default off)
 - `!HoverH [1-10]` — set hoverpack **horizontal** reach multiplier (saved to mod config)
 - `!HoverV [1-10]` — set hoverpack **vertical** reach multiplier (saved to mod config)
 - `!tracetoggle` — debug: toggle verbose `[PWR]` logging in `FactoryGame.log`
 - `!pwrhelp` — list Structural Power chat commands
 
-Settings also live in **Pause → Mods → Structural Power** (hover multipliers on the main panel; propagation, switches, hoverpack tether, and trace under the collapsible **Debug** section). Host-only changes persist to `Configs/StructuralPower.cfg`.
+Settings also live in **Pause → Mods → Structural Power** (hover multipliers on the main panel; propagation, switches, lighting, hoverpack tether, and trace under the collapsible **Debug** section). Host-only changes persist to `Configs/StructuralPower.cfg`.
 
 ## Roadmap
 
@@ -37,19 +41,21 @@ Feature releases after the base bus. Later categories are **opt-in** on servers 
 - Retroactive on load — no rebuild after install or update
 - One wire to a structural outlet can power the whole connected build
 
-### v2.1.0 — Switches & hoverpack *(current)*
+### v2.1.0 — Switches & hoverpack *(prior release)*
 
 - **Power switches** on structures gate keyed subnets by default — wire optional pole-like bridge; assign building tag + matching device Ids for isolated subnets. Set `PowerSwitchManualGroups: false` in cfg for whole-component Mode A.
 - **Hoverpack** tethers from **powered structure** nearby — fly above, below, or beside your base without peppering poles; horizontal/vertical reach adjustable via pause menu or `!HoverH` / `!HoverV` (default 1.5× base radius each axis)
 - **Server config** via pause menu, `Configs/StructuralPower.cfg`, console `StructuralPower.Set`, and `!` chat commands
 - **Debug** section in mod config for propagation, switch gating, hoverpack tether toggle, and trace logging
 
-### v2.2 — Lighting *(in development)*
+### v2.2.0 — Lighting *(current · SMR/deploy pending)*
 
-- **Lights** draw from the structural bus — no daisy-chain wiring on every foundation
+- **Lights** draw from the structural bus when **Structural lighting** is enabled — no daisy-chain wiring on every foundation
 - **Light control panels** with **named groups** — multiple independent light zones on one structure
+- **I key** — unified Id config panel for lights, switches, and lights control panels (Source/Control ids on the structure island)
+- **Switch subnets** — keyed lights/panels can source from a switch Control id (Mode B)
 
-### v2.3 — Generators & storage
+### v2.3 — Generators & storage *(in development)*
 
 - **Generators** (coal, fuel, nuclear, geothermal, wind, etc.) feed the bus directly
 - **Power storage** charges and discharges on the structure grid
@@ -80,7 +86,7 @@ Feature releases after the base bus. Later categories are **opt-in** on servers 
 
 ## Multiplayer
 
-Works on client and all dedicated servers (Windows and Linux). **Required on remote** — all players need the same mod version (`^2.1.0`).
+Works on client and all dedicated servers (Windows and Linux). **Required on remote** — all players need the same mod version (`^2.2.0`).
 
 Server operators: use the pause-menu mod config or `Configs/StructuralPower.cfg` on the dedicated host. See [Documentation/multiplayer.md](Documentation/multiplayer.md) and [Documentation/chat-commands.md](Documentation/chat-commands.md).
 

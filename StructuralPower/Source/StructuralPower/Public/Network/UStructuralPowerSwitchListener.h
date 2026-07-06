@@ -11,8 +11,7 @@ class AFGBuildableCircuitSwitch;
 class AStructuralPowerGraphSubsystem;
 
 /**
- * Binds native switch delegates to the graph subsystem. One instance per tracked switch;
- * lives on the switch actor so dynamic multicast delegates have a stable UObject target.
+ * Dynamic multicast delegates require a stable UObject target on the switch actor.
  */
 UCLASS()
 class STRUCTURALPOWER_API UStructuralPowerSwitchListener : public UActorComponent

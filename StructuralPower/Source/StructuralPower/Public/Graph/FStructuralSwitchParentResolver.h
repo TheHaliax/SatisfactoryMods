@@ -28,5 +28,11 @@ public:
 		AFGBuildableCircuitSwitch* Switch,
 		UWorld* World,
 		const FStructuralConnectivityGraph& Graph,
-		const FStructuralLightweightIndex& LightweightIndex);
+		const FStructuralLightweightIndex& LightweightIndex,
+		bool bPreferWirePort = false);
+
+	/** True when a wire port connects to a non-grid structure-side neighbor (DR-012 wired path). */
+	static bool IsWiredToStructureSide(
+		AFGBuildableCircuitSwitch* Switch,
+		int32* OutWirePortIndex = nullptr);
 };

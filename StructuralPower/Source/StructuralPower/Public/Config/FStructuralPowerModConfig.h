@@ -29,6 +29,7 @@ public:
 	static bool IsGatePowerSwitchesEnabled();
 	static bool IsPowerSwitchManualGroupsEnabled();
 	static bool IsHoverpackStructuralEnabled();
+	static bool IsGroupLightingEnabled();
 	static float GetHoverpackHorizontalMultiplier();
 	static float GetHoverpackVerticalMultiplier();
 	static bool IsTraceEnabled();

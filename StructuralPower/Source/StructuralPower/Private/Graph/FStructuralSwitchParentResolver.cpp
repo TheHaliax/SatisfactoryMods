@@ -122,11 +122,53 @@ static FStructuralSwitchParentResolveResult TryResolveFromWiredPorts(
 }
 }
 
+bool FStructuralSwitchParentResolver::IsWiredToStructureSide(
+	AFGBuildableCircuitSwitch* Switch,
+	int32* OutWirePortIndex)
+{
+	if (OutWirePortIndex)
+	{
+		*OutWirePortIndex = INDEX_NONE;
+	}
+
+	if (!IsValid(Switch))
+	{
+		return false;
+	}
+
+	for (int32 PortIndex = 0; PortIndex < 2; ++PortIndex)
+	{
+		UFGCircuitConnectionComponent* Port = PortIndex == 0
+			? Switch->GetConnection0()
+			: Switch->GetConnection1();
+		if (!IsValid(Port) || Port->GetNumConnections() <= 0)
+		{
+			continue;
+		}
+
+		AFGBuildable* Neighbor = GetVisibleNeighborBuildable(Port);
+		if (!IsValid(Neighbor) || IsGridSideNeighbor(Neighbor))
+		{
+			continue;
+		}
+
+		if (OutWirePortIndex)
+		{
+			*OutWirePortIndex = PortIndex;
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
 FStructuralSwitchParentResolveResult FStructuralSwitchParentResolver::Resolve(
 	AFGBuildableCircuitSwitch* Switch,
 	UWorld* World,
 	const FStructuralConnectivityGraph& Graph,
-	const FStructuralLightweightIndex& LightweightIndex)
+	const FStructuralLightweightIndex& LightweightIndex,
+	bool bPreferWirePort)
 {
 	FStructuralSwitchParentResolveResult Result;
 	if (!IsValid(Switch) || !IsValid(World))
@@ -135,6 +177,24 @@ FStructuralSwitchParentResolveResult FStructuralSwitchParentResolver::Resolve(
 	}
 
 	(void)Graph;
+
+	if (bPreferWirePort)
+	{
+		Result = TryResolveFromWiredPorts(Switch, World, LightweightIndex);
+		if (Result.IsValid())
+		{
+			UE_LOG(LogStructuralPower, Log,
+				TEXT("[PWR] switch %s parent resolved via wire_port_%c neighbor=%s"),
+				*Switch->GetName(),
+				Result.WirePortIndex == 0 ? TEXT('A') : TEXT('B'),
+				IsValid(Result.Anchor.Actor)
+					? *Result.Anchor.Actor->GetName()
+					: (Result.Anchor.Lightweight.IsValid()
+						? *Result.Anchor.Lightweight.BuildableClass->GetName()
+						: TEXT("?")));
+			return Result;
+		}
+	}
 
 	Result.Anchor = FStructuralAttachmentResolver::ResolveStructuralParent(
 		Switch,
@@ -148,18 +208,21 @@ FStructuralSwitchParentResolveResult FStructuralSwitchParentResolver::Resolve(
 		return Result;
 	}
 
-	Result = TryResolveFromWiredPorts(Switch, World, LightweightIndex);
-	if (Result.IsValid())
+	if (!bPreferWirePort)
 	{
-		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] switch %s parent resolved via wire_port_%c neighbor=%s"),
-			*Switch->GetName(),
-			Result.WirePortIndex == 0 ? TEXT('A') : TEXT('B'),
-			IsValid(Result.Anchor.Actor)
-				? *Result.Anchor.Actor->GetName()
-				: (Result.Anchor.Lightweight.IsValid()
-					? *Result.Anchor.Lightweight.BuildableClass->GetName()
-					: TEXT("?")));
+		Result = TryResolveFromWiredPorts(Switch, World, LightweightIndex);
+		if (Result.IsValid())
+		{
+			UE_LOG(LogStructuralPower, Log,
+				TEXT("[PWR] switch %s parent resolved via wire_port_%c neighbor=%s"),
+				*Switch->GetName(),
+				Result.WirePortIndex == 0 ? TEXT('A') : TEXT('B'),
+				IsValid(Result.Anchor.Actor)
+					? *Result.Anchor.Actor->GetName()
+					: (Result.Anchor.Lightweight.IsValid()
+						? *Result.Anchor.Lightweight.BuildableClass->GetName()
+						: TEXT("?")));
+		}
 	}
 
 	return Result;

@@ -55,21 +55,36 @@ bool FStructuralEligibilityRules::IsBusMember(const AFGBuildable* Buildable)
 		|| Buildable->IsA<AFGBuildablePillar>();
 }
 
-bool FStructuralEligibilityRules::IsWallOutlet(const AFGBuildable* Buildable)
+bool FStructuralEligibilityRules::IsPowerBridgeSwitch(const AFGBuildable* Buildable)
 {
-	const AFGBuildablePowerPole* Pole = Cast<AFGBuildablePowerPole>(Buildable);
-	if (!Pole)
+	return IsValid(Buildable) && Buildable->IsA<AFGBuildableCircuitSwitch>();
+}
+
+bool FStructuralEligibilityRules::IsStructuralLightConsumer(const AFGBuildable* Buildable)
+{
+	return IsValid(Buildable)
+		&& Buildable->IsA<AFGBuildableLightSource>()
+		&& !Buildable->IsA<AFGBuildableLightsControlPanel>();
+}
+
+bool FStructuralEligibilityRules::IsIdConfigTarget(const AFGBuildable* Buildable)
+{
+	if (!IsValid(Buildable))
 	{
 		return false;
 	}
 
-	const EPowerPoleType PoleType = Pole->GetPowerPoleType();
-	return PoleType == EPowerPoleType::PPT_WALL || PoleType == EPowerPoleType::PPT_WALL_DOUBLE;
-}
+	if (IsStructuralLightConsumer(Buildable))
+	{
+		return true;
+	}
 
-bool FStructuralEligibilityRules::IsPowerBridgeSwitch(const AFGBuildable* Buildable)
-{
-	return IsValid(Buildable) && Buildable->IsA<AFGBuildableCircuitSwitch>();
+	if (IsPowerBridgeSwitch(Buildable))
+	{
+		return true;
+	}
+
+	return Buildable->IsA<AFGBuildableLightsControlPanel>();
 }
 
 bool FStructuralEligibilityRules::IsPowerBridgePole(const AFGBuildable* Buildable)

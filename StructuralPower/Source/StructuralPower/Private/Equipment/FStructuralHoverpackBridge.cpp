@@ -1215,7 +1215,7 @@ void FStructuralHoverpackBridge::MaintainSession(AFGHoverPack* Pack, float Delta
 	const FCylindricalTetherMetrics Metrics = SessionTetherMetrics(Pack, Session);
 	if (!IsWithinCylindricalTetherRange(Metrics, Session.MaxHorizontal, Session.MaxVertical))
 	{
-		// Let vanilla own hover mode once we leave the cylindrical envelope.
+		// Vanilla hoverpack resumes connector search outside the structural tether envelope.
 		DisconnectPower(Pack);
 		PublishStructuralTetherToOwningClient(Pack, Session, /*bClear=*/true);
 		Session.DisconnectionTimer += DeltaTime;

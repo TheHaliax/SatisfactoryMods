@@ -57,19 +57,19 @@ class STRUCTURALPOWER_API FStructuralHoverpackBridge
 public:
 	static void RegisterHooks();
 
-	static bool OwnsConnectivity(const AFGHoverPack* Pack);
-	static const FStructuralHoverpackSession* FindSession(const AFGHoverPack* Pack);
-	static float GetVanillaFieldRadius(const FStructuralHoverpackSession& Session);
-
 	/** Client HUD mirror for dedicated MP (anchor not in vanilla rep layout). */
 	static void ApplyClientTetherMirror(const FVector& Anchor, float MaxHorizontal, float MaxVertical);
 	static void ClearClientTetherMirror();
+
+private:
+	static bool OwnsConnectivity(const AFGHoverPack* Pack);
+	static const FStructuralHoverpackSession* FindSession(const AFGHoverPack* Pack);
+	static float GetVanillaFieldRadius(const FStructuralHoverpackSession& Session);
 	static bool TryGetClientTetherMirror(
 		FVector& OutAnchor,
 		float& OutMaxHorizontal,
 		float& OutMaxVertical);
 
-private:
 	static void BeforeTick(AFGHoverPack* Pack, float DeltaTime);
 	static void AfterTick(AFGHoverPack* Pack, float DeltaTime);
 	static void OnUnEquip(AFGHoverPack* Pack);

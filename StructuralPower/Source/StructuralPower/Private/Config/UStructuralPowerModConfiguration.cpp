@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Config/FStructuralPowerModConfig.h"
 #include "Configuration/ConfigManager.h"
+#include "Save/AStructuralPowerGraphSubsystem.h"
 #include "Configuration/Properties/ConfigPropertyBool.h"
 #include "Configuration/Properties/ConfigPropertyFloat.h"
 #include "Configuration/Properties/ConfigPropertySection.h"
@@ -243,6 +244,17 @@ void InitializeSchema(UConfigPropertySection* Root)
 			"HoverpackVerticalMultTip",
 			"Structural tether vertical reach = base radius x this value (1.0-10.0). Chat: !HoverV"),
 		1.5f);
+
+	AddBoolProperty(
+		Root,
+		Root,
+		TEXT("GroupLighting"),
+		NSLOCTEXT("StructuralPower", "GroupLighting", "Structural lighting"),
+		NSLOCTEXT(
+			"StructuralPower",
+			"GroupLightingTip",
+			"Lights on powered foundations draw without wires (v2.2 M3). Default OFF. Chat: !lighting"),
+		false);
 
 	UStructuralPowerConfigNestedSection* Debug = AddDebugSection(Root, Root);
 
@@ -488,5 +500,13 @@ void UStructuralPowerConfigLiveSync::HandlePropertyChanged()
 	{
 		FStructuralPowerModConfig::ApplyFromConfigRoot(Root);
 		ConfigManager->MarkConfigurationDirty(ConfigId);
+
+		if (UWorld* World = BoundGameInstance->GetWorld())
+		{
+			if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::Find(World))
+			{
+				Graph->ReconcileAllLightConsumers();
+			}
+		}
 	}
 }

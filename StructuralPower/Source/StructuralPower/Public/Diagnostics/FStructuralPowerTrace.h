@@ -16,11 +16,12 @@ namespace FStructuralPowerTrace
 	bool IsEnabled();
 
 	FString FormatEffectiveIdForTrace(EStructuralChannel Tag, FName EffectiveId);
+	FString FormatSourceForTrace(const FStructuralChannelKey& Key);
+	FString FormatControlForTrace(const FStructuralChannelKey& Key);
 	FStructuralChannelKey KeyForBuildable(AFGBuildable* Buildable);
 
 	void LogHook(AFGBuildable* Buildable, const TCHAR* Hook, const TCHAR* Action, const TCHAR* Detail = nullptr);
 	void LogPlacementSkip(AFGBuildable* Buildable, const TCHAR* Reason);
-	void LogConnector(const TCHAR* Context, const UFGCircuitConnectionComponent* Connector);
 	void LogLinkOp(
 		const TCHAR* Op,
 		UFGCircuitConnectionComponent* A,

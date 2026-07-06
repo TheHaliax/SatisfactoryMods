@@ -5,14 +5,16 @@
 
 #include "CoreMinimal.h"
 #include "Core/FStructuralNodeId.h"
+#include "Routing/EStructuralChannel.h"
 
 class AFGBuildable;
-class AFGBuildablePowerPole;
 
 enum class EStructuralEndpointKind : uint8
 {
 	Pole,
-	Switch
+	Switch,
+	Light,
+	Panel
 };
 
 struct FTrackedEndpoint
@@ -21,6 +23,14 @@ struct FTrackedEndpoint
 	FStructuralNodeId ParentId;
 	EStructuralEndpointKind Kind = EStructuralEndpointKind::Pole;
 
-	AFGBuildablePowerPole* GetPole() const;
+	/** Panel restitch idempotency — skip tear-down/relink when routing state unchanged. */
+	FStructuralChannelKey CachedPanelKey;
+	int32 CachedPanelRoot = INDEX_NONE;
+	bool bPanelLinksReady = false;
+
+	/** Downstream keyed subnet — skip relink when control id unchanged. */
+	FName CachedDownstreamControl = NAME_None;
+	bool bDownstreamLinksReady = false;
+
 	class AFGBuildableCircuitSwitch* GetSwitch() const;
 };

@@ -9,7 +9,6 @@
 #include "Command/FStructuralPowerBangCommands.h"
 #include "Diagnostics/FStructuralPowerDiagnostics.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
-#include "Session/FStructuralPowerSessionSettings.h"
 
 #define LOCTEXT_NAMESPACE "FStructuralPowerModule"
 
@@ -42,7 +41,6 @@ static FAutoConsoleCommandWithWorldAndArgs GStructuralPowerSetCmd(
 void FStructuralPowerModule::StartupModule()
 {
 	FStructuralPowerModConfig::RegisterConsoleVariables();
-	FStructuralPowerSessionSettings::IsPropagationEnabled();
 	FStructuralPowerBangCommands::RegisterChatHook();
 }
 

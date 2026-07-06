@@ -21,4 +21,10 @@ namespace StructuralPowerConstants
 	inline constexpr int32 DeferredPlacementsPerTick = 15;
 
 	inline const FName OutletBusConnectorName = TEXT("StructuralPowerOutletBus");
+	/** Per-panel keyed downstream bridge — never meshed with outlet bus (DR-006). */
+	inline const FName PanelControlBusConnectorName = TEXT("StructuralPowerPanelControlBus");
+
+	/** DR-011/012 fixed sentinels — not valid player-chosen custom names (DR-014). */
+	inline const FName ControlBypass = TEXT("BYPASS");
+	inline const FName ControlUnconfigured = TEXT("UNCONFIGURED");
 }

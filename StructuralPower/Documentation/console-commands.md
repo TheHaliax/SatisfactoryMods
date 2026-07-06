@@ -2,7 +2,7 @@
 
 Open the in-game console (`~`) on the **server or listen host** (not pure clients).
 
-Chat equivalents: see [chat-commands.md](chat-commands.md) (`!HoverH`, `!HoverV`, `!tracetoggle`).
+Chat equivalents: see [chat-commands.md](chat-commands.md) (`!lighting`, `!HoverH`, `!HoverV`, `!tracetoggle`).
 
 ## StructuralPower.Set
 
@@ -18,6 +18,7 @@ Updates a mod config key, mirrors the pause menu, and marks `Configs/StructuralP
 | `Trace` | `0` / `1` | `[PWR]` logging (Debug; chat: `!tracetoggle`) |
 | `GatePowerSwitches` | `0` / `1` | Structural switch gating (Debug) |
 | `PowerSwitchManualGroups` | `0` / `1` | `1` = Mode B keyed subnets; `0` = Mode A whole-component (Debug) |
+| `GroupLighting` | `0` / `1` | Structural lighting (v2.2; Debug; chat: `!lighting`) |
 | `EnableHoverpackStructural` | `0` / `1` | Hoverpack tether (Debug) |
 | `HoverpackStructuralHorizontalMultiplier` | `1.0`–`10.0` | Chat: `!HoverH` |
 | `HoverpackStructuralVerticalMultiplier` | `1.0`–`10.0` | Chat: `!HoverV` |
@@ -53,13 +54,14 @@ Re-enable:
 StructuralPower.EnablePropagation 1
 ```
 
-## StructuralPower.GatePowerSwitches / PowerSwitchManualGroups / EnableHoverpackStructural
+## StructuralPower.GatePowerSwitches / PowerSwitchManualGroups / GroupLighting / EnableHoverpackStructural
 
 CVars mirror the **Debug** section in the mod menu:
 
 ```
 StructuralPower.GatePowerSwitches 1
 StructuralPower.PowerSwitchManualGroups 1
+StructuralPower.GroupLighting 1
 StructuralPower.EnableHoverpackStructural 1
 StructuralPower.HoverpackStructuralHorizontalMultiplier 1.5
 StructuralPower.HoverpackStructuralVerticalMultiplier 1.5

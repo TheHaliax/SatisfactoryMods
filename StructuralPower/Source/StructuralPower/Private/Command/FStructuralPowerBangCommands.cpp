@@ -8,6 +8,7 @@
 #include "FGGameState.h"
 #include "FGPlayerController.h"
 #include "Network/UStructuralPowerRCO.h"
+#include "Save/AStructuralPowerGraphSubsystem.h"
 #include "TimerManager.h"
 
 namespace
@@ -78,6 +79,7 @@ static bool IsStructuralPowerCommand(const FString& CommandLine)
 	return Verb.Equals(TEXT("HoverH"), ESearchCase::IgnoreCase)
 		|| Verb.Equals(TEXT("HoverV"), ESearchCase::IgnoreCase)
 		|| Verb.Equals(TEXT("tracetoggle"), ESearchCase::IgnoreCase)
+		|| Verb.Equals(TEXT("lighting"), ESearchCase::IgnoreCase)
 		|| Verb.Equals(TEXT("pwrhelp"), ESearchCase::IgnoreCase);
 }
 
@@ -169,6 +171,26 @@ static bool TryToggleTrace(UWorld* World, FString& OutMessage)
 	return true;
 }
 
+static bool TryToggleGroupLighting(UWorld* World, FString& OutMessage)
+{
+	const bool bOn = !FStructuralPowerModConfig::IsGroupLightingEnabled();
+	const TArray<FString> Args = {TEXT("GroupLighting"), bOn ? TEXT("1") : TEXT("0")};
+	if (!FStructuralPowerModConfig::TryApplySetCommand(Args, World))
+	{
+		return false;
+	}
+
+	if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::Find(World))
+	{
+		Graph->ReconcileAllLightConsumers();
+	}
+
+	OutMessage = bOn
+		? TEXT("Structural lighting enabled — unwired lights on powered foundations may draw.")
+		: TEXT("Structural lighting disabled — lights need vanilla wires.");
+	return true;
+}
+
 static bool TrySetHoverMultiplier(
 	UWorld* World,
 	const TCHAR* ConfigKey,
@@ -198,6 +220,10 @@ static void SendHelp(AFGPlayerController* PlayerController)
 	SendSystemChat(
 		PlayerController,
 		TEXT("!tracetoggle  — debug: flip verbose [PWR] logging in FactoryGame.log"),
+		FLinearColor::Yellow);
+	SendSystemChat(
+		PlayerController,
+		TEXT("!lighting  — toggle structural lighting (M3; default off)"),
 		FLinearColor::Yellow);
 }
 }
@@ -325,6 +351,15 @@ void FStructuralPowerBangCommands::Execute(AFGPlayerController* PlayerController
 	if (Verb.Equals(TEXT("tracetoggle"), ESearchCase::IgnoreCase))
 	{
 		if (TryToggleTrace(World, Feedback))
+		{
+			SendSystemChat(PlayerController, Feedback);
+		}
+		return;
+	}
+
+	if (Verb.Equals(TEXT("lighting"), ESearchCase::IgnoreCase))
+	{
+		if (TryToggleGroupLighting(World, Feedback))
 		{
 			SendSystemChat(PlayerController, Feedback);
 		}

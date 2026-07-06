@@ -13,6 +13,21 @@
 
 namespace FStructuralOutletParentHeuristics
 {
+bool IsWallMountedSwitch(const AFGBuildable* Outlet);
+bool IsGroundPoleOnFoundationFootprint(
+	const FVector& AnchorLocation,
+	const FBox& Bounds,
+	TSubclassOf<AFGBuildable> BuildableClass);
+bool IsGroundPoleInFoundationVerticalBand(
+	const FVector& AnchorLocation,
+	const FBox& Bounds,
+	TSubclassOf<AFGBuildable> BuildableClass);
+bool IsGroundPoleParentCandidate(
+	const FVector& AnchorLocation,
+	const FBox& Bounds,
+	TSubclassOf<AFGBuildable> BuildableClass);
+FBox ExpandBoundsForClass(const FBox& Bounds, TSubclassOf<AFGBuildable> BuildableClass);
+
 bool IsPreferredWallClass(const AFGBuildable* Buildable)
 {
 	return Buildable->IsA<AFGBuildableWall>() || Buildable->IsA<AFGBuildableCornerWall>();

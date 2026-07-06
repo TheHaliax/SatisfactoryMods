@@ -10,6 +10,7 @@ On join, the server prints: **Hal: Structural Power loaded.**
 
 `[]` — required argument.
 
+- `!lighting` — toggle **structural lighting** (v2.2 M3; default off; saved to mod config)
 - `!HoverH [1-10]` — set hoverpack **horizontal** reach multiplier (clamped 1.0–10.0; saved to `Configs/StructuralPower.cfg`)
 - `!HoverV [1-10]` — set hoverpack **vertical** reach multiplier (clamped 1.0–10.0; saved to mod config)
 - `!tracetoggle` — debug: toggle verbose `[PWR]` trace logging in `FactoryGame.log`
@@ -18,6 +19,7 @@ On join, the server prints: **Hal: Structural Power loaded.**
 ## Examples
 
 ```
+!lighting
 !HoverH 2
 !HoverV 1.5
 !tracetoggle
@@ -28,6 +30,7 @@ On join, the server prints: **Hal: Structural Power loaded.**
 
 Feedback uses the **Hal:** sender with short readable lines, for example:
 
+- `Structural lighting enabled.`
 - `Hoverpack horizontal reach multiplier set to 2.0.`
 - `PWR trace logging enabled.`
 
@@ -35,8 +38,8 @@ Feedback uses the **Hal:** sender with short readable lines, for example:
 
 | Surface | Use |
 |---------|-----|
-| Pause → Mods → Structural Power | Hover multipliers (main panel); propagation, switches, hoverpack tether, trace ( **Debug** section, collapsed by default) |
+| Pause → Mods → Structural Power | Hover multipliers (main panel); propagation, switches, lighting, hoverpack tether, trace ( **Debug** section, collapsed by default) |
 | `Configs/StructuralPower.cfg` | SML-persisted JSON on server |
 | Console `StructuralPower.Set <key> <value>` | Same keys as mod config — see [console-commands.md](console-commands.md) |
 
-Per-building **Ids** for switch subnets stay in the **world save** (not `.cfg`) — assigned via buildable tag / RCO, not chat.
+Per-device **Source/Control** ids for lights, switches, and panels stay in the **world save** (not `.cfg`) — assigned via **I** key Id panel or building tag on switches.

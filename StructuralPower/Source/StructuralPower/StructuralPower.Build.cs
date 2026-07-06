@@ -23,6 +23,7 @@ public class StructuralPower : ModuleRules
 			"GameplayTasks",
 			"SlateCore",
 			"Slate",
+			"ApplicationCore",
 			"UMG",
 			"RenderCore",
 			"CinematicCamera",

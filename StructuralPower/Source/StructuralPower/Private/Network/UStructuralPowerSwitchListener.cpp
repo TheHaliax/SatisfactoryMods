@@ -4,6 +4,7 @@
 #include "Network/UStructuralPowerSwitchListener.h"
 
 #include "Buildables/FGBuildableCircuitSwitch.h"
+#include "Config/FStructuralPowerModConfig.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
 void UStructuralPowerSwitchListener::BindSubsystem(
@@ -49,6 +50,22 @@ void UStructuralPowerSwitchListener::HandleCircuitsChanged()
 {
 	if (AStructuralPowerGraphSubsystem* Graph = GraphSubsystem.Get())
 	{
+		if (Graph->ShouldDeferSwitchCircuitRefresh())
+		{
+			return;
+		}
+
+		if (Graph->IsBulkLoadDrainActive())
+		{
+			return;
+		}
+
+		// Manual groups: toggle owns restitch — circuit-changed must not re-enter switch attach.
+		if (FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
+		{
+			return;
+		}
+
 		if (AFGBuildableCircuitSwitch* Switch = BoundSwitch.Get())
 		{
 			Graph->EnqueuePlacement(

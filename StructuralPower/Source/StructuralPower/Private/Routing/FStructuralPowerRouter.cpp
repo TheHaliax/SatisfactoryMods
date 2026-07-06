@@ -4,6 +4,23 @@
 #include "Routing/FStructuralPowerRouter.h"
 
 #include "Buildables/FGBuildableCircuitSwitch.h"
+#include "StructuralPowerConstants.h"
+
+bool FStructuralPowerRouter::UsesSourceControlModel(EStructuralChannel Tag)
+{
+	return Tag == EStructuralChannel::Light || Tag == EStructuralChannel::Switch;
+}
+
+bool FStructuralPowerRouter::IsReservedSentinel(FName Id)
+{
+	return Id == StructuralPowerConstants::ControlBypass
+		|| Id == StructuralPowerConstants::ControlUnconfigured;
+}
+
+bool FStructuralPowerRouter::IsPlayerChosenIdValid(FName Id)
+{
+	return !Id.IsNone() && !IsReservedSentinel(Id);
+}
 
 bool FStructuralPowerRouter::ShouldRouteChannelLink(
 	const FStructuralChannelKey& A,
@@ -21,26 +38,37 @@ bool FStructuralPowerRouter::ShouldRouteChannelLink(
 		return false;
 	}
 
+	if (UsesSourceControlModel(A.Tag))
+	{
+		return !A.Source.IsNone() && A.Source == B.Source;
+	}
+
 	return !A.EffectiveId.IsNone() && A.EffectiveId == B.EffectiveId;
 }
 
 bool FStructuralPowerRouter::ShouldRouteSwitchGate(
-	FName SwitchEffectiveId,
-	FName DeviceEffectiveId,
+	FName SwitchControl,
+	FName DeviceSource,
 	const FStructuralComponentKey& ComponentA,
 	const FStructuralComponentKey& ComponentB)
 {
-	return ComponentA.IsValid()
-		&& ComponentA == ComponentB
-		&& !SwitchEffectiveId.IsNone()
-		&& SwitchEffectiveId == DeviceEffectiveId;
+	if (!ComponentA.IsValid()
+		|| ComponentA != ComponentB
+		|| SwitchControl.IsNone()
+		|| SwitchControl == StructuralPowerConstants::ControlBypass
+		|| DeviceSource.IsNone())
+	{
+		return false;
+	}
+
+	return SwitchControl == DeviceSource;
 }
 
-FName FStructuralPowerRouter::ResolveSwitchEffectiveId(const AFGBuildableCircuitSwitch* Switch)
+FName FStructuralPowerRouter::ResolveSwitchControlFromTag(const AFGBuildableCircuitSwitch* Switch)
 {
 	if (!IsValid(Switch))
 	{
-		return NAME_None;
+		return StructuralPowerConstants::ControlBypass;
 	}
 
 	if (Switch->HasBuildingTag_Implementation())
@@ -52,7 +80,7 @@ FName FStructuralPowerRouter::ResolveSwitchEffectiveId(const AFGBuildableCircuit
 		}
 	}
 
-	return NAME_None;
+	return StructuralPowerConstants::ControlBypass;
 }
 
 FName FStructuralPowerRouter::MakeDefaultIdName(const FStructuralNodeId& CanonicalNodeId)

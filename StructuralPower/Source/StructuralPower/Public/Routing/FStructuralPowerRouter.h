@@ -9,10 +9,16 @@
 class AFGBuildable;
 class AFGBuildableCircuitSwitch;
 
-/** DR-008 predicates — inert until category toggles enable keyed hidden links. */
+/** DR-008 / DR-011 predicates — keyed hidden links when category toggles allow. */
 class STRUCTURALPOWER_API FStructuralPowerRouter
 {
 public:
+	static bool UsesSourceControlModel(EStructuralChannel Tag);
+
+	static bool IsReservedSentinel(FName Id);
+
+	static bool IsPlayerChosenIdValid(FName Id);
+
 	static bool ShouldRouteChannelLink(
 		const FStructuralChannelKey& A,
 		const FStructuralChannelKey& B,
@@ -20,12 +26,12 @@ public:
 		const FStructuralComponentKey& ComponentB);
 
 	static bool ShouldRouteSwitchGate(
-		FName SwitchEffectiveId,
-		FName DeviceEffectiveId,
+		FName SwitchControl,
+		FName DeviceSource,
 		const FStructuralComponentKey& ComponentA,
 		const FStructuralComponentKey& ComponentB);
 
-	static FName ResolveSwitchEffectiveId(const AFGBuildableCircuitSwitch* Switch);
+	static FName ResolveSwitchControlFromTag(const AFGBuildableCircuitSwitch* Switch);
 
 	static FName MakeDefaultIdName(const FStructuralNodeId& CanonicalNodeId);
 };

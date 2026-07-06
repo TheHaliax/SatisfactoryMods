@@ -4,12 +4,6 @@
 #include "Graph/FStructuralEndpointTypes.h"
 
 #include "Buildables/FGBuildableCircuitSwitch.h"
-#include "Buildables/FGBuildablePowerPole.h"
-
-AFGBuildablePowerPole* FTrackedEndpoint::GetPole() const
-{
-	return Cast<AFGBuildablePowerPole>(Actor.Get());
-}
 
 AFGBuildableCircuitSwitch* FTrackedEndpoint::GetSwitch() const
 {

@@ -18,10 +18,20 @@ Common case: **isolated structure** — a foundation with no adjacency to the re
 4. Enable trace (`StructuralPower.Trace 1` or `!tracetoggle`), place or rewire one pole, and grep the log for `[PWR]`.
 5. Check **Debug → Enable structural propagation** in the mod menu (or `StructuralPower.EnablePropagation 1`).
 
+## Structural lighting (v2.2)
+
+| Symptom | Check |
+|---------|--------|
+| Lights need wires | **Structural lighting** off — enable in Debug or `!lighting` |
+| Light dark on powered base | Light `Source` id must match feed (structural default, switch id, or group); press **I** on light |
+| E panel affects all lights | Panel needs keyed **Control** id; lights need matching **Source** — see [v2.2.md](v2.2.md) |
+| Switch subnet wrong | Mode B on (`PowerSwitchManualGroups: 1`); panel/light `Source` = switch Control id; switch ON |
+| Dropdown missing switch id | Assign switch Control first; ids pool is structure-island scoped |
+
 ## Switch gating unexpected (v2.1)
 
 1. Confirm **Gate power switches** is on in **Debug**.
-2. Mode B (default): keyed subnets need matching building tag + device Id — see dev docs / RCO.
+2. Mode B (default): keyed subnets need matching building tag + device Id — **I** key or building tag.
 3. Mode A: set `PowerSwitchManualGroups` to `0` in config for whole-component gate.
 
 ## Hoverpack tether (v2.1)
@@ -31,6 +41,10 @@ Common case: **isolated structure** — a foundation with no adjacency to the re
 | No tether | **Enable hoverpack structural tether** in Debug; stand near **powered** structure |
 | Short reach | Raise `!HoverH` / `!HoverV` or mod menu multipliers (max 10× per axis) |
 | Vanilla behaviour | Disable tether in Debug or `StructuralPower.EnableHoverpackStructural 0` |
+
+## Save / reload crash (v2.2)
+
+v2.2.0 strips persisted mod bus components before circuit bridge BeginPlay. If an older dev build crashed on reload, update to **2.2.0** and retry. Report with `FactoryGame.log` from load if it persists.
 
 ## No LogStructuralPower lines during gameplay
 
@@ -44,8 +58,9 @@ Automatic diagnostics skip menu worlds (`Map_Menu_*`). Load a save or run `Struc
 
 Include:
 
-- StructuralPower version (2.1.0)
+- StructuralPower version (2.2.0)
 - SML version
 - Single-player, listen host, or dedicated server
+- Group Lighting on/off
 - Relevant `LogStructuralPower` / `[PWR]` lines (with trace enabled if possible)
-- Whether switches / hoverpack involved
+- Whether switches / lighting / hoverpack involved
