@@ -35,6 +35,7 @@
 #include "Network/UStructuralPowerPanelListener.h"
 #include "Panel/FStructuralPanelControlledSync.h"
 #include "Panel/FStructuralPanelPortResolver.h"
+#include "Reconcile/FStructuralSiteBusMesh.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "Session/FStructuralPowerSessionSettings.h"
 #include "StructuralPowerConstants.h"
@@ -3087,96 +3088,48 @@ void AStructuralPowerGraphSubsystem::RestitchComponent(int32 Root, bool bTearDow
 	}
 
 	StripInactiveSwitchStructuralLinks(Root);
+	RefreshBridgeEndpointRootIndex();
 
-	TArray<AFGBuildable*> Hosts;
-	TArray<UFGStructuralPowerConnectionComponent*> Buses;
-	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : TrackedEndpoints)
-	{
-		AFGBuildable* Host = Pair.Value.Actor.Get();
-		if (!IsValid(Host))
+	FStructuralSiteBusMesh::Remesh(
+		Root,
+		bTearDownFirst,
+		EndpointIndex,
+		[this](const FStructuralNodeId& NodeId) -> const FTrackedEndpoint*
 		{
-			continue;
-		}
-
-		if (StructureGraph.FindRoot(Pair.Value.ParentId) != Root)
+			return TrackedEndpoints.Find(NodeId);
+		},
+		[this](AFGBuildable* Host, EStructuralEndpointKind Kind)
 		{
-			continue;
-		}
-
-		if (!ShouldEndpointParticipateInRestitch(Host, Pair.Value.Kind))
+			return ShouldEndpointParticipateInRestitch(Host, Kind);
+		},
+		[this](AFGBuildable* Host)
 		{
-			continue;
-		}
-
-		UFGStructuralPowerConnectionComponent* Bus = GetOrCreateBusConnector(Host);
-		if (!Bus)
+			return GetOrCreateBusConnector(Host);
+		},
+		[this](AFGBuildable* Host, UFGStructuralPowerConnectionComponent* Bus)
 		{
-			continue;
-		}
-
-		Hosts.Add(Host);
-		Buses.Add(Bus);
-	}
-
-	if (Buses.Num() == 0)
-	{
-		return;
-	}
-
-	if (bTearDownFirst)
-	{
-		// Drop only bus-to-bus hidden links; keep each bus↔visible link so wired poles never flicker.
-		for (UFGStructuralPowerConnectionComponent* Bus : Buses)
+			LinkBusToVisibleConnections(Host, Bus);
+		},
+		[this](AFGBuildable* HostA, AFGBuildable* HostB, int32 ComponentRoot)
 		{
-			TArray<UFGCircuitConnectionComponent*> HiddenLinks;
-			Bus->GetHiddenConnections(HiddenLinks);
-			for (UFGCircuitConnectionComponent* OtherRaw : HiddenLinks)
-			{
-				if (UFGStructuralPowerConnectionComponent* OtherBus =
-					Cast<UFGStructuralPowerConnectionComponent>(OtherRaw))
-				{
-					Bus->RemoveHiddenConnection(OtherBus);
-				}
-			}
-		}
-	}
-
-	UFGStructuralPowerConnectionComponent* Anchor = Buses[0];
-	for (int32 Index = 0; Index < Buses.Num(); ++Index)
-	{
-		LinkBusToVisibleConnections(Hosts[Index], Buses[Index]);
-		if (Index > 0 && ShouldMeshEndpoints(Hosts[0], Hosts[Index], Root))
+			return ShouldMeshEndpoints(HostA, HostB, ComponentRoot);
+		},
+		[this](UFGPowerConnectionComponent* A, UFGPowerConnectionComponent* B)
 		{
-			LinkHiddenPair(Buses[Index], Anchor);
-		}
-	}
-
-	// If any pole in the component is powered, flood-promote the whole bus mesh so every
-	// sibling pole (and its machines) shares the circuit.
-	UFGStructuralPowerConnectionComponent* Seed = nullptr;
-	for (UFGStructuralPowerConnectionComponent* Bus : Buses)
-	{
-		if (ComponentCarriesPower(Bus))
+			return LinkHiddenPair(A, B);
+		},
+		[](const UFGPowerConnectionComponent* Component)
 		{
-			Seed = Bus;
-			break;
-		}
-	}
-	if (!Seed)
-	{
-		for (UFGStructuralPowerConnectionComponent* Bus : Buses)
+			return ComponentCarriesPower(Component);
+		},
+		[this](UFGStructuralPowerConnectionComponent* StartHidden)
 		{
-			if (UFGStructuralPowerConnectionComponent* Reachable = FindPoweredHiddenReachable(Bus))
-			{
-				Seed = Reachable;
-				break;
-			}
-		}
-	}
-	if (Seed)
-	{
-		PromoteStructuralMeshFrom(Seed);
-	}
+			return FindPoweredHiddenReachable(StartHidden);
+		},
+		[this](UFGStructuralPowerConnectionComponent* Seed)
+		{
+			PromoteStructuralMeshFrom(Seed);
+		});
 }
 
 void AStructuralPowerGraphSubsystem::ReEnergizeComponentRoots(const TArray<int32>& Roots, bool bTearDownFirst)
