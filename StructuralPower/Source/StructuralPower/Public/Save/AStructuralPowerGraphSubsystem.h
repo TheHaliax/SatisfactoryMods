@@ -13,6 +13,7 @@
 #include "Graph/FStructuralEndpointIndex.h"
 #include "Graph/FStructuralBusMemberSpatialIndex.h"
 #include "Graph/FStructuralOutletParentResolver.h"
+#include "Graph/FStructuralCrossSiteGraph.h"
 #include "Graph/FStructuralSwitchParentResolver.h"
 #include "Routing/EStructuralChannel.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
@@ -32,6 +33,7 @@ class UFGStructuralPowerConnectionComponent;
 class UWorld;
 class FStructuralPowerLightProcessor;
 class FStructuralPowerPanelProcessor;
+class FStructuralPowerSwitchProcessor;
 
 /** DR-010 hoverpack geometry tether query result. */
 struct FStructuralHoverpackAnchorQuery
@@ -161,22 +163,19 @@ public:
 
 	friend class FStructuralPowerLightProcessor;
 	friend class FStructuralPowerPanelProcessor;
+	friend class FStructuralPowerSwitchProcessor;
+	friend class FStructuralCrossSiteGraph;
 
 private:
 	void ProcessStructure(AFGBuildable* Buildable);
 	void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
 	void ProcessOutlet(AFGBuildable* Buildable);
 	void ProcessPoleEndpoint(AFGBuildablePowerPole* Pole);
-	void ProcessSwitchEndpoint(AFGBuildableCircuitSwitch* Switch);
 	void ProcessLightEndpoint(AFGBuildableLightSource* Light, bool bLocalPromoteOnly = false);
 	void ProcessPanelEndpoint(AFGBuildableLightsControlPanel* Panel, bool bLocalPromoteOnly = false);
 	void RestitchLightEndpointsForRoot(int32 Root);
 	void RestitchPanelEndpointsForRoot(int32 Root);
 	void RestitchPanelsWithControlOnRoot(int32 Root, FName ControlId);
-	void RestitchSwitchKeyedConsumersOnRoot(
-		int32 Root,
-		FName SwitchControlId,
-		bool bLocalPromoteOnly = false);
 	void TearDownLightStructuralLinks(AFGBuildableLightSource* Light);
 	void TearDownPanelStructuralLinks(AFGBuildableLightsControlPanel* Panel);
 
@@ -236,11 +235,6 @@ private:
 	bool IsPanelDownstreamLight(int32 Root, const FStructuralChannelKey& LightKey);
 	bool IsSwitchFeedOpen(int32 Root, FName SwitchControlId);
 	void LogPanelReconcileSummary(AFGBuildableLightsControlPanel* Panel);
-	void LogSwitchConsumerRestitchSummary(
-		AFGBuildableCircuitSwitch* Switch,
-		int32 Root,
-		FName SwitchControlId,
-		bool bSwitchOn);
 	void FinishBulkLoadDrain();
 	void ReconcileAllPanelEndpoints();
 	void MaybeRunPostLoadLightReconcile();
@@ -252,23 +246,9 @@ private:
 	bool HasBridgeBusPeerMesh(UFGStructuralPowerConnectionComponent* Bus) const;
 	void RestitchComponent(int32 Root, bool bTearDownFirst);
 	void ReEnergizeComponentRoots(const TArray<int32>& Roots, bool bTearDownFirst);
-	void GatherWiredSwitchComponentRoots(
-		AFGBuildableCircuitSwitch* Switch,
-		int32 LocalRoot,
-		TArray<int32>& OutRoots);
-	void RestitchActiveKeyedSwitchConsumersOnRoot(int32 Root);
-	void PropagateWiredSwitchFeedChange(AFGBuildableCircuitSwitch* Switch, int32 LocalRoot);
-	void RestitchSwitchKeyedSubnet(
-		AFGBuildableCircuitSwitch* Switch,
-		UFGStructuralPowerConnectionComponent* OutletBus,
-		int32 ComponentRoot,
-		const FStructuralNodeId& SwitchNodeId);
 	bool EnsureParentRegisteredInGraph(
 		const FStructuralWallAnchor& Anchor,
 		FStructuralNodeId& OutParentId);
-	void TearDownSwitchStructuralLinks(AFGBuildable* Host);
-	void StripInactiveSwitchStructuralLinks(int32 Root);
-	void EnsureSwitchListener(AFGBuildableCircuitSwitch* Switch);
 	void EnsurePanelListener(AFGBuildableLightsControlPanel* Panel);
 	bool ShouldEndpointParticipateInRestitch(
 		AFGBuildable* Host,
@@ -277,35 +257,6 @@ private:
 		AFGBuildable* HostA,
 		AFGBuildable* HostB,
 		int32 ComponentRoot) const;
-	bool ShouldInjectSwitchStructuralPath(const AFGBuildableCircuitSwitch* Switch) const;
-	bool SwitchHasAssignedControl(const AFGBuildableCircuitSwitch* Switch) const;
-	bool SwitchNeedsAdvancedWork(const AFGBuildableCircuitSwitch* Switch) const;
-	int32 ResolveSwitchMountRoot(
-		const FStructuralWallAnchor& Anchor,
-		FStructuralNodeId& OutParentId);
-	void RegisterSwitchOutletBase(
-		AFGBuildableCircuitSwitch* Switch,
-		const FStructuralWallAnchor& ParentAnchor,
-		FTrackedEndpoint& InOutTracked,
-		int32& OutRoot,
-		FStructuralNodeId& OutParentId);
-	void ApplySwitchBaseOutletAttach(
-		AFGBuildableCircuitSwitch* Switch,
-		UFGStructuralPowerConnectionComponent* OutletBus,
-		int32 Root);
-	void ApplySwitchRuntimeAttach(
-		AFGBuildableCircuitSwitch* Switch,
-		UFGStructuralPowerConnectionComponent* OutletBus,
-		int32 Root,
-		const FStructuralNodeId& SwitchId,
-		bool bBulkLoad);
-	void ApplySwitchAdvancedAttach(
-		AFGBuildableCircuitSwitch* Switch,
-		UFGStructuralPowerConnectionComponent* OutletBus,
-		int32 Root,
-		const FStructuralNodeId& SwitchId,
-		bool bKeyedSubnet);
-
 	UFGStructuralPowerConnectionComponent* FindPoweredHiddenReachable(
 		UFGStructuralPowerConnectionComponent* StartHidden,
 		int32 MaxHiddenHops = 512) const;
@@ -338,6 +289,7 @@ private:
 	bool bBulkLoadDrainActive = false;
 	bool bBridgeEndpointRootIndexDirty = true;
 	FStructuralEndpointIndex EndpointIndex;
+	FStructuralCrossSiteGraph CrossSiteGraph;
 	/** Feed connector cache per component root — invalidated with the root index. */
 	TMap<int32, TWeakObjectPtr<UFGCircuitConnectionComponent>> SourceConnectorByRoot;
 };
