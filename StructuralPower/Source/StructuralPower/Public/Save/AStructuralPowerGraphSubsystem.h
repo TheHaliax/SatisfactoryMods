@@ -17,6 +17,8 @@
 #include "Routing/EStructuralChannel.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
 #include "Lightweight/FStructuralLightweightTypes.h"
+#include "Save/FStructuralEndpointIdRegistry.h"
+#include "Save/FStructuralPlacementQueue.h"
 #include "AStructuralPowerGraphSubsystem.generated.h"
 
 class AFGBuildable;
@@ -37,13 +39,6 @@ struct FStructuralHoverpackAnchorQuery
 	TWeakObjectPtr<UFGPowerConnectionComponent> FeedConnector;
 	bool bPowered = false;
 	bool bFound = false;
-};
-
-UENUM()
-enum class EStructuralPlacementJobType : uint8
-{
-	Structure,
-	Outlet
 };
 
 /**
@@ -115,11 +110,7 @@ public:
 	int32 GetStructureNodeCount() const { return StructureGraph.GetNodeCount(); }
 	int32 GetTrackedPoleCount() const { return TrackedEndpoints.Num(); }
 	int32 GetTrackedLightweightCount() const { return LightweightIndex.GetTrackedCount(); }
-	int32 GetPendingJobCount() const
-	{
-		return (PendingJobs.Num() - PendingJobsHead)
-			+ (PendingLightweightJobs.Num() - PendingLightweightJobsHead);
-	}
+	int32 GetPendingJobCount() const { return PlacementQueue.GetPendingCount(); }
 	bool IsBuildablePlacementPending(AFGBuildable* Buildable) const;
 	void GetGraphStats(int32& OutComponents, int32& OutLargest) { StructureGraph.GetComponentStats(OutComponents, OutLargest); }
 
@@ -161,12 +152,6 @@ public:
 	virtual bool ShouldSave_Implementation() const override { return true; }
 
 private:
-	struct FDeferredPlacementJob
-	{
-		TWeakObjectPtr<AFGBuildable> Buildable;
-		EStructuralPlacementJobType JobType = EStructuralPlacementJobType::Structure;
-	};
-
 	void ProcessStructure(AFGBuildable* Buildable);
 	void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
 	void ProcessOutlet(AFGBuildable* Buildable);
@@ -322,10 +307,6 @@ private:
 	static FStructuralNodeId MakeParentNodeId(const FStructuralWallAnchor& Anchor);
 	FStructuralOutletParentResolveParams MakeOutletParentResolveParams() const;
 
-	void CompactPendingJobQueues();
-	bool IsBuildableAlreadyPending(AFGBuildable* Buildable, EStructuralPlacementJobType JobType) const;
-	bool IsLightweightAlreadyPending(const FStructuralLightweightKey& Key) const;
-
 	FStructuralConnectivityGraph StructureGraph;
 	FStructuralLightweightIndex LightweightIndex;
 	FStructuralBusMemberSpatialIndex BusMemberSpatialIndex;
@@ -337,10 +318,9 @@ private:
 
 	UPROPERTY(SaveGame)
 	TMap<FStructuralNodeId, FStructuralEndpointOverrides> PlayerEndpointOverrides;
-	TArray<FDeferredPlacementJob> PendingJobs;
-	TArray<FStructuralLightweightKey> PendingLightweightJobs;
-	int32 PendingJobsHead = 0;
-	int32 PendingLightweightJobsHead = 0;
+
+	FStructuralEndpointIdRegistry IdRegistry;
+	FStructuralPlacementQueue PlacementQueue;
 	int32 CircuitPromotionDepth = 0;
 	bool bPostLoadRebuilt = false;
 	bool bPendingPostLoadLightReconcile = false;

@@ -128,6 +128,7 @@ struct FCircuitPromotionScope
 AStructuralPowerGraphSubsystem::AStructuralPowerGraphSubsystem()
 {
 	bReplicates = false;
+	IdRegistry.Bind(ComponentDefaultIds, PlayerEndpointOverrides);
 }
 
 AStructuralPowerGraphSubsystem* AStructuralPowerGraphSubsystem::GetOrCreate(UWorld* World)
@@ -559,12 +560,7 @@ void AStructuralPowerGraphSubsystem::EnqueueLightweightPlacement(
 
 	if (bDefer)
 	{
-		if (IsLightweightAlreadyPending(Key))
-		{
-			return;
-		}
-
-		PendingLightweightJobs.Add(Key);
+		PlacementQueue.EnqueueLightweight(Key);
 		return;
 	}
 
@@ -595,15 +591,7 @@ void AStructuralPowerGraphSubsystem::EnqueuePlacement(
 
 	if (bDefer)
 	{
-		if (IsBuildableAlreadyPending(Buildable, JobType))
-		{
-			return;
-		}
-
-		FDeferredPlacementJob Job;
-		Job.Buildable = Buildable;
-		Job.JobType = JobType;
-		PendingJobs.Add(Job);
+		PlacementQueue.EnqueueBuildable(Buildable, JobType);
 		return;
 	}
 
@@ -617,37 +605,6 @@ void AStructuralPowerGraphSubsystem::EnqueuePlacement(
 	}
 }
 
-void AStructuralPowerGraphSubsystem::CompactPendingJobQueues()
-{
-	if (PendingJobsHead > 0)
-	{
-		PendingJobs.RemoveAt(0, PendingJobsHead, EAllowShrinking::No);
-		PendingJobsHead = 0;
-	}
-
-	if (PendingLightweightJobsHead > 0)
-	{
-		PendingLightweightJobs.RemoveAt(0, PendingLightweightJobsHead, EAllowShrinking::No);
-		PendingLightweightJobsHead = 0;
-	}
-}
-
-bool AStructuralPowerGraphSubsystem::IsBuildableAlreadyPending(
-	AFGBuildable* Buildable,
-	EStructuralPlacementJobType JobType) const
-{
-	for (int32 Index = PendingJobsHead; Index < PendingJobs.Num(); ++Index)
-	{
-		const FDeferredPlacementJob& Job = PendingJobs[Index];
-		if (Job.JobType == JobType && Job.Buildable.Get() == Buildable)
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
 bool AStructuralPowerGraphSubsystem::IsBuildablePlacementPending(AFGBuildable* Buildable) const
 {
 	if (!IsValid(Buildable))
@@ -655,100 +612,38 @@ bool AStructuralPowerGraphSubsystem::IsBuildablePlacementPending(AFGBuildable* B
 		return false;
 	}
 
-	return IsBuildableAlreadyPending(Buildable, EStructuralPlacementJobType::Outlet)
-		|| IsBuildableAlreadyPending(Buildable, EStructuralPlacementJobType::Structure);
-}
-
-bool AStructuralPowerGraphSubsystem::IsLightweightAlreadyPending(const FStructuralLightweightKey& Key) const
-{
-	for (int32 Index = PendingLightweightJobsHead; Index < PendingLightweightJobs.Num(); ++Index)
-	{
-		if (PendingLightweightJobs[Index] == Key)
-		{
-			return true;
-		}
-	}
-
-	return false;
+	return PlacementQueue.IsAnyBuildableJobPending(Buildable);
 }
 
 void AStructuralPowerGraphSubsystem::TickDeferredPlacements(int32 MaxJobs)
 {
-	if (!FStructuralPowerSessionSettings::IsPropagationEnabled() || MaxJobs <= 0)
+	if (!FStructuralPowerSessionSettings::IsPropagationEnabled())
 	{
 		return;
 	}
 
-	int32 Processed = 0;
-	bool bPreferLightweight = true;
-	const double BulkTickStartSec = bBulkLoadDrainActive ? FPlatformTime::Seconds() : 0.0;
-
-	while (Processed < MaxJobs)
-	{
-		if (bBulkLoadDrainActive
-			&& (FPlatformTime::Seconds() - BulkTickStartSec)
-				>= StructuralPowerConstants::BulkLoadDrainTickBudgetSec)
+	PlacementQueue.Tick(
+		MaxJobs,
+		bBulkLoadDrainActive,
+		[this](AFGBuildable* Buildable, EStructuralPlacementJobType JobType)
 		{
-			break;
-		}
-
-		const bool bHasLightweight = PendingLightweightJobsHead < PendingLightweightJobs.Num();
-		const bool bHasActor = PendingJobsHead < PendingJobs.Num();
-
-		if (!bHasLightweight && !bHasActor)
-		{
-			break;
-		}
-
-		if (bPreferLightweight && bHasLightweight)
-		{
-			const FStructuralLightweightKey Key = PendingLightweightJobs[PendingLightweightJobsHead++];
-			ProcessLightweightStructure(Key);
-			bPreferLightweight = !bPreferLightweight;
-			++Processed;
-			continue;
-		}
-
-		if (bHasActor)
-		{
-			const FDeferredPlacementJob Job = PendingJobs[PendingJobsHead++];
-			if (AFGBuildable* Buildable = Job.Buildable.Get())
+			if (JobType == EStructuralPlacementJobType::Outlet)
 			{
-				if (Job.JobType == EStructuralPlacementJobType::Outlet)
-				{
-					ProcessOutlet(Buildable);
-				}
-				else
-				{
-					ProcessStructure(Buildable);
-				}
-
-				bPreferLightweight = !bPreferLightweight;
-				++Processed;
+				ProcessOutlet(Buildable);
 			}
-
-			continue;
-		}
-
-		if (bHasLightweight)
+			else
+			{
+				ProcessStructure(Buildable);
+			}
+		},
+		[this](const FStructuralLightweightKey& Key)
 		{
-			const FStructuralLightweightKey Key = PendingLightweightJobs[PendingLightweightJobsHead++];
 			ProcessLightweightStructure(Key);
-			bPreferLightweight = !bPreferLightweight;
-			++Processed;
-			continue;
-		}
-
-		break;
-	}
-
-	if ((PendingJobsHead > 32 && PendingJobsHead * 2 >= PendingJobs.Num())
-		|| (PendingLightweightJobsHead > 32 && PendingLightweightJobsHead * 2 >= PendingLightweightJobs.Num()))
-	{
-		CompactPendingJobQueues();
-	}
-
-	MaybeRunPostLoadLightReconcile();
+		},
+		[this]()
+		{
+			MaybeRunPostLoadLightReconcile();
+		});
 }
 
 void AStructuralPowerGraphSubsystem::BeginCircuitPromotion()
@@ -1435,7 +1330,7 @@ bool AStructuralPowerGraphSubsystem::GetEndpointOverrides(
 		return false;
 	}
 
-	if (const FStructuralEndpointOverrides* Found = PlayerEndpointOverrides.Find(MakeNodeId(Buildable)))
+	if (const FStructuralEndpointOverrides* Found = IdRegistry.FindPlayerOverride(MakeNodeId(Buildable)))
 	{
 		Out = *Found;
 		return Out.HasAnyOverride();
@@ -1447,19 +1342,7 @@ bool AStructuralPowerGraphSubsystem::GetEndpointOverrides(
 FName AStructuralPowerGraphSubsystem::GetOrCreateComponentDefaultId(
 	const FStructuralComponentKey& ComponentKey)
 {
-	if (!ComponentKey.IsValid())
-	{
-		return NAME_None;
-	}
-
-	if (const FName* Existing = ComponentDefaultIds.Find(ComponentKey))
-	{
-		return *Existing;
-	}
-
-	const FName Created = FStructuralPowerRouter::MakeDefaultIdName(ComponentKey.CanonicalNodeId);
-	ComponentDefaultIds.Add(ComponentKey, Created);
-	return Created;
+	return IdRegistry.GetOrCreateComponentDefaultId(ComponentKey);
 }
 
 FName AStructuralPowerGraphSubsystem::ResolveSource(
@@ -1473,7 +1356,7 @@ FName AStructuralPowerGraphSubsystem::ResolveSource(
 
 	if (FStructuralPowerRouter::UsesSourceControlModel(Tag))
 	{
-		if (const FStructuralEndpointOverrides* Overrides = PlayerEndpointOverrides.Find(MakeNodeId(Buildable));
+		if (const FStructuralEndpointOverrides* Overrides = IdRegistry.FindPlayerOverride(MakeNodeId(Buildable));
 			Overrides && !Overrides->SourceOverride.IsNone())
 		{
 			return Overrides->SourceOverride;
@@ -1488,7 +1371,7 @@ FName AStructuralPowerGraphSubsystem::ResolveSource(
 		return NAME_None;
 	}
 
-	if (const FStructuralEndpointOverrides* Overrides = PlayerEndpointOverrides.Find(MakeNodeId(Buildable));
+	if (const FStructuralEndpointOverrides* Overrides = IdRegistry.FindPlayerOverride(MakeNodeId(Buildable));
 		Overrides && !Overrides->SourceOverride.IsNone())
 	{
 		return Overrides->SourceOverride;
@@ -1524,7 +1407,7 @@ FName AStructuralPowerGraphSubsystem::ResolveControl(
 		return NAME_None;
 	}
 
-	if (const FStructuralEndpointOverrides* Overrides = PlayerEndpointOverrides.Find(MakeNodeId(Buildable));
+	if (const FStructuralEndpointOverrides* Overrides = IdRegistry.FindPlayerOverride(MakeNodeId(Buildable));
 		Overrides && !Overrides->ControlOverride.IsNone())
 	{
 		return Overrides->ControlOverride;
@@ -1597,30 +1480,7 @@ void AStructuralPowerGraphSubsystem::SetEndpointIds(
 	}
 
 	const FStructuralNodeId NodeId = MakeNodeId(Buildable);
-	FStructuralEndpointOverrides& Entry = PlayerEndpointOverrides.FindOrAdd(NodeId);
-
-	if (bClearSource)
-	{
-		Entry.SourceOverride = NAME_None;
-	}
-	else if (FStructuralPowerRouter::IsPlayerChosenIdValid(Source))
-	{
-		Entry.SourceOverride = Source;
-	}
-
-	if (bClearControl)
-	{
-		Entry.ControlOverride = NAME_None;
-	}
-	else if (FStructuralPowerRouter::IsPlayerChosenIdValid(Control))
-	{
-		Entry.ControlOverride = Control;
-	}
-
-	if (!Entry.HasAnyOverride())
-	{
-		PlayerEndpointOverrides.Remove(NodeId);
-	}
+	IdRegistry.ApplyPlayerOverrideEdits(NodeId, Source, Control, bClearSource, bClearControl);
 
 	const bool bIsLight = Buildable->IsA<AFGBuildableLightSource>();
 	const bool bIsPanel = Buildable->IsA<AFGBuildableLightsControlPanel>();
@@ -1708,7 +1568,7 @@ bool AStructuralPowerGraphSubsystem::CollectIdsOnComponent(
 		const bool bIsPanel = Buildable->IsA<AFGBuildableLightsControlPanel>();
 		const bool bIsSwitch = Buildable->IsA<AFGBuildableCircuitSwitch>();
 
-		if (const FStructuralEndpointOverrides* Overrides = PlayerEndpointOverrides.Find(NodeId))
+		if (const FStructuralEndpointOverrides* Overrides = IdRegistry.FindPlayerOverride(NodeId))
 		{
 			if (!Overrides->SourceOverride.IsNone()
 				&& Overrides->SourceOverride != Out.DefaultSourceId)
@@ -1782,13 +1642,13 @@ bool AStructuralPowerGraphSubsystem::CollectIdsOnComponent(
 		ConsiderBuildable(Pair.Key, Pair.Value.Get());
 	}
 
-	for (const TPair<FStructuralNodeId, FStructuralEndpointOverrides>& Pair : PlayerEndpointOverrides)
+	IdRegistry.ForEachPlayerOverride([&](const FStructuralNodeId& NodeId, const FStructuralEndpointOverrides&)
 	{
-		if (const TWeakObjectPtr<AFGBuildable>* Buildable = RegisteredBuildables.Find(Pair.Key))
+		if (const TWeakObjectPtr<AFGBuildable>* Buildable = RegisteredBuildables.Find(NodeId))
 		{
-			ConsiderBuildable(Pair.Key, Buildable->Get());
+			ConsiderBuildable(NodeId, Buildable->Get());
 		}
-	}
+	});
 
 	Out.NamedControlIds = NamedControls.Array();
 	Out.NamedSwitchControlIds = NamedSwitchControls.Array();
@@ -2036,19 +1896,19 @@ bool AStructuralPowerGraphSubsystem::IsPanelDownstreamLight(
 		}
 	}
 
-	for (int32 Index = PendingJobsHead; Index < PendingJobs.Num(); ++Index)
+	bool bFoundPendingPanel = false;
+	PlacementQueue.ForEachPendingOutletBuildable([&](AFGBuildable* Buildable)
 	{
-		const FDeferredPlacementJob& Job = PendingJobs[Index];
-		if (Job.JobType != EStructuralPlacementJobType::Outlet)
+		if (!bFoundPendingPanel
+			&& PanelHostsLightGroup(Cast<AFGBuildableLightsControlPanel>(Buildable)))
 		{
-			continue;
+			bFoundPendingPanel = true;
 		}
+	});
 
-		if (PanelHostsLightGroup(
-				Cast<AFGBuildableLightsControlPanel>(Job.Buildable.Get())))
-		{
-			return true;
-		}
+	if (bFoundPendingPanel)
+	{
+		return true;
 	}
 
 	if (UWorld* World = GetWorld())
@@ -2302,16 +2162,10 @@ void AStructuralPowerGraphSubsystem::CollectKnownPanelEndpoints(
 		ConsiderPanel(Cast<AFGBuildableLightsControlPanel>(Pair.Value.Actor.Get()));
 	}
 
-	for (int32 Index = PendingJobsHead; Index < PendingJobs.Num(); ++Index)
+	PlacementQueue.ForEachPendingOutletBuildable([&](AFGBuildable* Buildable)
 	{
-		const FDeferredPlacementJob& Job = PendingJobs[Index];
-		if (Job.JobType != EStructuralPlacementJobType::Outlet)
-		{
-			continue;
-		}
-
-		ConsiderPanel(Cast<AFGBuildableLightsControlPanel>(Job.Buildable.Get()));
-	}
+		ConsiderPanel(Cast<AFGBuildableLightsControlPanel>(Buildable));
+	});
 
 	if (Seen.Num() > 0)
 	{
@@ -4711,11 +4565,7 @@ void AStructuralPowerGraphSubsystem::OnBuildableRemoved(AFGBuildable* Buildable)
 		ReEnergizeComponentRoots(AffectedRoots, /*bTearDownFirst=*/true);
 	}
 
-	CompactPendingJobQueues();
-	PendingJobs.RemoveAll([&Buildable](const FDeferredPlacementJob& Job)
-	{
-		return Job.Buildable.Get() == Buildable;
-	});
+	PlacementQueue.RemoveBuildable(Buildable);
 }
 
 void AStructuralPowerGraphSubsystem::OnLightweightRemoved(const FStructuralLightweightKey& Key)
@@ -4735,11 +4585,7 @@ void AStructuralPowerGraphSubsystem::OnLightweightRemoved(const FStructuralLight
 
 	LightweightIndex.UnregisterMember(Key);
 
-	CompactPendingJobQueues();
-	PendingLightweightJobs.RemoveAll([&Key](const FStructuralLightweightKey& Pending)
-	{
-		return Pending == Key;
-	});
+	PlacementQueue.RemoveLightweight(Key);
 }
 
 void AStructuralPowerGraphSubsystem::RegisterBuildableActor(AFGBuildable* Buildable)
