@@ -678,7 +678,7 @@ void FStructuralPowerSwitchProcessor::PropagateWiredFeedChange(
 	Graph.CrossSiteGraph.RefreshCouplingsFromWiredSwitch(Graph, Switch, LocalRoot);
 
 	TArray<int32> AffectedRoots;
-	Graph.CrossSiteGraph.TraceFeedAffectedFromWiredSwitch(Graph, Switch, LocalRoot, AffectedRoots);
+	Graph.CrossSiteGraph.TraceFeedAffected(Graph, Switch, LocalRoot, AffectedRoots);
 	if (AffectedRoots.Num() == 0)
 	{
 		return;
@@ -692,7 +692,7 @@ void FStructuralPowerSwitchProcessor::PropagateWiredFeedChange(
 	}
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] wired switch %s feed change localRoot=%d affectedRoots=%d"),
+		TEXT("[PWR] wired switch %s feed change localRoot=%d feedAffected=%d"),
 		*Switch->GetName(),
 		LocalRoot,
 		AffectedRoots.Num());

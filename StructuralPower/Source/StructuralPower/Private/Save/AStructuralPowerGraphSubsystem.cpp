@@ -360,6 +360,8 @@ void AStructuralPowerGraphSubsystem::OnWorldReady(UWorld* World)
 		return;
 	}
 
+	CrossSiteGraph.Clear();
+
 	RebuildBuildableRegistry(World);
 	RebuildLightweightIndex(World);
 	StructureGraph.Rebuild(World);
@@ -1157,6 +1159,8 @@ void AStructuralPowerGraphSubsystem::FinishBulkLoadDrain()
 	UE_LOG(LogStructuralPower, Log,
 		TEXT("[PWR] Post-load bulk drain complete — %d bridge component root(s)"),
 		Roots.Num());
+
+	CrossSiteGraph.SeedFeedSignaturesForSites(*this, Roots);
 }
 
 UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindPoweredHiddenReachable(

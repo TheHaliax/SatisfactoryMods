@@ -4,28 +4,32 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Graph/FStructuralSiteFeedSignature.h"
 
 class AFGBuildableCircuitSwitch;
 class AStructuralPowerGraphSubsystem;
 
-/** Site adjacency for cross-site structural power (Phase C3 stub; feed trace in C4). */
+/** Site adjacency + feed-directed cross-site trace. */
 class STRUCTURALPOWER_API FStructuralCrossSiteGraph
 {
 public:
 	void Clear();
 
-	/** Phase C3 — legacy 1-hop wired-switch discovery; records site couplings. */
 	void RefreshCouplingsFromWiredSwitch(
 		AStructuralPowerGraphSubsystem& Graph,
 		AFGBuildableCircuitSwitch* Switch,
 		int32 OriginSite);
 
-	/** Phase C3 stub — returns feed-affected sites (same set as refresh until C4 signatures). */
-	void TraceFeedAffectedFromWiredSwitch(
+	void TraceFeedAffected(
 		AStructuralPowerGraphSubsystem& Graph,
-		AFGBuildableCircuitSwitch* Switch,
+		AFGBuildableCircuitSwitch* TriggerSwitch,
 		int32 OriginSite,
 		TArray<int32>& OutAffectedSites);
+
+	void SeedFeedSignature(AStructuralPowerGraphSubsystem& Graph, int32 Site);
+	void SeedFeedSignaturesForSites(
+		AStructuralPowerGraphSubsystem& Graph,
+		const TSet<int32>& Sites);
 
 	bool AreSitesCoupled(int32 SiteA, int32 SiteB) const;
 	void GetCoupledSites(int32 Site, TArray<int32>& OutSites) const;
@@ -38,5 +42,10 @@ private:
 		int32 LocalRoot,
 		TArray<int32>& OutSites);
 
+	static FStructuralSiteFeedSignature ComputeSiteFeedSignature(
+		AStructuralPowerGraphSubsystem& Graph,
+		int32 Site);
+
 	TMap<int32, TSet<int32>> SiteAdjacency;
+	TMap<int32, FStructuralSiteFeedSignature> CachedFeedSignatures;
 };

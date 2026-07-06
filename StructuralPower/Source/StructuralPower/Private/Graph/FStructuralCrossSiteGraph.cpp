@@ -4,12 +4,15 @@
 #include "Graph/FStructuralCrossSiteGraph.h"
 
 #include "Buildables/FGBuildableCircuitSwitch.h"
+#include "Circuit/FStructuralCircuitPromotionUtil.h"
+#include "FGCircuitConnectionComponent.h"
 #include "Graph/FStructuralSwitchParentResolver.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
 void FStructuralCrossSiteGraph::Clear()
 {
 	SiteAdjacency.Empty();
+	CachedFeedSignatures.Empty();
 }
 
 void FStructuralCrossSiteGraph::AddCoupling(int32 SiteA, int32 SiteB)
@@ -50,6 +53,57 @@ void FStructuralCrossSiteGraph::GetCoupledSites(int32 Site, TArray<int32>& OutSi
 	{
 		OutSites = Neighbors->Array();
 		OutSites.Sort();
+	}
+}
+
+FStructuralSiteFeedSignature FStructuralCrossSiteGraph::ComputeSiteFeedSignature(
+	AStructuralPowerGraphSubsystem& Graph,
+	int32 Site)
+{
+	FStructuralSiteFeedSignature Signature;
+	if (Site == INDEX_NONE)
+	{
+		return Signature;
+	}
+
+	Signature.bPowered = Graph.DoesComponentRootCarryPower(Site);
+	if (!Signature.bPowered)
+	{
+		return Signature;
+	}
+
+	if (UFGCircuitConnectionComponent* Feed = Graph.GetComponentSourceConnector(Site, nullptr))
+	{
+		Signature.CircuitId = Feed->GetCircuitID();
+		if (!FStructuralCircuitPromotionUtil::ComponentCarriesPower(Cast<UFGPowerConnectionComponent>(Feed)))
+		{
+			Signature.bPowered = false;
+			Signature.CircuitId = INDEX_NONE;
+		}
+	}
+
+	return Signature;
+}
+
+void FStructuralCrossSiteGraph::SeedFeedSignature(
+	AStructuralPowerGraphSubsystem& Graph,
+	int32 Site)
+{
+	if (Site == INDEX_NONE)
+	{
+		return;
+	}
+
+	CachedFeedSignatures.Add(Site, ComputeSiteFeedSignature(Graph, Site));
+}
+
+void FStructuralCrossSiteGraph::SeedFeedSignaturesForSites(
+	AStructuralPowerGraphSubsystem& Graph,
+	const TSet<int32>& Sites)
+{
+	for (int32 Site : Sites)
+	{
+		SeedFeedSignature(Graph, Site);
 	}
 }
 
@@ -106,10 +160,10 @@ void FStructuralCrossSiteGraph::RefreshCouplingsFromWiredSwitch(
 	AFGBuildableCircuitSwitch* Switch,
 	int32 OriginSite)
 {
-	TArray<int32> AffectedSites;
-	CollectWiredSwitchSites(Graph, Switch, OriginSite, AffectedSites);
+	TArray<int32> WiredSites;
+	CollectWiredSwitchSites(Graph, Switch, OriginSite, WiredSites);
 
-	for (int32 Site : AffectedSites)
+	for (int32 Site : WiredSites)
 	{
 		if (Site != OriginSite)
 		{
@@ -118,11 +172,69 @@ void FStructuralCrossSiteGraph::RefreshCouplingsFromWiredSwitch(
 	}
 }
 
-void FStructuralCrossSiteGraph::TraceFeedAffectedFromWiredSwitch(
+void FStructuralCrossSiteGraph::TraceFeedAffected(
 	AStructuralPowerGraphSubsystem& Graph,
-	AFGBuildableCircuitSwitch* Switch,
+	AFGBuildableCircuitSwitch* TriggerSwitch,
 	int32 OriginSite,
 	TArray<int32>& OutAffectedSites)
 {
-	CollectWiredSwitchSites(Graph, Switch, OriginSite, OutAffectedSites);
+	OutAffectedSites.Reset();
+	if (OriginSite == INDEX_NONE)
+	{
+		return;
+	}
+
+	TSet<int32> Visited;
+	TArray<int32> Queue;
+
+	auto EnqueueSite = [&](int32 Site)
+	{
+		if (Site != INDEX_NONE && !Visited.Contains(Site))
+		{
+			Queue.AddUnique(Site);
+		}
+	};
+
+	EnqueueSite(OriginSite);
+	if (IsValid(TriggerSwitch))
+	{
+		TArray<int32> WiredSites;
+		CollectWiredSwitchSites(Graph, TriggerSwitch, OriginSite, WiredSites);
+		for (int32 Site : WiredSites)
+		{
+			EnqueueSite(Site);
+		}
+	}
+
+	int32 QueueHead = 0;
+	while (QueueHead < Queue.Num())
+	{
+		const int32 Site = Queue[QueueHead++];
+		if (Visited.Contains(Site))
+		{
+			continue;
+		}
+		Visited.Add(Site);
+
+		const FStructuralSiteFeedSignature NewSignature = ComputeSiteFeedSignature(Graph, Site);
+		if (const FStructuralSiteFeedSignature* Cached = CachedFeedSignatures.Find(Site))
+		{
+			if (*Cached == NewSignature)
+			{
+				continue;
+			}
+		}
+
+		CachedFeedSignatures.Add(Site, NewSignature);
+		OutAffectedSites.Add(Site);
+
+		TArray<int32> Neighbors;
+		GetCoupledSites(Site, Neighbors);
+		for (int32 Neighbor : Neighbors)
+		{
+			EnqueueSite(Neighbor);
+		}
+	}
+
+	OutAffectedSites.Sort();
 }
