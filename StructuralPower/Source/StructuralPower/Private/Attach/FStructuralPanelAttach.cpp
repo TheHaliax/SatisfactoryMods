@@ -64,7 +64,7 @@ bool FStructuralPanelAttach::SupplyAlreadyLinked(
 
 	UFGPowerConnectionComponent* Feed =
 		ResolvePanelFeedConnector(Graph, Panel, ComponentRoot, PanelKey);
-	return IsValid(Feed) && InputPower->HasHiddenConnection(Feed);
+	return Graph.IsPanelSupplyLinkedAndLive(InputPower, Feed);
 }
 
 bool FStructuralPanelAttach::TryLinkSupply(

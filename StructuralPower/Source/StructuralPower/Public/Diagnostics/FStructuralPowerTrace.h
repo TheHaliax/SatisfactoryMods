@@ -21,7 +21,10 @@ namespace FStructuralPowerTrace
 	FStructuralChannelKey KeyForBuildable(AFGBuildable* Buildable);
 
 	void LogHook(AFGBuildable* Buildable, const TCHAR* Hook, const TCHAR* Action, const TCHAR* Detail = nullptr);
-	void LogPlacementSkip(AFGBuildable* Buildable, const TCHAR* Reason);
+	void LogPlacementSkip(
+		AFGBuildable* Buildable,
+		const TCHAR* Reason,
+		ELogVerbosity::Type Verbosity = ELogVerbosity::Warning);
 	void LogLinkOp(
 		const TCHAR* Op,
 		UFGCircuitConnectionComponent* A,

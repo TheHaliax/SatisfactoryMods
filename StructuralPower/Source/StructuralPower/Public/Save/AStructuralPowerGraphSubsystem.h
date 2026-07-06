@@ -144,6 +144,9 @@ public:
 	void EndCircuitPromotion();
 
 	bool LinkHiddenPair(UFGPowerConnectionComponent* A, UFGPowerConnectionComponent* B);
+	bool IsPanelSupplyLinkedAndLive(
+		UFGPowerConnectionComponent* InputPower,
+		UFGPowerConnectionComponent* Feed) const;
 	void PromoteStructuralMeshFrom(UFGPowerConnectionComponent* Seed);
 	UFGStructuralPowerConnectionComponent* GetOrCreatePanelControlBus(
 		AFGBuildableLightsControlPanel* Panel);
@@ -202,6 +205,10 @@ private:
 	void PromoteOutletBusIfPowered(
 		UFGStructuralPowerConnectionComponent* OutletBus,
 		bool bLocalPromoteOnly = false);
+	void PromotePanelSupplyConnection(
+		UFGPowerConnectionComponent* InputPower,
+		UFGPowerConnectionComponent* Feed,
+		bool bLocalPromoteOnly = false);
 	void ApplyLocalBridgeBusAttach(
 		AFGBuildable* Host,
 		UFGStructuralPowerConnectionComponent* OutletBus,
@@ -229,6 +236,15 @@ private:
 		const FStructuralNodeId& EndpointId);
 	void ApplyKeyedSubnetAllPanels();
 	void CollectKnownPanelEndpoints(TArray<AFGBuildableLightsControlPanel*>& OutPanels);
+	bool IsDirectSwitchFedLight(int32 Root, const FStructuralChannelKey& LightKey);
+	bool IsPanelDownstreamLight(int32 Root, const FStructuralChannelKey& LightKey);
+	bool IsSwitchFeedOpen(int32 Root, FName SwitchControlId);
+	void LogPanelReconcileSummary(AFGBuildableLightsControlPanel* Panel);
+	void LogSwitchConsumerRestitchSummary(
+		AFGBuildableCircuitSwitch* Switch,
+		int32 Root,
+		FName SwitchControlId,
+		bool bSwitchOn);
 	void FinishBulkLoadDrain();
 	void ReconcileAllPanelEndpoints();
 	void MaybeRunPostLoadLightReconcile();
@@ -240,6 +256,12 @@ private:
 	bool HasBridgeBusPeerMesh(UFGStructuralPowerConnectionComponent* Bus) const;
 	void RestitchComponent(int32 Root, bool bTearDownFirst);
 	void ReEnergizeComponentRoots(const TArray<int32>& Roots, bool bTearDownFirst);
+	void GatherWiredSwitchComponentRoots(
+		AFGBuildableCircuitSwitch* Switch,
+		int32 LocalRoot,
+		TArray<int32>& OutRoots);
+	void RestitchActiveKeyedSwitchConsumersOnRoot(int32 Root);
+	void PropagateWiredSwitchFeedChange(AFGBuildableCircuitSwitch* Switch, int32 LocalRoot);
 	void RestitchSwitchKeyedSubnet(
 		AFGBuildableCircuitSwitch* Switch,
 		UFGStructuralPowerConnectionComponent* OutletBus,

@@ -32,4 +32,12 @@ public:
 	static bool IsWiredToStructureSide(
 		AFGBuildableCircuitSwitch* Switch,
 		int32* OutWirePortIndex = nullptr);
+
+	/** Invokes Visitor for each structure-side anchor reachable via a wired port. */
+	static void ForEachWiredStructureSideAnchor(
+		AFGBuildableCircuitSwitch* Switch,
+		UWorld* World,
+		const FStructuralLightweightIndex& LightweightIndex,
+		const FStructuralOutletParentResolveParams* ParentResolveParams,
+		TFunctionRef<void(const FStructuralWallAnchor& Anchor)> Visitor);
 };

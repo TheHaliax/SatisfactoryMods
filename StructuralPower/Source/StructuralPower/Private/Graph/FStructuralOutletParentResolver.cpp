@@ -139,7 +139,7 @@ static FStructuralWallAnchor TryResolveAttachedLightweightParent(AFGBuildable* O
 	if (Best.IsValid())
 	{
 		const float DistCm = FMath::Sqrt(FVector::DistSquared(Best.WorldLocation, AnchorLocation));
-		UE_LOG(LogStructuralPower, Log,
+		UE_LOG(LogStructuralPower, Verbose,
 			TEXT("[PWR] outlet %s parent resolved via lw_face_attach lw=%s[%d] distCm=%.1f"),
 			*Outlet->GetName(),
 			*Best.Lightweight.BuildableClass->GetName(),

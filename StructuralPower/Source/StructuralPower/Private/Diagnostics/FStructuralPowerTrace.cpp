@@ -123,18 +123,42 @@ void FStructuralPowerTrace::LogHook(
 		Detail ? Detail : TEXT(""));
 }
 
-void FStructuralPowerTrace::LogPlacementSkip(AFGBuildable* Buildable, const TCHAR* Reason)
+void FStructuralPowerTrace::LogPlacementSkip(
+	AFGBuildable* Buildable,
+	const TCHAR* Reason,
+	ELogVerbosity::Type Verbosity)
 {
 	if (!IsValid(Buildable))
 	{
 		return;
 	}
 
-	UE_LOG(LogStructuralPower, Warning,
-		TEXT("[PWR] skip %s class=%s reason=%s"),
-		*Buildable->GetName(),
-		*Buildable->GetClass()->GetName(),
-		Reason ? Reason : TEXT("?"));
+	const TCHAR* ReasonText = Reason ? Reason : TEXT("?");
+
+	switch (Verbosity)
+	{
+	case ELogVerbosity::Verbose:
+		UE_LOG(LogStructuralPower, Verbose,
+			TEXT("[PWR] skip %s class=%s reason=%s"),
+			*Buildable->GetName(),
+			*Buildable->GetClass()->GetName(),
+			ReasonText);
+		break;
+	case ELogVerbosity::Log:
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[PWR] skip %s class=%s reason=%s"),
+			*Buildable->GetName(),
+			*Buildable->GetClass()->GetName(),
+			ReasonText);
+		break;
+	default:
+		UE_LOG(LogStructuralPower, Warning,
+			TEXT("[PWR] skip %s class=%s reason=%s"),
+			*Buildable->GetName(),
+			*Buildable->GetClass()->GetName(),
+			ReasonText);
+		break;
+	}
 }
 
 void FStructuralPowerTrace::LogLinkOp(

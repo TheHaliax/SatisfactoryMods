@@ -133,6 +133,46 @@ static FStructuralSwitchParentResolveResult TryResolveFromWiredPorts(
 }
 }
 
+void FStructuralSwitchParentResolver::ForEachWiredStructureSideAnchor(
+	AFGBuildableCircuitSwitch* Switch,
+	UWorld* World,
+	const FStructuralLightweightIndex& LightweightIndex,
+	const FStructuralOutletParentResolveParams* ParentResolveParams,
+	TFunctionRef<void(const FStructuralWallAnchor& Anchor)> Visitor)
+{
+	if (!IsValid(Switch) || !IsValid(World))
+	{
+		return;
+	}
+
+	for (int32 PortIndex = 0; PortIndex < 2; ++PortIndex)
+	{
+		UFGCircuitConnectionComponent* Port = PortIndex == 0
+			? Switch->GetConnection0()
+			: Switch->GetConnection1();
+		if (!IsValid(Port) || Port->GetNumConnections() <= 0)
+		{
+			continue;
+		}
+
+		AFGBuildable* Neighbor = GetVisibleNeighborBuildable(Port);
+		if (!IsValid(Neighbor) || IsGridSideNeighbor(Neighbor))
+		{
+			continue;
+		}
+
+		const FStructuralWallAnchor Anchor = AnchorFromStructureNeighbor(
+			Neighbor,
+			World,
+			LightweightIndex,
+			ParentResolveParams);
+		if (Anchor.IsValid())
+		{
+			Visitor(Anchor);
+		}
+	}
+}
+
 bool FStructuralSwitchParentResolver::IsWiredToStructureSide(
 	AFGBuildableCircuitSwitch* Switch,
 	int32* OutWirePortIndex)
