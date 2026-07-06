@@ -19,6 +19,8 @@ namespace StructuralPowerConstants
 	inline constexpr float StructuralConnectivityGapCm = 8.0f;
 	inline constexpr int32 MaxHiddenConnectionLinks = 255;
 	inline constexpr int32 DeferredPlacementsPerTick = 15;
+	/** Max factory-tick wall time for bulk pole/switch drain (seconds). */
+	inline constexpr double BulkLoadDrainTickBudgetSec = 0.050;
 
 	inline const FName OutletBusConnectorName = TEXT("StructuralPowerOutletBus");
 	/** Per-panel keyed downstream bridge — never meshed with outlet bus (DR-006). */

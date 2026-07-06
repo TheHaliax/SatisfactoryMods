@@ -217,6 +217,7 @@ private:
 		bool bPreferBulkResolve);
 	void MarkBridgeEndpointRootIndexDirty();
 	void RefreshBridgeEndpointRootIndex();
+	void AddBridgeEndpointToRootIndex(const FStructuralNodeId& EndpointId, int32 Root);
 	void ApplyKeyedSubnetAllPanels();
 	void FinishBulkLoadDrain();
 	void ReconcileAllPanelEndpoints();

@@ -37,6 +37,7 @@
 #include "Session/FStructuralPowerSessionSettings.h"
 #include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
+#include "HAL/PlatformTime.h"
 
 namespace
 {
@@ -462,7 +463,15 @@ void AStructuralPowerGraphSubsystem::OnWorldReady(UWorld* World)
 		SeededSwitches);
 
 	bBulkLoadDrainActive = (SeededPoles + SeededSwitches) > 0;
-	MarkBridgeEndpointRootIndexDirty();
+	if (bBulkLoadDrainActive)
+	{
+		BridgeEndpointsByRoot.Empty();
+		bBridgeEndpointRootIndexDirty = false;
+	}
+	else
+	{
+		MarkBridgeEndpointRootIndexDirty();
+	}
 
 	if (FStructuralPowerModConfig::IsGroupLightingEnabled())
 	{
@@ -649,9 +658,17 @@ void AStructuralPowerGraphSubsystem::TickDeferredPlacements(int32 MaxJobs)
 
 	int32 Processed = 0;
 	bool bPreferLightweight = true;
+	const double BulkTickStartSec = bBulkLoadDrainActive ? FPlatformTime::Seconds() : 0.0;
 
 	while (Processed < MaxJobs)
 	{
+		if (bBulkLoadDrainActive
+			&& (FPlatformTime::Seconds() - BulkTickStartSec)
+				>= StructuralPowerConstants::BulkLoadDrainTickBudgetSec)
+		{
+			break;
+		}
+
 		const bool bHasLightweight = PendingLightweightJobsHead < PendingLightweightJobs.Num();
 		const bool bHasActor = PendingJobsHead < PendingJobs.Num();
 
@@ -861,6 +878,18 @@ void AStructuralPowerGraphSubsystem::RefreshBridgeEndpointRootIndex()
 	bBridgeEndpointRootIndexDirty = false;
 }
 
+void AStructuralPowerGraphSubsystem::AddBridgeEndpointToRootIndex(
+	const FStructuralNodeId& EndpointId,
+	int32 Root)
+{
+	if (Root == INDEX_NONE || !EndpointId.IsValid())
+	{
+		return;
+	}
+
+	BridgeEndpointsByRoot.FindOrAdd(Root).AddUnique(EndpointId);
+}
+
 int32 AStructuralPowerGraphSubsystem::FindRootForTrackedEndpoint(
 	const FTrackedEndpoint& Tracked) const
 {
@@ -895,6 +924,12 @@ void AStructuralPowerGraphSubsystem::PromoteStructuralMeshFrom(UFGPowerConnectio
 {
 	if (!IsValid(Seed) || !ComponentCarriesPower(Seed))
 	{
+		return;
+	}
+
+	if (bBulkLoadDrainActive)
+	{
+		PromoteDirectHiddenLinks(Seed);
 		return;
 	}
 
@@ -1199,6 +1234,7 @@ void AStructuralPowerGraphSubsystem::FinishBulkLoadDrain()
 
 	bBulkLoadDrainActive = false;
 
+	MarkBridgeEndpointRootIndexDirty();
 	RefreshBridgeEndpointRootIndex();
 
 	TSet<int32> Roots;
@@ -1993,7 +2029,7 @@ void AStructuralPowerGraphSubsystem::LinkBusToVisibleConnections(
 					continue;
 				}
 
-				LinkHiddenPair(Bus, Visible);
+				LinkHiddenPairLocal(Bus, Visible);
 			}
 			return;
 		}
@@ -2004,14 +2040,14 @@ void AStructuralPowerGraphSubsystem::LinkBusToVisibleConnections(
 			{
 				if (UFGPowerConnectionComponent* Visible = Cast<UFGPowerConnectionComponent>(Conn0))
 				{
-					LinkHiddenPair(Bus, Visible);
+					LinkHiddenPairLocal(Bus, Visible);
 				}
 			}
 			if (UFGCircuitConnectionComponent* Conn1 = Bridge->GetConnection1())
 			{
 				if (UFGPowerConnectionComponent* Visible = Cast<UFGPowerConnectionComponent>(Conn1))
 				{
-					LinkHiddenPair(Bus, Visible);
+					LinkHiddenPairLocal(Bus, Visible);
 				}
 			}
 		}
@@ -2448,13 +2484,23 @@ int32 AStructuralPowerGraphSubsystem::ResolveSwitchMountRoot(
 	}
 
 	OutParentId = MakeParentNodeId(Anchor);
-	int32 Root = StructureGraph.FindRoot(OutParentId);
-	if (Root == INDEX_NONE && EnsureParentRegisteredInGraph(Anchor, OutParentId))
+	const int32 Root = StructureGraph.FindRoot(OutParentId);
+	if (Root != INDEX_NONE)
 	{
-		Root = StructureGraph.FindRoot(OutParentId);
+		return Root;
 	}
 
-	return Root;
+	if (bBulkLoadDrainActive)
+	{
+		return INDEX_NONE;
+	}
+
+	if (EnsureParentRegisteredInGraph(Anchor, OutParentId))
+	{
+		return StructureGraph.FindRoot(OutParentId);
+	}
+
+	return INDEX_NONE;
 }
 
 bool AStructuralPowerGraphSubsystem::ShouldInjectSwitchStructuralPath(
@@ -3002,7 +3048,17 @@ void AStructuralPowerGraphSubsystem::ProcessPoleEndpoint(AFGBuildablePowerPole* 
 	Tracked.ParentId = ParentId;
 	Tracked.Kind = EStructuralEndpointKind::Pole;
 	RegisterBuildableActor(Pole);
-	MarkBridgeEndpointRootIndexDirty();
+	if (bBulk)
+	{
+		if (Root != INDEX_NONE && ParentId.IsValid())
+		{
+			AddBridgeEndpointToRootIndex(PoleId, Root);
+		}
+	}
+	else
+	{
+		MarkBridgeEndpointRootIndexDirty();
+	}
 
 	LinkBusToVisibleConnections(Pole, OutletBus);
 
@@ -3011,17 +3067,32 @@ void AStructuralPowerGraphSubsystem::ProcessPoleEndpoint(AFGBuildablePowerPole* 
 		TryMeshPeerBusOnComponent(Pole, OutletBus, Root, PoleId, bBulk);
 	}
 
-	PromoteOutletBusIfPowered(OutletBus, /*bLocalPromoteOnly=*/!bBulk);
+	PromoteOutletBusIfPowered(OutletBus, /*bLocalPromoteOnly=*/true);
 
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] outlet %s root=%d parentValid=%d busCircuit=%d powered=%d tag=%s id=%s"),
-		*Pole->GetName(),
-		Root,
-		ParentAnchor.IsValid() ? 1 : 0,
-		OutletBus->GetCircuitID(),
-		ComponentCarriesPower(OutletBus) ? 1 : 0,
-		StructuralChannelToString(EStructuralChannel::Structure),
-		TEXT("-"));
+	if (bBulk)
+	{
+		UE_LOG(LogStructuralPower, Verbose,
+			TEXT("[PWR] outlet %s root=%d parentValid=%d busCircuit=%d powered=%d tag=%s id=%s"),
+			*Pole->GetName(),
+			Root,
+			ParentAnchor.IsValid() ? 1 : 0,
+			OutletBus->GetCircuitID(),
+			ComponentCarriesPower(OutletBus) ? 1 : 0,
+			StructuralChannelToString(EStructuralChannel::Structure),
+			TEXT("-"));
+	}
+	else
+	{
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[PWR] outlet %s root=%d parentValid=%d busCircuit=%d powered=%d tag=%s id=%s"),
+			*Pole->GetName(),
+			Root,
+			ParentAnchor.IsValid() ? 1 : 0,
+			OutletBus->GetCircuitID(),
+			ComponentCarriesPower(OutletBus) ? 1 : 0,
+			StructuralChannelToString(EStructuralChannel::Structure),
+			TEXT("-"));
+	}
 }
 
 void AStructuralPowerGraphSubsystem::ApplySwitchBaseOutletAttach(
@@ -3175,9 +3246,16 @@ void AStructuralPowerGraphSubsystem::RegisterSwitchOutletBase(
 	InOutTracked.ParentId = OutParentId;
 	InOutTracked.Kind = EStructuralEndpointKind::Switch;
 	RegisterBuildableActor(Switch);
-	if (OutParentId.IsValid())
+	if (OutParentId.IsValid() && OutRoot != INDEX_NONE)
 	{
-		MarkBridgeEndpointRootIndexDirty();
+		if (bBulkLoadDrainActive)
+		{
+			AddBridgeEndpointToRootIndex(MakeNodeId(Switch), OutRoot);
+		}
+		else
+		{
+			MarkBridgeEndpointRootIndexDirty();
+		}
 	}
 	EnsureSwitchListener(Switch);
 }
