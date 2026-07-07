@@ -19,6 +19,7 @@
 #include "FGPowerConnectionComponent.h"
 #include "Graph/FStructuralCrossSiteGraph.h"
 #include "Graph/FStructuralEndpointTypes.h"
+#include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Graph/FStructuralSwitchParentResolver.h"
 #include "Lightweight/FStructuralLightweightTypes.h"
 #include "Network/UStructuralPowerSwitchListener.h"
@@ -429,8 +430,7 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 			return;
 		}
 
-		AFGBuildableLightsControlPanel* Panel =
-			Cast<AFGBuildableLightsControlPanel>(Tracked->Actor.Get());
+		AFGBuildableLightsControlPanel* Panel = Tracked->GetPanel();
 		if (!IsValid(Panel))
 		{
 			return;
@@ -482,7 +482,7 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 				Panel->GetControlledBuildables(AFGBuildableLightSource::StaticClass()))
 		{
 			AFGBuildableLightSource* ControlledLight =
-				Cast<AFGBuildableLightSource>(ControlledBuildable);
+				FStructuralPowerBuildableCasts::AsLight(ControlledBuildable);
 			if (!IsValid(ControlledLight))
 			{
 				continue;
@@ -525,7 +525,7 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 			return;
 		}
 
-		AFGBuildableLightSource* Light = Cast<AFGBuildableLightSource>(Tracked->Actor.Get());
+		AFGBuildableLightSource* Light = Tracked->GetLight();
 		if (!IsValid(Light))
 		{
 			return;
@@ -633,7 +633,7 @@ void FStructuralPowerSwitchProcessor::RestitchKeyedConsumersOnRoot(
 			return;
 		}
 
-		if (AFGBuildableLightsControlPanel* Panel = Cast<AFGBuildableLightsControlPanel>(Host))
+		if (AFGBuildableLightsControlPanel* Panel = Tracked->GetPanel())
 		{
 			FTrackedEndpoint& Mutable = Ctx.Graph().TrackedEndpoints.FindOrAdd(NodeId);
 			Mutable.bPanelLinksReady = false;
@@ -666,7 +666,7 @@ void FStructuralPowerSwitchProcessor::RestitchKeyedConsumersOnRoot(
 			return;
 		}
 
-		if (AFGBuildableLightSource* Light = Cast<AFGBuildableLightSource>(Host))
+		if (AFGBuildableLightSource* Light = Tracked->GetLight())
 		{
 			FStructuralPowerLightProcessor::Process(Ctx, Light, bLocalPromoteOnly);
 		}
@@ -721,8 +721,7 @@ void FStructuralPowerSwitchProcessor::RestitchActiveKeyedConsumersOnRoot(
 			continue;
 		}
 
-		AFGBuildableCircuitSwitch* KeyedSwitch =
-			Cast<AFGBuildableCircuitSwitch>(Tracked->Actor.Get());
+		AFGBuildableCircuitSwitch* KeyedSwitch = Tracked->GetSwitch();
 		if (!IsValid(KeyedSwitch)
 			|| !KeyedSwitch->IsBridgeActive()
 			|| !HasAssignedControl(Ctx, KeyedSwitch))

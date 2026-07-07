@@ -16,6 +16,7 @@
 #include "Panel/FStructuralPanelPortResolver.h"
 #include "Routing/EStructuralChannel.h"
 #include "Core/FStructuralPowerContext.h"
+#include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
@@ -255,8 +256,7 @@ void FStructuralPowerPanelProcessor::RestitchOnRoot(
 			continue;
 		}
 
-		if (AFGBuildableLightsControlPanel* Panel =
-				Cast<AFGBuildableLightsControlPanel>(Tracked->Actor.Get()))
+		if (AFGBuildableLightsControlPanel* Panel = Tracked->GetPanel())
 		{
 			FTrackedEndpoint& Mutable = Ctx.Graph().TrackedEndpoints.FindOrAdd(PanelId);
 			Mutable.bPanelLinksReady = false;
@@ -297,8 +297,7 @@ void FStructuralPowerPanelProcessor::RestitchWithControlOnRoot(
 			continue;
 		}
 
-		AFGBuildableLightsControlPanel* Panel =
-			Cast<AFGBuildableLightsControlPanel>(Tracked->Actor.Get());
+		AFGBuildableLightsControlPanel* Panel = Tracked->GetPanel();
 		if (!IsValid(Panel))
 		{
 			continue;

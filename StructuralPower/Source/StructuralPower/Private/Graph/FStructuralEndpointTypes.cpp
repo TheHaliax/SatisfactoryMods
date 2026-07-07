@@ -3,9 +3,24 @@
 
 #include "Graph/FStructuralEndpointTypes.h"
 
-#include "Buildables/FGBuildableCircuitSwitch.h"
+#include "Graph/FStructuralPowerBuildableCasts.h"
 
 AFGBuildableCircuitSwitch* FTrackedEndpoint::GetSwitch() const
 {
-	return Cast<AFGBuildableCircuitSwitch>(Actor.Get());
+	return FStructuralPowerBuildableCasts::AsSwitch(Actor.Get());
+}
+
+AFGBuildablePowerPole* FTrackedEndpoint::GetPole() const
+{
+	return FStructuralPowerBuildableCasts::AsPole(Actor.Get());
+}
+
+AFGBuildableLightSource* FTrackedEndpoint::GetLight() const
+{
+	return FStructuralPowerBuildableCasts::AsLight(Actor.Get());
+}
+
+AFGBuildableLightsControlPanel* FTrackedEndpoint::GetPanel() const
+{
+	return FStructuralPowerBuildableCasts::AsPanel(Actor.Get());
 }

@@ -203,7 +203,7 @@ void FStructuralPowerLightProcessor::RestitchOnRoot(
 			continue;
 		}
 
-		if (AFGBuildableLightSource* Light = Cast<AFGBuildableLightSource>(Tracked->Actor.Get()))
+		if (AFGBuildableLightSource* Light = Tracked->GetLight())
 		{
 			Process(Ctx, Light);
 		}

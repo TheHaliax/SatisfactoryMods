@@ -33,4 +33,7 @@ struct FTrackedEndpoint
 	bool bDownstreamLinksReady = false;
 
 	class AFGBuildableCircuitSwitch* GetSwitch() const;
+	class AFGBuildablePowerPole* GetPole() const;
+	class AFGBuildableLightSource* GetLight() const;
+	class AFGBuildableLightsControlPanel* GetPanel() const;
 };
