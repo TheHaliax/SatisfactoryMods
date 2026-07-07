@@ -59,6 +59,11 @@ Full checklist: [release.md](release.md).
 | Hoverpack bridge | `FStructuralHoverpackBridge.cpp` |
 | Switch listener / RCO | `UStructuralPowerSwitchListener.cpp`, `UStructuralPowerRCO.cpp` |
 | Poles, circuit & subsystem | `AStructuralPowerGraphSubsystem.cpp` |
+| Reconcile / restitch | `FStructuralPowerReconcile.cpp`, `FStructuralPowerRestitch.cpp` |
+| Circuit graph ops | `FStructuralGraphCircuitOps.cpp` |
+| Site echo state | `FStructuralSiteState.cpp` |
+| Cross-site graph | `FStructuralCrossSiteGraph.cpp` |
+| Id widget helpers | `FStructuralPowerIdShellBuilder.cpp`, `FStructuralPowerIdModalHost.cpp`, … |
 | **Processors** | `FStructuralPowerSwitchProcessor`, `FStructuralPowerPanelProcessor`, `FStructuralPowerLightProcessor`, `FStructuralPowerPoleProcessor`, `FStructuralPowerTransferGate`, `FStructuralPowerBridgeProcessor` |
 | **Connection points** | `FStructuralPoleConnectionPoint`, `FStructuralSwitchConnectionPoint`, `FStructuralPanelConnectionPoint` |
 | Structural connectivity graph (spatial hash + union-find) | `FStructuralConnectivityGraph.cpp` |
@@ -75,7 +80,7 @@ Full checklist: [release.md](release.md).
 
 Feature notes: [v2.2.md](v2.2.md). Roadmap: [../README.md#roadmap](../README.md#roadmap).
 
-### Transfer-gated switch path (v2.2 WT)
+### Transfer-gated switch path (v2.2)
 
 **What:** Keyed switch OFF tears down consumer hidden links without removing structure topology.  
 **Why:** Old toggle path remeshed whole sites → stalls + circuit storms.  
@@ -91,6 +96,7 @@ Enable `StructuralPower.Trace 1`, mod menu **Debug → PWR trace logging**, or `
 | `[HALSP] light path=direct` | `lit=` = plug HasPower |
 | `[HALSP] light path=panel_downstream` | `pass=` = `panelFed AND armedOn` |
 | `[HALSP] panel ctx=restitch_summary` | `panelFed=` = upstream supplies at snapshot |
+| `[HALSP] hook … panel_subnet_sync detail=` | Echo skip reason — see local `LOG-INTERPRETATION.md` |
 
 **OFF result:** read `switch restitch_off_settled` — expect `poweredDirect=0 passPanel=0`.  
 `armedPanel>0` with `passPanel=0` after OFF is normal (panel still armed, no feed).

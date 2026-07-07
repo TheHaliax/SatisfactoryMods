@@ -59,6 +59,11 @@ private:
 		const FStructuralWallAnchor& Anchor,
 		FStructuralNodeId& OutParentId);
 
+	static int32 ResolveToggleSiteRoot(
+		FStructuralPowerContext& Ctx,
+		AFGBuildableCircuitSwitch* Switch,
+		FTrackedEndpoint& Tracked);
+
 	static void RegisterOutletBase(
 		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch,

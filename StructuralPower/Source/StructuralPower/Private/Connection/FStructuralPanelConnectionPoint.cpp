@@ -61,6 +61,24 @@ void FStructuralPanelConnectionPoint::OnWireOrGateChanged(EAttachContext AttachC
 		return;
 	}
 
+	if (AttachContext != EAttachContext::Toggle
+		&& Graph.ShouldSkipPanelCircuitEcho(PanelPtr))
+	{
+		return;
+	}
+
+	if (AttachContext == EAttachContext::Toggle)
+	{
+		const TCHAR* SkipReason = nullptr;
+		if (Graph.ShouldSkipPanelCircuitEcho(PanelPtr, &SkipReason)
+			&& SkipReason
+			&& FCString::Strcmp(SkipReason, TEXT("skip_feed_open")) == 0)
+		{
+			Graph.NotePanelToggleHandled(PanelPtr);
+			return;
+		}
+	}
+
 	FStructuralPanelPorts Ports;
 	if (!FStructuralPanelPortResolver::Resolve(PanelPtr, Ports))
 	{
@@ -106,4 +124,9 @@ void FStructuralPanelConnectionPoint::OnWireOrGateChanged(EAttachContext AttachC
 		AttachContextToString(AttachContext),
 		Root,
 		InputPower && FStructuralCircuitPromotionUtil::ComponentCarriesPower(InputPower) ? 1 : 0);
+
+	if (AttachContext == EAttachContext::Toggle)
+	{
+		Graph.NotePanelToggleHandled(PanelPtr);
+	}
 }

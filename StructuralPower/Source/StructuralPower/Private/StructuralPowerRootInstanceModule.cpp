@@ -569,6 +569,20 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 					return;
 				}
 
+				const TCHAR* SkipReason = nullptr;
+				if (Graph->ShouldSkipPanelCircuitEcho(Panel, &SkipReason))
+				{
+					if (FStructuralPowerTrace::IsEnabled())
+					{
+						FStructuralPowerTrace::LogHook(
+							Panel,
+							TEXT("OnCircuitsRebuilt"),
+							TEXT("panel_subnet_sync"),
+							SkipReason ? SkipReason : TEXT("skip_circuit_echo"));
+					}
+					return;
+				}
+
 				if (FStructuralPowerTrace::IsEnabled())
 				{
 					FStructuralPowerTrace::LogHook(
@@ -580,6 +594,7 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 
 				Graph->ProcessPanelWireDelta(Panel);
 				FStructuralPanelControlledSync::ApplyKeyedSubnet(*Graph, Panel);
+				Graph->NotePanelCircuitEchoProcessed(Panel);
 
 				if (FStructuralPowerTrace::IsEnabled())
 				{

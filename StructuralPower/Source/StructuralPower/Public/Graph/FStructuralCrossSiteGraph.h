@@ -25,6 +25,12 @@ public:
 		int32 OriginSite,
 		TArray<int32>& OutAffectedSites);
 
+	void GatherSwitchSiteRoots(
+		AStructuralPowerGraphSubsystem& Graph,
+		AFGBuildableCircuitSwitch* Switch,
+		int32 LocalRoot,
+		TArray<int32>& OutSites);
+
 	void SeedFeedSignature(AStructuralPowerGraphSubsystem& Graph, int32 Site);
 	void SeedFeedSignaturesForSites(
 		AStructuralPowerGraphSubsystem& Graph,

@@ -113,11 +113,10 @@ void FStructuralPowerPanelProcessor::Process(
 		return;
 	}
 
-	const FName SwitchGateId =
-		ChannelKey.Control.IsNone() ? ChannelKey.Source : ChannelKey.Control;
+	const FName FeedSwitchId = ChannelKey.Source;
 	if (Root != INDEX_NONE
-		&& !SwitchGateId.IsNone()
-		&& Ctx.Graph().IsSwitchFeedOpen(Root, SwitchGateId))
+		&& !FeedSwitchId.IsNone()
+		&& Ctx.Graph().IsSwitchFeedOpen(Root, FeedSwitchId))
 	{
 		if (!bRoutingUnchanged)
 		{

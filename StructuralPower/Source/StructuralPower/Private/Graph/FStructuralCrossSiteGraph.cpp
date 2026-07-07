@@ -85,6 +85,15 @@ FStructuralSiteFeedSignature FStructuralCrossSiteGraph::ComputeSiteFeedSignature
 	return Signature;
 }
 
+void FStructuralCrossSiteGraph::GatherSwitchSiteRoots(
+	AStructuralPowerGraphSubsystem& Graph,
+	AFGBuildableCircuitSwitch* Switch,
+	int32 LocalRoot,
+	TArray<int32>& OutSites)
+{
+	CollectWiredSwitchSites(Graph, Switch, LocalRoot, OutSites);
+}
+
 void FStructuralCrossSiteGraph::SeedFeedSignature(
 	AStructuralPowerGraphSubsystem& Graph,
 	int32 Site)

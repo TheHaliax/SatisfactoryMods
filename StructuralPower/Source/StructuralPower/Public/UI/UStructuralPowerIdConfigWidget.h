@@ -6,10 +6,14 @@
 #include "CoreMinimal.h"
 #include "Input/Reply.h"
 #include "Routing/EStructuralChannel.h"
+#include "UI/FStructuralPowerIdShellBuilder.h"
 #include "UI/FGUserWidget.h"
 #include "UStructuralPowerIdConfigWidget.generated.h"
 
 class AFGBuildable;
+class FStructuralPowerIdDisplaySync;
+class FStructuralPowerIdModalHost;
+class FStructuralPowerIdWindowPool;
 class UBorder;
 class UButton;
 class UComboBoxString;
@@ -22,6 +26,10 @@ UCLASS()
 class STRUCTURALPOWER_API UStructuralPowerIdConfigWidget : public UFGUserWidget
 {
 	GENERATED_BODY()
+
+	friend class FStructuralPowerIdDisplaySync;
+	friend class FStructuralPowerIdModalHost;
+	friend class FStructuralPowerIdWindowPool;
 
 public:
 	UStructuralPowerIdConfigWidget(const FObjectInitializer& ObjectInitializer);
@@ -58,29 +66,18 @@ protected:
 		const FCharacterEvent& InCharacterEvent) override;
 
 private:
-	static void SetActiveWidget(UStructuralPowerIdConfigWidget* Widget);
+	FStructuralPowerIdShellWidgets BuildShellWidgetRefs() const;
+	void ApplyShellWidgetRefs(const FStructuralPowerIdShellWidgets& Shell);
 
-	void EnsureViewportPresentation();
-	void ResetShellState();
 	void EnsureShellBuilt();
 	void InitializeForTarget(AFGBuildable* Target);
 	void RebuildPanelContent();
-	void UpdateWindowTitle();
-	void ApplyModalInputMode();
-	void ScheduleModalInputModeRefresh();
 	void ClearHotkeyTextBleed();
-	void DetachFromViewport();
-	void RegisterEscapeInputProcessor();
-	static void UnregisterEscapeInputProcessor();
 	void ApplySourceIndex(int32 Index);
 	void ApplyControlIndex(int32 Index);
 	void ApplySuggestedIndex(int32 Index);
 	void ApplyTypedIdsToServer();
 	void RequestIdList();
-	void RefreshIdDisplayFromList(const FStructuralComponentIdList& List);
-	void RepopulateComboFromManager(UComboBoxString* Combo, bool bSourceChannel);
-	bool AreFormWidgetsReady() const;
-	void FlushPendingIdList();
 
 	UFUNCTION()
 	void OnCloseClicked();
@@ -145,10 +142,6 @@ private:
 	bool bHasPendingIdList = false;
 	bool bSuppressHotkeyChar = false;
 	FStructuralComponentIdList PendingIdList;
-
-	static TWeakObjectPtr<UStructuralPowerIdConfigWidget> ActiveInstance;
-	static TObjectPtr<UStructuralPowerIdConfigWidget> CachedWindow;
-	static TSharedPtr<class IInputProcessor> EscapeInputProcessor;
 
 	static constexpr int32 ViewportZOrder = 10000;
 };

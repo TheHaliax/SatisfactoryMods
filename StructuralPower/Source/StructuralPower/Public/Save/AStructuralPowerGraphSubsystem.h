@@ -16,12 +16,19 @@
 #include "Graph/FStructuralBusMemberSpatialIndex.h"
 #include "Graph/FStructuralOutletParentResolver.h"
 #include "Graph/FStructuralCrossSiteGraph.h"
+#include "Graph/FStructuralSiteState.h"
 #include "Graph/FStructuralSwitchParentResolver.h"
 #include "Routing/EStructuralChannel.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
 #include "Lightweight/FStructuralLightweightTypes.h"
 #include "Save/FStructuralEndpointIdRegistry.h"
+#include "Save/FStructuralGraphIdOps.h"
 #include "Save/FStructuralPlacementQueue.h"
+#include "Reconcile/FStructuralPowerReconcile.h"
+#include "Reconcile/FStructuralPowerRestitch.h"
+#include "Circuit/FStructuralGraphCircuitOps.h"
+#include "Graph/FStructuralBridgeRootIndex.h"
+#include "Graph/FStructuralWireDeltaHandler.h"
 #include "AStructuralPowerGraphSubsystem.generated.h"
 
 class AFGBuildable;
@@ -73,6 +80,12 @@ public:
 	void ProcessWallOutletAfterWire(AFGBuildablePowerPole* Pole);
 	void ProcessSwitchWireDelta(AFGBuildableCircuitSwitch* Switch);
 	void ProcessPanelWireDelta(AFGBuildableLightsControlPanel* Panel);
+	bool ShouldSkipPanelCircuitEcho(
+		AFGBuildableLightsControlPanel* Panel,
+		const TCHAR** OutReason = nullptr);
+	void MarkEchoDirtyForSwitchToggle(AFGBuildableCircuitSwitch* Switch, int32 LocalRoot);
+	void NotePanelCircuitEchoProcessed(AFGBuildableLightsControlPanel* Panel);
+	void NotePanelToggleHandled(AFGBuildableLightsControlPanel* Panel);
 	void ProcessPoleWireDelta(AFGBuildablePowerPole* Pole);
 	void ProcessPoleEndpointDirect(AFGBuildablePowerPole* Pole);
 	void OnSwitchStateChanged(AFGBuildableCircuitSwitch* Switch);
@@ -177,6 +190,12 @@ public:
 	friend class FStructuralPoleConnectionPoint;
 	friend class FStructuralSwitchConnectionPoint;
 	friend class FStructuralPanelConnectionPoint;
+	friend class FStructuralPowerReconcile;
+	friend class FStructuralPowerRestitch;
+	friend class FStructuralGraphCircuitOps;
+	friend class FStructuralBridgeRootIndex;
+	friend class FStructuralGraphIdOps;
+	friend class FStructuralWireDeltaHandler;
 
 private:
 	void ProcessStructure(AFGBuildable* Buildable);
@@ -187,10 +206,6 @@ private:
 	void ProcessGeneratorEndpoint(AFGBuildableGenerator* Generator);
 	void ProcessLightEndpoint(AFGBuildableLightSource* Light, bool bLocalPromoteOnly = false);
 	void ProcessPanelEndpoint(AFGBuildableLightsControlPanel* Panel, bool bLocalPromoteOnly = false);
-	void RestitchLightEndpointsForRoot(int32 Root, EAttachContext AttachContext);
-	void RestitchPanelEndpointsForRoot(int32 Root, EAttachContext AttachContext);
-	void RestitchPanelsWithControlOnRoot(int32 Root, FName ControlId);
-	void RestitchKeyedSubnetsAfterMeshFeedRefresh(int32 Root, EAttachContext AttachContext);
 	void TearDownLightStructuralLinks(AFGBuildableLightSource* Light);
 	void TearDownPanelStructuralLinks(AFGBuildableLightsControlPanel* Panel);
 
@@ -202,10 +217,6 @@ private:
 		FStructuralNodeId& OutParentId);
 	int32 ResolvePoleComponentRoot(
 		AFGBuildablePowerPole* Pole,
-		const FStructuralWallAnchor& Anchor,
-		FStructuralNodeId& OutParentId);
-	int32 ResolveBridgeComponentRootBulk(
-		AFGBuildable* Host,
 		const FStructuralWallAnchor& Anchor,
 		FStructuralNodeId& OutParentId);
 	int32 ResolveBridgeHostComponentRoot(
@@ -238,26 +249,33 @@ private:
 		const FStructuralWallAnchor& Anchor,
 		FStructuralNodeId& OutParentId,
 		bool bPreferBulkResolve);
+	int32 ResolveBridgeComponentRootBulk(
+		AFGBuildable* Host,
+		const FStructuralWallAnchor& Anchor,
+		FStructuralNodeId& OutParentId);
 	void MarkBridgeEndpointRootIndexDirty();
 	void RefreshBridgeEndpointRootIndex();
 	void AddEndpointToRootIndex(
 		int32 Root,
 		EStructuralEndpointKind Kind,
 		const FStructuralNodeId& EndpointId);
-	void ApplyKeyedSubnetAllPanels();
-	void CollectKnownPanelEndpoints(TArray<AFGBuildableLightsControlPanel*>& OutPanels);
 	bool IsDirectSwitchFedLight(int32 Root, const FStructuralChannelKey& LightKey);
 	bool IsPanelDownstreamLight(int32 Root, const FStructuralChannelKey& LightKey);
 	bool IsSwitchFeedOpen(int32 Root, FName SwitchControlId);
 	void FinishBulkLoadDrain();
-	void ReconcileAllPanelEndpoints();
 	void MaybeRunPostLoadLightReconcile();
-	FStructuralComponentKey MakeComponentKeyForParent(const FStructuralNodeId& ParentId) const;
+	void ReconcileAllPanelEndpoints();
+	void CollectKnownPanelEndpoints(TArray<AFGBuildableLightsControlPanel*>& OutPanels);
+	void ApplyKeyedSubnetAllPanels();
 	void LinkBusToVisibleConnections(AFGBuildable* Host, UFGStructuralPowerConnectionComponent* Bus);
 	void LinkBusToVisibleConnectionsLocal(
 		AFGBuildable* Host,
 		UFGStructuralPowerConnectionComponent* Bus);
 	bool HasBridgeBusPeerMesh(UFGStructuralPowerConnectionComponent* Bus) const;
+	void RestitchLightEndpointsForRoot(int32 Root, EAttachContext AttachContext);
+	void RestitchPanelEndpointsForRoot(int32 Root, EAttachContext AttachContext);
+	void RestitchPanelsWithControlOnRoot(int32 Root, FName ControlId);
+	void RestitchKeyedSubnetsAfterMeshFeedRefresh(int32 Root, EAttachContext AttachContext);
 	void RestitchComponent(int32 Root, bool bTearDownFirst, EAttachContext AttachContext);
 	void ReEnergizeComponentRoots(
 		const TArray<int32>& Roots,
@@ -299,6 +317,12 @@ private:
 	TMap<FStructuralNodeId, FStructuralEndpointOverrides> PlayerEndpointOverrides;
 
 	FStructuralEndpointIdRegistry IdRegistry;
+	FStructuralGraphIdOps IdOps;
+	FStructuralPowerReconcile ReconcileOps;
+	FStructuralPowerRestitch RestitchOps;
+	FStructuralGraphCircuitOps CircuitOps;
+	FStructuralBridgeRootIndex BridgeRootIndex;
+	FStructuralWireDeltaHandler WireDeltaHandler;
 	FStructuralPlacementQueue PlacementQueue;
 	int32 CircuitPromotionDepth = 0;
 	bool bPostLoadRebuilt = false;
@@ -307,5 +331,6 @@ private:
 	bool bBridgeEndpointRootIndexDirty = true;
 	FStructuralEndpointIndex EndpointIndex;
 	FStructuralCrossSiteGraph CrossSiteGraph;
+	FStructuralSiteState SiteState;
 	TMap<int32, TWeakObjectPtr<UFGCircuitConnectionComponent>> SourceConnectorByRoot;
 };

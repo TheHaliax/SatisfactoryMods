@@ -3,189 +3,50 @@
 
 #include "UI/UStructuralPowerIdConfigWidget.h"
 
-#include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetTree.h"
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildableCircuitSwitch.h"
-#include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/ComboBoxString.h"
 #include "Components/EditableTextBox.h"
-#include "Components/HorizontalBox.h"
-#include "Components/HorizontalBoxSlot.h"
-#include "Components/NamedSlot.h"
-#include "Components/Overlay.h"
-#include "Components/OverlaySlot.h"
-#include "Components/PanelWidget.h"
-#include "Components/SizeBox.h"
-#include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
-#include "Components/VerticalBoxSlot.h"
-#include "FGHUD.h"
 #include "FGPlayerController.h"
-#include "FGPlayerControllerBase.h"
-#include "Framework/Application/IInputProcessor.h"
-#include "Framework/Application/SlateApplication.h"
-#include "GameFramework/Pawn.h"
-#include "Input/Events.h"
 #include "Input/FStructuralPowerIdInput.h"
-#include "UI/FStructuralPowerIdApplyBridge.h"
-#include "UI/FStructuralPowerIdFieldMatrix.h"
-#include "UI/FStructuralPowerIdWidgetHelpers.h"
-#include "Config/FStructuralPowerModConfig.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Rules/FStructuralEligibilityRules.h"
-#include "Settings/FGUserSetting.h"
-#include "Settings/FGUserSettingApplyType.h"
-#include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
 #include "TimerManager.h"
 #include "UI/FStructuralIdConfigTarget.h"
-#include "UI/FGGameUI.h"
-#include "UI/Message/FGAudioMessage.h"
+#include "UI/FStructuralPowerIdApplyBridge.h"
+#include "UI/FStructuralPowerIdDisplaySync.h"
+#include "UI/FStructuralPowerIdFieldMatrix.h"
+#include "UI/FStructuralPowerIdModalHost.h"
+#include "UI/FStructuralPowerIdShellBuilder.h"
+#include "UI/FStructuralPowerIdWidgetHelpers.h"
+#include "UI/FStructuralPowerIdWindowPool.h"
 #include "UI/UStructuralPowerIdOptionManager.h"
 
-using StructuralPowerIdUiHelpers::AddVBoxRow;
 using StructuralPowerIdUiHelpers::FormatIdOptionLabel;
-using StructuralPowerIdUiHelpers::MakeLabeledButton;
-using StructuralPowerIdUiHelpers::SetTextStyle;
 
-namespace
+FStructuralPowerIdShellWidgets UStructuralPowerIdConfigWidget::BuildShellWidgetRefs() const
 {
-class FStructuralPowerIdEscapeProcessor : public IInputProcessor
-{
-public:
-	virtual bool HandleKeyDownEvent(
-		FSlateApplication& SlateApp,
-		const FKeyEvent& InKeyEvent) override
-	{
-		if (InKeyEvent.GetKey() != EKeys::Escape)
-		{
-			return false;
-		}
-
-		UStructuralPowerIdConfigWidget* Active =
-			UStructuralPowerIdConfigWidget::GetActiveWidget();
-		if (!IsValid(Active) || !Active->IsPanelVisible())
-		{
-			return false;
-		}
-
-		Active->ClosePanel();
-		return true;
-	}
-
-	virtual void Tick(
-		const float DeltaTime,
-		FSlateApplication& SlateApp,
-		TSharedRef<ICursor> Cursor) override
-	{
-	}
-};
-
-static void WalkWidgetTree(UWidget* Widget, TFunctionRef<void(UWidget*)> Visitor)
-{
-	if (!IsValid(Widget))
-	{
-		return;
-	}
-
-	Visitor(Widget);
-
-	if (UPanelWidget* Panel = Cast<UPanelWidget>(Widget))
-	{
-		const int32 Count = Panel->GetChildrenCount();
-		for (int32 Index = 0; Index < Count; ++Index)
-		{
-			WalkWidgetTree(Panel->GetChildAt(Index), Visitor);
-		}
-	}
+	return FStructuralPowerIdShellWidgets{
+		.ShellBorder = ShellBorder,
+		.TitleText = TitleText,
+		.CloseButton = CloseButton,
+		.ContentBorder = ContentBorder,
+		.ContentVBox = ContentVBox,
+	};
 }
 
-static bool MountWidgetInHost(UWidget* Host, UWidget* Child)
+void UStructuralPowerIdConfigWidget::ApplyShellWidgetRefs(const FStructuralPowerIdShellWidgets& Shell)
 {
-	if (!IsValid(Host) || !IsValid(Child))
-	{
-		return false;
-	}
-
-	if (UNamedSlot* NamedSlot = Cast<UNamedSlot>(Host))
-	{
-		NamedSlot->SetContent(Child);
-		return true;
-	}
-
-	if (UPanelWidget* Panel = Cast<UPanelWidget>(Host))
-	{
-		Panel->AddChild(Child);
-		return true;
-	}
-
-	return false;
+	ShellBorder = Shell.ShellBorder;
+	TitleText = Shell.TitleText;
+	CloseButton = Shell.CloseButton;
+	ContentBorder = Shell.ContentBorder;
+	ContentVBox = Shell.ContentVBox;
 }
-
-static UPanelWidget* FindWindowBodyPanel(UUserWidget* Window)
-{
-	if (!IsValid(Window) || !IsValid(Window->WidgetTree))
-	{
-		return nullptr;
-	}
-
-	UPanelWidget* NamedSlotBody = nullptr;
-	UPanelWidget* NamedPanelBody = nullptr;
-	WalkWidgetTree(Window->WidgetTree->RootWidget, [&](UWidget* Widget)
-	{
-		const FString Name = Widget->GetName();
-		const bool bNameMatch = Name.Contains(TEXT("WindowBody"), ESearchCase::IgnoreCase)
-			|| Name.Contains(TEXT("Window_Body"), ESearchCase::IgnoreCase)
-			|| Name.Contains(TEXT("WindowContent"), ESearchCase::IgnoreCase)
-			|| Name.Equals(TEXT("Body"), ESearchCase::IgnoreCase);
-
-		if (UNamedSlot* NamedSlot = Cast<UNamedSlot>(Widget))
-		{
-			if (bNameMatch)
-			{
-				NamedSlotBody = NamedSlot;
-			}
-		}
-
-		if (UPanelWidget* Panel = Cast<UPanelWidget>(Widget))
-		{
-			if (bNameMatch)
-			{
-				NamedPanelBody = Panel;
-			}
-		}
-	});
-
-	return NamedSlotBody ? NamedSlotBody : NamedPanelBody;
-}
-
-static void DismissBlockingGameMessages(AFGPlayerController* PC)
-{
-	if (!IsValid(PC))
-	{
-		return;
-	}
-
-	UFGGameUI* GameUI = PC->GetGameUI();
-	if (!IsValid(GameUI))
-	{
-		return;
-	}
-
-	if (UFGAudioMessage* ActiveMessage = GameUI->GetActiveAudioMessage())
-	{
-		ActiveMessage->CancelPlayback();
-		GameUI->AudioMessageFinishedPlayback();
-		UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] Id panel dismissed active audio message"));
-	}
-}
-}
-
-TWeakObjectPtr<UStructuralPowerIdConfigWidget> UStructuralPowerIdConfigWidget::ActiveInstance;
-TObjectPtr<UStructuralPowerIdConfigWidget> UStructuralPowerIdConfigWidget::CachedWindow;
-TSharedPtr<IInputProcessor> UStructuralPowerIdConfigWidget::EscapeInputProcessor;
 
 UStructuralPowerIdConfigWidget::UStructuralPowerIdConfigWidget(
 	const FObjectInitializer& ObjectInitializer)
@@ -198,12 +59,12 @@ UStructuralPowerIdConfigWidget::UStructuralPowerIdConfigWidget(
 
 UStructuralPowerIdConfigWidget* UStructuralPowerIdConfigWidget::GetActiveWidget()
 {
-	return ActiveInstance.Get();
+	return FStructuralPowerIdWindowPool::GetActiveWidget();
 }
 
 UStructuralPowerIdConfigWidget* UStructuralPowerIdConfigWidget::GetPooledWindow()
 {
-	return CachedWindow.Get();
+	return FStructuralPowerIdWindowPool::GetPooledWindow();
 }
 
 bool UStructuralPowerIdConfigWidget::IsPanelShown() const
@@ -226,141 +87,28 @@ bool UStructuralPowerIdConfigWidget::IsTextFieldFocused() const
 
 void UStructuralPowerIdConfigWidget::NormalizeModalState()
 {
-	if (bModalActive && !IsPanelShown())
-	{
-		bModalActive = false;
-		if (ActiveInstance.Get() == this)
-		{
-			SetActiveWidget(nullptr);
-		}
-
-		if (AFGPlayerController* PC = GetOwningPlayer<AFGPlayerController>())
-		{
-			UnregisterEscapeInputProcessor();
-			ForceReleaseAllModalState(PC);
-		}
-
-		UE_LOG(LogStructuralPower, Warning,
-			TEXT("[HALSP] Id panel recovered stale modal (active=1 shown=0)"));
-	}
-	else if (!bModalActive && IsPanelShown())
-	{
-		SetVisibility(ESlateVisibility::Hidden);
-		SetIsEnabled(false);
-	}
+	FStructuralPowerIdModalHost::NormalizeModalState(this);
 }
 
 UStructuralPowerIdConfigWidget* UStructuralPowerIdConfigWidget::GetOrCreateWindow(
 	AFGPlayerController* PC)
 {
-	if (!IsValid(PC))
-	{
-		return nullptr;
-	}
-
-	if (UStructuralPowerIdConfigWidget* Existing = CachedWindow.Get())
-	{
-		if (IsValid(Existing))
-		{
-			return Existing;
-		}
-
-		CachedWindow = nullptr;
-	}
-
-	UStructuralPowerIdConfigWidget* Window = CreateWidget<UStructuralPowerIdConfigWidget>(
-		PC,
-		StaticClass());
-	if (!IsValid(Window))
-	{
-		return nullptr;
-	}
-
-	CachedWindow = Window;
-	UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] Id panel window created"));
-	return Window;
-}
-
-void UStructuralPowerIdConfigWidget::SetActiveWidget(UStructuralPowerIdConfigWidget* Widget)
-{
-	if (Widget == nullptr)
-	{
-		ActiveInstance.Reset();
-		return;
-	}
-
-	if (!IsValid(Widget))
-	{
-		ActiveInstance.Reset();
-		return;
-	}
-
-	ActiveInstance = Widget;
+	return FStructuralPowerIdWindowPool::GetOrCreateWindow(PC);
 }
 
 void UStructuralPowerIdConfigWidget::ResetStaticsForMapLoad()
 {
-	ActiveInstance.Reset();
-	CachedWindow = nullptr;
-	UnregisterEscapeInputProcessor();
+	FStructuralPowerIdWindowPool::ResetForMapLoad();
 }
 
 void UStructuralPowerIdConfigWidget::CloseActivePanel()
 {
-	if (UStructuralPowerIdConfigWidget* Widget = ActiveInstance.Get())
-	{
-		Widget->ClosePanel();
-		return;
-	}
-
-	if (UStructuralPowerIdConfigWidget* Window = CachedWindow.Get())
-	{
-		Window->DetachFromViewport();
-		if (AFGPlayerController* PC = Window->GetOwningPlayer<AFGPlayerController>())
-		{
-			ForceReleaseAllModalState(PC);
-		}
-	}
+	FStructuralPowerIdWindowPool::CloseActivePanel();
 }
 
 void UStructuralPowerIdConfigWidget::ReleaseForVanillaInteract(AFGPlayerController* PC)
 {
-	if (!IsValid(PC))
-	{
-		return;
-	}
-
-	if (UStructuralPowerIdConfigWidget* Widget = ActiveInstance.Get())
-	{
-		Widget->DetachFromViewport();
-		Widget->bModalActive = false;
-		if (ActiveInstance.Get() == Widget)
-		{
-			SetActiveWidget(nullptr);
-		}
-	}
-	else if (UStructuralPowerIdConfigWidget* Window = CachedWindow.Get())
-	{
-		if (IsValid(Window))
-		{
-			Window->DetachFromViewport();
-			Window->bModalActive = false;
-		}
-	}
-
-	ForceReleaseAllModalState(PC, /*bRestoreGameInputMode=*/false);
-}
-
-void UStructuralPowerIdConfigWidget::DetachFromViewport()
-{
-	UnregisterEscapeInputProcessor();
-	SetVisibility(ESlateVisibility::Collapsed);
-	SetIsEnabled(false);
-
-	if (IsInViewport())
-	{
-		RemoveFromParent();
-	}
+	FStructuralPowerIdWindowPool::ReleaseForVanillaInteract(PC);
 }
 
 void UStructuralPowerIdConfigWidget::NativeConstruct()
@@ -375,30 +123,15 @@ void UStructuralPowerIdConfigWidget::NativeDestruct()
 	{
 		if (AFGPlayerController* PC = GetOwningPlayer<AFGPlayerController>())
 		{
-			ForceReleaseAllModalState(PC);
+			FStructuralPowerIdModalHost::ForceReleaseAllModalState(PC);
 		}
-	}
-
-	if (ActiveInstance.Get() == this)
-	{
-		SetActiveWidget(nullptr);
 	}
 
 	bInitializedForTarget = false;
 	bModalActive = false;
-
-	if (CachedWindow.Get() == this)
-	{
-		CachedWindow = nullptr;
-	}
+	FStructuralPowerIdWindowPool::NotifyWindowDestroyed(this);
 
 	Super::NativeDestruct();
-}
-
-void UStructuralPowerIdConfigWidget::EnsureViewportPresentation()
-{
-	SetAnchorsInViewport(FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
-	SetAlignmentInViewport(FVector2D::ZeroVector);
 }
 
 void UStructuralPowerIdConfigWidget::ClearHotkeyTextBleed()
@@ -434,7 +167,7 @@ void UStructuralPowerIdConfigWidget::OpenForTarget(AFGBuildable* Target)
 
 	NormalizeModalState();
 	EnsureShellBuilt();
-	EnsureViewportPresentation();
+	FStructuralPowerIdShellBuilder::EnsureViewportPresentation(this);
 	SetIsEnabled(true);
 	InitializeForTarget(Target);
 	ClearHotkeyTextBleed();
@@ -453,16 +186,9 @@ void UStructuralPowerIdConfigWidget::OpenForTarget(AFGBuildable* Target)
 		SlateRoot->Invalidate(EInvalidateWidgetReason::LayoutAndVolatility);
 	}
 
-	SetActiveWidget(this);
-	bModalActive = true;
-	RegisterEscapeInputProcessor();
-	ApplyModalInputMode();
-	ScheduleModalInputModeRefresh();
-
 	if (AFGPlayerController* PC = GetOwningPlayer<AFGPlayerController>())
 	{
-		DismissBlockingGameMessages(PC);
-		FStructuralPowerIdInput::NotifyPanelOpened(PC);
+		FStructuralPowerIdModalHost::OnPanelOpened(this, PC);
 	}
 
 	UE_LOG(LogStructuralPower, Log,
@@ -470,7 +196,7 @@ void UStructuralPowerIdConfigWidget::OpenForTarget(AFGBuildable* Target)
 		*Target->GetName(),
 		IsInViewport() ? 1 : 0,
 		GetCachedWidget().IsValid() ? 1 : 0,
-		CachedWindow.Get() == this ? 1 : 0);
+		FStructuralPowerIdWindowPool::GetPooledWindow() == this ? 1 : 0);
 }
 
 FReply UStructuralPowerIdConfigWidget::NativeOnPreviewKeyDown(
@@ -507,159 +233,11 @@ FReply UStructuralPowerIdConfigWidget::NativeOnKeyChar(
 	return Super::NativeOnKeyChar(InGeometry, InCharacterEvent);
 }
 
-void UStructuralPowerIdConfigWidget::ApplyModalInputMode()
-{
-	if (!bModalActive)
-	{
-		return;
-	}
-
-	AFGPlayerController* PC = GetOwningPlayer<AFGPlayerController>();
-	if (!IsValid(PC))
-	{
-		return;
-	}
-
-	if (APawn* Pawn = PC->GetPawn())
-	{
-		Pawn->DisableInput(PC);
-	}
-
-	PC->SetIgnoreLookInput(true);
-	PC->SetIgnoreMoveInput(true);
-	PC->bShowMouseCursor = true;
-	PC->bEnableClickEvents = true;
-	PC->bEnableMouseOverEvents = true;
-
-	FInputModeUIOnly InputMode;
-	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-
-	UWidget* FocusWidget = IsValid(CloseButton)
-		? static_cast<UWidget*>(CloseButton.Get())
-		: static_cast<UWidget*>(this);
-	TSharedPtr<SWidget> SlateWidget = FocusWidget->GetCachedWidget();
-	if (!SlateWidget.IsValid())
-	{
-		SlateWidget = GetCachedWidget();
-	}
-
-	if (SlateWidget.IsValid())
-	{
-		InputMode.SetWidgetToFocus(SlateWidget);
-		if (FSlateApplication::IsInitialized())
-		{
-			FSlateApplication::Get().SetKeyboardFocus(SlateWidget, EFocusCause::SetDirectly);
-			const int32 UserIndex = PC->GetLocalPlayer()
-				? PC->GetLocalPlayer()->GetControllerId()
-				: 0;
-			FSlateApplication::Get().SetUserFocus(UserIndex, SlateWidget, EFocusCause::SetDirectly);
-		}
-	}
-
-	PC->SetInputMode(InputMode);
-
-	if (AFGHUD* HUD = PC->GetHUD<AFGHUD>())
-	{
-		HUD->SetForceHideCrossHair(true);
-		HUD->SetShowCrossHair(false);
-	}
-
-	UE_LOG(LogStructuralPower, Verbose,
-		TEXT("[HALSP] Id panel input=UIOnly cursor=%d slateFocus=%d inViewport=%d"),
-		PC->bShowMouseCursor ? 1 : 0,
-		SlateWidget.IsValid() ? 1 : 0,
-		IsInViewport() ? 1 : 0);
-}
-
-void UStructuralPowerIdConfigWidget::ScheduleModalInputModeRefresh()
-{
-	if (UWorld* World = GetWorld())
-	{
-		World->GetTimerManager().SetTimerForNextTick(
-			FTimerDelegate::CreateUObject(this, &UStructuralPowerIdConfigWidget::ApplyModalInputMode));
-	}
-}
-
 void UStructuralPowerIdConfigWidget::ForceReleaseAllModalState(
 	AFGPlayerController* PC,
 	bool bRestoreGameInputMode)
 {
-	if (!IsValid(PC))
-	{
-		return;
-	}
-
-	UnregisterEscapeInputProcessor();
-
-	PC->ResetIgnoreMoveInput();
-	PC->ResetIgnoreLookInput();
-
-	if (APawn* Pawn = PC->GetPawn())
-	{
-		Pawn->EnableInput(PC);
-	}
-
-	if (!bRestoreGameInputMode)
-	{
-		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[HALSP] Id panel released capture (vanilla interact owns input)"));
-		return;
-	}
-
-	if (UFGGameUI* GameUI = PC->GetGameUI())
-	{
-		if (IsValid(GameUI) && GameUI->HasActiveInteractWidget())
-		{
-			UE_LOG(LogStructuralPower, Verbose,
-				TEXT("[HALSP] Id panel skip GameOnly — vanilla interact active"));
-			return;
-		}
-	}
-
-	PC->bShowMouseCursor = false;
-	PC->bEnableClickEvents = false;
-	PC->bEnableMouseOverEvents = false;
-
-	FInputModeGameOnly InputMode;
-	PC->SetInputMode(InputMode);
-	PC->FlushPressedKeys();
-
-	if (AFGHUD* HUD = PC->GetHUD<AFGHUD>())
-	{
-		HUD->SetForceHideCrossHair(false);
-		HUD->SetShowCrossHair(true);
-	}
-
-	UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] Id panel force-released modal state"));
-}
-
-void UStructuralPowerIdConfigWidget::RegisterEscapeInputProcessor()
-{
-	if (EscapeInputProcessor.IsValid())
-	{
-		return;
-	}
-
-	EscapeInputProcessor = MakeShared<FStructuralPowerIdEscapeProcessor>();
-	if (FSlateApplication::IsInitialized())
-	{
-		FSlateApplication::Get().RegisterInputPreProcessor(EscapeInputProcessor, 0);
-	}
-}
-
-void UStructuralPowerIdConfigWidget::UnregisterEscapeInputProcessor()
-{
-	if (!EscapeInputProcessor.IsValid())
-	{
-		return;
-	}
-
-	if (FSlateApplication::IsInitialized())
-	{
-		FSlateApplication::Get().UnregisterInputPreProcessor(EscapeInputProcessor);
-	}
-
-	EscapeInputProcessor.Reset();
+	FStructuralPowerIdModalHost::ForceReleaseAllModalState(PC, bRestoreGameInputMode);
 }
 
 void UStructuralPowerIdConfigWidget::InitializeForTarget(AFGBuildable* Target)
@@ -671,9 +249,9 @@ void UStructuralPowerIdConfigWidget::InitializeForTarget(AFGBuildable* Target)
 
 	const bool bSameTarget = TargetBuildable == Target && bInitializedForTarget;
 	TargetBuildable = Target;
-	SetActiveWidget(this);
+	FStructuralPowerIdWindowPool::SetActiveWidget(this);
 	EnsureShellBuilt();
-	UpdateWindowTitle();
+	FStructuralPowerIdShellBuilder::UpdateWindowTitle(BuildShellWidgetRefs(), TargetBuildable);
 
 	if (bSameTarget)
 	{
@@ -690,7 +268,7 @@ void UStructuralPowerIdConfigWidget::InitializeForTarget(AFGBuildable* Target)
 	OptionManager->ConfigureForTarget(Target, Channel);
 	RebuildPanelContent();
 	bInitializedForTarget = true;
-	FlushPendingIdList();
+	FStructuralPowerIdDisplaySync::FlushPendingIdList(this);
 	RequestIdList();
 
 	const bool bLight = FStructuralEligibilityRules::IsStructuralLightConsumer(Target);
@@ -721,319 +299,20 @@ void UStructuralPowerIdConfigWidget::RetargetTo(AFGBuildable* Target)
 
 void UStructuralPowerIdConfigWidget::ApplyComponentIdList(const FStructuralComponentIdList& List)
 {
-	PendingIdList = List;
-	bHasPendingIdList = true;
-
-	if (!IsValid(OptionManager))
-	{
-		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[HALSP] Id panel sync deferred — option manager not ready"));
-		return;
-	}
-
-	OptionManager->SyncFromComponentList(List);
-
-	if (!AreFormWidgetsReady())
-	{
-		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[HALSP] Id panel sync deferred — form widgets not ready"));
-		return;
-	}
-
-	RefreshIdDisplayFromList(List);
-	bHasPendingIdList = false;
-}
-
-bool UStructuralPowerIdConfigWidget::AreFormWidgetsReady() const
-{
-	if (!IsValid(OptionManager) || !IsValid(TargetBuildable))
-	{
-		return false;
-	}
-
-	if (!IsValid(SuggestedSourceCombo) || !IsValid(AssignSourceText))
-	{
-		return false;
-	}
-
-	if (OptionManager->NeedsDualFields())
-	{
-		return IsValid(SuggestedControlCombo) && IsValid(AssignControlText);
-	}
-
-	return true;
-}
-
-void UStructuralPowerIdConfigWidget::FlushPendingIdList()
-{
-	if (!bHasPendingIdList || !IsValid(OptionManager) || !AreFormWidgetsReady())
-	{
-		return;
-	}
-
-	OptionManager->SyncFromComponentList(PendingIdList);
-	RefreshIdDisplayFromList(PendingIdList);
-	bHasPendingIdList = false;
-}
-
-void UStructuralPowerIdConfigWidget::RepopulateComboFromManager(
-	UComboBoxString* Combo,
-	bool bSourceChannel)
-{
-	if (!IsValid(Combo) || !IsValid(OptionManager))
-	{
-		return;
-	}
-
-	Combo->ClearOptions();
-	const int32 Count = bSourceChannel
-		? OptionManager->GetSourceOptionCount()
-		: OptionManager->GetControlOptionCount();
-	for (int32 Index = 0; Index < Count; ++Index)
-	{
-		const FName Id = bSourceChannel
-			? OptionManager->GetSourceOptionAt(Index)
-			: OptionManager->GetControlOptionAt(Index);
-		Combo->AddOption(FormatIdOptionLabel(Id));
-	}
-}
-
-void UStructuralPowerIdConfigWidget::RefreshIdDisplayFromList(
-	const FStructuralComponentIdList& List)
-{
-	if (!IsValid(OptionManager))
-	{
-		return;
-	}
-
-	bSuppressServerApply = true;
-
-	RepopulateComboFromManager(SuggestedSourceCombo, true);
-	if (OptionManager->NeedsDualFields())
-	{
-		RepopulateComboFromManager(SuggestedControlCombo, false);
-	}
-
-	const FName ActiveSource = List.SourceOverride.IsNone()
-		? List.ResolvedSource
-		: List.SourceOverride;
-	const FName ActiveControl = List.ControlOverride.IsNone()
-		? List.ResolvedControl
-		: List.ControlOverride;
-
-	if (IsValid(SuggestedSourceCombo))
-	{
-		const int32 SourceIndex = OptionManager->FindSourceOptionIndex(ActiveSource, 0);
-		SuggestedSourceCombo->SetSelectedIndex(SourceIndex);
-	}
-
-	if (IsValid(SuggestedControlCombo))
-	{
-		const int32 ControlIndex = OptionManager->FindControlOptionIndex(ActiveControl, 0);
-		SuggestedControlCombo->SetSelectedIndex(ControlIndex);
-	}
-
-	if (IsValid(AssignSourceText))
-	{
-		if (!List.SourceOverride.IsNone()
-			&& FStructuralPowerRouter::IsPlayerChosenIdValid(List.SourceOverride))
-		{
-			AssignSourceText->SetText(FText::FromName(List.SourceOverride));
-			AssignSourceText->SetHintText(FText::FromString(TEXT("Enter id name")));
-		}
-		else
-		{
-			AssignSourceText->SetText(FText::GetEmpty());
-			const FString Hint = List.ResolvedSource.IsNone()
-				? TEXT("Enter id name")
-				: FString::Printf(TEXT("Auto: %s"), *List.ResolvedSource.ToString());
-			AssignSourceText->SetHintText(FText::FromString(Hint));
-		}
-	}
-
-	if (IsValid(AssignControlText))
-	{
-		if (!List.ControlOverride.IsNone()
-			&& FStructuralPowerRouter::IsPlayerChosenIdValid(List.ControlOverride))
-		{
-			AssignControlText->SetText(FText::FromName(List.ControlOverride));
-			AssignControlText->SetHintText(FText::FromString(TEXT("Enter id name")));
-		}
-		else
-		{
-			AssignControlText->SetText(FText::GetEmpty());
-			const FString Hint = List.ResolvedControl.IsNone()
-				|| List.ResolvedControl == StructuralPowerConstants::ControlUnconfigured
-				|| List.ResolvedControl == StructuralPowerConstants::ControlBypass
-				? TEXT("Enter id name")
-				: FString::Printf(TEXT("Auto: %s"), *List.ResolvedControl.ToString());
-			AssignControlText->SetHintText(FText::FromString(Hint));
-		}
-	}
-
-	if (IsValid(ActiveIdsText))
-	{
-		const FString SourceLine = List.SourceOverride.IsNone()
-			? (List.ResolvedSource.IsNone() ? TEXT("-") : List.ResolvedSource.ToString())
-			: FString::Printf(TEXT("%s*"), *List.SourceOverride.ToString());
-		const FString ControlLine = List.ControlOverride.IsNone()
-			? (List.ResolvedControl.IsNone() ? TEXT("-") : List.ResolvedControl.ToString())
-			: FString::Printf(TEXT("%s*"), *List.ControlOverride.ToString());
-
-		const bool bDual = OptionManager->NeedsDualFields();
-		const FString Status = bDual
-			? FString::Printf(TEXT("Active — source: %s   control: %s"), *SourceLine, *ControlLine)
-			: FString::Printf(TEXT("Active — source: %s"), *SourceLine);
-		SetTextStyle(ActiveIdsText, Status, 12);
-	}
-
-	bSuppressServerApply = false;
-
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] Id panel synced ids resolvedSrc=%s resolvedCtl=%s overrideSrc=%s overrideCtl=%s"),
-		List.ResolvedSource.IsNone() ? TEXT("-") : *List.ResolvedSource.ToString(),
-		List.ResolvedControl.IsNone() ? TEXT("-") : *List.ResolvedControl.ToString(),
-		List.SourceOverride.IsNone() ? TEXT("-") : *List.SourceOverride.ToString(),
-		List.ControlOverride.IsNone() ? TEXT("-") : *List.ControlOverride.ToString());
-}
-
-void UStructuralPowerIdConfigWidget::UpdateWindowTitle()
-{
-	if (!IsValid(TitleText) || !IsValid(TargetBuildable))
-	{
-		return;
-	}
-
-	const bool bLight = FStructuralEligibilityRules::IsStructuralLightConsumer(TargetBuildable);
-	const bool bSwitch = TargetBuildable->IsA<AFGBuildableCircuitSwitch>();
-	const TCHAR* Kind = bLight ? TEXT("Light") : (bSwitch ? TEXT("Switch") : TEXT("Panel"));
-	SetTextStyle(
-		TitleText,
-		FString::Printf(TEXT("Structural Power — %s"), Kind),
-		15,
-		true);
-}
-
-void UStructuralPowerIdConfigWidget::ResetShellState()
-{
-	ShellBorder = nullptr;
-	TitleText = nullptr;
-	CloseButton = nullptr;
-	ContentBorder = nullptr;
-	ContentVBox = nullptr;
-	SuggestedSourceCombo = nullptr;
-	SuggestedControlCombo = nullptr;
-	AssignSourceText = nullptr;
-	AssignControlText = nullptr;
-	ApplyButton = nullptr;
-	ResetButton = nullptr;
-	ActiveIdsText = nullptr;
-
-	if (WidgetTree)
-	{
-		WidgetTree->RootWidget = nullptr;
-	}
+	FStructuralPowerIdDisplaySync::ApplyComponentIdList(this, List);
 }
 
 void UStructuralPowerIdConfigWidget::EnsureShellBuilt()
 {
-	if (IsValid(ContentVBox) && IsValid(WidgetTree) && IsValid(WidgetTree->RootWidget))
+	FStructuralPowerIdShellWidgets Shell = BuildShellWidgetRefs();
+	FStructuralPowerIdShellBuilder::EnsureShellBuilt(this, WidgetTree, Shell);
+	ApplyShellWidgetRefs(Shell);
+
+	if (IsValid(CloseButton))
 	{
-		return;
+		CloseButton->OnClicked.Clear();
+		CloseButton->OnClicked.AddDynamic(this, &UStructuralPowerIdConfigWidget::OnCloseClicked);
 	}
-
-	ResetShellState();
-
-	if (!WidgetTree)
-	{
-		WidgetTree = NewObject<UWidgetTree>(this, TEXT("WidgetTree"));
-	}
-
-	UOverlay* RootOverlay = WidgetTree->ConstructWidget<UOverlay>(
-		UOverlay::StaticClass(),
-		TEXT("RootOverlay"));
-	RootOverlay->SetVisibility(ESlateVisibility::Visible);
-	RootOverlay->SetClipping(EWidgetClipping::ClipToBoundsAlways);
-
-	UBorder* Backdrop = WidgetTree->ConstructWidget<UBorder>(
-		UBorder::StaticClass(),
-		TEXT("ModalBackdrop"));
-	Backdrop->SetBrushColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.45f));
-	Backdrop->SetPadding(FMargin(0.0f));
-	RootOverlay->AddChild(Backdrop);
-	if (UOverlaySlot* BackdropSlot = Cast<UOverlaySlot>(Backdrop->Slot))
-	{
-		BackdropSlot->SetHorizontalAlignment(HAlign_Fill);
-		BackdropSlot->SetVerticalAlignment(VAlign_Fill);
-	}
-
-	USizeBox* Frame = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("RootFrame"));
-	Frame->SetWidthOverride(500.0f);
-	Frame->SetMinDesiredHeight(380.0f);
-	Frame->SetVisibility(ESlateVisibility::Visible);
-	RootOverlay->AddChild(Frame);
-	if (UOverlaySlot* FrameSlot = Cast<UOverlaySlot>(Frame->Slot))
-	{
-		FrameSlot->SetHorizontalAlignment(HAlign_Center);
-		FrameSlot->SetVerticalAlignment(VAlign_Center);
-	}
-
-	ShellBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("ShellBorder"));
-	ShellBorder->SetBrushColor(FLinearColor(0.03f, 0.05f, 0.07f, 0.98f));
-	ShellBorder->SetPadding(FMargin(0.0f));
-	Frame->AddChild(ShellBorder);
-
-	UVerticalBox* ShellVBox = WidgetTree->ConstructWidget<UVerticalBox>(
-		UVerticalBox::StaticClass(),
-		TEXT("ShellVBox"));
-	ShellBorder->AddChild(ShellVBox);
-
-	UBorder* TitleBar = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("TitleBar"));
-	TitleBar->SetBrushColor(FLinearColor(0.06f, 0.08f, 0.11f, 1.0f));
-	TitleBar->SetPadding(FMargin(14.0f, 10.0f));
-	ShellVBox->AddChild(TitleBar);
-
-	UHorizontalBox* TitleRow = WidgetTree->ConstructWidget<UHorizontalBox>(
-		UHorizontalBox::StaticClass(),
-		TEXT("TitleRow"));
-	TitleBar->AddChild(TitleRow);
-
-	TitleText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("TitleText"));
-	SetTextStyle(TitleText, TEXT("Structural Power Ids"), 15, true);
-	TitleRow->AddChild(TitleText);
-	if (UHorizontalBoxSlot* TitleSlot = Cast<UHorizontalBoxSlot>(TitleText->Slot))
-	{
-		TitleSlot->SetHorizontalAlignment(HAlign_Left);
-		TitleSlot->SetVerticalAlignment(VAlign_Center);
-		TitleSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
-	}
-
-	CloseButton = MakeLabeledButton(WidgetTree, TEXT("CloseButton"), TEXT("X"));
-	TitleRow->AddChild(CloseButton);
-	if (UHorizontalBoxSlot* CloseSlot = Cast<UHorizontalBoxSlot>(CloseButton->Slot))
-	{
-		CloseSlot->SetHorizontalAlignment(HAlign_Right);
-		CloseSlot->SetVerticalAlignment(VAlign_Center);
-	}
-
-	CloseButton->OnClicked.Clear();
-	CloseButton->OnClicked.AddDynamic(this, &UStructuralPowerIdConfigWidget::OnCloseClicked);
-
-	ContentBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("ContentBorder"));
-	ContentBorder->SetBrushColor(FLinearColor(0.05f, 0.07f, 0.09f, 0.98f));
-	ContentBorder->SetPadding(FMargin(18.0f));
-
-	ContentVBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("ContentVBox"));
-	ContentBorder->AddChild(ContentVBox);
-	ShellVBox->AddChild(ContentBorder);
-
-	WidgetTree->RootWidget = RootOverlay;
-	SetVisibility(ESlateVisibility::Visible);
-	if (TSharedPtr<SWidget> SlateRoot = GetCachedWidget())
-	{
-		SlateRoot->Invalidate(EInvalidateWidgetReason::Layout);
-	}
-	UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] Id panel shell built root=%s chrome=cpp"), *RootOverlay->GetName());
 }
 
 void UStructuralPowerIdConfigWidget::RebuildPanelContent()
@@ -1093,7 +372,7 @@ void UStructuralPowerIdConfigWidget::RebuildPanelContent()
 		ResetButton->OnClicked.AddDynamic(this, &UStructuralPowerIdConfigWidget::OnResetIdClicked);
 	}
 
-	FlushPendingIdList();
+	FStructuralPowerIdDisplaySync::FlushPendingIdList(this);
 }
 
 void UStructuralPowerIdConfigWidget::ApplySourceIndex(int32 Index)
@@ -1264,23 +543,23 @@ void UStructuralPowerIdConfigWidget::ClosePanel()
 		return;
 	}
 
-	if (ActiveInstance.Get() == this)
+	if (FStructuralPowerIdWindowPool::GetActiveWidget() == this)
 	{
-		SetActiveWidget(nullptr);
+		FStructuralPowerIdWindowPool::SetActiveWidget(nullptr);
 	}
 
 	bInitializedForTarget = false;
 	TargetBuildable = nullptr;
 	bModalActive = false;
-	DetachFromViewport();
+	FStructuralPowerIdModalHost::DetachFromViewport(this);
 
 	if (AFGPlayerController* PC = GetOwningPlayer<AFGPlayerController>())
 	{
-		FStructuralPowerIdInput::NotifyPanelClosed(PC);
+		FStructuralPowerIdModalHost::OnPanelClosed(this, PC);
 	}
 
 	UE_LOG(LogStructuralPower, Log,
 		TEXT("[HALSP] Id panel closed inViewport=%d cached=%d"),
 		IsInViewport() ? 1 : 0,
-		CachedWindow.Get() == this ? 1 : 0);
+		FStructuralPowerIdWindowPool::GetPooledWindow() == this ? 1 : 0);
 }

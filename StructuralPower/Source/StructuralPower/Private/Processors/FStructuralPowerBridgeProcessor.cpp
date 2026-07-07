@@ -142,6 +142,12 @@ void FStructuralPowerBridgeProcessor::PropagateCrossSiteFeedChange(
 		return;
 	}
 
+	if (FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled()
+		&& Ctx.GetAttachContext() == EAttachContext::Toggle)
+	{
+		return;
+	}
+
 	Ctx.Graph().CrossSiteGraph.RefreshCouplingsFromWiredSwitch(Ctx.Graph(), Switch, LocalRoot);
 
 	TArray<int32> AffectedRoots;
@@ -151,6 +157,7 @@ void FStructuralPowerBridgeProcessor::PropagateCrossSiteFeedChange(
 		return;
 	}
 
+	const EAttachContext AttachContext = Ctx.GetAttachContext();
 	TSet<int32> Done;
 	for (int32 Root : AffectedRoots)
 	{
@@ -159,7 +166,7 @@ void FStructuralPowerBridgeProcessor::PropagateCrossSiteFeedChange(
 			continue;
 		}
 		Done.Add(Root);
-		Ctx.Graph().RestitchKeyedSubnetsAfterMeshFeedRefresh(Root, EAttachContext::WireDelta);
+		Ctx.Graph().RestitchKeyedSubnetsAfterMeshFeedRefresh(Root, AttachContext);
 	}
 
 	UE_LOG(LogStructuralPower, Log,

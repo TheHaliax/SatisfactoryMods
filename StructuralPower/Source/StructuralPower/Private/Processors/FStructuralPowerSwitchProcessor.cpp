@@ -144,6 +144,79 @@ int32 FStructuralPowerSwitchProcessor::ResolveMountRoot(
 	return INDEX_NONE;
 }
 
+int32 FStructuralPowerSwitchProcessor::ResolveToggleSiteRoot(
+	FStructuralPowerContext& Ctx,
+	AFGBuildableCircuitSwitch* Switch,
+	FTrackedEndpoint& Tracked)
+{
+	FStructuralNodeId ParentId = Tracked.ParentId;
+	int32 Root = Ctx.Graph().FindRootForTrackedEndpoint(Tracked);
+
+	const FStructuralOutletParentResolveParams ParentParams = Ctx.Graph().MakeOutletParentResolveParams();
+	auto TryResolveFromParent = [&](bool bPreferWirePort) -> int32
+	{
+		const FStructuralSwitchParentResolveResult ParentResolve =
+			FStructuralSwitchParentResolver::Resolve(
+				Switch,
+				Ctx.Graph().GetWorld(),
+				Ctx.Graph().StructureGraph,
+				Ctx.Graph().LightweightIndex,
+				bPreferWirePort,
+				&ParentParams);
+		FStructuralNodeId ResolvedParentId;
+		const int32 ResolvedRoot = ResolveMountRoot(Ctx, ParentResolve.Anchor, ResolvedParentId);
+		if (ResolvedRoot != INDEX_NONE)
+		{
+			ParentId = ResolvedParentId;
+		}
+		return ResolvedRoot;
+	};
+
+	if (Root == INDEX_NONE)
+	{
+		Root = TryResolveFromParent(/*bPreferWirePort=*/false);
+	}
+
+	if (Root == INDEX_NONE
+		&& FStructuralSwitchParentResolver::IsWiredToStructureSide(Switch))
+	{
+		Root = TryResolveFromParent(/*bPreferWirePort=*/true);
+	}
+
+	if (Root == INDEX_NONE
+		&& FStructuralSwitchParentResolver::IsWiredToStructureSide(Switch))
+	{
+		FStructuralSwitchParentResolver::ForEachWiredStructureSideAnchor(
+			Switch,
+			Ctx.Graph().GetWorld(),
+			Ctx.Graph().LightweightIndex,
+			&ParentParams,
+			[&](const FStructuralWallAnchor& Anchor)
+			{
+				if (Root != INDEX_NONE)
+				{
+					return;
+				}
+
+				FStructuralNodeId ResolvedParentId;
+				const int32 ResolvedRoot = ResolveMountRoot(Ctx, Anchor, ResolvedParentId);
+				if (ResolvedRoot != INDEX_NONE)
+				{
+					Root = ResolvedRoot;
+					ParentId = ResolvedParentId;
+				}
+			});
+	}
+
+	if (Root != INDEX_NONE)
+	{
+		Tracked.ParentId = ParentId;
+		Ctx.Graph().MarkBridgeEndpointRootIndexDirty();
+	}
+
+	return Root;
+}
+
 bool FStructuralPowerSwitchProcessor::ShouldInjectStructuralPath(const AFGBuildableCircuitSwitch* Switch)
 {
 	return IsValid(Switch) && Switch->IsBridgeActive();
@@ -762,31 +835,14 @@ void FStructuralPowerSwitchProcessor::OnStateChanged(
 	{
 		FStructuralCircuitPromotionScope PromotionScope(&Ctx.Graph());
 
-		FStructuralNodeId ParentId = Tracked->ParentId;
-		int32 Root = Ctx.Graph().FindRootForTrackedEndpoint(*Tracked);
-		if (Root == INDEX_NONE)
-		{
-			const FStructuralOutletParentResolveParams ParentParams = Ctx.Graph().MakeOutletParentResolveParams();
-			const FStructuralSwitchParentResolveResult ParentResolve =
-				FStructuralSwitchParentResolver::Resolve(
-					Switch,
-					Ctx.Graph().GetWorld(),
-					Ctx.Graph().StructureGraph,
-					Ctx.Graph().LightweightIndex,
-					/*bPreferWirePort=*/false,
-					&ParentParams);
-			Root = ResolveMountRoot(Ctx, ParentResolve.Anchor, ParentId);
-			if (ParentResolve.IsValid())
-			{
-				Tracked->ParentId = ParentId;
-				Ctx.Graph().MarkBridgeEndpointRootIndexDirty();
-			}
-		}
+		int32 Root = ResolveToggleSiteRoot(Ctx, Switch, *Tracked);
 
 		const FStructuralChannelKey SwitchKey = Ctx.Graph().ResolveChannelKeyForBuildable(Switch);
 		const bool bKeyedSubnet = HasAssignedControl(Ctx, Switch);
 		const bool bWiredBridge = FStructuralSwitchParentResolver::IsWiredToStructureSide(Switch);
 		const bool bSwitchOn = Switch->IsBridgeActive();
+
+		Ctx.Graph().MarkEchoDirtyForSwitchToggle(Switch, Root);
 
 		FStructuralPowerTrace::LogHook(
 			Switch,
@@ -809,7 +865,8 @@ void FStructuralPowerSwitchProcessor::OnStateChanged(
 					/*bGateOpen=*/false,
 					/*bLocalPromoteOnly=*/true);
 			}
-			if (bWiredBridge)
+			if (bWiredBridge
+				&& !FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
 			{
 				PropagateWiredFeedChange(Ctx, Switch, Root);
 			}
@@ -830,12 +887,54 @@ void FStructuralPowerSwitchProcessor::OnStateChanged(
 					/*bGateOpen=*/true,
 					/*bLocalPromoteOnly=*/true);
 			}
+		}
 
-			if (Root != INDEX_NONE)
+		if (Root != INDEX_NONE
+			&& (bSwitchOn || !bKeyedSubnet))
+		{
+			FStructuralPowerBridgeProcessor::FinishPanelBridgeLegsOnSiteAfterGateChange(
+				Ctx,
+				Root);
+		}
+
+		if (!bSwitchOn
+			&& Root != INDEX_NONE
+			&& bKeyedSubnet
+			&& Ctx.Graph().DoesComponentRootCarryPower(Root)
+			&& FStructuralPowerModConfig::IsGroupLightingEnabled())
+		{
+			if (const TArray<FStructuralNodeId>* LightIds =
+					Ctx.Graph().EndpointIndex.Get(Root, EStructuralEndpointKind::Light))
 			{
-				FStructuralPowerBridgeProcessor::FinishPanelBridgeLegsOnSiteAfterGateChange(
-					Ctx,
-					Root);
+				const TArray<FStructuralNodeId> LightIdsSnapshot = *LightIds;
+				for (const FStructuralNodeId& LightId : LightIdsSnapshot)
+				{
+					const FTrackedEndpoint* LightTracked =
+						Ctx.Graph().TrackedEndpoints.Find(LightId);
+					if (!LightTracked)
+					{
+						continue;
+					}
+
+					AFGBuildableLightSource* Light = LightTracked->GetLight();
+					if (!IsValid(Light))
+					{
+						continue;
+					}
+
+					const FStructuralChannelKey LightKey =
+						Ctx.Graph().ResolveChannelKeyForBuildable(Light);
+					if (LightKey.Source == SwitchKey.Control
+						|| Ctx.Graph().IsPanelDownstreamLight(Root, LightKey))
+					{
+						continue;
+					}
+
+					FStructuralPowerLightProcessor::Process(
+						Ctx,
+						Light,
+						/*bLocalPromoteOnly=*/true);
+				}
 			}
 		}
 

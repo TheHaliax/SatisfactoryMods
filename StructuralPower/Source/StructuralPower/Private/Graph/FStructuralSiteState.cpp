@@ -1,0 +1,56 @@
+// SPDX-FileCopyrightText: 2026 Haliax
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "Graph/FStructuralSiteState.h"
+
+void FStructuralSiteState::BeginEchoScope(const TArray<int32>& SiteRoots)
+{
+	ClearEchoScope();
+
+	for (int32 SiteRoot : SiteRoots)
+	{
+		if (SiteRoot != INDEX_NONE)
+		{
+			EchoDirtySites.Add(SiteRoot);
+		}
+	}
+}
+
+void FStructuralSiteState::ClearEchoScope()
+{
+	EchoDirtySites.Reset();
+	EchoProcessedPanelsInScope.Reset();
+	EchoToggleHandledPanelsInScope.Reset();
+}
+
+bool FStructuralSiteState::IsEchoScopeActive() const
+{
+	return EchoDirtySites.Num() > 0;
+}
+
+bool FStructuralSiteState::IsEchoDirtySite(int32 SiteRoot) const
+{
+	return SiteRoot != INDEX_NONE && EchoDirtySites.Contains(SiteRoot);
+}
+
+bool FStructuralSiteState::WasPanelEchoProcessedInScope(
+	const FStructuralNodeId& PanelId) const
+{
+	return EchoProcessedPanelsInScope.Contains(PanelId);
+}
+
+void FStructuralSiteState::NotePanelEchoProcessed(const FStructuralNodeId& PanelId)
+{
+	EchoProcessedPanelsInScope.Add(PanelId);
+}
+
+bool FStructuralSiteState::WasPanelToggleHandledInScope(
+	const FStructuralNodeId& PanelId) const
+{
+	return EchoToggleHandledPanelsInScope.Contains(PanelId);
+}
+
+void FStructuralSiteState::NotePanelToggleHandled(const FStructuralNodeId& PanelId)
+{
+	EchoToggleHandledPanelsInScope.Add(PanelId);
+}
