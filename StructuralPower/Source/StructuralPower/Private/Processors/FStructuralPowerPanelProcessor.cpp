@@ -84,20 +84,18 @@ void FStructuralPowerPanelProcessor::Process(
 		}
 	}
 
-	auto LogPanelOutlet = [&](int32 Powered, int32 BusCircuit)
+	auto LogPanelState = [&](bool bSupplyReady, const TCHAR* Context)
 	{
-		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[HALSP] panel %s scope=site site=%d role=host root=%d parentValid=%d busCircuit=%d"
-				" powered=%d tag=%s source=%s control=%s wirePort=-"),
-			*Panel->GetName(),
+		const int32 Controlled =
+			Panel->GetControlledBuildables(AFGBuildableLightSource::StaticClass()).Num();
+		FStructuralPowerTrace::LogPanelConsumer(
+			Panel,
 			Root,
-			Root,
-			ParentAnchor.IsValid() ? 1 : 0,
-			BusCircuit,
-			Powered,
-			StructuralChannelToString(ChannelKey.Tag),
-			*FStructuralPowerTrace::FormatSourceForTrace(ChannelKey),
-			*FStructuralPowerTrace::FormatControlForTrace(ChannelKey));
+			ChannelKey,
+			Ports,
+			bSupplyReady,
+			Controlled,
+			Context);
 	};
 
 	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
@@ -108,7 +106,7 @@ void FStructuralPowerPanelProcessor::Process(
 			Tracked.bPanelLinksReady = false;
 		}
 
-		LogPanelOutlet(0, INDEX_NONE);
+		LogPanelState(false, TEXT("lighting_disabled"));
 		return;
 	}
 
@@ -123,10 +121,7 @@ void FStructuralPowerPanelProcessor::Process(
 		}
 		else
 		{
-			const int32 BusCircuit = IsValid(InputPower) ? InputPower->GetCircuitID() : INDEX_NONE;
-			const int32 Powered =
-				FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower) ? 1 : 0;
-			LogPanelOutlet(Powered, BusCircuit);
+			LogPanelState(true, TEXT("routing_unchanged"));
 
 			const bool bDownstreamUnchanged = Tracked.bDownstreamLinksReady
 				&& Tracked.CachedDownstreamControl == ChannelKey.Control;
@@ -221,22 +216,16 @@ void FStructuralPowerPanelProcessor::Process(
 	Tracked.CachedPanelRoot = Root;
 	Tracked.bPanelLinksReady = true;
 
-	const int32 BusCircuit = IsValid(InputPower) ? InputPower->GetCircuitID() : INDEX_NONE;
-	const int32 Powered =
-		FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower) ? 1 : 0;
 	const int32 Controlled =
 		Panel->GetControlledBuildables(AFGBuildableLightSource::StaticClass()).Num();
-	UE_LOG(LogStructuralPower, Verbose,
-		TEXT("[HALSP] panel %s scope=site site=%d role=host root=%d powered=%d busCircuit=%d"
-			" source=%s control=%s controlled=%d"),
-		*Panel->GetName(),
+	FStructuralPowerTrace::LogPanelConsumer(
+		Panel,
 		Root,
-		Root,
-		Powered,
-		BusCircuit,
-		*FStructuralPowerTrace::FormatSourceForTrace(ChannelKey),
-		*FStructuralPowerTrace::FormatControlForTrace(ChannelKey),
-		Controlled);
+		ChannelKey,
+		Ports,
+		bSupplyReady,
+		Controlled,
+		TEXT("process"));
 }
 
 void FStructuralPowerPanelProcessor::RestitchOnRoot(

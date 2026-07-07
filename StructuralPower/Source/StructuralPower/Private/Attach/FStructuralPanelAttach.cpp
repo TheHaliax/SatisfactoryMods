@@ -7,6 +7,7 @@
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
+#include "Diagnostics/FStructuralPowerTrace.h"
 #include "FGPowerConnectionComponent.h"
 #include "Panel/FStructuralPanelControlledSync.h"
 #include "Panel/FStructuralPanelPortResolver.h"
@@ -107,10 +108,28 @@ bool FStructuralPanelAttach::TryLinkSupply(
 
 	if (InputPower->HasHiddenConnection(Feed))
 	{
+		if (FStructuralPowerTrace::IsEnabled())
+		{
+			FStructuralPowerTrace::LogConnector(TEXT("panel_supply"), Panel, InputPower);
+			FStructuralPowerTrace::LogConnector(TEXT("panel_feed"), Panel, Feed);
+		}
 		return true;
 	}
 
-	return Graph.LinkHiddenPair(InputPower, Feed);
+	const bool bLinked = Graph.LinkHiddenPair(InputPower, Feed);
+	if (FStructuralPowerTrace::IsEnabled())
+	{
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[HALSP] panel supply link %s -> %s ok=%d root=%d source=%s"),
+			*Panel->GetName(),
+			*Feed->GetName(),
+			bLinked ? 1 : 0,
+			ComponentRoot,
+			*PanelKey.Source.ToString());
+		FStructuralPowerTrace::LogConnector(TEXT("panel_supply"), Panel, InputPower);
+		FStructuralPowerTrace::LogConnector(TEXT("panel_feed"), Panel, Feed);
+	}
+	return bLinked;
 }
 
 void FStructuralPanelAttach::RestitchDownstream(
@@ -169,13 +188,18 @@ void FStructuralPanelAttach::RestitchDownstream(
 
 		if (Graph.LinkHiddenPair(ControlBus, Plug))
 		{
-			UE_LOG(LogStructuralPower, Verbose,
-				TEXT("[HALSP] panel %s linked light %s scope=site site=%d role=host path=panel_downstream"
-					" control=%s"),
-				*Panel->GetName(),
-				*Light->GetName(),
-				ComponentRoot,
-				*PanelControl.ToString());
+			if (FStructuralPowerTrace::IsEnabled())
+			{
+				UE_LOG(LogStructuralPower, Log,
+					TEXT("[HALSP] panel %s linked light %s scope=site site=%d role=host path=panel_downstream"
+						" control=%s"),
+					*Panel->GetName(),
+					*Light->GetName(),
+					ComponentRoot,
+					*PanelControl.ToString());
+				FStructuralPowerTrace::LogConnector(TEXT("panel_control_bus"), Panel, ControlBus);
+				FStructuralPowerTrace::LogConnector(TEXT("light_plug"), Light, Plug);
+			}
 		}
 	});
 

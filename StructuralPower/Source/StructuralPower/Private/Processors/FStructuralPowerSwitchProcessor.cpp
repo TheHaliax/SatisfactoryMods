@@ -416,7 +416,8 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 
 	int32 PanelCount = 0;
 	int32 DirectLightCount = 0;
-	int32 LitCount = 0;
+	int32 LitDirectCount = 0;
+	int32 LitPanelCount = 0;
 
 	auto CountMatchingPanel = [&](const FStructuralNodeId& NodeId)
 	{
@@ -439,10 +440,6 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 		}
 
 		++PanelCount;
-		if (!bSwitchOn)
-		{
-			return;
-		}
 
 		FStructuralPanelPorts Ports;
 		if (!FStructuralPanelPortResolver::Resolve(Panel, Ports))
@@ -450,14 +447,67 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 			return;
 		}
 
+		const FStructuralChannelKey PanelKey = Ctx.Graph().ResolveChannelKeyForBuildable(Panel);
 		const UFGPowerConnectionComponent* InputPower =
 			FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
-		if (!FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower))
+		const bool bSupplyReady =
+			FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower);
+		const UFGPowerConnectionComponent* DownstreamPower =
+			FStructuralPanelPortResolver::AsPowerConnection(Ports.Downstream);
+		const bool bDownstreamFed =
+			FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(DownstreamPower);
+		const int32 Controlled =
+			Panel->GetControlledBuildables(AFGBuildableLightSource::StaticClass()).Num();
+
+		if (FStructuralPowerTrace::IsEnabled())
+		{
+			FStructuralPowerTrace::LogPanelConsumer(
+				Panel,
+				Root,
+				PanelKey,
+				Ports,
+				bSupplyReady,
+				Controlled,
+				TEXT("restitch_summary"));
+		}
+
+		if (!bSwitchOn)
 		{
 			return;
 		}
 
-		LitCount += Panel->GetControlledBuildables(AFGBuildableLightSource::StaticClass()).Num();
+		for (AFGBuildable* ControlledBuildable :
+				Panel->GetControlledBuildables(AFGBuildableLightSource::StaticClass()))
+		{
+			AFGBuildableLightSource* ControlledLight =
+				Cast<AFGBuildableLightSource>(ControlledBuildable);
+			if (!IsValid(ControlledLight))
+			{
+				continue;
+			}
+
+			UFGPowerConnectionComponent* Plug =
+				FStructuralDeviceAttach::FindLightWireConnection(ControlledLight);
+			if (bSwitchOn && ControlledLight->ShouldLightBeOn())
+			{
+				++LitPanelCount;
+			}
+
+			if (FStructuralPowerTrace::IsEnabled())
+			{
+				const FStructuralChannelKey LightKey =
+					Ctx.Graph().ResolveChannelKeyForBuildable(ControlledLight);
+				FStructuralPowerTrace::LogLightConsumer(
+					ControlledLight,
+					Root,
+					true,
+					LightKey,
+					Plug,
+					TEXT("panel_downstream"),
+					bSupplyReady ? 1 : 0,
+					bDownstreamFed ? 1 : 0);
+			}
+		}
 	};
 
 	auto CountMatchingLight = [&](const FStructuralNodeId& NodeId)
@@ -485,16 +535,27 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 			return;
 		}
 
-		++DirectLightCount;
-		if (bSwitchOn)
+		if (Ctx.Graph().IsPanelDownstreamLight(Root, LightKey))
 		{
-			if (UFGPowerConnectionComponent* Plug = FStructuralDeviceAttach::FindLightWireConnection(Light))
-			{
-				if (FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(Plug))
-				{
-					++LitCount;
-				}
-			}
+			return;
+		}
+
+		++DirectLightCount;
+		UFGPowerConnectionComponent* Plug = FStructuralDeviceAttach::FindLightWireConnection(Light);
+		if (bSwitchOn && IsValid(Plug) && Plug->HasPower())
+		{
+			++LitDirectCount;
+		}
+
+		if (FStructuralPowerTrace::IsEnabled())
+		{
+			FStructuralPowerTrace::LogLightConsumer(
+				Light,
+				Root,
+				true,
+				LightKey,
+				Plug,
+				TEXT("direct"));
 		}
 	};
 
@@ -522,7 +583,7 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 
 	UE_LOG(LogStructuralPower, Log,
 		TEXT("[HALSP] switch restitch_%s %s scope=site site=%d role=router root=%d control=%s"
-			" panels=%d direct_lights=%d lit=%d"),
+			" panels=%d direct_lights=%d litDirect=%d litPanel=%d"),
 		bSwitchOn ? TEXT("on") : TEXT("off"),
 		IsValid(Switch) ? *Switch->GetName() : TEXT("null"),
 		Root,
@@ -530,7 +591,8 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 		*FStructuralPowerTrace::FormatControlForTrace(SwitchKey),
 		PanelCount,
 		DirectLightCount,
-		LitCount);
+		LitDirectCount,
+		LitPanelCount);
 }
 
 void FStructuralPowerSwitchProcessor::RestitchKeyedConsumersOnRoot(
@@ -664,8 +726,22 @@ void FStructuralPowerSwitchProcessor::RestitchActiveKeyedConsumersOnRoot(
 			continue;
 		}
 
+		UFGStructuralPowerConnectionComponent* OutletBus =
+			Ctx.Graph().GetOrCreateBusConnector(KeyedSwitch);
+		if (IsValid(OutletBus))
+		{
+			ApplyRuntimeAttach(
+				Ctx,
+				KeyedSwitch,
+				OutletBus,
+				Root,
+				NodeId,
+				Ctx.GetAttachContext());
+		}
+
 		const FName SwitchControl = Ctx.Graph().ResolveControl(KeyedSwitch, EStructuralChannel::Switch);
 		RestitchKeyedConsumersOnRoot(Ctx, Root, SwitchControl, /*bLocalPromoteOnly=*/true);
+		LogConsumerRestitchSummary(Ctx, KeyedSwitch, Root, SwitchControl, /*bSwitchOn=*/true);
 	}
 }
 
@@ -692,11 +768,6 @@ void FStructuralPowerSwitchProcessor::PropagateWiredFeedChange(
 		AffectedRoots,
 		/*bTearDownFirst=*/false,
 		EAttachContext::WireDelta);
-
-	for (int32 AffectedRoot : AffectedRoots)
-	{
-		RestitchActiveKeyedConsumersOnRoot(Ctx, AffectedRoot);
-	}
 
 	UE_LOG(LogStructuralPower, Log,
 		TEXT("[HALSP] wired switch %s scope=cross_site site=%d role=gateway path=wire_bridge"

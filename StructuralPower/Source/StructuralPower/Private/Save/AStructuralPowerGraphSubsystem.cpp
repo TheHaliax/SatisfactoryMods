@@ -5,7 +5,7 @@
 
 #include "Attach/FStructuralDeviceAttach.h"
 #include "Attach/FStructuralPanelAttach.h"
-#include "Core/EAttachContext.h"
+#include "Connection/FStructuralPoleConnectionPoint.h"
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildableGenerator.h"
 #include "Buildables/FGBuildableLightSource.h"
@@ -606,6 +606,13 @@ bool AStructuralPowerGraphSubsystem::LinkHiddenPair(
 
 	if (A->IsHidden() && B->IsHidden())
 	{
+		const int32 CircuitA = A->GetCircuitID();
+		const int32 CircuitB = B->GetCircuitID();
+		if (CircuitA != INDEX_NONE && CircuitA == CircuitB)
+		{
+			return false;
+		}
+
 		bAdded = FStructuralHiddenConnectionUtil::AddMeshOnlyHiddenLink(A, B);
 		Path = TEXT("mesh_bidir");
 	}
@@ -656,6 +663,13 @@ bool AStructuralPowerGraphSubsystem::LinkHiddenPairLocal(
 
 	if (A->IsHidden() && B->IsHidden())
 	{
+		const int32 CircuitA = A->GetCircuitID();
+		const int32 CircuitB = B->GetCircuitID();
+		if (CircuitA != INDEX_NONE && CircuitA == CircuitB)
+		{
+			return false;
+		}
+
 		bAdded = FStructuralHiddenConnectionUtil::AddMeshOnlyHiddenLink(A, B);
 		Path = TEXT("mesh_bidir");
 	}
@@ -1154,29 +1168,9 @@ void AStructuralPowerGraphSubsystem::FinishBulkLoadDrain()
 
 	if (FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
 	{
-		for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : TrackedEndpoints)
+		for (int32 Root : Roots)
 		{
-			if (Pair.Value.Kind != EStructuralEndpointKind::Switch)
-			{
-				continue;
-			}
-
-			AFGBuildableCircuitSwitch* Switch =
-				Cast<AFGBuildableCircuitSwitch>(Pair.Value.Actor.Get());
-			if (!IsValid(Switch))
-			{
-				continue;
-			}
-
-			const int32 Root = StructureGraph.FindRoot(Pair.Value.ParentId);
-			if (Root == INDEX_NONE || !Roots.Contains(Root))
-			{
-				continue;
-			}
-
-			const FName SwitchControl = ResolveControl(Switch, EStructuralChannel::Switch);
-			FStructuralPowerContext Ctx = MakeProcessorContext(EAttachContext::BulkLoad, Root);
-			FStructuralPowerSwitchProcessor::RestitchKeyedConsumersOnRoot(Ctx, Root, SwitchControl);
+			RestitchKeyedSubnetsAfterMeshFeedRefresh(Root, EAttachContext::BulkLoad);
 		}
 	}
 
@@ -1933,22 +1927,19 @@ void AStructuralPowerGraphSubsystem::LogPanelReconcileSummary(
 	const int32 Root = ResolveEndpointComponentRoot(Panel, ParentAnchor, ParentId);
 	const UFGPowerConnectionComponent* InputPower =
 		FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
-	const int32 BusCircuit = IsValid(InputPower) ? InputPower->GetCircuitID() : INDEX_NONE;
-	const int32 Powered = FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower) ? 1 : 0;
+	const bool bSupplyReady =
+		FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower);
 	const int32 Controlled =
 		Panel->GetControlledBuildables(AFGBuildableLightSource::StaticClass()).Num();
 
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] panel reconcile %s scope=site site=%d role=host root=%d powered=%d busCircuit=%d"
-			" source=%s control=%s controlled=%d"),
-		*Panel->GetName(),
+	FStructuralPowerTrace::LogPanelConsumer(
+		Panel,
 		Root,
-		Root,
-		Powered,
-		BusCircuit,
-		*FStructuralPowerTrace::FormatSourceForTrace(ChannelKey),
-		*FStructuralPowerTrace::FormatControlForTrace(ChannelKey),
-		Controlled);
+		ChannelKey,
+		Ports,
+		bSupplyReady,
+		Controlled,
+		TEXT("reconcile"));
 }
 
 void AStructuralPowerGraphSubsystem::CollectKnownPanelEndpoints(
@@ -2604,6 +2595,19 @@ void AStructuralPowerGraphSubsystem::RestitchComponent(
 		return;
 	}
 
+	int32 IndexedEndpoints = 0;
+	EndpointIndex.ForEachOnRoot(Root, [&](const FStructuralNodeId&)
+	{
+		++IndexedEndpoints;
+	});
+
+	UE_LOG(LogStructuralPower, Log,
+		TEXT("[HALSP] restitch root=%d tearDown=%d attach=%s indexedEndpoints=%d"),
+		Root,
+		bTearDownFirst ? 1 : 0,
+		AttachContextToString(AttachContext),
+		IndexedEndpoints);
+
 	FStructuralPowerContext Ctx = MakeProcessorContext(AttachContext, Root);
 	FStructuralPowerSwitchProcessor::StripInactiveLinksOnRoot(Ctx, Root);
 	RefreshBridgeEndpointRootIndex();
@@ -2663,15 +2667,45 @@ void AStructuralPowerGraphSubsystem::ReEnergizeComponentRoots(
 			continue;
 		}
 		Done.Add(Root);
-		RestitchComponent(Root, bTearDownFirst, AttachContext);
+		// Wire add/remove: pole/switch processors already attach locally — no O(n) bus remesh.
+		if (AttachContext != EAttachContext::WireDelta)
+		{
+			RestitchComponent(Root, bTearDownFirst, AttachContext);
+		}
 		RestitchLightEndpointsForRoot(Root, AttachContext);
 		RestitchPanelEndpointsForRoot(Root, AttachContext);
+		if (AttachContext == EAttachContext::WireDelta)
+		{
+			RestitchKeyedSubnetsAfterMeshFeedRefresh(Root, AttachContext);
+		}
 		if (FStructuralPowerRouter::IsStructuralGeneratorRoutingEnabled())
 		{
 			FStructuralPowerContext Ctx = MakeProcessorContext(AttachContext, Root);
 			FStructuralPowerGeneratorProcessor::RestitchOnRoot(Ctx, Root);
 		}
 	}
+}
+
+void AStructuralPowerGraphSubsystem::RestitchKeyedSubnetsAfterMeshFeedRefresh(
+	int32 Root,
+	EAttachContext AttachContext)
+{
+	if (Root == INDEX_NONE
+		|| !FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
+	{
+		return;
+	}
+
+	if (FStructuralPowerTrace::IsEnabled())
+	{
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[HALSP] keyed subnet refresh root=%d attach=%s"),
+			Root,
+			AttachContextToString(AttachContext));
+	}
+
+	FStructuralPowerContext Ctx = MakeProcessorContext(AttachContext, Root);
+	FStructuralPowerSwitchProcessor::RestitchActiveKeyedConsumersOnRoot(Ctx, Root);
 }
 
 void AStructuralPowerGraphSubsystem::ProcessStructure(AFGBuildable* Buildable)
@@ -2799,49 +2833,7 @@ void AStructuralPowerGraphSubsystem::ProcessOutlet(AFGBuildable* Buildable)
 
 void AStructuralPowerGraphSubsystem::ProcessPoleWireDelta(AFGBuildablePowerPole* Pole)
 {
-	if (!IsValid(Pole))
-	{
-		return;
-	}
-
-	UFGStructuralPowerConnectionComponent* OutletBus = GetOrCreateBusConnector(Pole);
-	if (!OutletBus)
-	{
-		return;
-	}
-
-	const FStructuralNodeId PoleId = MakeNodeId(Pole);
-	FTrackedEndpoint& Tracked = TrackedEndpoints.FindOrAdd(PoleId);
-	Tracked.Actor = Pole;
-	Tracked.Kind = EStructuralEndpointKind::Pole;
-	RegisterBuildableActor(Pole);
-
-	if (!Tracked.ParentId.IsValid())
-	{
-		const FStructuralWallAnchor ParentAnchor = ResolveOutletAnchor(Pole);
-		FStructuralNodeId ParentId;
-		ResolvePoleComponentRoot(Pole, ParentAnchor, ParentId);
-		Tracked.ParentId = ParentId;
-		MarkBridgeEndpointRootIndexDirty();
-	}
-
-	const int32 Root = FindRootForTrackedEndpoint(Tracked);
-
-	LinkBusToVisibleConnectionsLocal(Pole, OutletBus);
-
-	if (Root != INDEX_NONE && !HasBridgeBusPeerMesh(OutletBus))
-	{
-		TryMeshPeerBusOnComponent(Pole, OutletBus, Root, PoleId, /*bBridgePeersOnly=*/true);
-	}
-
-	PromoteOutletBusIfPowered(OutletBus, /*bLocalPromoteOnly=*/true);
-
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] pole wire delta %s root=%d busCircuit=%d powered=%d"),
-		*Pole->GetName(),
-		Root,
-		OutletBus->GetCircuitID(),
-		FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0);
+	FStructuralPoleConnectionPoint(*this, Pole).OnWireOrGateChanged();
 }
 
 void AStructuralPowerGraphSubsystem::ProcessPoleEndpoint(AFGBuildablePowerPole* Pole)
@@ -2852,6 +2844,7 @@ void AStructuralPowerGraphSubsystem::ProcessPoleEndpoint(AFGBuildablePowerPole* 
 	}
 
 	const bool bBulk = bBulkLoadDrainActive;
+	FStructuralPoleConnectionPoint Connection(*this, Pole);
 	const FStructuralNodeId PoleId = MakeNodeId(Pole);
 	if (!bBulk)
 	{
@@ -2859,20 +2852,21 @@ void AStructuralPowerGraphSubsystem::ProcessPoleEndpoint(AFGBuildablePowerPole* 
 		{
 			if (Existing->Kind == EStructuralEndpointKind::Pole && Existing->ParentId.IsValid())
 			{
-				ProcessPoleWireDelta(Pole);
+				Connection.OnWireOrGateChanged();
 				return;
 			}
 		}
 	}
 
-	UFGStructuralPowerConnectionComponent* OutletBus = GetOrCreateBusConnector(Pole);
+	UFGStructuralPowerConnectionComponent* OutletBus =
+		Cast<UFGStructuralPowerConnectionComponent>(Connection.GetStructuralConnector());
 	if (!OutletBus)
 	{
 		FStructuralPowerTrace::LogPlacementSkip(Pole, TEXT("outlet_bus_create_failed"));
 		return;
 	}
 
-	const FStructuralWallAnchor ParentAnchor = ResolveOutletAnchor(Pole);
+	const FStructuralWallAnchor ParentAnchor = Connection.GetStructureAnchor();
 	FStructuralNodeId ParentId;
 	const int32 Root = ResolvePoleComponentRoot(Pole, ParentAnchor, ParentId);
 

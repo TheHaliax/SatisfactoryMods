@@ -10,7 +10,6 @@
 class AFGBuildableLightsControlPanel;
 class AStructuralPowerGraphSubsystem;
 
-/** DR-006 — rebuild keyed downstream when vanilla controlled-buildable set changes. */
 UCLASS()
 class STRUCTURALPOWER_API UStructuralPowerPanelListener : public UActorComponent
 {

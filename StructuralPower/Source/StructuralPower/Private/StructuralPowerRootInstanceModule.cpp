@@ -562,7 +562,21 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 					return;
 				}
 
+				if (FStructuralPowerTrace::IsEnabled())
+				{
+					FStructuralPowerTrace::LogHook(
+						Panel,
+						TEXT("OnCircuitsRebuilt"),
+						TEXT("panel_subnet_sync"),
+						TEXT("pre_apply"));
+				}
+
 				FStructuralPanelControlledSync::ApplyKeyedSubnet(*Graph, Panel);
+
+				if (FStructuralPowerTrace::IsEnabled())
+				{
+					Graph->LogPanelReconcileSummary(Panel);
+				}
 			}
 		});
 

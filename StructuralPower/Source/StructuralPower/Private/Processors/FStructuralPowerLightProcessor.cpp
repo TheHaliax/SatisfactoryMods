@@ -75,33 +75,18 @@ void FStructuralPowerLightProcessor::Process(
 
 	FStructuralDeviceAttach::TearDownConsumerLinks(Plug);
 
-	auto LogLightOutlet = [&](int32 Powered, int32 BusCircuit, const TCHAR* Path)
-	{
-		UE_LOG(LogStructuralPower, Log,
-			TEXT("[HALSP] light %s scope=site site=%d role=host root=%d parentValid=%d busCircuit=%d"
-				" powered=%d tag=%s source=%s control=%s wirePort=- path=%s"),
-			*Light->GetName(),
-			Root,
-			Root,
-			ParentAnchor.IsValid() ? 1 : 0,
-			BusCircuit,
-			Powered,
-			StructuralChannelToString(ChannelKey.Tag),
-			*FStructuralPowerTrace::FormatSourceForTrace(ChannelKey),
-			*FStructuralPowerTrace::FormatControlForTrace(ChannelKey),
-			Path);
-	};
-
 	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
 	{
-		LogLightOutlet(0, INDEX_NONE, TEXT("-"));
+		FStructuralPowerTrace::LogLightConsumer(
+			Light, Root, ParentAnchor.IsValid(), ChannelKey, Plug, TEXT("-"));
 		return;
 	}
 
 	if (Root == INDEX_NONE || !Ctx.Graph().DoesComponentRootCarryPower(Root))
 	{
 		FStructuralPowerTrace::LogPlacementSkip(Light, TEXT("light_no_component_feed"));
-		LogLightOutlet(0, INDEX_NONE, TEXT("-"));
+		FStructuralPowerTrace::LogLightConsumer(
+			Light, Root, ParentAnchor.IsValid(), ChannelKey, Plug, TEXT("-"));
 		return;
 	}
 
@@ -181,12 +166,14 @@ void FStructuralPowerLightProcessor::Process(
 		}
 	}
 
-	const int32 BusCircuit = Plug->GetCircuitID();
-	const int32 Powered = FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(Plug) ? 1 : 0;
-	LogLightOutlet(
-		Powered,
-		BusCircuit,
-		bPanelFed ? TEXT("panel_downstream") : (bAttached ? TEXT("direct") : TEXT("-")));
+	const TCHAR* PathLabel = bPanelFed ? TEXT("panel_downstream") : (bAttached ? TEXT("direct") : TEXT("-"));
+	FStructuralPowerTrace::LogLightConsumer(
+		Light,
+		Root,
+		ParentAnchor.IsValid(),
+		ChannelKey,
+		Plug,
+		PathLabel);
 }
 
 void FStructuralPowerLightProcessor::RestitchOnRoot(

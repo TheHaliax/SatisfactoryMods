@@ -8,7 +8,6 @@
 class AFGBuildableLightsControlPanel;
 class AStructuralPowerGraphSubsystem;
 
-/** Overrides vanilla circuit-flooded mControlledBuildables with keyed subnet members. */
 struct FStructuralPanelControlledSync
 {
 	static void ApplyKeyedSubnet(

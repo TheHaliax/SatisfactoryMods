@@ -12,7 +12,6 @@ class AStructuralPowerGraphSubsystem;
 struct FStructuralChannelKey;
 struct FStructuralPanelPorts;
 
-/** DR-006 keyed supply + downstream hidden links for light control panels. */
 class STRUCTURALPOWER_API FStructuralPanelAttach
 {
 public:

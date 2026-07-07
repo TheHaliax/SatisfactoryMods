@@ -39,7 +39,6 @@ class FStructuralPowerLightProcessor;
 class FStructuralPowerPanelProcessor;
 class FStructuralPowerSwitchProcessor;
 
-/** DR-010 hoverpack geometry tether query result. */
 struct FStructuralHoverpackAnchorQuery
 {
 	FVector Anchor = FVector::ZeroVector;
@@ -94,7 +93,6 @@ public:
 		int32 ComponentRoot,
 		const AFGBuildable* ExcludeHost = nullptr);
 
-	/** DR-002/011 — default bus or switch-gated outlet bus for keyed Source ids. */
 	UFGPowerConnectionComponent* ResolveSubnetFeedConnector(
 		int32 ComponentRoot,
 		const FStructuralChannelKey& DeviceKey);
@@ -149,6 +147,8 @@ public:
 
 	FStructuralPowerContext GetProcessorContext() const;
 
+	void LogPanelReconcileSummary(AFGBuildableLightsControlPanel* Panel);
+
 	void EnumerateTrackedLightsOnRoot(
 		int32 Root,
 		TFunctionRef<void(AFGBuildableLightSource*)> Visitor);
@@ -178,6 +178,7 @@ public:
 	friend class FStructuralPowerPanelProcessor;
 	friend class FStructuralPowerSwitchProcessor;
 	friend class FStructuralCrossSiteGraph;
+	friend class FStructuralPoleConnectionPoint;
 
 private:
 	void ProcessStructure(AFGBuildable* Buildable);
@@ -190,6 +191,7 @@ private:
 	void RestitchLightEndpointsForRoot(int32 Root, EAttachContext AttachContext);
 	void RestitchPanelEndpointsForRoot(int32 Root, EAttachContext AttachContext);
 	void RestitchPanelsWithControlOnRoot(int32 Root, FName ControlId);
+	void RestitchKeyedSubnetsAfterMeshFeedRefresh(int32 Root, EAttachContext AttachContext);
 	void TearDownLightStructuralLinks(AFGBuildableLightSource* Light);
 	void TearDownPanelStructuralLinks(AFGBuildableLightsControlPanel* Panel);
 
@@ -248,7 +250,6 @@ private:
 	bool IsDirectSwitchFedLight(int32 Root, const FStructuralChannelKey& LightKey);
 	bool IsPanelDownstreamLight(int32 Root, const FStructuralChannelKey& LightKey);
 	bool IsSwitchFeedOpen(int32 Root, FName SwitchControlId);
-	void LogPanelReconcileSummary(AFGBuildableLightsControlPanel* Panel);
 	void FinishBulkLoadDrain();
 	void ReconcileAllPanelEndpoints();
 	void MaybeRunPostLoadLightReconcile();
@@ -307,6 +308,5 @@ private:
 	bool bBridgeEndpointRootIndexDirty = true;
 	FStructuralEndpointIndex EndpointIndex;
 	FStructuralCrossSiteGraph CrossSiteGraph;
-	/** Feed connector cache per component root — invalidated with the root index. */
 	TMap<int32, TWeakObjectPtr<UFGCircuitConnectionComponent>> SourceConnectorByRoot;
 };

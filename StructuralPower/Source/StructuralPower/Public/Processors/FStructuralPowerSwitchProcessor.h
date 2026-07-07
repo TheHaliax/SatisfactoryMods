@@ -16,7 +16,6 @@ class AFGBuildableLightsControlPanel;
 struct FStructuralPowerContext;
 class UFGStructuralPowerConnectionComponent;
 
-/** AFGBuildableCircuitSwitch router — PRE-2.2 Part II role=router (gateway when wired). */
 class STRUCTURALPOWER_API FStructuralPowerSwitchProcessor
 {
 public:

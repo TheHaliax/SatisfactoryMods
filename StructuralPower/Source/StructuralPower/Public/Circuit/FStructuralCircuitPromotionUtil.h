@@ -7,7 +7,6 @@
 
 class UFGPowerConnectionComponent;
 
-/** Shared circuit carry/promote checks for reconcile paths. */
 class STRUCTURALPOWER_API FStructuralCircuitPromotionUtil
 {
 public:

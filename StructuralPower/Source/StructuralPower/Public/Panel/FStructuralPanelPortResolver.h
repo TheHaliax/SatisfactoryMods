@@ -9,7 +9,6 @@ class AFGBuildableControlPanelHost;
 class UFGCircuitConnectionComponent;
 class UFGPowerConnectionComponent;
 
-/** DR-006 panel bridge port roles (input/supply vs keyed downstream). */
 struct FStructuralPanelPorts
 {
 	UFGCircuitConnectionComponent* Downstream = nullptr;

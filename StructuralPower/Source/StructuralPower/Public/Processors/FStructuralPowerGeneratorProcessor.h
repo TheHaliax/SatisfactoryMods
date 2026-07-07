@@ -8,7 +8,6 @@
 class AFGBuildableGenerator;
 struct FStructuralPowerContext;
 
-/** AFGBuildableGenerator host — no-op until router enables M7 routing. PRE-2.2 Part II. */
 class STRUCTURALPOWER_API FStructuralPowerGeneratorProcessor
 {
 public:

@@ -8,7 +8,6 @@
 class AFGBuildableLightsControlPanel;
 struct FStructuralPowerContext;
 
-/** AFGBuildableLightsControlPanel host — PRE-2.2 Part II role=host. */
 class STRUCTURALPOWER_API FStructuralPowerPanelProcessor
 {
 public:

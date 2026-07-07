@@ -7,10 +7,25 @@
 #include "Routing/EStructuralChannel.h"
 
 class AFGBuildable;
+class AFGBuildableLightSource;
+class AFGBuildableLightsControlPanel;
 class UFGCircuitConnectionComponent;
 class UFGPowerConnectionComponent;
+struct FStructuralChannelKey;
+struct FStructuralPanelPorts;
 
-/** Deep placement/link trace — grep FactoryGame.log for [HALSP]. Toggle: StructuralPower.Trace 1 (default off). */
+struct FStructuralConnectorPowerSnapshot
+{
+	int32 Circuit = INDEX_NONE;
+	bool bConnected = false;
+	bool bCarriesPower = false;
+	bool bHasPower = false;
+	bool bSuppliesPower = false;
+
+	static FStructuralConnectorPowerSnapshot From(const UFGCircuitConnectionComponent* Connector);
+	FString Format() const;
+};
+
 namespace FStructuralPowerTrace
 {
 	bool IsEnabled();
@@ -32,4 +47,28 @@ namespace FStructuralPowerTrace
 		bool bSuccess,
 		const TCHAR* Path,
 		ELogVerbosity::Type Verbosity = ELogVerbosity::Log);
+
+	void LogConnector(
+		const TCHAR* Role,
+		AFGBuildable* Owner,
+		UFGCircuitConnectionComponent* Connector);
+
+	void LogLightConsumer(
+		AFGBuildableLightSource* Light,
+		int32 Root,
+		bool bParentValid,
+		const FStructuralChannelKey& Key,
+		UFGPowerConnectionComponent* Plug,
+		const TCHAR* Path,
+		int32 PanelSupplyReady = -1,
+		int32 PanelDownstreamFed = -1);
+
+	void LogPanelConsumer(
+		AFGBuildableLightsControlPanel* Panel,
+		int32 Root,
+		const FStructuralChannelKey& Key,
+		const FStructuralPanelPorts& Ports,
+		bool bSupplyReady,
+		int32 ControlledCount,
+		const TCHAR* Context = TEXT("process"));
 }
