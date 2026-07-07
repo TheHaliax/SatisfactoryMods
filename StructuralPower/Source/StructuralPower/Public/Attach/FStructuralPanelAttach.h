@@ -9,6 +9,7 @@ class AFGBuildableControlPanelHost;
 class AFGBuildableLightsControlPanel;
 class AFGBuildableLightSource;
 class AStructuralPowerGraphSubsystem;
+class UFGPowerConnectionComponent;
 struct FStructuralChannelKey;
 struct FStructuralPanelPorts;
 
@@ -37,4 +38,10 @@ public:
 		const FStructuralPanelPorts& Ports,
 		int32 ComponentRoot,
 		FName PanelControl);
+
+	static void PromotePanelDownstreamSubnet(
+		AStructuralPowerGraphSubsystem& Graph,
+		AFGBuildableLightsControlPanel* Panel,
+		const FStructuralPanelPorts& Ports,
+		UFGPowerConnectionComponent* InputPower);
 };

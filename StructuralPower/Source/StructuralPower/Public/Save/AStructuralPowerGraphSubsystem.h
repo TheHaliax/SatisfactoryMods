@@ -179,6 +179,7 @@ public:
 	friend class FStructuralPowerLightProcessor;
 	friend class FStructuralPowerPanelProcessor;
 	friend class FStructuralPowerSwitchProcessor;
+	friend class FStructuralPowerBridgeProcessor;
 	friend class FStructuralCrossSiteGraph;
 	friend class FStructuralPoleConnectionPoint;
 

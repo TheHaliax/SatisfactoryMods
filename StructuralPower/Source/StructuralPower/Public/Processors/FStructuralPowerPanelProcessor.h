@@ -6,10 +6,13 @@
 #include "CoreMinimal.h"
 
 class AFGBuildableLightsControlPanel;
+class FStructuralPowerBridgeProcessor;
 struct FStructuralPowerContext;
 
 class STRUCTURALPOWER_API FStructuralPowerPanelProcessor
 {
+	friend class FStructuralPowerBridgeProcessor;
+
 public:
 	static void Process(
 		FStructuralPowerContext& Ctx,
@@ -24,4 +27,9 @@ public:
 		FName ControlId);
 
 	static void TearDown(FStructuralPowerContext& Ctx, AFGBuildableLightsControlPanel* Panel);
+
+private:
+	static void FinishBridgeLegsAfterGateChange(
+		FStructuralPowerContext& Ctx,
+		AFGBuildableLightsControlPanel* Panel);
 };

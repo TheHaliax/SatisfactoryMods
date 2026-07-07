@@ -6,6 +6,8 @@
 #include "Attach/FStructuralDeviceAttach.h"
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
+#include "Circuit/FStructuralCircuitPromotionScope.h"
+#include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "Core/EStructuralPowerRole.h"
 #include "Core/EStructuralPowerScope.h"
@@ -208,4 +210,41 @@ void FStructuralPanelAttach::RestitchDownstream(
 	});
 
 	FStructuralPanelControlledSync::ApplyKeyedSubnet(Graph, Panel);
+}
+
+void FStructuralPanelAttach::PromotePanelDownstreamSubnet(
+	AStructuralPowerGraphSubsystem& Graph,
+	AFGBuildableLightsControlPanel* Panel,
+	const FStructuralPanelPorts& Ports,
+	UFGPowerConnectionComponent* InputPower)
+{
+	if (!IsValid(Panel) || !IsValid(InputPower)
+		|| !FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower))
+	{
+		return;
+	}
+
+	UFGPowerConnectionComponent* Downstream =
+		FStructuralPanelPortResolver::AsPowerConnection(Ports.Downstream);
+	UFGStructuralPowerConnectionComponent* ControlBus = Graph.GetOrCreatePanelControlBus(Panel);
+	if (!IsValid(Downstream) || !IsValid(ControlBus))
+	{
+		return;
+	}
+
+	FStructuralCircuitPromotionScope PromotionScope(&Graph);
+
+	FStructuralCircuitPromotionUtil::PromoteCircuitLink(InputPower, Downstream);
+	if (ControlBus->HasHiddenConnection(Downstream))
+	{
+		FStructuralCircuitPromotionUtil::PromoteCircuitLink(ControlBus, Downstream);
+	}
+
+	Graph.PromoteStructuralMeshFrom(InputPower);
+
+	if (FStructuralCircuitPromotionUtil::ComponentCarriesPower(ControlBus)
+		&& !FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(ControlBus))
+	{
+		Graph.PromoteStructuralMeshFrom(ControlBus);
+	}
 }

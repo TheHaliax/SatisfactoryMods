@@ -17,6 +17,7 @@
 #include "Routing/EStructuralChannel.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Graph/FStructuralPowerBuildableCasts.h"
+#include "Graph/FStructuralEndpointTypes.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
@@ -213,6 +214,15 @@ void FStructuralPowerPanelProcessor::Process(
 		Tracked.CachedDownstreamControl = NAME_None;
 	}
 
+	if (!bLocalPromoteOnly && bSupplyReady && IsValid(InputPower))
+	{
+		FStructuralPanelAttach::PromotePanelDownstreamSubnet(
+			Ctx.Graph(),
+			Panel,
+			Ports,
+			InputPower);
+	}
+
 	Tracked.CachedPanelKey = ChannelKey;
 	Tracked.CachedPanelRoot = Root;
 	Tracked.bPanelLinksReady = true;
@@ -227,6 +237,23 @@ void FStructuralPowerPanelProcessor::Process(
 		bSupplyReady,
 		Controlled,
 		TEXT("process"));
+}
+
+void FStructuralPowerPanelProcessor::FinishBridgeLegsAfterGateChange(
+	FStructuralPowerContext& Ctx,
+	AFGBuildableLightsControlPanel* Panel)
+{
+	if (!IsValid(Panel) || !FStructuralPowerModConfig::IsGroupLightingEnabled())
+	{
+		return;
+	}
+
+	const FStructuralNodeId PanelId = Ctx.Graph().MakeNodeId(Panel);
+	FTrackedEndpoint& Tracked = Ctx.Graph().TrackedEndpoints.FindOrAdd(PanelId);
+	Tracked.bPanelLinksReady = false;
+	Tracked.bDownstreamLinksReady = false;
+
+	Process(Ctx, Panel, /*bLocalPromoteOnly=*/false);
 }
 
 void FStructuralPowerPanelProcessor::RestitchOnRoot(
