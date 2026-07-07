@@ -24,6 +24,7 @@
 #include "Lightweight/FStructuralLightweightTypes.h"
 #include "Network/UStructuralPowerSwitchListener.h"
 #include "Panel/FStructuralPanelPortResolver.h"
+#include "Connection/FStructuralSwitchConnectionPoint.h"
 #include "Processors/FStructuralPowerBridgeProcessor.h"
 #include "Processors/FStructuralPowerLightProcessor.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
@@ -267,19 +268,17 @@ void FStructuralPowerSwitchProcessor::ApplyAdvancedAttach(
 void FStructuralPowerSwitchProcessor::ApplyRuntimeAttach(
 	FStructuralPowerContext& Ctx,
 	AFGBuildableCircuitSwitch* Switch,
-	UFGStructuralPowerConnectionComponent* OutletBus,
-	int32 Root,
-	const FStructuralNodeId& SwitchId,
+	UFGStructuralPowerConnectionComponent* /*OutletBus*/,
+	int32 /*Root*/,
+	const FStructuralNodeId& /*SwitchId*/,
 	EAttachContext AttachContext)
 {
-	FStructuralPowerBridgeProcessor::ApplyLocalAttachForSwitch(
-		Ctx,
-		Switch,
-		OutletBus,
-		Root,
-		SwitchId,
-		AttachContext,
-		HasAssignedControl(Ctx, Switch));
+	if (!IsValid(Switch))
+	{
+		return;
+	}
+
+	FStructuralSwitchConnectionPoint(Ctx.Graph(), Switch).OnWireOrGateChanged(AttachContext);
 }
 
 void FStructuralPowerSwitchProcessor::RegisterOutletBase(
@@ -644,13 +643,14 @@ void FStructuralPowerSwitchProcessor::RestitchActiveKeyedConsumersOnRoot(
 			Ctx.Graph().GetOrCreateBusConnector(KeyedSwitch);
 		if (IsValid(OutletBus))
 		{
-			ApplyRuntimeAttach(
+			FStructuralPowerBridgeProcessor::ApplyLocalAttachForSwitch(
 				Ctx,
 				KeyedSwitch,
 				OutletBus,
 				Root,
 				NodeId,
-				Ctx.GetAttachContext());
+				Ctx.GetAttachContext(),
+				/*bKeyedSubnet=*/true);
 		}
 
 		const FName SwitchControl = Ctx.Graph().ResolveControl(KeyedSwitch, EStructuralChannel::Switch);
@@ -744,30 +744,17 @@ void FStructuralPowerSwitchProcessor::OnStateChanged(
 		}
 		else
 		{
-			UFGStructuralPowerConnectionComponent* OutletBus = Ctx.Graph().GetOrCreateBusConnector(Switch);
-			if (OutletBus)
+			FStructuralSwitchConnectionPoint(Ctx.Graph(), Switch).OnWireOrGateChanged(
+				EAttachContext::Toggle);
+			if (Root != INDEX_NONE
+				&& bKeyedSubnet
+				&& FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
 			{
-				ApplyRuntimeAttach(
+				RestitchKeyedConsumersOnRoot(
 					Ctx,
-					Switch,
-					OutletBus,
 					Root,
-					SwitchId,
-					EAttachContext::Toggle);
-				if (Root != INDEX_NONE
-					&& bKeyedSubnet
-					&& FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
-				{
-					RestitchKeyedConsumersOnRoot(
-						Ctx,
-						Root,
-						SwitchKey.Control,
-						/*bLocalPromoteOnly=*/true);
-				}
-				if (bWiredBridge)
-				{
-					PropagateWiredFeedChange(Ctx, Switch, Root);
-				}
+					SwitchKey.Control,
+					/*bLocalPromoteOnly=*/true);
 			}
 		}
 

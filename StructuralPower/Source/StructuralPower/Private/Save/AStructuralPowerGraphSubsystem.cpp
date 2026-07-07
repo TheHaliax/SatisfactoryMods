@@ -2823,12 +2823,7 @@ void AStructuralPowerGraphSubsystem::ProcessOutlet(AFGBuildable* Buildable)
 	if (FStructuralPowerModConfig::IsGatePowerSwitchesEnabled()
 		&& FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable))
 	{
-		FStructuralPowerContext Ctx = GetProcessorContext();
-	if (IStructuralPowerProcessor* Processor =
-			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Switch))
-		{
-			Processor->Process(Ctx, Buildable);
-		}
+		ProcessSwitchEndpoint(Cast<AFGBuildableCircuitSwitch>(Buildable));
 		return;
 	}
 
@@ -2839,6 +2834,109 @@ void AStructuralPowerGraphSubsystem::ProcessOutlet(AFGBuildable* Buildable)
 	}
 
 	FStructuralPowerTrace::LogPlacementSkip(Buildable, TEXT("not_bridge_endpoint"));
+}
+
+void AStructuralPowerGraphSubsystem::ProcessSwitchEndpoint(AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(Switch))
+	{
+		return;
+	}
+
+	FStructuralPowerContext Ctx = GetProcessorContext();
+	if (IStructuralPowerProcessor* Processor =
+			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Switch))
+	{
+		Processor->Process(Ctx, Switch);
+	}
+}
+
+void AStructuralPowerGraphSubsystem::ProcessSwitchWireDelta(AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(Switch) || !Switch->HasAuthority())
+	{
+		return;
+	}
+
+	if (!FStructuralPowerSessionSettings::IsPropagationEnabled()
+		|| !FStructuralPowerModConfig::IsGatePowerSwitchesEnabled())
+	{
+		return;
+	}
+
+	FStructuralPowerTrace::LogHook(
+		Switch,
+		TEXT("OnCircuitsChanged"),
+		TEXT("wire_refresh"),
+		TEXT("switch_wire_delta"));
+
+	const FStructuralNodeId SwitchId = MakeNodeId(Switch);
+	if (const FTrackedEndpoint* Existing = TrackedEndpoints.Find(SwitchId))
+	{
+		if (Existing->Kind == EStructuralEndpointKind::Switch && Existing->ParentId.IsValid())
+		{
+			FStructuralPowerContext Ctx = MakeProcessorContext(EAttachContext::WireDelta);
+			if (IStructuralPowerProcessor* Processor =
+					FStructuralPowerProcessorRegistry::Get().FindMutable(
+						EStructuralEndpointKind::Switch))
+			{
+				Processor->OnWireDelta(Ctx, Switch);
+			}
+			return;
+		}
+	}
+
+	ProcessSwitchEndpoint(Switch);
+}
+
+void AStructuralPowerGraphSubsystem::ProcessPanelWireDelta(AFGBuildableLightsControlPanel* Panel)
+{
+	if (!IsValid(Panel) || !Panel->HasAuthority())
+	{
+		return;
+	}
+
+	if (!FStructuralPowerSessionSettings::IsPropagationEnabled()
+		|| !FStructuralPowerModConfig::IsGroupLightingEnabled()
+		|| bBulkLoadDrainActive)
+	{
+		return;
+	}
+
+	FStructuralPanelPorts Ports;
+	const bool bPortsResolved = FStructuralPanelPortResolver::Resolve(Panel, Ports);
+	const FStructuralNodeId PanelId = MakeNodeId(Panel);
+	const FTrackedEndpoint* Existing = TrackedEndpoints.Find(PanelId);
+	if (!bPortsResolved
+		&& (!Existing
+			|| Existing->Kind != EStructuralEndpointKind::Panel
+			|| !Existing->ParentId.IsValid()))
+	{
+		return;
+	}
+
+	FStructuralPowerTrace::LogHook(
+		Panel,
+		TEXT("OnCircuitsRebuilt"),
+		TEXT("wire_refresh"),
+		TEXT("panel_wire_delta"));
+
+	if (Existing)
+	{
+		if (Existing->Kind == EStructuralEndpointKind::Panel && Existing->ParentId.IsValid())
+		{
+			FStructuralPowerContext Ctx = MakeProcessorContext(EAttachContext::WireDelta);
+			if (IStructuralPowerProcessor* Processor =
+					FStructuralPowerProcessorRegistry::Get().FindMutable(
+						EStructuralEndpointKind::Panel))
+			{
+				Processor->OnWireDelta(Ctx, Panel);
+			}
+			return;
+		}
+	}
+
+	ProcessPanelEndpoint(Panel, /*bLocalPromoteOnly=*/true);
 }
 
 void AStructuralPowerGraphSubsystem::ProcessPoleWireDelta(AFGBuildablePowerPole* Pole)

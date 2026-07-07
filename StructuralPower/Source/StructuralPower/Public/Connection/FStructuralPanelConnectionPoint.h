@@ -6,17 +6,17 @@
 #include "CoreMinimal.h"
 #include "Connection/IStructuralConnectionPoint.h"
 
-class AFGBuildablePowerPole;
+class AFGBuildableLightsControlPanel;
 class AStructuralPowerGraphSubsystem;
 
-class STRUCTURALPOWER_API FStructuralPoleConnectionPoint final : public IStructuralConnectionPoint
+class STRUCTURALPOWER_API FStructuralPanelConnectionPoint final : public IStructuralConnectionPoint
 {
 public:
-	FStructuralPoleConnectionPoint(
+	FStructuralPanelConnectionPoint(
 		AStructuralPowerGraphSubsystem& InGraph,
-		AFGBuildablePowerPole* InPole);
+		AFGBuildableLightsControlPanel* InPanel);
 
-	AFGBuildablePowerPole* GetPole() const { return Pole.Get(); }
+	AFGBuildableLightsControlPanel* GetPanel() const { return Panel.Get(); }
 
 	virtual UFGPowerConnectionComponent* GetStructuralConnector() override;
 	virtual FStructuralWallAnchor GetStructureAnchor() const override;
@@ -24,5 +24,5 @@ public:
 
 private:
 	AStructuralPowerGraphSubsystem& Graph;
-	TWeakObjectPtr<AFGBuildablePowerPole> Pole;
+	TWeakObjectPtr<AFGBuildableLightsControlPanel> Panel;
 };

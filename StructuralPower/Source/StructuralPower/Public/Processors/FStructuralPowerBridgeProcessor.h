@@ -8,6 +8,7 @@
 #include "Core/FStructuralNodeId.h"
 
 class AFGBuildableCircuitSwitch;
+class AFGBuildableLightsControlPanel;
 class UFGStructuralPowerConnectionComponent;
 struct FStructuralPowerContext;
 
@@ -32,6 +33,11 @@ public:
 	static void FinishPanelBridgeLegsOnSiteAfterGateChange(
 		FStructuralPowerContext& Ctx,
 		int32 SiteRoot);
+
+	static void ApplyLocalAttachForPanel(
+		FStructuralPowerContext& Ctx,
+		AFGBuildableLightsControlPanel* Panel,
+		bool bLocalPromoteOnly);
 
 private:
 	static void ApplyBaseOutletAttach(

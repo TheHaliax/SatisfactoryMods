@@ -6,6 +6,7 @@
 #include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Config/FStructuralPowerModConfig.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
+#include "Session/FStructuralPowerSessionSettings.h"
 
 void UStructuralPowerSwitchListener::BindSubsystem(
 	AStructuralPowerGraphSubsystem* Graph,
@@ -68,10 +69,7 @@ void UStructuralPowerSwitchListener::HandleCircuitsChanged()
 
 		if (AFGBuildableCircuitSwitch* Switch = BoundSwitch.Get())
 		{
-			Graph->EnqueuePlacement(
-				Switch,
-				EStructuralPlacementJobType::Outlet,
-				/*bDefer=*/true);
+			Graph->ProcessSwitchWireDelta(Switch);
 		}
 	}
 }

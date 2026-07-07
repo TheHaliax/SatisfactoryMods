@@ -8,6 +8,8 @@
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Buildables/FGBuildablePowerPole.h"
 #include "Connection/FStructuralPoleConnectionPoint.h"
+#include "Connection/FStructuralPanelConnectionPoint.h"
+#include "Connection/FStructuralSwitchConnectionPoint.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Processors/FStructuralPowerLightProcessor.h"
@@ -93,6 +95,15 @@ public:
 			FStructuralPowerPanelProcessor::TearDown(Ctx, Panel);
 		}
 	}
+
+	void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
+	{
+		if (AFGBuildableLightsControlPanel* Panel = FStructuralPowerBuildableCasts::AsPanel(Buildable))
+		{
+			FStructuralPanelConnectionPoint(Ctx.Graph(), Panel).OnWireOrGateChanged(
+				EAttachContext::WireDelta);
+		}
+	}
 };
 
 class FStructuralPowerSwitchProcessorAdapter final : public IStructuralPowerProcessor
@@ -122,6 +133,15 @@ public:
 	void TearDown(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
 	{
 		FStructuralPowerSwitchProcessor::TearDown(Ctx, Buildable);
+	}
+
+	void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
+	{
+		if (AFGBuildableCircuitSwitch* Switch = FStructuralPowerBuildableCasts::AsSwitch(Buildable))
+		{
+			FStructuralSwitchConnectionPoint(Ctx.Graph(), Switch).OnWireOrGateChanged(
+				EAttachContext::WireDelta);
+		}
 	}
 };
 

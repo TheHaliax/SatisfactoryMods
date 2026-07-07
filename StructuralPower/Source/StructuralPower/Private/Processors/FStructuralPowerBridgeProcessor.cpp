@@ -17,6 +17,7 @@
 #include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Graph/FStructuralSwitchParentResolver.h"
 #include "Core/FStructuralPowerContext.h"
+#include "Connection/FStructuralPanelConnectionPoint.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerLog.h"
@@ -246,6 +247,20 @@ void FStructuralPowerBridgeProcessor::FinishPanelBridgeLegsOnSiteAfterGateChange
 			continue;
 		}
 
-		FStructuralPowerPanelProcessor::FinishBridgeLegsAfterGateChange(Ctx, Panel);
+		FStructuralPanelConnectionPoint Connection(Ctx.Graph(), Panel);
+		Connection.OnWireOrGateChanged(EAttachContext::Toggle);
 	}
+}
+
+void FStructuralPowerBridgeProcessor::ApplyLocalAttachForPanel(
+	FStructuralPowerContext& Ctx,
+	AFGBuildableLightsControlPanel* Panel,
+	bool bLocalPromoteOnly)
+{
+	if (!IsValid(Panel) || !FStructuralPowerModConfig::IsGroupLightingEnabled())
+	{
+		return;
+	}
+
+	FStructuralPowerPanelProcessor::Process(Ctx, Panel, bLocalPromoteOnly);
 }

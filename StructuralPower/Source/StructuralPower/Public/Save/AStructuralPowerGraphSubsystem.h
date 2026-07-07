@@ -78,6 +78,8 @@ public:
 	void OnBuildableRemoved(AFGBuildable* Buildable);
 	void OnLightweightRemoved(const FStructuralLightweightKey& Key);
 	void ProcessWallOutletAfterWire(AFGBuildablePowerPole* Pole);
+	void ProcessSwitchWireDelta(AFGBuildableCircuitSwitch* Switch);
+	void ProcessPanelWireDelta(AFGBuildableLightsControlPanel* Panel);
 	void ProcessPoleWireDelta(AFGBuildablePowerPole* Pole);
 	/** Pole attach body — registry delegate until pole processor extract. */
 	void ProcessPoleEndpointDirect(AFGBuildablePowerPole* Pole);
@@ -182,12 +184,15 @@ public:
 	friend class FStructuralPowerBridgeProcessor;
 	friend class FStructuralCrossSiteGraph;
 	friend class FStructuralPoleConnectionPoint;
+	friend class FStructuralSwitchConnectionPoint;
+	friend class FStructuralPanelConnectionPoint;
 
 private:
 	void ProcessStructure(AFGBuildable* Buildable);
 	void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
 	void ProcessOutlet(AFGBuildable* Buildable);
 	void ProcessPoleEndpoint(AFGBuildablePowerPole* Pole);
+	void ProcessSwitchEndpoint(AFGBuildableCircuitSwitch* Switch);
 	void ProcessGeneratorEndpoint(AFGBuildableGenerator* Generator);
 	void ProcessLightEndpoint(AFGBuildableLightSource* Light, bool bLocalPromoteOnly = false);
 	void ProcessPanelEndpoint(AFGBuildableLightsControlPanel* Panel, bool bLocalPromoteOnly = false);

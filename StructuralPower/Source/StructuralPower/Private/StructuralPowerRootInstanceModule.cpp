@@ -557,6 +557,11 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 					return;
 				}
 
+				if (Graph->IsBulkLoadDrainActive())
+				{
+					return;
+				}
+
 				const FName Control = Graph->ResolveControl(Panel, EStructuralChannel::Light);
 				if (Control.IsNone()
 					|| Control == StructuralPowerConstants::ControlUnconfigured)
@@ -573,6 +578,7 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 						TEXT("pre_apply"));
 				}
 
+				Graph->ProcessPanelWireDelta(Panel);
 				FStructuralPanelControlledSync::ApplyKeyedSubnet(*Graph, Panel);
 
 				if (FStructuralPowerTrace::IsEnabled())

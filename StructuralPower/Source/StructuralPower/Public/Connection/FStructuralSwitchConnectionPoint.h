@@ -6,23 +6,25 @@
 #include "CoreMinimal.h"
 #include "Connection/IStructuralConnectionPoint.h"
 
-class AFGBuildablePowerPole;
+class AFGBuildableCircuitSwitch;
 class AStructuralPowerGraphSubsystem;
 
-class STRUCTURALPOWER_API FStructuralPoleConnectionPoint final : public IStructuralConnectionPoint
+class STRUCTURALPOWER_API FStructuralSwitchConnectionPoint final : public IStructuralConnectionPoint
 {
 public:
-	FStructuralPoleConnectionPoint(
+	FStructuralSwitchConnectionPoint(
 		AStructuralPowerGraphSubsystem& InGraph,
-		AFGBuildablePowerPole* InPole);
+		AFGBuildableCircuitSwitch* InSwitch);
 
-	AFGBuildablePowerPole* GetPole() const { return Pole.Get(); }
+	AFGBuildableCircuitSwitch* GetSwitch() const { return Switch.Get(); }
 
 	virtual UFGPowerConnectionComponent* GetStructuralConnector() override;
 	virtual FStructuralWallAnchor GetStructureAnchor() const override;
 	virtual void OnWireOrGateChanged(EAttachContext AttachContext = EAttachContext::WireDelta) override;
 
 private:
+	bool ResolveTrackedRoot(FStructuralNodeId& OutSwitchId, int32& OutRoot);
+
 	AStructuralPowerGraphSubsystem& Graph;
-	TWeakObjectPtr<AFGBuildablePowerPole> Pole;
+	TWeakObjectPtr<AFGBuildableCircuitSwitch> Switch;
 };

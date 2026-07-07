@@ -14,6 +14,7 @@
 #include "FGPowerConnectionComponent.h"
 #include "Panel/FStructuralPanelControlledSync.h"
 #include "Panel/FStructuralPanelPortResolver.h"
+#include "Connection/FStructuralPanelConnectionPoint.h"
 #include "Routing/EStructuralChannel.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Graph/FStructuralPowerBuildableCasts.h"
@@ -243,17 +244,12 @@ void FStructuralPowerPanelProcessor::FinishBridgeLegsAfterGateChange(
 	FStructuralPowerContext& Ctx,
 	AFGBuildableLightsControlPanel* Panel)
 {
-	if (!IsValid(Panel) || !FStructuralPowerModConfig::IsGroupLightingEnabled())
+	if (!IsValid(Panel))
 	{
 		return;
 	}
 
-	const FStructuralNodeId PanelId = Ctx.Graph().MakeNodeId(Panel);
-	FTrackedEndpoint& Tracked = Ctx.Graph().TrackedEndpoints.FindOrAdd(PanelId);
-	Tracked.bPanelLinksReady = false;
-	Tracked.bDownstreamLinksReady = false;
-
-	Process(Ctx, Panel, /*bLocalPromoteOnly=*/false);
+	FStructuralPanelConnectionPoint(Ctx.Graph(), Panel).OnWireOrGateChanged(EAttachContext::Toggle);
 }
 
 void FStructuralPowerPanelProcessor::RestitchOnRoot(

@@ -42,7 +42,7 @@ FStructuralWallAnchor FStructuralPoleConnectionPoint::GetStructureAnchor() const
 	return Graph.ResolveOutletAnchor(PolePtr);
 }
 
-void FStructuralPoleConnectionPoint::OnWireOrGateChanged()
+void FStructuralPoleConnectionPoint::OnWireOrGateChanged(EAttachContext /*AttachContext*/)
 {
 	AFGBuildablePowerPole* PolePtr = Pole.Get();
 	if (!IsValid(PolePtr))
@@ -94,9 +94,4 @@ void FStructuralPoleConnectionPoint::OnWireOrGateChanged()
 		Root,
 		OutletBus->GetCircuitID(),
 		FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0);
-
-	if (Root != INDEX_NONE)
-	{
-		Graph.RestitchKeyedSubnetsAfterMeshFeedRefresh(Root, EAttachContext::WireDelta);
-	}
 }

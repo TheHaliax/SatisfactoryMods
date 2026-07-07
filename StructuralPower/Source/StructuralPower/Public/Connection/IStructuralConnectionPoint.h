@@ -4,6 +4,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Core/EAttachContext.h"
 #include "Lightweight/FStructuralLightweightTypes.h"
 
 class UFGPowerConnectionComponent;
@@ -16,5 +17,5 @@ struct STRUCTURALPOWER_API IStructuralConnectionPoint
 	virtual FStructuralWallAnchor GetStructureAnchor() const = 0;
 
 	/** Wire or gate delta — local bridge attach only; no site remesh. */
-	virtual void OnWireOrGateChanged() = 0;
+	virtual void OnWireOrGateChanged(EAttachContext AttachContext = EAttachContext::WireDelta) = 0;
 };

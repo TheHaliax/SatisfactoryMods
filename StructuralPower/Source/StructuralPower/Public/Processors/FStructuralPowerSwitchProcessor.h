@@ -50,13 +50,13 @@ public:
 
 	static bool ShouldInjectStructuralPath(const AFGBuildableCircuitSwitch* Switch);
 
+	static void EnsureListener(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
+
 private:
 	static int32 ResolveMountRoot(
 		FStructuralPowerContext& Ctx,
 		const FStructuralWallAnchor& Anchor,
 		FStructuralNodeId& OutParentId);
-
-	static void EnsureListener(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 
 	static void RegisterOutletBase(
 		FStructuralPowerContext& Ctx,
