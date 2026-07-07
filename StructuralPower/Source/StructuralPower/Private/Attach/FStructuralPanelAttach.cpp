@@ -7,6 +7,8 @@
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
+#include "Core/EStructuralPowerRole.h"
+#include "Core/EStructuralPowerScope.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "FGPowerConnectionComponent.h"
 #include "Panel/FStructuralPanelControlledSync.h"
@@ -191,11 +193,13 @@ void FStructuralPanelAttach::RestitchDownstream(
 			if (FStructuralPowerTrace::IsEnabled())
 			{
 				UE_LOG(LogStructuralPower, Log,
-					TEXT("[HALSP] panel %s linked light %s scope=site site=%d role=host path=panel_downstream"
+					TEXT("[HALSP] panel %s linked light %s scope=%s site=%d role=%s path=panel_downstream"
 						" control=%s"),
 					*Panel->GetName(),
 					*Light->GetName(),
+					StructuralPowerScopeToString(EStructuralPowerScope::Site),
 					ComponentRoot,
+					StructuralPowerRoleToString(EStructuralPowerRole::Host),
 					*PanelControl.ToString());
 				FStructuralPowerTrace::LogConnector(TEXT("panel_control_bus"), Panel, ControlBus);
 				FStructuralPowerTrace::LogConnector(TEXT("light_plug"), Light, Plug);

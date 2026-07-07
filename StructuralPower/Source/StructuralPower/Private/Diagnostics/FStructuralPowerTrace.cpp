@@ -8,6 +8,8 @@
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Config/FStructuralPowerModConfig.h"
+#include "Core/EStructuralPowerRole.h"
+#include "Core/EStructuralPowerScope.h"
 #include "FGCircuitConnectionComponent.h"
 #include "FGPowerConnectionComponent.h"
 #include "Panel/FStructuralPanelPortResolver.h"
@@ -306,11 +308,13 @@ void FStructuralPowerTrace::LogLightConsumer(
 		if (PanelSupplyReady >= 0 || PanelDownstreamFed >= 0)
 		{
 			UE_LOG(LogStructuralPower, Log,
-				TEXT("[HALSP] light %s scope=site site=%d role=host root=%d parentValid=%d tag=%s"
+				TEXT("[HALSP] light %s scope=%s site=%d role=%s root=%d parentValid=%d tag=%s"
 					" source=%s control=%s path=%s plugCircuit=%s shouldOn=%d enabled=%d"
 					" ready=%d fed=%d"),
 				*Light->GetName(),
+				StructuralPowerScopeToString(EStructuralPowerScope::Site),
 				Root,
+				StructuralPowerRoleToString(EStructuralPowerRole::Host),
 				Root,
 				bParentValid ? 1 : 0,
 				StructuralChannelToString(Key.Tag),
@@ -326,10 +330,12 @@ void FStructuralPowerTrace::LogLightConsumer(
 		else
 		{
 			UE_LOG(LogStructuralPower, Log,
-				TEXT("[HALSP] light %s scope=site site=%d role=host root=%d parentValid=%d tag=%s"
+				TEXT("[HALSP] light %s scope=%s site=%d role=%s root=%d parentValid=%d tag=%s"
 					" source=%s control=%s path=%s plugCircuit=%s shouldOn=%d enabled=%d"),
 				*Light->GetName(),
+				StructuralPowerScopeToString(EStructuralPowerScope::Site),
 				Root,
+				StructuralPowerRoleToString(EStructuralPowerRole::Host),
 				Root,
 				bParentValid ? 1 : 0,
 				StructuralChannelToString(Key.Tag),
@@ -345,10 +351,12 @@ void FStructuralPowerTrace::LogLightConsumer(
 
 	const int32 PlugLit = IsValid(Plug) && Plug->HasPower() ? 1 : 0;
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] light %s scope=site site=%d role=host root=%d parentValid=%d tag=%s"
+		TEXT("[HALSP] light %s scope=%s site=%d role=%s root=%d parentValid=%d tag=%s"
 			" source=%s control=%s path=%s plugCircuit=%s lit=%d"),
 		*Light->GetName(),
+		StructuralPowerScopeToString(EStructuralPowerScope::Site),
 		Root,
+		StructuralPowerRoleToString(EStructuralPowerRole::Host),
 		Root,
 		bParentValid ? 1 : 0,
 		StructuralChannelToString(Key.Tag),
@@ -384,11 +392,13 @@ void FStructuralPowerTrace::LogPanelConsumer(
 			FStructuralPanelPortResolver::AsPowerConnection(Ports.Downstream));
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] panel %s ctx=%s scope=site site=%d role=host root=%d source=%s control=%s"
+		TEXT("[HALSP] panel %s ctx=%s scope=%s site=%d role=%s root=%d source=%s control=%s"
 			" supplyReady=%d controlled=%d upstream={%s} controlBus={%s} downstream={%s}"),
 		*Panel->GetName(),
 		Context ? Context : TEXT("?"),
+		StructuralPowerScopeToString(EStructuralPowerScope::Site),
 		Root,
+		StructuralPowerRoleToString(EStructuralPowerRole::Router),
 		Root,
 		*FormatSourceForTrace(Key),
 		*FormatControlForTrace(Key),

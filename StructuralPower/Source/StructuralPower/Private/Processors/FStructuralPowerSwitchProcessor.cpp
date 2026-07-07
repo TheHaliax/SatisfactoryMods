@@ -11,6 +11,8 @@
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "Core/EAttachContext.h"
+#include "Core/EStructuralPowerRole.h"
+#include "Core/EStructuralPowerScope.h"
 #include "Config/FStructuralPowerModConfig.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "FGCircuitConnectionComponent.h"
@@ -582,11 +584,13 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 	SwitchKey.Control = SwitchControlId;
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] switch restitch_%s %s scope=site site=%d role=router root=%d control=%s"
+		TEXT("[HALSP] switch restitch_%s %s scope=%s site=%d role=%s root=%d control=%s"
 			" panels=%d direct_lights=%d litDirect=%d litPanel=%d"),
 		bSwitchOn ? TEXT("on") : TEXT("off"),
 		IsValid(Switch) ? *Switch->GetName() : TEXT("null"),
+		StructuralPowerScopeToString(EStructuralPowerScope::Site),
 		Root,
+		StructuralPowerRoleToString(EStructuralPowerRole::Router),
 		Root,
 		*FStructuralPowerTrace::FormatControlForTrace(SwitchKey),
 		PanelCount,
@@ -770,10 +774,12 @@ void FStructuralPowerSwitchProcessor::PropagateWiredFeedChange(
 		EAttachContext::WireDelta);
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] wired switch %s scope=cross_site site=%d role=gateway path=wire_bridge"
+		TEXT("[HALSP] wired switch %s scope=%s site=%d role=%s path=wire_bridge"
 			" localRoot=%d feedAffected=%d"),
 		*Switch->GetName(),
+		StructuralPowerScopeToString(EStructuralPowerScope::CrossSite),
 		LocalRoot,
+		StructuralPowerRoleToString(EStructuralPowerRole::Gateway),
 		LocalRoot,
 		AffectedRoots.Num());
 }
@@ -937,10 +943,12 @@ void FStructuralPowerSwitchProcessor::Process(
 	auto LogSwitchOutlet = [&](UFGStructuralPowerConnectionComponent* OutletBus, int32 Powered, const TCHAR* Mode)
 	{
 		UE_LOG(LogStructuralPower, Log,
-			TEXT("[HALSP] outlet %s scope=site site=%d role=router root=%d parentValid=%d busCircuit=%d"
+			TEXT("[HALSP] outlet %s scope=%s site=%d role=%s root=%d parentValid=%d busCircuit=%d"
 				" powered=%d tag=%s source=%s control=%s wirePort=%s mode=%s"),
 			*Switch->GetName(),
+			StructuralPowerScopeToString(EStructuralPowerScope::Site),
 			Root,
+			StructuralPowerRoleToString(EStructuralPowerRole::Router),
 			Root,
 			ParentAnchor.IsValid() ? 1 : 0,
 			IsValid(OutletBus) ? OutletBus->GetCircuitID() : INDEX_NONE,
