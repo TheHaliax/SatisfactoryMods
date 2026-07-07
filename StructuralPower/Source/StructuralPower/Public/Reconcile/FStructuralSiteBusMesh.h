@@ -12,7 +12,6 @@ class UFGPowerConnectionComponent;
 class UFGStructuralPowerConnectionComponent;
 struct FTrackedEndpoint;
 
-/** Hidden bus mesh for one structure component (site). */
 class STRUCTURALPOWER_API FStructuralSiteBusMesh
 {
 public:

@@ -10,13 +10,11 @@
 struct FStructuralSwitchParentResolveResult
 {
 	FStructuralWallAnchor Anchor;
-	/** 0/1 when resolved from a wired port; INDEX_NONE for mount/scan. */
 	int32 WirePortIndex = INDEX_NONE;
 
 	bool IsValid() const { return Anchor.IsValid(); }
 };
 
-/** Switch mount + wire-port parent resolution (DR-001 outlet bus; ports stay grid-only). */
 class STRUCTURALPOWER_API FStructuralSwitchParentResolver
 {
 public:
@@ -28,12 +26,10 @@ public:
 		bool bPreferWirePort = false,
 		const FStructuralOutletParentResolveParams* ParentResolveParams = nullptr);
 
-	/** True when a wire port connects to a non-grid structure-side neighbor (DR-012 wired path). */
 	static bool IsWiredToStructureSide(
 		AFGBuildableCircuitSwitch* Switch,
 		int32* OutWirePortIndex = nullptr);
 
-	/** Invokes Visitor for each structure-side anchor reachable via a wired port. */
 	static void ForEachWiredStructureSideAnchor(
 		AFGBuildableCircuitSwitch* Switch,
 		UWorld* World,

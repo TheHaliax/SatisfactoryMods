@@ -15,8 +15,18 @@ Player and developer docs for **StructuralPower v2.2.0**.
 - [Console commands](console-commands.md) — `StructuralPower.Set`, trace, propagation, diagnostics
 - [Multiplayer](multiplayer.md) — client/server requirements and dedicated hosting
 - [Troubleshooting](troubleshooting.md) — log messages, common questions, support checklist
-- [Development](development.md) — repo layout, linking mods, Alpakit release build
+- [Development](development.md) — repo layout, code vs docs split, linking mods, Alpakit release build
 - [Release (SMR)](release.md) — upload zip, `.smod` distribution, server deploy version IDs
+
+## Agent / as-built docs (local, gitignored)
+
+Not in the public repo — on Haliax machine under `SatisfactoryMods/development/`:
+
+| File | Role |
+|------|------|
+| `DOCUMENTATION.md` | Doc layers, what/why/how vs code WTF-only |
+| `CURRENT-STATE.md` | As-built architecture |
+| `LOG-INTERPRETATION.md` | HALSP toggle pass/fail rules |
 
 ## Quick links
 

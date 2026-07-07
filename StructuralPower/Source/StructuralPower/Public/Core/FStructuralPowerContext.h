@@ -9,10 +9,6 @@
 class AStructuralPowerGraphSubsystem;
 class UWorld;
 
-/**
- * Processor execution scope — why attach/restitch ran, optional site root, graph delegate.
- * Processors take FStructuralPowerContext& instead of AStructuralPowerGraphSubsystem& (D3/D4).
- */
 struct STRUCTURALPOWER_API FStructuralPowerContext
 {
 	FStructuralPowerContext(
@@ -25,7 +21,6 @@ struct STRUCTURALPOWER_API FStructuralPowerContext
 	EAttachContext GetAttachContext() const { return AttachContext; }
 	int32 GetSiteRoot() const { return SiteRoot; }
 
-	/** Explicit site root when set; otherwise FallbackRoot (e.g. per-call restitch target). */
 	int32 ResolveSiteRoot(int32 FallbackRoot) const;
 
 	UWorld* GetWorld() const;

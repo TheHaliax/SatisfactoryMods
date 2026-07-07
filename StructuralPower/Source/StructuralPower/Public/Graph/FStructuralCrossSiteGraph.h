@@ -9,7 +9,6 @@
 class AFGBuildableCircuitSwitch;
 class AStructuralPowerGraphSubsystem;
 
-/** Site adjacency + feed-directed cross-site trace. */
 class STRUCTURALPOWER_API FStructuralCrossSiteGraph
 {
 public:

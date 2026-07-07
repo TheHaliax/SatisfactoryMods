@@ -6,7 +6,6 @@
 #include "CoreMinimal.h"
 #include "FStructuralNodeId.generated.h"
 
-/** Save-stable key for mod-managed buildables (actor name or lightweight index). */
 USTRUCT(BlueprintType)
 struct STRUCTURALPOWER_API FStructuralNodeId
 {

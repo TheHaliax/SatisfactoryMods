@@ -8,7 +8,6 @@
 class UConfigPropertySection;
 class UGameInstance;
 
-/** Global toggles: SML pause-menu `.cfg` + mirrored CVars + `StructuralPower.Set`. */
 class STRUCTURALPOWER_API FStructuralPowerModConfig
 {
 public:

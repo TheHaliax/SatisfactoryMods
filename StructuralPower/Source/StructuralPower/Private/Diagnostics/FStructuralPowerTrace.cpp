@@ -305,12 +305,15 @@ void FStructuralPowerTrace::LogLightConsumer(
 		Path && FCString::Strcmp(Path, TEXT("panel_downstream")) == 0;
 	if (bPanelDownstream)
 	{
+		const bool bPanelFed = PanelSupplyReady > 0;
+		const bool bArmedOn = Light->ShouldLightBeOn();
+		const bool bPass = bPanelFed && bArmedOn;
 		if (PanelSupplyReady >= 0 || PanelDownstreamFed >= 0)
 		{
 			UE_LOG(LogStructuralPower, Log,
 				TEXT("[HALSP] light %s scope=%s site=%d role=%s root=%d parentValid=%d tag=%s"
-					" source=%s control=%s path=%s plugCircuit=%s shouldOn=%d enabled=%d"
-					" ready=%d fed=%d"),
+					" source=%s control=%s path=%s plugCircuit=%s armedOn=%d enabled=%d"
+					" panelFed=%d downstreamFed=%d pass=%d"),
 				*Light->GetName(),
 				StructuralPowerScopeToString(EStructuralPowerScope::Site),
 				Root,
@@ -322,16 +325,17 @@ void FStructuralPowerTrace::LogLightConsumer(
 				*FormatControlForTrace(Key),
 				Path,
 				*Snap.Format(),
-				Light->ShouldLightBeOn() ? 1 : 0,
+				bArmedOn ? 1 : 0,
 				Light->IsLightEnabled() ? 1 : 0,
 				PanelSupplyReady >= 0 ? PanelSupplyReady : -1,
-				PanelDownstreamFed >= 0 ? PanelDownstreamFed : -1);
+				PanelDownstreamFed >= 0 ? PanelDownstreamFed : -1,
+				bPass ? 1 : 0);
 		}
 		else
 		{
 			UE_LOG(LogStructuralPower, Log,
 				TEXT("[HALSP] light %s scope=%s site=%d role=%s root=%d parentValid=%d tag=%s"
-					" source=%s control=%s path=%s plugCircuit=%s shouldOn=%d enabled=%d"),
+					" source=%s control=%s path=%s plugCircuit=%s armedOn=%d enabled=%d"),
 				*Light->GetName(),
 				StructuralPowerScopeToString(EStructuralPowerScope::Site),
 				Root,
@@ -343,7 +347,7 @@ void FStructuralPowerTrace::LogLightConsumer(
 				*FormatControlForTrace(Key),
 				Path,
 				*Snap.Format(),
-				Light->ShouldLightBeOn() ? 1 : 0,
+				bArmedOn ? 1 : 0,
 				Light->IsLightEnabled() ? 1 : 0);
 		}
 		return;
@@ -393,7 +397,7 @@ void FStructuralPowerTrace::LogPanelConsumer(
 
 	UE_LOG(LogStructuralPower, Log,
 		TEXT("[HALSP] panel %s ctx=%s scope=%s site=%d role=%s root=%d source=%s control=%s"
-			" supplyReady=%d controlled=%d upstream={%s} controlBus={%s} downstream={%s}"),
+			" panelFed=%d controlled=%d upstream={%s} controlBus={%s} downstream={%s}"),
 		*Panel->GetName(),
 		Context ? Context : TEXT("?"),
 		StructuralPowerScopeToString(EStructuralPowerScope::Site),

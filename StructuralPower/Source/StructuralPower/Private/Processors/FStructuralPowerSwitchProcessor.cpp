@@ -27,20 +27,25 @@
 #include "Connection/FStructuralSwitchConnectionPoint.h"
 #include "Processors/FStructuralPowerBridgeProcessor.h"
 #include "Processors/FStructuralPowerLightProcessor.h"
-#include "Processors/FStructuralPowerPanelProcessor.h"
+#include "Processors/FStructuralPowerTransferGate.h"
 #include "Routing/EStructuralChannel.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "Session/FStructuralPowerSessionSettings.h"
-#include "StructuralPowerConstants.h"
-#include "StructuralPowerLog.h"
+#include "Engine/World.h"
+#include "TimerManager.h"
 
 void FStructuralPowerSwitchProcessor::TearDown(
 	FStructuralPowerContext& Ctx,
-	AFGBuildable* Host)
+	AFGBuildableCircuitSwitch* Switch)
 {
-	UFGStructuralPowerConnectionComponent* Bus = Ctx.Graph().FindBusConnector(Host);
+	if (!IsValid(Switch))
+	{
+		return;
+	}
+
+	UFGStructuralPowerConnectionComponent* Bus = Ctx.Graph().FindBusConnector(Switch);
 	if (!IsValid(Bus))
 	{
 		return;
@@ -313,17 +318,26 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 	AFGBuildableCircuitSwitch* Switch,
 	int32 Root,
 	FName SwitchControlId,
-	bool bSwitchOn)
+	bool bSwitchOn,
+	const TCHAR* PhaseSuffix)
 {
 	if (Root == INDEX_NONE || SwitchControlId.IsNone())
 	{
 		return;
 	}
 
+	if (!PhaseSuffix)
+	{
+		PhaseSuffix = TEXT("");
+	}
+
 	int32 PanelCount = 0;
+	int32 PanelFedCount = 0;
 	int32 DirectLightCount = 0;
-	int32 LitDirectCount = 0;
-	int32 LitPanelCount = 0;
+	int32 PoweredDirectCount = 0;
+	int32 PanelLightCount = 0;
+	int32 ArmedPanelCount = 0;
+	int32 PassPanelCount = 0;
 
 	auto CountMatchingPanel = [&](const FStructuralNodeId& NodeId)
 	{
@@ -364,6 +378,11 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 		const int32 Controlled =
 			Panel->GetControlledBuildables(AFGBuildableLightSource::StaticClass()).Num();
 
+		if (bSupplyReady)
+		{
+			++PanelFedCount;
+		}
+
 		if (FStructuralPowerTrace::IsEnabled())
 		{
 			FStructuralPowerTrace::LogPanelConsumer(
@@ -374,11 +393,6 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 				bSupplyReady,
 				Controlled,
 				TEXT("restitch_summary"));
-		}
-
-		if (!bSwitchOn)
-		{
-			return;
 		}
 
 		for (AFGBuildable* ControlledBuildable :
@@ -393,9 +407,15 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 
 			UFGPowerConnectionComponent* Plug =
 				FStructuralDeviceAttach::FindLightWireConnection(ControlledLight);
-			if (bSwitchOn && ControlledLight->ShouldLightBeOn())
+			const bool bArmedOn = ControlledLight->ShouldLightBeOn();
+			++PanelLightCount;
+			if (bArmedOn)
 			{
-				++LitPanelCount;
+				++ArmedPanelCount;
+			}
+			if (bSupplyReady && bArmedOn)
+			{
+				++PassPanelCount;
 			}
 
 			if (FStructuralPowerTrace::IsEnabled())
@@ -446,14 +466,15 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 		}
 
 		++DirectLightCount;
-		UFGPowerConnectionComponent* Plug = FStructuralDeviceAttach::FindLightWireConnection(Light);
-		if (bSwitchOn && IsValid(Plug) && Plug->HasPower())
+		UFGPowerConnectionComponent* PlugForCount = FStructuralDeviceAttach::FindLightWireConnection(Light);
+		if (IsValid(PlugForCount) && PlugForCount->HasPower())
 		{
-			++LitDirectCount;
+			++PoweredDirectCount;
 		}
 
 		if (FStructuralPowerTrace::IsEnabled())
 		{
+			UFGPowerConnectionComponent* Plug = FStructuralDeviceAttach::FindLightWireConnection(Light);
 			FStructuralPowerTrace::LogLightConsumer(
 				Light,
 				Root,
@@ -486,20 +507,69 @@ void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
 	SwitchKey.Tag = EStructuralChannel::Switch;
 	SwitchKey.Control = SwitchControlId;
 
+	const bool bBridgeActive = IsValid(Switch) && Switch->IsBridgeActive();
+	const TCHAR* RestitchPhase = bSwitchOn ? TEXT("on") : TEXT("off");
+
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] switch restitch_%s %s scope=%s site=%d role=%s root=%d control=%s"
-			" panels=%d direct_lights=%d litDirect=%d litPanel=%d"),
-		bSwitchOn ? TEXT("on") : TEXT("off"),
+		TEXT("[HALSP] switch restitch_%s%s %s scope=%s site=%d role=%s root=%d control=%s"
+			" bridgeActive=%d panels=%d panelFed=%d direct_lights=%d poweredDirect=%d"
+			" panel_lights=%d armedPanel=%d passPanel=%d"),
+		RestitchPhase,
+		PhaseSuffix,
 		IsValid(Switch) ? *Switch->GetName() : TEXT("null"),
 		StructuralPowerScopeToString(EStructuralPowerScope::Site),
 		Root,
 		StructuralPowerRoleToString(EStructuralPowerRole::Router),
 		Root,
 		*FStructuralPowerTrace::FormatControlForTrace(SwitchKey),
+		bBridgeActive ? 1 : 0,
 		PanelCount,
+		PanelFedCount,
 		DirectLightCount,
-		LitDirectCount,
-		LitPanelCount);
+		PoweredDirectCount,
+		PanelLightCount,
+		ArmedPanelCount,
+		PassPanelCount);
+}
+
+void FStructuralPowerSwitchProcessor::ScheduleSettledRestitchSummary(
+	AStructuralPowerGraphSubsystem& Graph,
+	AFGBuildableCircuitSwitch* Switch,
+	int32 Root,
+	FName SwitchControlId)
+{
+	UWorld* World = Graph.GetWorld();
+	if (!IsValid(World) || !IsValid(Switch) || Root == INDEX_NONE || SwitchControlId.IsNone())
+	{
+		return;
+	}
+
+	TWeakObjectPtr<AStructuralPowerGraphSubsystem> WeakGraph(&Graph);
+	TWeakObjectPtr<AFGBuildableCircuitSwitch> WeakSwitch(Switch);
+	const int32 RootCopy = Root;
+	const FName ControlCopy = SwitchControlId;
+
+	// One tick so OFF pass/fail reads after circuit settle, not mid-hook.
+	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
+		[WeakGraph, WeakSwitch, RootCopy, ControlCopy]()
+		{
+			AStructuralPowerGraphSubsystem* GraphPtr = WeakGraph.Get();
+			AFGBuildableCircuitSwitch* SwitchPtr = WeakSwitch.Get();
+			if (!IsValid(GraphPtr) || !IsValid(SwitchPtr))
+			{
+				return;
+			}
+
+			FStructuralPowerContext Ctx =
+				GraphPtr->MakeProcessorContext(EAttachContext::Toggle, RootCopy);
+			LogConsumerRestitchSummary(
+				Ctx,
+				SwitchPtr,
+				RootCopy,
+				ControlCopy,
+				/*bSwitchOn=*/false,
+				TEXT("_settled"));
+		}));
 }
 
 void FStructuralPowerSwitchProcessor::RestitchKeyedConsumersOnRoot(
@@ -726,15 +796,17 @@ void FStructuralPowerSwitchProcessor::OnStateChanged(
 
 		if (!bSwitchOn)
 		{
+			FStructuralPowerTransferGate::FlipBridgeGate(Ctx, Switch, /*bGateOpen=*/false);
 			TearDown(Ctx, Switch);
 			if (Root != INDEX_NONE
 				&& bKeyedSubnet
 				&& FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
 			{
-				RestitchKeyedConsumersOnRoot(
+				FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 					Ctx,
 					Root,
 					SwitchKey.Control,
+					/*bGateOpen=*/false,
 					/*bLocalPromoteOnly=*/true);
 			}
 			if (bWiredBridge)
@@ -744,25 +816,27 @@ void FStructuralPowerSwitchProcessor::OnStateChanged(
 		}
 		else
 		{
+			FStructuralPowerTransferGate::FlipBridgeGate(Ctx, Switch, /*bGateOpen=*/true);
 			FStructuralSwitchConnectionPoint(Ctx.Graph(), Switch).OnWireOrGateChanged(
 				EAttachContext::Toggle);
 			if (Root != INDEX_NONE
 				&& bKeyedSubnet
 				&& FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
 			{
-				RestitchKeyedConsumersOnRoot(
+				FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 					Ctx,
 					Root,
 					SwitchKey.Control,
+					/*bGateOpen=*/true,
 					/*bLocalPromoteOnly=*/true);
 			}
-		}
 
-		if (Root != INDEX_NONE)
-		{
-			FStructuralPowerBridgeProcessor::FinishPanelBridgeLegsOnSiteAfterGateChange(
-				Ctx,
-				Root);
+			if (Root != INDEX_NONE)
+			{
+				FStructuralPowerBridgeProcessor::FinishPanelBridgeLegsOnSiteAfterGateChange(
+					Ctx,
+					Root);
+			}
 		}
 
 		if (Root != INDEX_NONE
@@ -770,6 +844,10 @@ void FStructuralPowerSwitchProcessor::OnStateChanged(
 			&& FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
 		{
 			LogConsumerRestitchSummary(Ctx, Switch, Root, SwitchKey.Control, bSwitchOn);
+			if (!bSwitchOn)
+			{
+				ScheduleSettledRestitchSummary(Ctx.Graph(), Switch, Root, SwitchKey.Control);
+			}
 		}
 
 		return;
@@ -833,10 +911,12 @@ void FStructuralPowerSwitchProcessor::Process(
 
 	if (!Switch->IsBridgeActive())
 	{
-		TearDown(Ctx, Switch);
+		FStructuralPowerTransferGate::FlipBridgeGate(Ctx, Switch, /*bGateOpen=*/false);
 		LogSwitchOutlet(nullptr, 0, TEXT("inactive"));
 		return;
 	}
+
+	Tracked.bStructuralPowerTransferActive = true;
 
 	UFGStructuralPowerConnectionComponent* OutletBus = Ctx.Graph().GetOrCreateBusConnector(Switch);
 	if (!OutletBus)

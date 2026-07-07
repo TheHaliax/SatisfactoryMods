@@ -13,7 +13,6 @@ class UFGUserSetting;
 class UFGUserSettingApplyType;
 class UUserWidget;
 
-/** Runtime option manager for Structural Power id panel rows (game options generator pipeline). */
 UCLASS()
 class STRUCTURALPOWER_API UStructuralPowerIdOptionManager : public UObject, public IFGOptionInterfaceImpl
 {
@@ -26,7 +25,6 @@ public:
 	FName GetSourceIdFromIndex(int32 Index) const;
 	FName GetControlIdFromIndex(int32 Index) const;
 
-	// IFGOptionInterfaceImpl
 	virtual void GetAllUserSettings(TArray<TObjectPtr<UFGUserSettingApplyType>>& OutUserSettings) const override;
 	virtual void GetAllUserSettingsMap(
 		TMap<FString, TObjectPtr<UFGUserSettingApplyType>>& OutUserSettings) const override;

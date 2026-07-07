@@ -9,7 +9,6 @@
 class AFGBuildable;
 class AFGPlayerController;
 
-/** Id config panel contract — UMG default; WebUI impl later. */
 class STRUCTURALPOWER_API IStructuralPowerIdPresenter
 {
 public:

@@ -10,9 +10,6 @@
 class AFGBuildableCircuitSwitch;
 class AStructuralPowerGraphSubsystem;
 
-/**
- * Dynamic multicast delegates require a stable UObject target on the switch actor.
- */
 UCLASS()
 class STRUCTURALPOWER_API UStructuralPowerSwitchListener : public UActorComponent
 {

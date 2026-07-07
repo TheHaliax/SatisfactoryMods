@@ -38,7 +38,6 @@ struct FStructuralOutletParentResolveParams
 	bool bAllowLiveScan = true;
 };
 
-/** Chain: actor parent -> LW face attach -> spatial index -> graph bounds -> live scan. */
 class STRUCTURALPOWER_API FStructuralOutletParentResolver
 {
 public:

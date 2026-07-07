@@ -9,7 +9,6 @@
 
 class AFGBuildableSubsystem;
 
-/** Drains deferred placement jobs on factory tick. */
 UCLASS()
 class STRUCTURALPOWER_API UStructuralPowerFactoryTickHandler : public UObject, public IFGFactoryTickHandlerInterface
 {

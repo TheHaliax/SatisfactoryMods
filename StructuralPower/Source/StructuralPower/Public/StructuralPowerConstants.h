@@ -19,14 +19,13 @@ namespace StructuralPowerConstants
 	inline constexpr float StructuralConnectivityGapCm = 8.0f;
 	inline constexpr int32 MaxHiddenConnectionLinks = 255;
 	inline constexpr int32 DeferredPlacementsPerTick = 15;
-	/** Max factory-tick wall time for bulk pole/switch drain (seconds). */
 	inline constexpr double BulkLoadDrainTickBudgetSec = 0.050;
 
 	inline const FName OutletBusConnectorName = TEXT("StructuralPowerOutletBus");
-	/** Per-panel keyed downstream bridge — never meshed with outlet bus (DR-006). */
+	// Panel control bus must never mesh the outlet bus — vanilla E on panel bleeds power both ways.
 	inline const FName PanelControlBusConnectorName = TEXT("StructuralPowerPanelControlBus");
 
-	/** DR-011/012 fixed sentinels — not valid player-chosen custom names (DR-014). */
+	// Engine sentinels — not player-assigned control ids.
 	inline const FName ControlBypass = TEXT("BYPASS");
 	inline const FName ControlUnconfigured = TEXT("UNCONFIGURED");
 }

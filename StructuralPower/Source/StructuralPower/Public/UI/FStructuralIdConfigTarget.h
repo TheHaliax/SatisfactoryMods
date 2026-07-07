@@ -9,7 +9,6 @@
 class AFGBuildable;
 class AFGPlayerController;
 
-/** DR-013 raycast target for hotkey I id panel. */
 class STRUCTURALPOWER_API FStructuralIdConfigTarget
 {
 public:

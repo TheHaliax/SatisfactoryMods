@@ -302,7 +302,6 @@ void FStructuralHoverpackBridge::RegisterHooks()
 				return;
 			}
 
-			// Mod replaces vanilla nearest-visible-connector search entirely.
 			ResolveTether(Pack);
 			Scope.Cancel();
 		});
@@ -1215,7 +1214,6 @@ void FStructuralHoverpackBridge::MaintainSession(AFGHoverPack* Pack, float Delta
 	const FCylindricalTetherMetrics Metrics = SessionTetherMetrics(Pack, Session);
 	if (!IsWithinCylindricalTetherRange(Metrics, Session.MaxHorizontal, Session.MaxVertical))
 	{
-		// Vanilla hoverpack resumes connector search outside the structural tether envelope.
 		DisconnectPower(Pack);
 		PublishStructuralTetherToOwningClient(Pack, Session, /*bClear=*/true);
 		Session.DisconnectionTimer += DeltaTime;
@@ -1309,17 +1307,17 @@ bool FStructuralHoverpackBridge::ResolvePublishedTether(
 	}
 	else
 	{
-		if (IsLocallyOwnedHoverpack(Pack)
-			&& TryGetClientTetherMirror(OutAnchor, OutMaxHorizontal, OutMaxVertical))
+		// Dedicated client: pack connection component never gets anchor — mirror from RCO.
+		const bool bHasClientMirror =
+			IsLocallyOwnedHoverpack(Pack)
+			&& TryGetClientTetherMirror(OutAnchor, OutMaxHorizontal, OutMaxVertical);
+		if (!bHasClientMirror)
 		{
-			// Dedicated client HUD — anchor pushed via RCO.
-		}
-		else if (!ReadConnectionLocation(Pack, OutAnchor) || OutAnchor.IsNearlyZero())
-		{
-			return false;
-		}
-		else
-		{
+			if (!ReadConnectionLocation(Pack, OutAnchor) || OutAnchor.IsNearlyZero())
+			{
+				return false;
+			}
+
 			const FStructuralHoverpackAxisLimits Limits = GetSessionAxisLimits(
 				EStructuralHoverpackTetherSource::StructuralGeometry,
 				GetBaseSearchRadius(Pack));

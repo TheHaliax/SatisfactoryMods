@@ -11,7 +11,6 @@ class UComboBoxString;
 class UEditableTextBox;
 class UStructuralPowerIdOptionManager;
 
-/** Server apply path for id panel — RCO only, no subsystem direct calls. */
 class STRUCTURALPOWER_API FStructuralPowerIdApplyBridge
 {
 public:

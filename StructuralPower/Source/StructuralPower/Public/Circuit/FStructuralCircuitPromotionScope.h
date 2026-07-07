@@ -7,7 +7,6 @@
 
 class AStructuralPowerGraphSubsystem;
 
-/** RAII wrapper for BeginCircuitPromotion / EndCircuitPromotion. */
 struct FStructuralCircuitPromotionScope
 {
 	AStructuralPowerGraphSubsystem* Graph = nullptr;

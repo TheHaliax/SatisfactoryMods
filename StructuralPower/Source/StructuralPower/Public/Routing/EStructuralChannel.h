@@ -20,7 +20,6 @@ enum class EStructuralChannel : uint8
 	Switch
 };
 
-/** Save-stable key for a union-find structure component (smallest member node id). */
 USTRUCT(BlueprintType)
 struct STRUCTURALPOWER_API FStructuralComponentKey
 {
@@ -42,7 +41,6 @@ struct STRUCTURALPOWER_API FStructuralComponentKey
 	}
 };
 
-/** Per-buildable player overrides — NAME_None field = inherit role default (DR-011). */
 USTRUCT(BlueprintType)
 struct STRUCTURALPOWER_API FStructuralEndpointOverrides
 {
@@ -60,7 +58,6 @@ struct STRUCTURALPOWER_API FStructuralEndpointOverrides
 	}
 };
 
-/** Island-scoped id pool for config dropdowns (DR-014). */
 USTRUCT(BlueprintType)
 struct STRUCTURALPOWER_API FStructuralComponentIdList
 {
@@ -75,11 +72,9 @@ struct STRUCTURALPOWER_API FStructuralComponentIdList
 	UPROPERTY()
 	TArray<FName> NamedControlIds;
 
-	/** Switch gate ids (DR-014) — eligible as Source on any endpoint. */
 	UPROPERTY()
 	TArray<FName> NamedSwitchControlIds;
 
-	/** Panel light-group ids (DR-014) — Source dropdown on lights only. */
 	UPROPERTY()
 	TArray<FName> NamedLightGroupIds;
 
@@ -96,7 +91,6 @@ struct STRUCTURALPOWER_API FStructuralComponentIdList
 	FName ControlOverride = NAME_None;
 };
 
-/** Resolved routing key — Tag + Source/Control (DR-011) or Effective Id (DR-008 legacy). */
 USTRUCT(BlueprintType)
 struct STRUCTURALPOWER_API FStructuralChannelKey
 {
@@ -105,7 +99,6 @@ struct STRUCTURALPOWER_API FStructuralChannelKey
 	UPROPERTY()
 	EStructuralChannel Tag = EStructuralChannel::Structure;
 
-	/** Legacy single namespace — generators/factories until v2.3+. */
 	UPROPERTY()
 	FName EffectiveId = NAME_None;
 

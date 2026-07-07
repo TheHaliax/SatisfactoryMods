@@ -18,9 +18,6 @@ class UStructuralPowerIdOptionManager;
 class UTextBlock;
 class UVerticalBox;
 
-/**
- * DR-013 — viewport-owned panel: Enhanced Input mapping contexts crash during load travel.
- */
 UCLASS()
 class STRUCTURALPOWER_API UStructuralPowerIdConfigWidget : public UFGUserWidget
 {

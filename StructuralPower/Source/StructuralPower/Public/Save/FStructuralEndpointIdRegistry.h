@@ -9,7 +9,6 @@
 
 class AFGBuildable;
 
-/** Persisted Source/Control ids — maps owned by subsystem for save stability (C0). */
 class STRUCTURALPOWER_API FStructuralEndpointIdRegistry
 {
 public:

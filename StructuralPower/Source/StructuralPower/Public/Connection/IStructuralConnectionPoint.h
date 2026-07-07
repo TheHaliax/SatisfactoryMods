@@ -16,6 +16,5 @@ struct STRUCTURALPOWER_API IStructuralConnectionPoint
 	virtual UFGPowerConnectionComponent* GetStructuralConnector() = 0;
 	virtual FStructuralWallAnchor GetStructureAnchor() const = 0;
 
-	/** Wire or gate delta — local bridge attach only; no site remesh. */
 	virtual void OnWireOrGateChanged(EAttachContext AttachContext = EAttachContext::WireDelta) = 0;
 };

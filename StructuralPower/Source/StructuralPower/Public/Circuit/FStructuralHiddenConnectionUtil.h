@@ -7,7 +7,6 @@
 
 class UFGCircuitConnectionComponent;
 
-/** Bidirectional mesh-only hidden links without RebuildCircuit storm. */
 class STRUCTURALPOWER_API FStructuralHiddenConnectionUtil
 {
 public:

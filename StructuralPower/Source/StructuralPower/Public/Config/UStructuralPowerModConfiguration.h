@@ -15,7 +15,6 @@ class UGameInstance;
 class UConfigPropertySection;
 class UUserWidget;
 
-/** Native float property with spinbox metadata (CDO-safe; not abstract UCP_Float). */
 UCLASS()
 class STRUCTURALPOWER_API UStructuralPowerConfigFloat : public UConfigPropertyFloat
 {
@@ -32,7 +31,6 @@ public:
 	float MaxValue = 10.0f;
 };
 
-/** Native nested section with collapsible header metadata (CDO-safe; not abstract UCP_Section). */
 UCLASS()
 class STRUCTURALPOWER_API UStructuralPowerConfigNestedSection : public UConfigPropertySection
 {
@@ -52,7 +50,6 @@ public:
 	bool Collapsed = true;
 };
 
-/** Native root section — CDO-safe; delegates pause-menu widgets to SML blueprint types at runtime. */
 UCLASS()
 class STRUCTURALPOWER_API UStructuralPowerConfigRootSection : public UConfigPropertySection
 {
@@ -62,7 +59,6 @@ public:
 	virtual UUserWidget* CreateEditorWidget_Implementation(UUserWidget* ParentWidget) const override;
 };
 
-/** Applies CVars when pause-menu properties change. */
 UCLASS()
 class UStructuralPowerConfigLiveSync : public UObject
 {
@@ -76,10 +72,8 @@ public:
 	void HandlePropertyChanged();
 };
 
-/** Upgrades live config properties to SML BP_ConfigProperty* classes once assets are loaded. */
 STRUCTURALPOWER_API void StructuralPowerUpgradeConfigPropertiesForSmlWidgets(UConfigPropertySection* Root);
 
-/** Pause-menu config (Mods > Structural Power) — persisted via SML ConfigManager. */
 UCLASS()
 class STRUCTURALPOWER_API UStructuralPowerModConfiguration : public UModConfiguration
 {

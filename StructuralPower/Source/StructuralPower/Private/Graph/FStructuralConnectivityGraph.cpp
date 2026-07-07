@@ -45,10 +45,8 @@ int32 CompareNodeId(const FStructuralNodeId& A, const FStructuralNodeId& B)
 
 namespace
 {
-// Extra reach when scanning the spatial hash for candidate neighbors. The adjacency
-// predicate expands by class gaps (up to ~100cm Z for wall/foundation, +beam padding),
-// so a two-cell margin guarantees no contiguous neighbor is missed.
-constexpr float NeighborQueryMarginCm = 200.0f;
+	// Hash query misses gap-boundary pairs without padding the search box.
+	constexpr float NeighborQueryMarginCm = 200.0f;
 
 FStructuralNodeId MakeActorNodeId(const AFGBuildable* Buildable)
 {
@@ -394,7 +392,6 @@ void FStructuralConnectivityGraph::RemoveNode(
 	}
 	const int32 Index = *IndexPtr;
 
-	// Snapshot the whole component before removal so we can rebuild connectivity locally.
 	TArray<int32> Component;
 	CollectComponent(Index, Component);
 

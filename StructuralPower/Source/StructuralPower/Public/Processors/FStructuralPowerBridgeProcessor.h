@@ -12,7 +12,6 @@ class AFGBuildableLightsControlPanel;
 class UFGStructuralPowerConnectionComponent;
 struct FStructuralPowerContext;
 
-/** Unified CircuitBridge attach — local pair gate only; no site remesh on wire/toggle. */
 class STRUCTURALPOWER_API FStructuralPowerBridgeProcessor
 {
 public:

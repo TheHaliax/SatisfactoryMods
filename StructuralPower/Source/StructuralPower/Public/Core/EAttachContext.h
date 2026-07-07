@@ -5,7 +5,6 @@
 
 #include "CoreMinimal.h"
 
-/** Why attach/restitch ran — bulk must not pick up runtime-only full restitch. */
 enum class EAttachContext : uint8
 {
 	BulkLoad,

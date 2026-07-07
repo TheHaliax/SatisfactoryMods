@@ -44,7 +44,9 @@
 #include "Processors/FStructuralPowerLightProcessor.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
 #include "Processors/FStructuralPowerProcessorRegistry.h"
+#include "Processors/FStructuralPowerPoleProcessor.h"
 #include "Processors/FStructuralPowerSwitchProcessor.h"
+#include "Processors/FStructuralPowerTransferGate.h"
 #include "Processors/IStructuralPowerProcessor.h"
 #include "Reconcile/FStructuralSiteBusMesh.h"
 #include "Rules/FStructuralEligibilityRules.h"
@@ -150,6 +152,7 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindPanel
 
 void AStructuralPowerGraphSubsystem::StripPersistedEndpointModComponents(AFGBuildable* Host)
 {
+	// Saved outlet/panel buses still reference torn mesh — strip before live restitch or load asserts.
 	if (!IsValid(Host) || !Host->HasAuthority())
 	{
 		return;
@@ -373,7 +376,6 @@ void AStructuralPowerGraphSubsystem::OnWorldReady(UWorld* World)
 	PurgeSavedOutletBusMesh(World);
 	bPostLoadRebuilt = true;
 
-	// Seed bridge endpoints through the deferred outlet path so buses mesh and promote on load.
 	int32 SeededPoles = 0;
 	int32 SeededSwitches = 0;
 	if (FStructuralPowerSessionSettings::IsPropagationEnabled())
@@ -416,6 +418,7 @@ void AStructuralPowerGraphSubsystem::OnWorldReady(UWorld* World)
 		SeededPoles,
 		SeededSwitches);
 
+	// Per-pole Restitch during save load was multi-second — drain in tick budget instead.
 	bBulkLoadDrainActive = (SeededPoles + SeededSwitches) > 0;
 	if (bBulkLoadDrainActive)
 	{
@@ -578,6 +581,7 @@ void AStructuralPowerGraphSubsystem::TickDeferredPlacements(int32 MaxJobs)
 
 void AStructuralPowerGraphSubsystem::BeginCircuitPromotion()
 {
+	// ConnectComponents fires circuit-changed mid-promotion — defer switch refresh until depth hits 0.
 	++CircuitPromotionDepth;
 }
 
@@ -1724,7 +1728,6 @@ void AStructuralPowerGraphSubsystem::MaybeRunPostLoadLightReconcile()
 	if (FStructuralPowerModConfig::IsGroupLightingEnabled())
 	{
 		// Panels first — downstream links must exist before light reconcile classifies
-		// panel-fed consumers and before direct-attach logs report powered state.
 		ReconcileAllPanelEndpoints();
 		ReconcileAllLightConsumers();
 	}
@@ -2550,7 +2553,6 @@ bool AStructuralPowerGraphSubsystem::ShouldMeshEndpoints(
 	const FName DeviceSource = bSwitchOnA ? KeyB.Source : KeyA.Source;
 	const EStructuralChannel PeerTag = bSwitchOnA ? KeyB.Tag : KeyA.Tag;
 
-	// Import/export (DR-001): wired switch ON merges grid with default structure physical bus.
 	if (PeerTag == EStructuralChannel::Structure)
 	{
 		return true;
@@ -2673,7 +2675,6 @@ void AStructuralPowerGraphSubsystem::ReEnergizeComponentRoots(
 			continue;
 		}
 		Done.Add(Root);
-		// Wire add/remove: pole/switch processors already attach locally — no O(n) bus remesh.
 		if (AttachContext != EAttachContext::WireDelta)
 		{
 			RestitchComponent(Root, bTearDownFirst, AttachContext);
@@ -2711,7 +2712,18 @@ void AStructuralPowerGraphSubsystem::RestitchKeyedSubnetsAfterMeshFeedRefresh(
 	}
 
 	FStructuralPowerContext Ctx = MakeProcessorContext(AttachContext, Root);
-	FStructuralPowerSwitchProcessor::RestitchActiveKeyedConsumersOnRoot(Ctx, Root);
+	if (IsBulkLoadAttachContext(AttachContext))
+	{
+		FStructuralPowerSwitchProcessor::RestitchActiveKeyedConsumersOnRoot(Ctx, Root);
+	}
+	else if (FStructuralPowerTransferGate::IsBridgeWireOrToggleContext(AttachContext))
+	{
+		FStructuralPowerTransferGate::RefreshKeyedTransferOnRoot(Ctx, Root);
+	}
+	else
+	{
+		FStructuralPowerSwitchProcessor::RestitchActiveKeyedConsumersOnRoot(Ctx, Root);
+	}
 }
 
 void AStructuralPowerGraphSubsystem::ProcessStructure(AFGBuildable* Buildable)
@@ -2730,8 +2742,7 @@ void AStructuralPowerGraphSubsystem::ProcessStructure(AFGBuildable* Buildable)
 		return;
 	}
 
-	// Only a genuine fusion of two+ previously separate components can change which poles share
-	// power. Extending a single component (or an isolated add) leaves pole grouping untouched.
+	// Pole regroup only when two+ roots fuse — single attach must not ReEnergize.
 	if (MergedRoots.Num() >= 2)
 	{
 		const int32 Root = StructureGraph.FindRoot(MakeNodeId(Buildable));
@@ -2961,88 +2972,8 @@ void AStructuralPowerGraphSubsystem::ProcessPoleEndpoint(AFGBuildablePowerPole* 
 
 void AStructuralPowerGraphSubsystem::ProcessPoleEndpointDirect(AFGBuildablePowerPole* Pole)
 {
-	if (!IsValid(Pole))
-	{
-		return;
-	}
-
-	const bool bBulk = bBulkLoadDrainActive;
-	FStructuralPoleConnectionPoint Connection(*this, Pole);
-	const FStructuralNodeId PoleId = MakeNodeId(Pole);
-	if (!bBulk)
-	{
-		if (const FTrackedEndpoint* Existing = TrackedEndpoints.Find(PoleId))
-		{
-			if (Existing->Kind == EStructuralEndpointKind::Pole && Existing->ParentId.IsValid())
-			{
-				Connection.OnWireOrGateChanged();
-				return;
-			}
-		}
-	}
-
-	UFGStructuralPowerConnectionComponent* OutletBus =
-		Cast<UFGStructuralPowerConnectionComponent>(Connection.GetStructuralConnector());
-	if (!OutletBus)
-	{
-		FStructuralPowerTrace::LogPlacementSkip(Pole, TEXT("outlet_bus_create_failed"));
-		return;
-	}
-
-	const FStructuralWallAnchor ParentAnchor = Connection.GetStructureAnchor();
-	FStructuralNodeId ParentId;
-	const int32 Root = ResolvePoleComponentRoot(Pole, ParentAnchor, ParentId);
-
-	FTrackedEndpoint& Tracked = TrackedEndpoints.FindOrAdd(PoleId);
-	Tracked.Actor = Pole;
-	Tracked.ParentId = ParentId;
-	Tracked.Kind = EStructuralEndpointKind::Pole;
-	RegisterBuildableActor(Pole);
-	if (bBulk)
-	{
-		if (Root != INDEX_NONE && ParentId.IsValid())
-		{
-			AddEndpointToRootIndex(Root, EStructuralEndpointKind::Pole, PoleId);
-		}
-	}
-	else
-	{
-		MarkBridgeEndpointRootIndexDirty();
-	}
-
-	LinkBusToVisibleConnections(Pole, OutletBus);
-
-	if (Root != INDEX_NONE && (bBulk || !HasBridgeBusPeerMesh(OutletBus)))
-	{
-		TryMeshPeerBusOnComponent(Pole, OutletBus, Root, PoleId, bBulk);
-	}
-
-	PromoteOutletBusIfPowered(OutletBus, /*bLocalPromoteOnly=*/true);
-
-	if (bBulk)
-	{
-		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[HALSP] outlet %s root=%d parentValid=%d busCircuit=%d powered=%d tag=%s id=%s"),
-			*Pole->GetName(),
-			Root,
-			ParentAnchor.IsValid() ? 1 : 0,
-			OutletBus->GetCircuitID(),
-			FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0,
-			StructuralChannelToString(EStructuralChannel::Structure),
-			TEXT("-"));
-	}
-	else
-	{
-		UE_LOG(LogStructuralPower, Log,
-			TEXT("[HALSP] outlet %s root=%d parentValid=%d busCircuit=%d powered=%d tag=%s id=%s"),
-			*Pole->GetName(),
-			Root,
-			ParentAnchor.IsValid() ? 1 : 0,
-			OutletBus->GetCircuitID(),
-			FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0,
-			StructuralChannelToString(EStructuralChannel::Structure),
-			TEXT("-"));
-	}
+	FStructuralPowerContext Ctx = GetProcessorContext();
+	FStructuralPowerPoleProcessor::Process(Ctx, Pole);
 }
 
 void AStructuralPowerGraphSubsystem::TearDownLightStructuralLinks(AFGBuildableLightSource* Light)
@@ -3248,7 +3179,9 @@ void AStructuralPowerGraphSubsystem::OnBuildableRemoved(AFGBuildable* Buildable)
 			if (Tracked->Kind == EStructuralEndpointKind::Switch)
 			{
 				FStructuralPowerContext Ctx = GetProcessorContext();
-				FStructuralPowerSwitchProcessor::TearDown(Ctx, Host);
+				FStructuralPowerSwitchProcessor::TearDown(
+					Ctx,
+					Cast<AFGBuildableCircuitSwitch>(Host));
 			}
 			else if (Tracked->Kind == EStructuralEndpointKind::Light)
 			{

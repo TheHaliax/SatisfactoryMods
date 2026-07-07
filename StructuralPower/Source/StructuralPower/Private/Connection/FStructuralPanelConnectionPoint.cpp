@@ -83,13 +83,11 @@ void FStructuralPanelConnectionPoint::OnWireOrGateChanged(EAttachContext AttachC
 		Graph.MarkBridgeEndpointRootIndexDirty();
 	}
 
-	if (AttachContext == EAttachContext::Toggle)
-	{
-		Tracked.bPanelLinksReady = false;
-		Tracked.bDownstreamLinksReady = false;
-	}
-
-	const bool bLocalPromoteOnly = AttachContext != EAttachContext::Toggle;
+	const bool bLocalPromoteOnly =
+		AttachContext != EAttachContext::RuntimePlace
+		|| IsBulkLoadAttachContext(AttachContext)
+		|| AttachContext == EAttachContext::WireDelta
+		|| AttachContext == EAttachContext::Toggle;
 	FStructuralPowerContext Ctx = Graph.MakeProcessorContext(AttachContext, Root);
 	FStructuralPowerBridgeProcessor::ApplyLocalAttachForPanel(
 		Ctx,

@@ -8,7 +8,6 @@
 
 class AFGBuildable;
 
-/** Spatial hash of full-actor bus members for outlet parent queries. */
 class FStructuralBusMemberSpatialIndex
 {
 public:

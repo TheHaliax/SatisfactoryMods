@@ -11,7 +11,6 @@ class AFGBuildableLightSource;
 class AStructuralPowerGraphSubsystem;
 class UFGPowerConnectionComponent;
 
-/** M3 consumer attach — shared primitive for lights and later factory categories. */
 class STRUCTURALPOWER_API FStructuralDeviceAttach
 {
 public:

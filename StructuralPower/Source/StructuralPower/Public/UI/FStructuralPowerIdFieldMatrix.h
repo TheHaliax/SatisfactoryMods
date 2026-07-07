@@ -14,7 +14,6 @@ class UStructuralPowerIdOptionManager;
 class UVerticalBox;
 class UWidgetTree;
 
-/** Built id panel form widgets (source/control matrix). */
 struct FStructuralPowerIdFieldMatrixWidgets
 {
 	TObjectPtr<UComboBoxString> SuggestedSourceCombo;
@@ -26,7 +25,6 @@ struct FStructuralPowerIdFieldMatrixWidgets
 	TObjectPtr<UTextBlock> ActiveIdsText;
 };
 
-/** DR-013 field matrix — builds dropdown + typed id rows into content host. */
 class STRUCTURALPOWER_API FStructuralPowerIdFieldMatrix
 {
 public:

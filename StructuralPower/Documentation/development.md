@@ -1,5 +1,13 @@
 # Development
 
+## Code comments vs documentation
+
+| Surface | Role |
+|---------|------|
+| **`Source/`** | Almost no comments — only non-obvious engine traps inline. If behavior needs explanation, it belongs in docs. |
+| **`Documentation/`** (this folder) | Player + contributor **what**, **why**, **how** |
+| **`development/`** (gitignored, local) | As-built architecture, log semantics, ship gate — agents read [DOCUMENTATION.md](../../development/DOCUMENTATION.md) first |
+
 ## Repository layout
 
 ```
@@ -51,11 +59,13 @@ Full checklist: [release.md](release.md).
 | Hoverpack bridge | `FStructuralHoverpackBridge.cpp` |
 | Switch listener / RCO | `UStructuralPowerSwitchListener.cpp`, `UStructuralPowerRCO.cpp` |
 | Poles, circuit & subsystem | `AStructuralPowerGraphSubsystem.cpp` |
+| **Processors** | `FStructuralPowerSwitchProcessor`, `FStructuralPowerPanelProcessor`, `FStructuralPowerLightProcessor`, `FStructuralPowerPoleProcessor`, `FStructuralPowerTransferGate`, `FStructuralPowerBridgeProcessor` |
+| **Connection points** | `FStructuralPoleConnectionPoint`, `FStructuralSwitchConnectionPoint`, `FStructuralPanelConnectionPoint` |
 | Structural connectivity graph (spatial hash + union-find) | `FStructuralConnectivityGraph.cpp` |
 | Lightweight index | `FStructuralLightweightIndex.cpp` |
 | Eligibility rules | `FStructuralEligibilityRules.cpp` |
 | Factory tick drain | `UStructuralPowerFactoryTickHandler.cpp` |
-| Diagnostics | `FStructuralPowerDiagnostics.cpp` |
+| Diagnostics | `FStructuralPowerDiagnostics.cpp`, `FStructuralPowerTrace.cpp` |
 | **v2.2 — I-key input** | `FStructuralPowerIdInput.cpp` |
 | **v2.2 — Id panel UI** | `UStructuralPowerIdConfigWidget.cpp`, `UStructuralPowerIdOptionManager.cpp` |
 | **v2.2 — Panel attach / control bus** | `FStructuralPanelAttach.cpp` |
@@ -64,6 +74,28 @@ Full checklist: [release.md](release.md).
 | **v2.2 — Routing / id pools** | `FStructuralPowerRouter.cpp`, `EStructuralChannel.h`, `CollectIdsOnComponent` |
 
 Feature notes: [v2.2.md](v2.2.md). Roadmap: [../README.md#roadmap](../README.md#roadmap).
+
+### Transfer-gated switch path (v2.2 WT)
+
+**What:** Keyed switch OFF tears down consumer hidden links without removing structure topology.  
+**Why:** Old toggle path remeshed whole sites → stalls + circuit storms.  
+**How:** `FStructuralPowerTransferGate` flips `bStructuralPowerTransferActive`; verify with `restitch_off_settled` (`passPanel=0`, `poweredDirect=0`). Full architecture: local `development/CURRENT-STATE.md` §7 (gitignored).
+
+## HALSP trace (developers)
+
+Enable `StructuralPower.Trace 1`, mod menu **Debug → PWR trace logging**, or `!tracetoggle`.
+
+| Prefix | Use |
+|--------|-----|
+| `[HALSP] switch restitch_*` | Toggle behavior summary — `poweredDirect`, `passPanel` are pass probes |
+| `[HALSP] light path=direct` | `lit=` = plug HasPower |
+| `[HALSP] light path=panel_downstream` | `pass=` = `panelFed AND armedOn` |
+| `[HALSP] panel ctx=restitch_summary` | `panelFed=` = upstream supplies at snapshot |
+
+**OFF result:** read `switch restitch_off_settled` — expect `poweredDirect=0 passPanel=0`.  
+`armedPanel>0` with `passPanel=0` after OFF is normal (panel still armed, no feed).
+
+Local agent tooling (not shipped): repo `development/` — `DOCUMENTATION.md`, `LOG-INTERPRETATION.md`, `analyze-halsp-log.ps1` (gitignored).
 
 ## License
 

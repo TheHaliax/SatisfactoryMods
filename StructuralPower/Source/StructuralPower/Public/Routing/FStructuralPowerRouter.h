@@ -9,18 +9,15 @@
 class AFGBuildable;
 class AFGBuildableCircuitSwitch;
 
-/** DR-008 / DR-011 predicates — keyed hidden links when category toggles allow. */
 class STRUCTURALPOWER_API FStructuralPowerRouter
 {
 public:
 	static bool UsesSourceControlModel(EStructuralChannel Tag);
 
-	/** v2.3 M7 — structural generator routing; OFF until enabled. */
 	static bool IsStructuralGeneratorRoutingEnabled();
 
 	static bool IsGeneratorChannel(EStructuralChannel Tag);
 
-	/** Legacy EffectiveId channels (Generator when routing enabled). */
 	static bool UsesLegacyEffectiveIdModel(EStructuralChannel Tag);
 
 	static bool IsReservedSentinel(FName Id);

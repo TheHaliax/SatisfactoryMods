@@ -14,6 +14,7 @@ class AFGBuildableCircuitSwitch;
 class AFGBuildableLightSource;
 class AFGBuildableLightsControlPanel;
 struct FStructuralPowerContext;
+class AStructuralPowerGraphSubsystem;
 class UFGStructuralPowerConnectionComponent;
 
 class STRUCTURALPOWER_API FStructuralPowerSwitchProcessor
@@ -23,7 +24,7 @@ public:
 
 	static void OnStateChanged(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 
-	static void TearDown(FStructuralPowerContext& Ctx, AFGBuildable* Host);
+	static void TearDown(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 
 	static void StripInactiveLinksOnRoot(FStructuralPowerContext& Ctx, int32 Root);
 
@@ -100,5 +101,12 @@ private:
 		AFGBuildableCircuitSwitch* Switch,
 		int32 Root,
 		FName SwitchControlId,
-		bool bSwitchOn);
+		bool bSwitchOn,
+		const TCHAR* PhaseSuffix = TEXT(""));
+
+	static void ScheduleSettledRestitchSummary(
+		AStructuralPowerGraphSubsystem& Graph,
+		AFGBuildableCircuitSwitch* Switch,
+		int32 Root,
+		FName SwitchControlId);
 };

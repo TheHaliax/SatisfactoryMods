@@ -48,8 +48,6 @@ static void SendSystemChat(
 	MessageStruct.MessageSenderColor = Color;
 	MessageStruct.MessageSender = FText::FromString(ChatSenderName);
 
-	// Server command replies: authority calls Client_SendChatMessage (dedicated/listen).
-	// Load banner + solo: local received buffer on client or standalone.
 	const bool bUseLocalChatBuffer = World->GetNetMode() == NM_Standalone
 		|| (World->GetNetMode() == NM_Client && PlayerController->IsLocalController());
 
@@ -92,7 +90,6 @@ static bool ShouldAnnounceLoadToPlayer(AFGPlayerController* PlayerController, UW
 
 	const ENetMode NetMode = World->GetNetMode();
 
-	// Dedicated/listen: BegunPlay runs on the joining client — announce locally there.
 	if (NetMode == NM_Client)
 	{
 		return PlayerController->IsLocalController();

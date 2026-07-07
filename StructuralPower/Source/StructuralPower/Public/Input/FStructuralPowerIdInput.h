@@ -9,7 +9,6 @@ class AFGCharacterPlayer;
 class AFGPlayerController;
 class UInputComponent;
 
-/** DR-013 hotkey I — raycast open unified id config panel (Slate pre-processor). */
 class STRUCTURALPOWER_API FStructuralPowerIdInput
 {
 public:

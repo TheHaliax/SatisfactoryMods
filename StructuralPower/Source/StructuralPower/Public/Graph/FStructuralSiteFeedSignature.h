@@ -5,7 +5,6 @@
 
 #include "CoreMinimal.h"
 
-/** Gateway-only feed epoch for one structure site (component root). */
 struct FStructuralSiteFeedSignature
 {
 	bool bPowered = false;

@@ -7,7 +7,6 @@
 
 class UStructuralPowerIdConfigWidget;
 
-/** Default id panel — wraps pooled UMG widget (current player-facing behavior). */
 class STRUCTURALPOWER_API FStructuralPowerUmgIdPresenter final : public IStructuralPowerIdPresenter
 {
 public:

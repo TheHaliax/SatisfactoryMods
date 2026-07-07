@@ -8,7 +8,6 @@
 class AStructuralPowerGraphSubsystem;
 struct FStructuralHoverpackAnchorQuery;
 
-/** Equipment path hook surface (hoverpack first; more items later). */
 class STRUCTURALPOWER_API IStructuralPowerEquipmentBridge
 {
 public:

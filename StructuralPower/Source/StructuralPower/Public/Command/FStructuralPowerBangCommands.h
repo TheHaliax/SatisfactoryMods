@@ -7,7 +7,6 @@
 
 class AFGPlayerController;
 
-/** UtilityMod-style `!command` chat for hover multipliers + trace toggle. */
 class STRUCTURALPOWER_API FStructuralPowerBangCommands
 {
 public:

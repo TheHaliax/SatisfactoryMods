@@ -15,7 +15,6 @@ enum class EStructuralPlacementJobType : uint8
 	Outlet
 };
 
-/** Deferred structure/outlet/lightweight placement jobs (server authority). */
 class STRUCTURALPOWER_API FStructuralPlacementQueue
 {
 public:

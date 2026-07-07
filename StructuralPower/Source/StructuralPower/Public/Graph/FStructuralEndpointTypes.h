@@ -23,14 +23,15 @@ struct FTrackedEndpoint
 	FStructuralNodeId ParentId;
 	EStructuralEndpointKind Kind = EStructuralEndpointKind::Pole;
 
-	/** Panel restitch idempotency — skip tear-down/relink when routing state unchanged. */
 	FStructuralChannelKey CachedPanelKey;
 	int32 CachedPanelRoot = INDEX_NONE;
 	bool bPanelLinksReady = false;
 
-	/** Downstream keyed subnet — skip relink when control id unchanged. */
 	FName CachedDownstreamControl = NAME_None;
 	bool bDownstreamLinksReady = false;
+
+	// false suspends new wiring only — tracked topology stays until explicit tear-down.
+	bool bStructuralPowerTransferActive = false;
 
 	class AFGBuildableCircuitSwitch* GetSwitch() const;
 	class AFGBuildablePowerPole* GetPole() const;

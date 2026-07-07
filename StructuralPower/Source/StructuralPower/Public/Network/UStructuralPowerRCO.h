@@ -10,7 +10,6 @@
 
 class AFGBuildable;
 
-/** DR-009 / DR-011 — client UI → authority endpoint overrides on graph subsystem save registry. */
 UCLASS()
 class STRUCTURALPOWER_API UStructuralPowerRCO : public UFGRemoteCallObject
 {

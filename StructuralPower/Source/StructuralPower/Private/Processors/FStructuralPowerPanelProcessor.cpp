@@ -113,6 +113,24 @@ void FStructuralPowerPanelProcessor::Process(
 		return;
 	}
 
+	const FName SwitchGateId =
+		ChannelKey.Control.IsNone() ? ChannelKey.Source : ChannelKey.Control;
+	if (Root != INDEX_NONE
+		&& !SwitchGateId.IsNone()
+		&& Ctx.Graph().IsSwitchFeedOpen(Root, SwitchGateId))
+	{
+		if (!bRoutingUnchanged)
+		{
+			FStructuralPanelAttach::TearDownLinks(Panel, Ports);
+		}
+
+		Tracked.bPanelLinksReady = false;
+		Tracked.bDownstreamLinksReady = false;
+		Tracked.bStructuralPowerTransferActive = false;
+		LogPanelState(false, TEXT("switch_feed_open"));
+		return;
+	}
+
 	if (bRoutingUnchanged)
 	{
 		const UFGPowerConnectionComponent* InputPower =

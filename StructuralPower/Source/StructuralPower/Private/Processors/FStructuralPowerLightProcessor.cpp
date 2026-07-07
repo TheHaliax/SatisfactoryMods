@@ -11,7 +11,7 @@
 #include "FGCircuitConnectionComponent.h"
 #include "FGPowerConnectionComponent.h"
 #include "Core/EAttachContext.h"
-#include "Processors/FStructuralPowerPanelProcessor.h"
+#include "Processors/FStructuralPowerTransferGate.h"
 #include "Routing/EStructuralChannel.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
@@ -73,7 +73,20 @@ void FStructuralPowerLightProcessor::Process(
 		return;
 	}
 
-	FStructuralDeviceAttach::TearDownConsumerLinks(Plug);
+	const bool bWireOrToggle =
+		FStructuralPowerTransferGate::IsBridgeWireOrToggleContext(AttachContext);
+	if (!bWireOrToggle)
+	{
+		FStructuralDeviceAttach::TearDownConsumerLinks(Plug);
+	}
+
+	if (FStructuralPowerTransferGate::IsConsumerVanillaWired(Plug))
+	{
+		Tracked.bStructuralPowerTransferActive = false;
+		FStructuralPowerTrace::LogLightConsumer(
+			Light, Root, ParentAnchor.IsValid(), ChannelKey, Plug, TEXT("vanilla_wired"));
+		return;
+	}
 
 	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
 	{
@@ -122,6 +135,7 @@ void FStructuralPowerLightProcessor::Process(
 	}
 	if (bAttached)
 	{
+		Tracked.bStructuralPowerTransferActive = true;
 		if (bLocalPromoteOnly || IsBulkLoadAttachContext(AttachContext))
 		{
 			Ctx.Graph().PromoteDirectHiddenLinks(Plug);

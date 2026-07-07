@@ -9,7 +9,6 @@
 
 class FStructuralConnectivityGraph;
 
-/** Root → kind → endpoint ids. Rebuilt from tracked endpoints on load; incremental during bulk drain. */
 class FStructuralEndpointIndex
 {
 public:

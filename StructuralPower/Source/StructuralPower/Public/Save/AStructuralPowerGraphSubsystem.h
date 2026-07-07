@@ -48,12 +48,6 @@ struct FStructuralHoverpackAnchorQuery
 	bool bFound = false;
 };
 
-/**
- * Pole-to-pole structural power. Foundations/walls live only in a data-side connectivity
- * graph (never power circuit members). Bridge poles carry a hidden "outlet bus"; poles whose
- * parent structures share a graph component get their buses meshed and promoted to one circuit
- * on power. Connectivity is recomputed from live geometry on load — nothing structural persists.
- */
 UCLASS()
 class STRUCTURALPOWER_API AStructuralPowerGraphSubsystem : public AInfo, public IFGSaveInterface
 {
@@ -68,7 +62,6 @@ public:
 	static UFGStructuralPowerConnectionComponent* FindBusConnector(const AFGBuildable* Host);
 	static UFGStructuralPowerConnectionComponent* FindPanelControlBus(const AFGBuildable* Host);
 	static UFGStructuralPowerConnectionComponent* FindOutletBusConnector(const AFGBuildablePowerPole* Outlet);
-	/** Remove saved/runtime outlet bus + switch listener before CircuitBridge BeginPlay. */
 	static void StripPersistedEndpointModComponents(AFGBuildable* Host);
 
 	void OnWorldReady(UWorld* World);
@@ -81,7 +74,6 @@ public:
 	void ProcessSwitchWireDelta(AFGBuildableCircuitSwitch* Switch);
 	void ProcessPanelWireDelta(AFGBuildableLightsControlPanel* Panel);
 	void ProcessPoleWireDelta(AFGBuildablePowerPole* Pole);
-	/** Pole attach body — registry delegate until pole processor extract. */
 	void ProcessPoleEndpointDirect(AFGBuildablePowerPole* Pole);
 	void OnSwitchStateChanged(AFGBuildableCircuitSwitch* Switch);
 	void ReconcileAllLightConsumers();
@@ -137,10 +129,8 @@ public:
 		float MaxVertical,
 		FStructuralHoverpackAnchorQuery& Out) const;
 
-	/** True while mod is calling ConnectComponents — suppresses switch/panel circuit-refresh enqueue. */
 	bool ShouldDeferSwitchCircuitRefresh() const { return CircuitPromotionDepth > 0; }
 
-	/** While true, post-load drain uses cheap pole attach — no RestitchComponent. */
 	bool IsBulkLoadDrainActive() const { return bBulkLoadDrainActive; }
 
 	EAttachContext GetCurrentAttachContext() const;
@@ -168,7 +158,6 @@ public:
 	UFGStructuralPowerConnectionComponent* GetOrCreatePanelControlBus(
 		AFGBuildableLightsControlPanel* Panel);
 
-	// IFGSaveInterface — geometry rebuilds on load; Id registry (DR-009) persists here.
 	virtual void PreSaveGame_Implementation(int32 saveVersion, int32 gameVersion) override {}
 	virtual void PostSaveGame_Implementation(int32 saveVersion, int32 gameVersion) override {}
 	virtual void PreLoadGame_Implementation(int32 saveVersion, int32 gameVersion) override {}
@@ -181,7 +170,9 @@ public:
 	friend class FStructuralPowerLightProcessor;
 	friend class FStructuralPowerPanelProcessor;
 	friend class FStructuralPowerSwitchProcessor;
+	friend class FStructuralPowerPoleProcessor;
 	friend class FStructuralPowerBridgeProcessor;
+	friend class FStructuralPowerTransferGate;
 	friend class FStructuralCrossSiteGraph;
 	friend class FStructuralPoleConnectionPoint;
 	friend class FStructuralSwitchConnectionPoint;

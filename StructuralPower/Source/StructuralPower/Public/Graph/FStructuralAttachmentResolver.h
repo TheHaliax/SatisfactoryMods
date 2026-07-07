@@ -15,7 +15,6 @@ struct FStructuralComponentResolveResult
 	bool IsValid() const { return ComponentRoot != INDEX_NONE; }
 };
 
-/** Shared attachment queries for poles, switches, consumers, and hoverpack. */
 class STRUCTURALPOWER_API FStructuralAttachmentResolver
 {
 public:

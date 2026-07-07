@@ -14,6 +14,7 @@
 #include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Processors/FStructuralPowerLightProcessor.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
+#include "Processors/FStructuralPowerPoleProcessor.h"
 #include "Processors/FStructuralPowerSwitchProcessor.h"
 #include "Processors/IStructuralPowerProcessor.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
@@ -132,7 +133,10 @@ public:
 
 	void TearDown(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
 	{
-		FStructuralPowerSwitchProcessor::TearDown(Ctx, Buildable);
+		if (AFGBuildableCircuitSwitch* Switch = FStructuralPowerBuildableCasts::AsSwitch(Buildable))
+		{
+			FStructuralPowerSwitchProcessor::TearDown(Ctx, Switch);
+		}
 	}
 
 	void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
@@ -165,7 +169,7 @@ public:
 	{
 		if (AFGBuildablePowerPole* Pole = FStructuralPowerBuildableCasts::AsPole(Buildable))
 		{
-			Ctx.Graph().ProcessPoleEndpointDirect(Pole);
+			FStructuralPowerPoleProcessor::Process(Ctx, Pole);
 		}
 	}
 
