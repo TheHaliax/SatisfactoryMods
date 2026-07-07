@@ -79,6 +79,8 @@ public:
 	void OnLightweightRemoved(const FStructuralLightweightKey& Key);
 	void ProcessWallOutletAfterWire(AFGBuildablePowerPole* Pole);
 	void ProcessPoleWireDelta(AFGBuildablePowerPole* Pole);
+	/** Pole attach body — registry delegate until pole processor extract. */
+	void ProcessPoleEndpointDirect(AFGBuildablePowerPole* Pole);
 	void OnSwitchStateChanged(AFGBuildableCircuitSwitch* Switch);
 	void ReconcileAllLightConsumers();
 	void RunDiagnostics() const;

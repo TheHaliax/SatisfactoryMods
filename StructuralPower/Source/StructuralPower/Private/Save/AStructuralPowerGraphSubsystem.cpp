@@ -43,7 +43,9 @@
 #include "Processors/FStructuralPowerGeneratorProcessor.h"
 #include "Processors/FStructuralPowerLightProcessor.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
+#include "Processors/FStructuralPowerProcessorRegistry.h"
 #include "Processors/FStructuralPowerSwitchProcessor.h"
+#include "Processors/IStructuralPowerProcessor.h"
 #include "Reconcile/FStructuralSiteBusMesh.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "Session/FStructuralPowerSessionSettings.h"
@@ -1466,7 +1468,11 @@ void AStructuralPowerGraphSubsystem::SetEndpointIds(
 	{
 		AFGBuildableCircuitSwitch* Switch = Cast<AFGBuildableCircuitSwitch>(Buildable);
 		FStructuralPowerContext Ctx = MakeProcessorContext(EAttachContext::RuntimePlace, Root);
-		FStructuralPowerSwitchProcessor::Process(Ctx, Switch);
+	if (IStructuralPowerProcessor* Processor =
+			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Switch))
+		{
+			Processor->Process(Ctx, Switch);
+		}
 		const FName SwitchControl = ResolveControl(Switch, EStructuralChannel::Switch);
 		FStructuralPowerSwitchProcessor::RestitchKeyedConsumersOnRoot(Ctx, Root, SwitchControl);
 	}
@@ -2818,7 +2824,11 @@ void AStructuralPowerGraphSubsystem::ProcessOutlet(AFGBuildable* Buildable)
 		&& FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable))
 	{
 		FStructuralPowerContext Ctx = GetProcessorContext();
-		FStructuralPowerSwitchProcessor::Process(Ctx, Cast<AFGBuildableCircuitSwitch>(Buildable));
+	if (IStructuralPowerProcessor* Processor =
+			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Switch))
+		{
+			Processor->Process(Ctx, Buildable);
+		}
 		return;
 	}
 
@@ -2833,10 +2843,25 @@ void AStructuralPowerGraphSubsystem::ProcessOutlet(AFGBuildable* Buildable)
 
 void AStructuralPowerGraphSubsystem::ProcessPoleWireDelta(AFGBuildablePowerPole* Pole)
 {
-	FStructuralPoleConnectionPoint(*this, Pole).OnWireOrGateChanged();
+	FStructuralPowerContext Ctx = GetProcessorContext();
+	if (IStructuralPowerProcessor* Processor =
+			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Pole))
+	{
+		Processor->OnWireDelta(Ctx, Pole);
+	}
 }
 
 void AStructuralPowerGraphSubsystem::ProcessPoleEndpoint(AFGBuildablePowerPole* Pole)
+{
+	FStructuralPowerContext Ctx = GetProcessorContext();
+	if (IStructuralPowerProcessor* Processor =
+			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Pole))
+	{
+		Processor->Process(Ctx, Pole);
+	}
+}
+
+void AStructuralPowerGraphSubsystem::ProcessPoleEndpointDirect(AFGBuildablePowerPole* Pole)
 {
 	if (!IsValid(Pole))
 	{
@@ -2925,7 +2950,11 @@ void AStructuralPowerGraphSubsystem::ProcessPoleEndpoint(AFGBuildablePowerPole* 
 void AStructuralPowerGraphSubsystem::TearDownLightStructuralLinks(AFGBuildableLightSource* Light)
 {
 	FStructuralPowerContext Ctx = GetProcessorContext();
-	FStructuralPowerLightProcessor::TearDown(Ctx, Light);
+	if (IStructuralPowerProcessor* Processor =
+			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Light))
+	{
+		Processor->TearDown(Ctx, Light);
+	}
 }
 
 void AStructuralPowerGraphSubsystem::ProcessLightEndpoint(
@@ -2933,14 +2962,22 @@ void AStructuralPowerGraphSubsystem::ProcessLightEndpoint(
 	bool bLocalPromoteOnly)
 {
 	FStructuralPowerContext Ctx = GetProcessorContext();
-	FStructuralPowerLightProcessor::Process(Ctx, Light, bLocalPromoteOnly);
+	if (IStructuralPowerProcessor* Processor =
+			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Light))
+	{
+		Processor->Process(Ctx, Light, bLocalPromoteOnly);
+	}
 }
 
 void AStructuralPowerGraphSubsystem::TearDownPanelStructuralLinks(
 	AFGBuildableLightsControlPanel* Panel)
 {
 	FStructuralPowerContext Ctx = GetProcessorContext();
-	FStructuralPowerPanelProcessor::TearDown(Ctx, Panel);
+	if (IStructuralPowerProcessor* Processor =
+			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Panel))
+	{
+		Processor->TearDown(Ctx, Panel);
+	}
 }
 
 void AStructuralPowerGraphSubsystem::ProcessPanelEndpoint(
@@ -2948,7 +2985,11 @@ void AStructuralPowerGraphSubsystem::ProcessPanelEndpoint(
 	bool bLocalPromoteOnly)
 {
 	FStructuralPowerContext Ctx = GetProcessorContext();
-	FStructuralPowerPanelProcessor::Process(Ctx, Panel, bLocalPromoteOnly);
+	if (IStructuralPowerProcessor* Processor =
+			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Panel))
+	{
+		Processor->Process(Ctx, Panel, bLocalPromoteOnly);
+	}
 }
 
 void AStructuralPowerGraphSubsystem::RestitchPanelEndpointsForRoot(
@@ -2956,7 +2997,11 @@ void AStructuralPowerGraphSubsystem::RestitchPanelEndpointsForRoot(
 	EAttachContext AttachContext)
 {
 	FStructuralPowerContext Ctx = MakeProcessorContext(AttachContext, Root);
-	FStructuralPowerPanelProcessor::RestitchOnRoot(Ctx, Root);
+	if (IStructuralPowerProcessor* Processor =
+			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Panel))
+	{
+		Processor->RestitchOnRoot(Ctx, Root);
+	}
 }
 
 void AStructuralPowerGraphSubsystem::RestitchPanelsWithControlOnRoot(int32 Root, FName ControlId)
@@ -2970,7 +3015,11 @@ void AStructuralPowerGraphSubsystem::RestitchLightEndpointsForRoot(
 	EAttachContext AttachContext)
 {
 	FStructuralPowerContext Ctx = MakeProcessorContext(AttachContext, Root);
-	FStructuralPowerLightProcessor::RestitchOnRoot(Ctx, Root);
+	if (IStructuralPowerProcessor* Processor =
+			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Light))
+	{
+		Processor->RestitchOnRoot(Ctx, Root);
+	}
 }
 
 void AStructuralPowerGraphSubsystem::ProcessGeneratorEndpoint(AFGBuildableGenerator* Generator)
