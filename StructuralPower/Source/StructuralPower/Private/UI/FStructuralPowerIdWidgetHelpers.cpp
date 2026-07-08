@@ -38,11 +38,6 @@ FString FormatIdOptionLabel(const FName& Id)
 		return TEXT("(none)");
 	}
 
-	if (Id == StructuralPowerConstants::ControlBypass)
-	{
-		return TEXT("(bypass)");
-	}
-
 	if (Id == StructuralPowerConstants::ControlUnconfigured)
 	{
 		return TEXT("(unconfigured)");

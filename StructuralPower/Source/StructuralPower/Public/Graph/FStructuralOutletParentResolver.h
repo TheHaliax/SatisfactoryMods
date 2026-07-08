@@ -60,4 +60,12 @@ public:
 		AFGBuildable* Outlet,
 		UWorld* World,
 		const FStructuralOutletParentResolveParams& Params);
+
+	static bool IsStructurallyAnchored(
+		const FStructuralOutletParentResolveResult& Result,
+		AFGBuildable* Outlet);
+
+	static const TCHAR* FormatParentMethod(EStructuralOutletParentMethod Method);
+
+	static FBox BoundsForStructuralAnchor(const FStructuralWallAnchor& Anchor, UWorld* World);
 };

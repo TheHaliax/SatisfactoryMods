@@ -41,13 +41,17 @@ bool FStructuralPowerRouter::UsesLegacyEffectiveIdModel(const EStructuralChannel
 
 bool FStructuralPowerRouter::IsReservedSentinel(FName Id)
 {
-	return Id == StructuralPowerConstants::ControlBypass
-		|| Id == StructuralPowerConstants::ControlUnconfigured;
+	return Id == StructuralPowerConstants::ControlUnconfigured;
 }
 
 bool FStructuralPowerRouter::IsPlayerChosenIdValid(FName Id)
 {
 	return !Id.IsNone() && !IsReservedSentinel(Id);
+}
+
+bool FStructuralPowerRouter::IsAssignedControl(FName Control)
+{
+	return IsPlayerChosenIdValid(Control);
 }
 
 bool FStructuralPowerRouter::ShouldRouteChannelLink(
@@ -87,8 +91,7 @@ bool FStructuralPowerRouter::ShouldRouteSwitchGate(
 {
 	if (!ComponentA.IsValid()
 		|| ComponentA != ComponentB
-		|| SwitchControl.IsNone()
-		|| SwitchControl == StructuralPowerConstants::ControlBypass
+		|| !IsAssignedControl(SwitchControl)
 		|| DeviceSource.IsNone())
 	{
 		return false;
@@ -99,21 +102,18 @@ bool FStructuralPowerRouter::ShouldRouteSwitchGate(
 
 FName FStructuralPowerRouter::ResolveSwitchControlFromTag(const AFGBuildableCircuitSwitch* Switch)
 {
-	if (!IsValid(Switch))
+	if (!IsValid(Switch) || !Switch->HasBuildingTag_Implementation())
 	{
-		return StructuralPowerConstants::ControlBypass;
+		return NAME_None;
 	}
 
-	if (Switch->HasBuildingTag_Implementation())
+	const FString Tag = Switch->GetBuildingTag_Implementation();
+	if (Tag.IsEmpty())
 	{
-		const FString Tag = Switch->GetBuildingTag_Implementation();
-		if (!Tag.IsEmpty())
-		{
-			return FName(*Tag);
-		}
+		return NAME_None;
 	}
 
-	return StructuralPowerConstants::ControlBypass;
+	return FName(*Tag);
 }
 
 FName FStructuralPowerRouter::MakeDefaultIdName(const FStructuralNodeId& CanonicalNodeId)

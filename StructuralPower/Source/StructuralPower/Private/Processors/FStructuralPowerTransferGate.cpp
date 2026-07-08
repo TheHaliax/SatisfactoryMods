@@ -20,6 +20,7 @@
 #include "Processors/FStructuralPowerBridgeProcessor.h"
 #include "Processors/FStructuralPowerLightProcessor.h"
 #include "Routing/EStructuralChannel.h"
+#include "Routing/FStructuralPowerRouter.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerConstants.h"
@@ -54,7 +55,13 @@ void SuspendPanelTransfer(
 	FStructuralPanelPorts Ports;
 	if (FStructuralPanelPortResolver::Resolve(Panel, Ports))
 	{
-		FStructuralPanelAttach::TearDownLinks(Panel, Ports);
+		if (UFGPowerConnectionComponent* InputPower =
+				FStructuralPanelPortResolver::AsPowerConnection(Ports.Input))
+		{
+			FStructuralDeviceAttach::TearDownConsumerLinks(InputPower);
+		}
+
+		FStructuralPanelAttach::TearDownDownstreamLinks(Panel, Ports);
 	}
 
 	if (FStructuralPowerTrace::IsEnabled())
@@ -133,9 +140,7 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 	bool bLocalPromoteOnly)
 {
 	if (Root == INDEX_NONE
-		|| SwitchControlId.IsNone()
-		|| SwitchControlId == StructuralPowerConstants::ControlBypass
-		|| !FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
+		|| !FStructuralPowerRouter::IsAssignedControl(SwitchControlId))
 	{
 		return;
 	}
@@ -242,10 +247,10 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 
 void FStructuralPowerTransferGate::RefreshKeyedTransferOnRoot(
 	FStructuralPowerContext& Ctx,
-	int32 Root)
+	int32 Root,
+	bool bLocalPromoteOnly)
 {
-	if (Root == INDEX_NONE
-		|| !FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
+	if (Root == INDEX_NONE)
 	{
 		return;
 	}
@@ -283,7 +288,7 @@ void FStructuralPowerTransferGate::RefreshKeyedTransferOnRoot(
 		}
 
 		const FName Control = Ctx.Graph().ResolveControl(Switch, EStructuralChannel::Switch);
-		if (Control.IsNone() || Control == StructuralPowerConstants::ControlBypass)
+		if (!FStructuralPowerRouter::IsAssignedControl(Control))
 		{
 			continue;
 		}
@@ -293,6 +298,6 @@ void FStructuralPowerTransferGate::RefreshKeyedTransferOnRoot(
 			Root,
 			Control,
 			/*bGateOpen=*/true,
-			/*bLocalPromoteOnly=*/true);
+			bLocalPromoteOnly);
 	}
 }

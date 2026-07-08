@@ -12,7 +12,6 @@
 void FStructuralCrossSiteGraph::Clear()
 {
 	SiteAdjacency.Empty();
-	CachedFeedSignatures.Empty();
 }
 
 void FStructuralCrossSiteGraph::AddCoupling(int32 SiteA, int32 SiteB)
@@ -103,7 +102,7 @@ void FStructuralCrossSiteGraph::SeedFeedSignature(
 		return;
 	}
 
-	CachedFeedSignatures.Add(Site, ComputeSiteFeedSignature(Graph, Site));
+	Graph.SiteState.SeedFeedSignature(Site, ComputeSiteFeedSignature(Graph, Site));
 }
 
 void FStructuralCrossSiteGraph::SeedFeedSignaturesForSites(
@@ -226,15 +225,14 @@ void FStructuralCrossSiteGraph::TraceFeedAffected(
 		Visited.Add(Site);
 
 		const FStructuralSiteFeedSignature NewSignature = ComputeSiteFeedSignature(Graph, Site);
-		if (const FStructuralSiteFeedSignature* Cached = CachedFeedSignatures.Find(Site))
+		FStructuralSiteFeedSignature CachedSignature;
+		if (Graph.SiteState.TryGetFeedSignature(Site, CachedSignature)
+			&& CachedSignature == NewSignature)
 		{
-			if (*Cached == NewSignature)
-			{
-				continue;
-			}
+			continue;
 		}
 
-		CachedFeedSignatures.Add(Site, NewSignature);
+		Graph.SiteState.SetFeedSignature(Site, NewSignature);
 		OutAffectedSites.Add(Site);
 
 		TArray<int32> Neighbors;

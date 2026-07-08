@@ -30,6 +30,10 @@ public:
 		AFGBuildableCircuitSwitch* Switch,
 		int32* OutWirePortIndex = nullptr);
 
+	static int32 CountWiredVanillaPorts(AFGBuildableCircuitSwitch* Switch);
+
+	static bool HasAnyVanillaWire(AFGBuildableCircuitSwitch* Switch);
+
 	static void ForEachWiredStructureSideAnchor(
 		AFGBuildableCircuitSwitch* Switch,
 		UWorld* World,

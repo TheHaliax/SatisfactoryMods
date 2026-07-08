@@ -24,10 +24,6 @@ public:
 
 	static bool TryApplySetCommand(const TArray<FString>& Args, UWorld* World);
 
-	static bool IsPropagationEnabled();
-	static bool IsGatePowerSwitchesEnabled();
-	static bool IsPowerSwitchManualGroupsEnabled();
-	static bool IsHoverpackStructuralEnabled();
 	static bool IsGroupLightingEnabled();
 	static float GetHoverpackHorizontalMultiplier();
 	static float GetHoverpackVerticalMultiplier();

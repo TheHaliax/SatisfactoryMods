@@ -13,7 +13,5 @@ class STRUCTURALPOWER_API FStructuralPowerGeneratorProcessor
 public:
 	static void Process(FStructuralPowerContext& Ctx, AFGBuildableGenerator* Generator);
 
-	static void RestitchOnRoot(FStructuralPowerContext& Ctx, int32 Root);
-
 	static void TearDown(FStructuralPowerContext& Ctx, AFGBuildableGenerator* Generator);
 };

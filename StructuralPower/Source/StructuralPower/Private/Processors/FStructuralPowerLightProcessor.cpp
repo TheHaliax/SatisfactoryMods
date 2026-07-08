@@ -11,10 +11,12 @@
 #include "FGCircuitConnectionComponent.h"
 #include "FGPowerConnectionComponent.h"
 #include "Core/EAttachContext.h"
+#include "Graph/FStructuralEndpointTypes.h"
 #include "Processors/FStructuralPowerTransferGate.h"
 #include "Routing/EStructuralChannel.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
+#include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
 
 void FStructuralPowerLightProcessor::TearDown(
@@ -73,13 +75,6 @@ void FStructuralPowerLightProcessor::Process(
 		return;
 	}
 
-	const bool bWireOrToggle =
-		FStructuralPowerTransferGate::IsBridgeWireOrToggleContext(AttachContext);
-	if (!bWireOrToggle)
-	{
-		FStructuralDeviceAttach::TearDownConsumerLinks(Plug);
-	}
-
 	if (FStructuralPowerTransferGate::IsConsumerVanillaWired(Plug))
 	{
 		Tracked.bStructuralPowerTransferActive = false;
@@ -104,6 +99,13 @@ void FStructuralPowerLightProcessor::Process(
 	}
 
 	const bool bPanelFed = Ctx.Graph().IsPanelDownstreamLight(Root, ChannelKey);
+
+	const bool bWireOrToggle =
+		FStructuralPowerTransferGate::IsBridgeWireOrToggleContext(AttachContext);
+	if (!bWireOrToggle && !bPanelFed)
+	{
+		FStructuralDeviceAttach::TearDownConsumerLinks(Plug);
+	}
 
 	const bool bAttached = FStructuralDeviceAttach::TryAttachConsumer(
 		Ctx.Graph(),
@@ -146,11 +148,6 @@ void FStructuralPowerLightProcessor::Process(
 		}
 	}
 
-	if (Root != INDEX_NONE && !ChannelKey.Source.IsNone())
-	{
-		FStructuralPowerPanelProcessor::RestitchWithControlOnRoot(Ctx, Root, ChannelKey.Source);
-	}
-
 	if (bPanelFed && IsValid(Plug))
 	{
 		TArray<UFGCircuitConnectionComponent*> HiddenLinks;
@@ -188,38 +185,4 @@ void FStructuralPowerLightProcessor::Process(
 		ChannelKey,
 		Plug,
 		PathLabel);
-}
-
-void FStructuralPowerLightProcessor::RestitchOnRoot(
-	FStructuralPowerContext& Ctx,
-	int32 Root)
-{
-	if (Root == INDEX_NONE || !FStructuralPowerModConfig::IsGroupLightingEnabled())
-	{
-		return;
-	}
-
-	Ctx.Graph().RefreshBridgeEndpointRootIndex();
-
-	const TArray<FStructuralNodeId>* LightIds =
-		Ctx.Graph().EndpointIndex.Get(Root, EStructuralEndpointKind::Light);
-	if (!LightIds || LightIds->Num() == 0)
-	{
-		return;
-	}
-
-	const TArray<FStructuralNodeId> LightIdsSnapshot = *LightIds;
-	for (const FStructuralNodeId& LightId : LightIdsSnapshot)
-	{
-		const FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(LightId);
-		if (!Tracked)
-		{
-			continue;
-		}
-
-		if (AFGBuildableLightSource* Light = Tracked->GetLight())
-		{
-			Process(Ctx, Light);
-		}
-	}
 }

@@ -171,7 +171,6 @@ void FStructuralPowerIdDisplaySync::RefreshIdDisplayFromList(
 			Widget->AssignControlText->SetText(FText::GetEmpty());
 			const FString Hint = List.ResolvedControl.IsNone()
 				|| List.ResolvedControl == StructuralPowerConstants::ControlUnconfigured
-				|| List.ResolvedControl == StructuralPowerConstants::ControlBypass
 				? TEXT("Enter id name")
 				: FString::Printf(TEXT("Auto: %s"), *List.ResolvedControl.ToString());
 			Widget->AssignControlText->SetHintText(FText::FromString(Hint));

@@ -10,5 +10,11 @@ class UFGCircuitConnectionComponent;
 class STRUCTURALPOWER_API FStructuralHiddenConnectionUtil
 {
 public:
-	static bool AddMeshOnlyHiddenLink(UFGCircuitConnectionComponent* A, UFGCircuitConnectionComponent* B);
+	static bool AddMeshOnlyHiddenLink(
+		UFGCircuitConnectionComponent* A,
+		UFGCircuitConnectionComponent* B);
+
+	static bool RemoveMeshOnlyHiddenLink(
+		UFGCircuitConnectionComponent* A,
+		UFGCircuitConnectionComponent* B);
 };

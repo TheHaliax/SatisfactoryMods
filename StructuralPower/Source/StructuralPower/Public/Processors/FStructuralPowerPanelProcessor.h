@@ -19,17 +19,5 @@ public:
 		AFGBuildableLightsControlPanel* Panel,
 		bool bLocalPromoteOnly = false);
 
-	static void RestitchOnRoot(FStructuralPowerContext& Ctx, int32 Root);
-
-	static void RestitchWithControlOnRoot(
-		FStructuralPowerContext& Ctx,
-		int32 Root,
-		FName ControlId);
-
 	static void TearDown(FStructuralPowerContext& Ctx, AFGBuildableLightsControlPanel* Panel);
-
-private:
-	static void FinishBridgeLegsAfterGateChange(
-		FStructuralPowerContext& Ctx,
-		AFGBuildableLightsControlPanel* Panel);
 };

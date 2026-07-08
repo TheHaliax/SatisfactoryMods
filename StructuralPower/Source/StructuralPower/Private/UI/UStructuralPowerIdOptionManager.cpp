@@ -92,7 +92,7 @@ void UStructuralPowerIdOptionManager::ConfigureForTarget(AFGBuildable* Target, E
 	else if (Target->IsA<AFGBuildableCircuitSwitch>() || Target->IsA<AFGBuildableLightsControlPanel>())
 	{
 		SourceOptions = {NAME_None};
-		ControlOptions = {StructuralPowerConstants::ControlBypass};
+		ControlOptions = {NAME_None};
 		if (Target->IsA<AFGBuildableLightsControlPanel>())
 		{
 			ControlOptions[0] = StructuralPowerConstants::ControlUnconfigured;
@@ -182,7 +182,7 @@ void UStructuralPowerIdOptionManager::SyncFromComponentList(const FStructuralCom
 		}
 
 		const FName Fallback = TargetBuildable.IsA<AFGBuildableCircuitSwitch>()
-			? StructuralPowerConstants::ControlBypass
+			? NAME_None
 			: StructuralPowerConstants::ControlUnconfigured;
 
 		if (ControlOptions.IsEmpty())

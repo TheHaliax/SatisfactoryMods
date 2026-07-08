@@ -23,6 +23,12 @@ void FStructuralEndpointIndex::RebuildFrom(
 			continue;
 		}
 
+		if (Pair.Value.Kind == EStructuralEndpointKind::Pole
+			&& !Pair.Value.bStructuralPowerTransferActive)
+		{
+			continue;
+		}
+
 		const int32 Root = Graph.FindRoot(Pair.Value.ParentId);
 		if (Root == INDEX_NONE)
 		{
@@ -109,6 +115,14 @@ void FStructuralEndpointIndex::ForEachBridgeOnRoot(
 	if (const TArray<FStructuralNodeId>* Switches = Get(Root, EStructuralEndpointKind::Switch))
 	{
 		for (const FStructuralNodeId& EndpointId : *Switches)
+		{
+			Visitor(EndpointId);
+		}
+	}
+
+	if (const TArray<FStructuralNodeId>* Storages = Get(Root, EStructuralEndpointKind::Storage))
+	{
+		for (const FStructuralNodeId& EndpointId : *Storages)
 		{
 			Visitor(EndpointId);
 		}

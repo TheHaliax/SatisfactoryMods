@@ -5,8 +5,7 @@
 
 #include "Attach/FStructuralDeviceAttach.h"
 #include "Buildables/FGBuildableCircuitSwitch.h"
-#include "Buildables/FGBuildableLightSource.h"
-#include "Buildables/FGBuildableLightsControlPanel.h"
+#include "StructuralPowerConstants.h"
 #include "Circuit/FStructuralCircuitPromotionScope.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
@@ -21,20 +20,15 @@
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Graph/FStructuralSwitchParentResolver.h"
-#include "Lightweight/FStructuralLightweightTypes.h"
+#include "Graph/FStructuralOutletParentResolver.h"
 #include "Network/UStructuralPowerSwitchListener.h"
-#include "Panel/FStructuralPanelPortResolver.h"
-#include "Connection/FStructuralSwitchConnectionPoint.h"
+#include "Connection/FStructuralSiteMembership.h"
 #include "Processors/FStructuralPowerBridgeProcessor.h"
-#include "Processors/FStructuralPowerLightProcessor.h"
 #include "Processors/FStructuralPowerTransferGate.h"
 #include "Routing/EStructuralChannel.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
-#include "Session/FStructuralPowerSessionSettings.h"
-#include "Engine/World.h"
-#include "TimerManager.h"
 
 void FStructuralPowerSwitchProcessor::TearDown(
 	FStructuralPowerContext& Ctx,
@@ -63,30 +57,312 @@ void FStructuralPowerSwitchProcessor::TearDown(
 	}
 }
 
-void FStructuralPowerSwitchProcessor::StripInactiveLinksOnRoot(
-	FStructuralPowerContext& Ctx,
-	int32 Root)
+namespace
 {
-	if (Root == INDEX_NONE || !FStructuralPowerModConfig::IsGatePowerSwitchesEnabled())
+static void OpenDirectedBridgeLeg(
+	UFGStructuralPowerConnectionComponent* SourceBus,
+	UFGCircuitConnectionComponent* Leg)
+{
+	if (!IsValid(SourceBus) || !IsValid(Leg) || SourceBus == Leg)
 	{
 		return;
 	}
 
-	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Ctx.Graph().TrackedEndpoints)
+	if (SourceBus->HasHiddenConnection(Leg))
 	{
-		if (Pair.Value.Kind != EStructuralEndpointKind::Switch
-			|| Ctx.Graph().StructureGraph.FindRoot(Pair.Value.ParentId) != Root)
+		SourceBus->RemoveHiddenConnection(Leg);
+	}
+}
+
+static void CloseDirectedBridgeLeg(
+	UFGStructuralPowerConnectionComponent* SourceBus,
+	UFGPowerConnectionComponent* Leg)
+{
+	if (!IsValid(SourceBus) || !IsValid(Leg) || SourceBus == Leg)
+	{
+		return;
+	}
+
+	if (!SourceBus->HasHiddenConnection(Leg))
+	{
+		SourceBus->AddHiddenConnection(Leg);
+	}
+}
+
+static UFGPowerConnectionComponent* FindSingleWireSourceBridgeLeg(AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(Switch))
+	{
+		return nullptr;
+	}
+
+	UFGPowerConnectionComponent* Conn0Power = Cast<UFGPowerConnectionComponent>(Switch->GetConnection0());
+	UFGPowerConnectionComponent* Conn1Power = Cast<UFGPowerConnectionComponent>(Switch->GetConnection1());
+	const bool bConn0Wired = IsValid(Conn0Power) && Conn0Power->GetNumConnections() > 0;
+	const bool bConn1Wired = IsValid(Conn1Power) && Conn1Power->GetNumConnections() > 0;
+
+	if (bConn0Wired && !bConn1Wired && IsValid(Conn1Power))
+	{
+		return Conn1Power;
+	}
+
+	if (bConn1Wired && !bConn0Wired && IsValid(Conn0Power))
+	{
+		return Conn0Power;
+	}
+
+	return nullptr;
+}
+
+static void StripSwitchVanillaPortHiddenLinks(
+	AFGBuildableCircuitSwitch* Switch,
+	UFGStructuralPowerConnectionComponent* Bus)
+{
+	if (!IsValid(Switch) || !IsValid(Bus))
+	{
+		return;
+	}
+
+	OpenDirectedBridgeLeg(Bus, Switch->GetConnection0());
+	OpenDirectedBridgeLeg(Bus, Switch->GetConnection1());
+}
+
+static void AssignConfiguredBridgeSlots(
+	UFGStructuralPowerConnectionComponent* SourceBus,
+	UFGStructuralPowerConnectionComponent* ControlBus,
+	AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(SourceBus) || !IsValid(ControlBus) || !IsValid(Switch))
+	{
+		return;
+	}
+
+	OpenDirectedBridgeLeg(SourceBus, ControlBus);
+	OpenDirectedBridgeLeg(SourceBus, Switch->GetConnection0());
+	OpenDirectedBridgeLeg(SourceBus, Switch->GetConnection1());
+	OpenDirectedBridgeLeg(ControlBus, Switch->GetConnection0());
+	OpenDirectedBridgeLeg(ControlBus, Switch->GetConnection1());
+
+	if (UFGPowerConnectionComponent* Conn0 = Cast<UFGPowerConnectionComponent>(Switch->GetConnection0()))
+	{
+		CloseDirectedBridgeLeg(SourceBus, Conn0);
+	}
+
+	if (UFGPowerConnectionComponent* Conn1 = Cast<UFGPowerConnectionComponent>(Switch->GetConnection1()))
+	{
+		CloseDirectedBridgeLeg(ControlBus, Conn1);
+	}
+}
+
+static void OpenConfiguredBridgeSlots(
+	UFGStructuralPowerConnectionComponent* SourceBus,
+	UFGStructuralPowerConnectionComponent* ControlBus,
+	AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(Switch))
+	{
+		return;
+	}
+
+	if (IsValid(SourceBus))
+	{
+		OpenDirectedBridgeLeg(SourceBus, Switch->GetConnection0());
+		OpenDirectedBridgeLeg(SourceBus, Switch->GetConnection1());
+	}
+
+	if (IsValid(ControlBus))
+	{
+		OpenDirectedBridgeLeg(ControlBus, Switch->GetConnection0());
+		OpenDirectedBridgeLeg(ControlBus, Switch->GetConnection1());
+	}
+
+	if (IsValid(SourceBus) && IsValid(ControlBus))
+	{
+		OpenDirectedBridgeLeg(SourceBus, ControlBus);
+	}
+}
+} // namespace
+
+void FStructuralPowerSwitchProcessor::ArmPlacementSourceBridgeLegs(
+	UFGStructuralPowerConnectionComponent* SourceBus,
+	AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(SourceBus) || !IsValid(Switch))
+	{
+		return;
+	}
+
+	auto OpenLeg = [](UFGStructuralPowerConnectionComponent* Bus, UFGCircuitConnectionComponent* Leg)
+	{
+		if (!IsValid(Bus) || !IsValid(Leg) || Bus == Leg)
+		{
+			return;
+		}
+
+		if (Bus->HasHiddenConnection(Leg))
+		{
+			Bus->RemoveHiddenConnection(Leg);
+		}
+	};
+
+	auto CloseLeg = [](UFGStructuralPowerConnectionComponent* Bus, UFGPowerConnectionComponent* Leg)
+	{
+		if (!IsValid(Bus) || !IsValid(Leg) || Bus == Leg)
+		{
+			return;
+		}
+
+		if (!Bus->HasHiddenConnection(Leg))
+		{
+			Bus->AddHiddenConnection(Leg);
+		}
+	};
+
+	OpenLeg(SourceBus, Switch->GetConnection0());
+	OpenLeg(SourceBus, Switch->GetConnection1());
+
+	if (UFGStructuralPowerConnectionComponent* ControlBus =
+			AStructuralPowerGraphSubsystem::FindSwitchControlBus(Switch))
+	{
+		OpenLeg(SourceBus, ControlBus);
+		OpenLeg(ControlBus, Switch->GetConnection0());
+		OpenLeg(ControlBus, Switch->GetConnection1());
+	}
+
+	if (UFGPowerConnectionComponent* Conn0 = Cast<UFGPowerConnectionComponent>(Switch->GetConnection0()))
+	{
+		CloseLeg(SourceBus, Conn0);
+	}
+
+	if (!IsValid(AStructuralPowerGraphSubsystem::FindSwitchControlBus(Switch)))
+	{
+		if (UFGPowerConnectionComponent* Conn1 = Cast<UFGPowerConnectionComponent>(Switch->GetConnection1()))
+		{
+			CloseLeg(SourceBus, Conn1);
+		}
+	}
+}
+
+void FStructuralPowerSwitchProcessor::DisarmDirectedPair(
+	FStructuralPowerContext& Ctx,
+	AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(Switch))
+	{
+		return;
+	}
+
+	UFGStructuralPowerConnectionComponent* SourceBus = Ctx.Graph().FindBusConnector(Switch);
+	if (!IsValid(SourceBus))
+	{
+		return;
+	}
+
+	if (UFGPowerConnectionComponent* UnwiredLeg = FindSingleWireSourceBridgeLeg(Switch))
+	{
+		OpenDirectedBridgeLeg(SourceBus, UnwiredLeg);
+	}
+
+	OpenDirectedBridgeLeg(SourceBus, Switch->GetConnection0());
+	OpenDirectedBridgeLeg(SourceBus, Switch->GetConnection1());
+
+	if (UFGStructuralPowerConnectionComponent* ControlBus =
+			AStructuralPowerGraphSubsystem::FindSwitchControlBus(Switch))
+	{
+		FStructuralDeviceAttach::TearDownConsumerLinks(ControlBus);
+		OpenConfiguredBridgeSlots(SourceBus, ControlBus, Switch);
+	}
+}
+
+void FStructuralPowerSwitchProcessor::SyncDirectedBridgePair(
+	FStructuralPowerContext& Ctx,
+	AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(Switch))
+	{
+		return;
+	}
+
+	const bool bWired = FStructuralSwitchParentResolver::HasAnyVanillaWire(Switch);
+	const bool bConfigured = HasAssignedControl(Ctx, Switch);
+	if (!bWired && !bConfigured)
+	{
+		return;
+	}
+
+	UFGStructuralPowerConnectionComponent* SourceBus = Ctx.Graph().FindBusConnector(Switch);
+	if (!IsValid(SourceBus))
+	{
+		SourceBus = Ctx.Graph().GetOrCreateBusConnector(Switch);
+	}
+	if (!IsValid(SourceBus))
+	{
+		return;
+	}
+
+	if (bWired)
+	{
+		OpenDirectedBridgeLeg(SourceBus, Switch->GetConnection0());
+		OpenDirectedBridgeLeg(SourceBus, Switch->GetConnection1());
+		if (UFGPowerConnectionComponent* SourceBridgeLeg = FindSingleWireSourceBridgeLeg(Switch))
+		{
+			CloseDirectedBridgeLeg(SourceBus, SourceBridgeLeg);
+		}
+
+		if (UFGStructuralPowerConnectionComponent* ControlBus =
+				AStructuralPowerGraphSubsystem::FindSwitchControlBus(Switch))
+		{
+			FStructuralDeviceAttach::TearDownConsumerLinks(ControlBus);
+			OpenConfiguredBridgeSlots(SourceBus, ControlBus, Switch);
+		}
+	}
+	else if (bConfigured)
+	{
+		UFGStructuralPowerConnectionComponent* ControlBus =
+			Ctx.Graph().GetOrCreateSwitchControlBus(Switch);
+		if (IsValid(ControlBus))
+		{
+			AssignConfiguredBridgeSlots(SourceBus, ControlBus, Switch);
+		}
+	}
+}
+
+void FStructuralPowerSwitchProcessor::RemeshUnmeshedPeersAfterBulkLoad(FStructuralPowerContext& Ctx)
+{
+	AStructuralPowerGraphSubsystem& Graph = Ctx.Graph();
+	Graph.RefreshBridgeEndpointRootIndex();
+
+	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Graph.TrackedEndpoints)
+	{
+		if (Pair.Value.Kind != EStructuralEndpointKind::Switch)
 		{
 			continue;
 		}
 
 		AFGBuildableCircuitSwitch* Switch = Pair.Value.GetSwitch();
-		if (!IsValid(Switch) || Switch->IsBridgeActive())
+		if (!IsValid(Switch) || !Pair.Value.ParentId.IsValid())
 		{
 			continue;
 		}
 
-		TearDown(Ctx, Switch);
+		UFGStructuralPowerConnectionComponent* OutletBus = Graph.FindBusConnector(Switch);
+		if (!IsValid(OutletBus) || Graph.HasBridgeBusPeerMesh(OutletBus))
+		{
+			continue;
+		}
+
+		const int32 Root = Graph.StructureGraph.FindRoot(Pair.Value.ParentId);
+		if (Root == INDEX_NONE)
+		{
+			continue;
+		}
+
+		Graph.TryMeshPeerBusOnComponent(
+			Switch,
+			OutletBus,
+			Root,
+			Pair.Key,
+			/*bBridgePeersOnly=*/true);
 	}
 }
 
@@ -101,7 +377,7 @@ bool FStructuralPowerSwitchProcessor::HasAssignedControl(
 
 	const FName Control = const_cast<AStructuralPowerGraphSubsystem&>(Ctx.Graph())
 		.ResolveControl(const_cast<AFGBuildableCircuitSwitch*>(Switch), EStructuralChannel::Switch);
-	return Control != StructuralPowerConstants::ControlBypass && !Control.IsNone();
+	return FStructuralPowerRouter::IsAssignedControl(Control);
 }
 
 bool FStructuralPowerSwitchProcessor::NeedsAdvancedWork(
@@ -250,558 +526,6 @@ void FStructuralPowerSwitchProcessor::EnsureListener(
 	Listener->BindSubsystem(&Ctx.Graph(), Switch);
 }
 
-void FStructuralPowerSwitchProcessor::RestitchKeyedSubnet(
-	FStructuralPowerContext& Ctx,
-	AFGBuildableCircuitSwitch* Switch,
-	UFGStructuralPowerConnectionComponent* OutletBus,
-	int32 ComponentRoot,
-	const FStructuralNodeId& SwitchNodeId)
-{
-	if (!IsValid(Switch) || !IsValid(OutletBus) || ComponentRoot == INDEX_NONE)
-	{
-		return;
-	}
-
-	if (UFGCircuitConnectionComponent* Feed = Ctx.Graph().GetComponentSourceConnector(ComponentRoot, Switch))
-	{
-		if (UFGPowerConnectionComponent* FeedPower = Cast<UFGPowerConnectionComponent>(Feed))
-		{
-			Ctx.Graph().LinkHiddenPair(OutletBus, FeedPower);
-		}
-	}
-
-	Ctx.Graph().EndpointIndex.ForEachBridgeOnRoot(ComponentRoot, [&](const FStructuralNodeId& PeerId)
-	{
-		if (PeerId == SwitchNodeId)
-		{
-			return;
-		}
-
-		const FTrackedEndpoint* PeerTracked = Ctx.Graph().TrackedEndpoints.Find(PeerId);
-		if (!PeerTracked)
-		{
-			return;
-		}
-
-		AFGBuildable* SiblingHost = PeerTracked->Actor.Get();
-		if (!IsValid(SiblingHost))
-		{
-			return;
-		}
-
-		if (!Ctx.Graph().ShouldMeshEndpoints(Switch, SiblingHost, ComponentRoot))
-		{
-			return;
-		}
-
-		if (UFGStructuralPowerConnectionComponent* SiblingBus = Ctx.Graph().FindBusConnector(SiblingHost))
-		{
-			Ctx.Graph().LinkHiddenPair(OutletBus, SiblingBus);
-		}
-	});
-
-	UFGStructuralPowerConnectionComponent* Seed = FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus)
-		? OutletBus
-		: Ctx.Graph().FindPoweredHiddenReachable(OutletBus);
-	if (Seed)
-	{
-		Ctx.Graph().PromoteDirectHiddenLinks(Seed);
-	}
-}
-
-void FStructuralPowerSwitchProcessor::ApplyBaseOutletAttach(
-	FStructuralPowerContext& Ctx,
-	AFGBuildableCircuitSwitch* Switch,
-	UFGStructuralPowerConnectionComponent* OutletBus,
-	int32 Root)
-{
-	FStructuralPowerBridgeProcessor::ApplyLocalAttachForSwitch(
-		Ctx,
-		Switch,
-		OutletBus,
-		Root,
-		Ctx.Graph().MakeNodeId(Switch),
-		Ctx.GetAttachContext(),
-		/*bKeyedSubnet=*/false);
-}
-
-void FStructuralPowerSwitchProcessor::ApplyAdvancedAttach(
-	FStructuralPowerContext& Ctx,
-	AFGBuildableCircuitSwitch* Switch,
-	UFGStructuralPowerConnectionComponent* OutletBus,
-	int32 Root,
-	const FStructuralNodeId& SwitchId,
-	bool bKeyedSubnet)
-{
-	FStructuralPowerBridgeProcessor::ApplyLocalAttachForSwitch(
-		Ctx,
-		Switch,
-		OutletBus,
-		Root,
-		SwitchId,
-		Ctx.GetAttachContext(),
-		bKeyedSubnet);
-}
-
-void FStructuralPowerSwitchProcessor::ApplyRuntimeAttach(
-	FStructuralPowerContext& Ctx,
-	AFGBuildableCircuitSwitch* Switch,
-	UFGStructuralPowerConnectionComponent* /*OutletBus*/,
-	int32 /*Root*/,
-	const FStructuralNodeId& /*SwitchId*/,
-	EAttachContext AttachContext)
-{
-	if (!IsValid(Switch))
-	{
-		return;
-	}
-
-	FStructuralSwitchConnectionPoint(Ctx.Graph(), Switch).OnWireOrGateChanged(AttachContext);
-}
-
-void FStructuralPowerSwitchProcessor::RegisterOutletBase(
-	FStructuralPowerContext& Ctx,
-	AFGBuildableCircuitSwitch* Switch,
-	const FStructuralWallAnchor& ParentAnchor,
-	FTrackedEndpoint& InOutTracked,
-	int32& OutRoot,
-	FStructuralNodeId& OutParentId)
-{
-	OutRoot = ResolveMountRoot(Ctx, ParentAnchor, OutParentId);
-	InOutTracked.Actor = Switch;
-	InOutTracked.ParentId = OutParentId;
-	InOutTracked.Kind = EStructuralEndpointKind::Switch;
-	Ctx.Graph().RegisterBuildableActor(Switch);
-	if (OutParentId.IsValid() && OutRoot != INDEX_NONE)
-	{
-		if (IsBulkLoadAttachContext(Ctx.GetAttachContext()))
-		{
-			Ctx.Graph().AddEndpointToRootIndex(OutRoot, EStructuralEndpointKind::Switch, Ctx.Graph().MakeNodeId(Switch));
-		}
-		else
-		{
-			Ctx.Graph().MarkBridgeEndpointRootIndexDirty();
-		}
-	}
-	EnsureListener(Ctx, Switch);
-}
-
-void FStructuralPowerSwitchProcessor::LogConsumerRestitchSummary(
-	FStructuralPowerContext& Ctx,
-	AFGBuildableCircuitSwitch* Switch,
-	int32 Root,
-	FName SwitchControlId,
-	bool bSwitchOn,
-	const TCHAR* PhaseSuffix)
-{
-	if (Root == INDEX_NONE || SwitchControlId.IsNone())
-	{
-		return;
-	}
-
-	if (!PhaseSuffix)
-	{
-		PhaseSuffix = TEXT("");
-	}
-
-	int32 PanelCount = 0;
-	int32 PanelFedCount = 0;
-	int32 DirectLightCount = 0;
-	int32 PoweredDirectCount = 0;
-	int32 PanelLightCount = 0;
-	int32 ArmedPanelCount = 0;
-	int32 PassPanelCount = 0;
-
-	auto CountMatchingPanel = [&](const FStructuralNodeId& NodeId)
-	{
-		const FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(NodeId);
-		if (!Tracked)
-		{
-			return;
-		}
-
-		AFGBuildableLightsControlPanel* Panel = Tracked->GetPanel();
-		if (!IsValid(Panel))
-		{
-			return;
-		}
-
-		if (Ctx.Graph().ResolveSource(Panel, EStructuralChannel::Light) != SwitchControlId)
-		{
-			return;
-		}
-
-		++PanelCount;
-
-		FStructuralPanelPorts Ports;
-		if (!FStructuralPanelPortResolver::Resolve(Panel, Ports))
-		{
-			return;
-		}
-
-		const FStructuralChannelKey PanelKey = Ctx.Graph().ResolveChannelKeyForBuildable(Panel);
-		const UFGPowerConnectionComponent* InputPower =
-			FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
-		const bool bSupplyReady =
-			FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower);
-		const UFGPowerConnectionComponent* DownstreamPower =
-			FStructuralPanelPortResolver::AsPowerConnection(Ports.Downstream);
-		const bool bDownstreamFed =
-			FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(DownstreamPower);
-		const int32 Controlled =
-			Panel->GetControlledBuildables(AFGBuildableLightSource::StaticClass()).Num();
-
-		if (bSupplyReady)
-		{
-			++PanelFedCount;
-		}
-
-		if (FStructuralPowerTrace::IsEnabled())
-		{
-			FStructuralPowerTrace::LogPanelConsumer(
-				Panel,
-				Root,
-				PanelKey,
-				Ports,
-				bSupplyReady,
-				Controlled,
-				TEXT("restitch_summary"));
-		}
-
-		for (AFGBuildable* ControlledBuildable :
-				Panel->GetControlledBuildables(AFGBuildableLightSource::StaticClass()))
-		{
-			AFGBuildableLightSource* ControlledLight =
-				FStructuralPowerBuildableCasts::AsLight(ControlledBuildable);
-			if (!IsValid(ControlledLight))
-			{
-				continue;
-			}
-
-			UFGPowerConnectionComponent* Plug =
-				FStructuralDeviceAttach::FindLightWireConnection(ControlledLight);
-			const bool bArmedOn = ControlledLight->ShouldLightBeOn();
-			++PanelLightCount;
-			if (bArmedOn)
-			{
-				++ArmedPanelCount;
-			}
-			if (bSupplyReady && bArmedOn)
-			{
-				++PassPanelCount;
-			}
-
-			if (FStructuralPowerTrace::IsEnabled())
-			{
-				const FStructuralChannelKey LightKey =
-					Ctx.Graph().ResolveChannelKeyForBuildable(ControlledLight);
-				FStructuralPowerTrace::LogLightConsumer(
-					ControlledLight,
-					Root,
-					true,
-					LightKey,
-					Plug,
-					TEXT("panel_downstream"),
-					bSupplyReady ? 1 : 0,
-					bDownstreamFed ? 1 : 0);
-			}
-		}
-	};
-
-	auto CountMatchingLight = [&](const FStructuralNodeId& NodeId)
-	{
-		if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
-		{
-			return;
-		}
-
-		const FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(NodeId);
-		if (!Tracked)
-		{
-			return;
-		}
-
-		AFGBuildableLightSource* Light = Tracked->GetLight();
-		if (!IsValid(Light))
-		{
-			return;
-		}
-
-		const FStructuralChannelKey LightKey = Ctx.Graph().ResolveChannelKeyForBuildable(Light);
-		if (LightKey.Source != SwitchControlId)
-		{
-			return;
-		}
-
-		if (Ctx.Graph().IsPanelDownstreamLight(Root, LightKey))
-		{
-			return;
-		}
-
-		++DirectLightCount;
-		UFGPowerConnectionComponent* PlugForCount = FStructuralDeviceAttach::FindLightWireConnection(Light);
-		if (IsValid(PlugForCount) && PlugForCount->HasPower())
-		{
-			++PoweredDirectCount;
-		}
-
-		if (FStructuralPowerTrace::IsEnabled())
-		{
-			UFGPowerConnectionComponent* Plug = FStructuralDeviceAttach::FindLightWireConnection(Light);
-			FStructuralPowerTrace::LogLightConsumer(
-				Light,
-				Root,
-				true,
-				LightKey,
-				Plug,
-				TEXT("direct"));
-		}
-	};
-
-	if (const TArray<FStructuralNodeId>* PanelIds =
-			Ctx.Graph().EndpointIndex.Get(Root, EStructuralEndpointKind::Panel))
-	{
-		for (const FStructuralNodeId& NodeId : *PanelIds)
-		{
-			CountMatchingPanel(NodeId);
-		}
-	}
-
-	if (const TArray<FStructuralNodeId>* LightIds =
-			Ctx.Graph().EndpointIndex.Get(Root, EStructuralEndpointKind::Light))
-	{
-		for (const FStructuralNodeId& NodeId : *LightIds)
-		{
-			CountMatchingLight(NodeId);
-		}
-	}
-
-	FStructuralChannelKey SwitchKey;
-	SwitchKey.Tag = EStructuralChannel::Switch;
-	SwitchKey.Control = SwitchControlId;
-
-	const bool bBridgeActive = IsValid(Switch) && Switch->IsBridgeActive();
-	const TCHAR* RestitchPhase = bSwitchOn ? TEXT("on") : TEXT("off");
-
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] switch restitch_%s%s %s scope=%s site=%d role=%s root=%d control=%s"
-			" bridgeActive=%d panels=%d panelFed=%d direct_lights=%d poweredDirect=%d"
-			" panel_lights=%d armedPanel=%d passPanel=%d"),
-		RestitchPhase,
-		PhaseSuffix,
-		IsValid(Switch) ? *Switch->GetName() : TEXT("null"),
-		StructuralPowerScopeToString(EStructuralPowerScope::Site),
-		Root,
-		StructuralPowerRoleToString(EStructuralPowerRole::Router),
-		Root,
-		*FStructuralPowerTrace::FormatControlForTrace(SwitchKey),
-		bBridgeActive ? 1 : 0,
-		PanelCount,
-		PanelFedCount,
-		DirectLightCount,
-		PoweredDirectCount,
-		PanelLightCount,
-		ArmedPanelCount,
-		PassPanelCount);
-}
-
-void FStructuralPowerSwitchProcessor::ScheduleSettledRestitchSummary(
-	AStructuralPowerGraphSubsystem& Graph,
-	AFGBuildableCircuitSwitch* Switch,
-	int32 Root,
-	FName SwitchControlId)
-{
-	UWorld* World = Graph.GetWorld();
-	if (!IsValid(World) || !IsValid(Switch) || Root == INDEX_NONE || SwitchControlId.IsNone())
-	{
-		return;
-	}
-
-	TWeakObjectPtr<AStructuralPowerGraphSubsystem> WeakGraph(&Graph);
-	TWeakObjectPtr<AFGBuildableCircuitSwitch> WeakSwitch(Switch);
-	const int32 RootCopy = Root;
-	const FName ControlCopy = SwitchControlId;
-
-	// One tick so OFF pass/fail reads after circuit settle, not mid-hook.
-	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
-		[WeakGraph, WeakSwitch, RootCopy, ControlCopy]()
-		{
-			AStructuralPowerGraphSubsystem* GraphPtr = WeakGraph.Get();
-			AFGBuildableCircuitSwitch* SwitchPtr = WeakSwitch.Get();
-			if (!IsValid(GraphPtr) || !IsValid(SwitchPtr))
-			{
-				return;
-			}
-
-			FStructuralPowerContext Ctx =
-				GraphPtr->MakeProcessorContext(EAttachContext::Toggle, RootCopy);
-			LogConsumerRestitchSummary(
-				Ctx,
-				SwitchPtr,
-				RootCopy,
-				ControlCopy,
-				/*bSwitchOn=*/false,
-				TEXT("_settled"));
-		}));
-}
-
-void FStructuralPowerSwitchProcessor::RestitchKeyedConsumersOnRoot(
-	FStructuralPowerContext& Ctx,
-	int32 Root,
-	FName SwitchControlId,
-	bool bLocalPromoteOnly)
-{
-	if (Root == INDEX_NONE
-		|| SwitchControlId.IsNone()
-		|| SwitchControlId == StructuralPowerConstants::ControlBypass)
-	{
-		return;
-	}
-
-	const bool bDeferPanelsToGateFinish =
-		Ctx.GetAttachContext() == EAttachContext::Toggle
-		&& FStructuralPowerModConfig::IsGroupLightingEnabled();
-
-	Ctx.Graph().RefreshBridgeEndpointRootIndex();
-
-	auto RestitchMatchingPanel = [&](const FStructuralNodeId& NodeId)
-	{
-		const FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(NodeId);
-		if (!Tracked)
-		{
-			return;
-		}
-
-		AFGBuildable* Host = Tracked->Actor.Get();
-		if (!IsValid(Host))
-		{
-			return;
-		}
-
-		if (Ctx.Graph().ResolveSource(Host, EStructuralChannel::Light) != SwitchControlId)
-		{
-			return;
-		}
-
-		if (AFGBuildableLightsControlPanel* Panel = Tracked->GetPanel())
-		{
-			FTrackedEndpoint& Mutable = Ctx.Graph().TrackedEndpoints.FindOrAdd(NodeId);
-			Mutable.bPanelLinksReady = false;
-			Mutable.bDownstreamLinksReady = false;
-			FStructuralPowerPanelProcessor::Process(Ctx, Panel, bLocalPromoteOnly);
-		}
-	};
-
-	auto RestitchMatchingLight = [&](const FStructuralNodeId& NodeId)
-	{
-		if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
-		{
-			return;
-		}
-
-		const FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(NodeId);
-		if (!Tracked)
-		{
-			return;
-		}
-
-		AFGBuildable* Host = Tracked->Actor.Get();
-		if (!IsValid(Host))
-		{
-			return;
-		}
-
-		if (Ctx.Graph().ResolveSource(Host, EStructuralChannel::Light) != SwitchControlId)
-		{
-			return;
-		}
-
-		if (AFGBuildableLightSource* Light = Tracked->GetLight())
-		{
-			FStructuralPowerLightProcessor::Process(Ctx, Light, bLocalPromoteOnly);
-		}
-	};
-
-	if (!bDeferPanelsToGateFinish)
-	{
-		if (const TArray<FStructuralNodeId>* PanelIds =
-				Ctx.Graph().EndpointIndex.Get(Root, EStructuralEndpointKind::Panel))
-		{
-			const TArray<FStructuralNodeId> PanelIdsSnapshot = *PanelIds;
-			for (const FStructuralNodeId& NodeId : PanelIdsSnapshot)
-			{
-				RestitchMatchingPanel(NodeId);
-			}
-		}
-	}
-
-	if (const TArray<FStructuralNodeId>* LightIds =
-			Ctx.Graph().EndpointIndex.Get(Root, EStructuralEndpointKind::Light))
-	{
-		const TArray<FStructuralNodeId> LightIdsSnapshot = *LightIds;
-		for (const FStructuralNodeId& NodeId : LightIdsSnapshot)
-		{
-			RestitchMatchingLight(NodeId);
-		}
-	}
-}
-
-void FStructuralPowerSwitchProcessor::RestitchActiveKeyedConsumersOnRoot(
-	FStructuralPowerContext& Ctx,
-	int32 Root)
-{
-	if (Root == INDEX_NONE
-		|| !FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
-	{
-		return;
-	}
-
-	Ctx.Graph().RefreshBridgeEndpointRootIndex();
-
-	const TArray<FStructuralNodeId>* SwitchIds =
-		Ctx.Graph().EndpointIndex.Get(Root, EStructuralEndpointKind::Switch);
-	if (!SwitchIds || SwitchIds->Num() == 0)
-	{
-		return;
-	}
-
-	const TArray<FStructuralNodeId> SwitchIdsSnapshot = *SwitchIds;
-	for (const FStructuralNodeId& NodeId : SwitchIdsSnapshot)
-	{
-		const FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(NodeId);
-		if (!Tracked)
-		{
-			continue;
-		}
-
-		AFGBuildableCircuitSwitch* KeyedSwitch = Tracked->GetSwitch();
-		if (!IsValid(KeyedSwitch)
-			|| !KeyedSwitch->IsBridgeActive()
-			|| !HasAssignedControl(Ctx, KeyedSwitch))
-		{
-			continue;
-		}
-
-		UFGStructuralPowerConnectionComponent* OutletBus =
-			Ctx.Graph().GetOrCreateBusConnector(KeyedSwitch);
-		if (IsValid(OutletBus))
-		{
-			FStructuralPowerBridgeProcessor::ApplyLocalAttachForSwitch(
-				Ctx,
-				KeyedSwitch,
-				OutletBus,
-				Root,
-				NodeId,
-				Ctx.GetAttachContext(),
-				/*bKeyedSubnet=*/true);
-		}
-
-		const FName SwitchControl = Ctx.Graph().ResolveControl(KeyedSwitch, EStructuralChannel::Switch);
-		RestitchKeyedConsumersOnRoot(Ctx, Root, SwitchControl, /*bLocalPromoteOnly=*/true);
-		LogConsumerRestitchSummary(Ctx, KeyedSwitch, Root, SwitchControl, /*bSwitchOn=*/true);
-	}
-}
-
 void FStructuralPowerSwitchProcessor::PropagateWiredFeedChange(
 	FStructuralPowerContext& Ctx,
 	AFGBuildableCircuitSwitch* Switch,
@@ -815,12 +539,6 @@ void FStructuralPowerSwitchProcessor::OnStateChanged(
 	AFGBuildableCircuitSwitch* Switch)
 {
 	if (!IsValid(Switch) || !Switch->HasAuthority())
-	{
-		return;
-	}
-
-	if (!FStructuralPowerSessionSettings::IsPropagationEnabled()
-		|| !FStructuralPowerModConfig::IsGatePowerSwitchesEnabled())
 	{
 		return;
 	}
@@ -839,7 +557,6 @@ void FStructuralPowerSwitchProcessor::OnStateChanged(
 
 		const FStructuralChannelKey SwitchKey = Ctx.Graph().ResolveChannelKeyForBuildable(Switch);
 		const bool bKeyedSubnet = HasAssignedControl(Ctx, Switch);
-		const bool bWiredBridge = FStructuralSwitchParentResolver::IsWiredToStructureSide(Switch);
 		const bool bSwitchOn = Switch->IsBridgeActive();
 
 		Ctx.Graph().MarkEchoDirtyForSwitchToggle(Switch, Root);
@@ -847,106 +564,19 @@ void FStructuralPowerSwitchProcessor::OnStateChanged(
 		FStructuralPowerTrace::LogHook(
 			Switch,
 			TEXT("OnIsSwitchOnChanged"),
-			bSwitchOn ? TEXT("restitch_on") : TEXT("restitch_off"),
+			bSwitchOn ? TEXT("transfer_on") : TEXT("transfer_off"),
 			nullptr);
 
-		if (!bSwitchOn)
-		{
-			FStructuralPowerTransferGate::FlipBridgeGate(Ctx, Switch, /*bGateOpen=*/false);
-			TearDown(Ctx, Switch);
-			if (Root != INDEX_NONE
-				&& bKeyedSubnet
-				&& FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
-			{
-				FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
-					Ctx,
-					Root,
-					SwitchKey.Control,
-					/*bGateOpen=*/false,
-					/*bLocalPromoteOnly=*/true);
-			}
-			if (bWiredBridge
-				&& !FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
-			{
-				PropagateWiredFeedChange(Ctx, Switch, Root);
-			}
-		}
-		else
-		{
-			FStructuralPowerTransferGate::FlipBridgeGate(Ctx, Switch, /*bGateOpen=*/true);
-			FStructuralSwitchConnectionPoint(Ctx.Graph(), Switch).OnWireOrGateChanged(
-				EAttachContext::Toggle);
-			if (Root != INDEX_NONE
-				&& bKeyedSubnet
-				&& FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
-			{
-				FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
-					Ctx,
-					Root,
-					SwitchKey.Control,
-					/*bGateOpen=*/true,
-					/*bLocalPromoteOnly=*/true);
-			}
-		}
+		FStructuralPowerTransferGate::FlipBridgeGate(Ctx, Switch, bSwitchOn);
 
-		if (Root != INDEX_NONE
-			&& (bSwitchOn || !bKeyedSubnet))
+		if (Root != INDEX_NONE && bKeyedSubnet)
 		{
-			FStructuralPowerBridgeProcessor::FinishPanelBridgeLegsOnSiteAfterGateChange(
+			FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 				Ctx,
-				Root);
-		}
-
-		if (!bSwitchOn
-			&& Root != INDEX_NONE
-			&& bKeyedSubnet
-			&& Ctx.Graph().DoesComponentRootCarryPower(Root)
-			&& FStructuralPowerModConfig::IsGroupLightingEnabled())
-		{
-			if (const TArray<FStructuralNodeId>* LightIds =
-					Ctx.Graph().EndpointIndex.Get(Root, EStructuralEndpointKind::Light))
-			{
-				const TArray<FStructuralNodeId> LightIdsSnapshot = *LightIds;
-				for (const FStructuralNodeId& LightId : LightIdsSnapshot)
-				{
-					const FTrackedEndpoint* LightTracked =
-						Ctx.Graph().TrackedEndpoints.Find(LightId);
-					if (!LightTracked)
-					{
-						continue;
-					}
-
-					AFGBuildableLightSource* Light = LightTracked->GetLight();
-					if (!IsValid(Light))
-					{
-						continue;
-					}
-
-					const FStructuralChannelKey LightKey =
-						Ctx.Graph().ResolveChannelKeyForBuildable(Light);
-					if (LightKey.Source == SwitchKey.Control
-						|| Ctx.Graph().IsPanelDownstreamLight(Root, LightKey))
-					{
-						continue;
-					}
-
-					FStructuralPowerLightProcessor::Process(
-						Ctx,
-						Light,
-						/*bLocalPromoteOnly=*/true);
-				}
-			}
-		}
-
-		if (Root != INDEX_NONE
-			&& bKeyedSubnet
-			&& FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
-		{
-			LogConsumerRestitchSummary(Ctx, Switch, Root, SwitchKey.Control, bSwitchOn);
-			if (!bSwitchOn)
-			{
-				ScheduleSettledRestitchSummary(Ctx.Graph(), Switch, Root, SwitchKey.Control);
-			}
+				Root,
+				SwitchKey.Control,
+				bSwitchOn,
+				/*bLocalPromoteOnly=*/true);
 		}
 
 		return;
@@ -959,89 +589,166 @@ void FStructuralPowerSwitchProcessor::Process(
 	FStructuralPowerContext& Ctx,
 	AFGBuildableCircuitSwitch* Switch)
 {
-	if (!IsValid(Switch) || !FStructuralPowerModConfig::IsGatePowerSwitchesEnabled())
+	if (!IsValid(Switch))
 	{
 		FStructuralPowerTrace::LogPlacementSkip(Switch, TEXT("switch_gating_disabled"));
 		return;
 	}
 
+	AStructuralPowerGraphSubsystem& Graph = Ctx.Graph();
+	const bool bBulk = Graph.IsBulkLoadDrainActive();
 	const EAttachContext AttachContext = Ctx.GetAttachContext();
-	const FStructuralOutletParentResolveParams ParentParams = Ctx.Graph().MakeOutletParentResolveParams();
-	const FStructuralSwitchParentResolveResult ParentResolve =
-		FStructuralSwitchParentResolver::Resolve(
-			Switch,
-			Ctx.Graph().GetWorld(),
-			Ctx.Graph().StructureGraph,
-			Ctx.Graph().LightweightIndex,
-			/*bPreferWirePort=*/false,
-			&ParentParams);
-	const FStructuralWallAnchor ParentAnchor = ParentResolve.Anchor;
+	const FStructuralNodeId SwitchId = Graph.MakeNodeId(Switch);
 
-	const FStructuralNodeId SwitchId = Ctx.Graph().MakeNodeId(Switch);
-	FTrackedEndpoint& Tracked = Ctx.Graph().TrackedEndpoints.FindOrAdd(SwitchId);
-	FStructuralNodeId ParentId;
-	int32 Root = INDEX_NONE;
-	RegisterOutletBase(Ctx, Switch, ParentResolve.Anchor, Tracked, Root, ParentId);
+	EnsureListener(Ctx, Switch);
 
-	const FStructuralChannelKey ChannelKey = Ctx.Graph().ResolveChannelKeyForBuildable(Switch);
-	const TCHAR* WirePort = ParentResolve.WirePortIndex == 0
-		? TEXT("A")
-		: (ParentResolve.WirePortIndex == 1 ? TEXT("B") : TEXT("-"));
-
-	auto LogSwitchOutlet = [&](UFGStructuralPowerConnectionComponent* OutletBus, int32 Powered, const TCHAR* Mode)
-	{
-		UE_LOG(LogStructuralPower, Log,
-			TEXT("[HALSP] outlet %s scope=%s site=%d role=%s root=%d parentValid=%d busCircuit=%d"
-				" powered=%d tag=%s source=%s control=%s wirePort=%s mode=%s"),
-			*Switch->GetName(),
-			StructuralPowerScopeToString(EStructuralPowerScope::Site),
-			Root,
-			StructuralPowerRoleToString(EStructuralPowerRole::Router),
-			Root,
-			ParentAnchor.IsValid() ? 1 : 0,
-			IsValid(OutletBus) ? OutletBus->GetCircuitID() : INDEX_NONE,
-			Powered,
-			StructuralChannelToString(ChannelKey.Tag),
-			*FStructuralPowerTrace::FormatSourceForTrace(ChannelKey),
-			*FStructuralPowerTrace::FormatControlForTrace(ChannelKey),
-			WirePort,
-			Mode);
-	};
-
-	if (!Switch->IsBridgeActive())
-	{
-		FStructuralPowerTransferGate::FlipBridgeGate(Ctx, Switch, /*bGateOpen=*/false);
-		LogSwitchOutlet(nullptr, 0, TEXT("inactive"));
-		return;
-	}
-
-	Tracked.bStructuralPowerTransferActive = true;
-
-	UFGStructuralPowerConnectionComponent* OutletBus = Ctx.Graph().GetOrCreateBusConnector(Switch);
+	UFGStructuralPowerConnectionComponent* OutletBus = Graph.GetOrCreateBusConnector(Switch);
 	if (!OutletBus)
 	{
 		FStructuralPowerTrace::LogPlacementSkip(Switch, TEXT("switch_bus_create_failed"));
 		return;
 	}
 
+	FTrackedEndpoint& Tracked = Graph.TrackedEndpoints.FindOrAdd(SwitchId);
+	FStructuralSiteContext Site;
+	if (!FStructuralSiteMembership::ResolveSiteContext(Graph, Switch, Site))
+	{
+		const FStructuralOutletParentResolveParams ParentParams = Graph.MakeOutletParentResolveParams();
+		const FStructuralSwitchParentResolveResult ParentResolve =
+			FStructuralSwitchParentResolver::Resolve(
+				Switch,
+				Graph.GetWorld(),
+				Graph.StructureGraph,
+				Graph.LightweightIndex,
+				/*bPreferWirePort=*/false,
+				&ParentParams);
+		Site.ParentAnchor = ParentResolve.Anchor;
+		Graph.ResolveEndpointComponentRoot(Switch, Site.ParentAnchor, Site.ParentId);
+		Tracked.ParentId = Site.ParentId;
+		Site.SiteRoot = Graph.FindRootForTrackedEndpoint(Tracked);
+		Site.bAnchored = Site.SiteRoot != INDEX_NONE;
+	}
+
+	int32 Root = Site.SiteRoot;
+
+	Tracked.Actor = Switch;
+	Tracked.Kind = EStructuralEndpointKind::Switch;
+	if (Site.ParentId.IsValid())
+	{
+		Tracked.ParentId = Site.ParentId;
+	}
+
+	const FStructuralOutletParentResolveParams ParentParams = Graph.MakeOutletParentResolveParams();
+	const FStructuralSwitchParentResolveResult ParentResolve =
+		FStructuralSwitchParentResolver::Resolve(
+			Switch,
+			Graph.GetWorld(),
+			Graph.StructureGraph,
+			Graph.LightweightIndex,
+			/*bPreferWirePort=*/false,
+			&ParentParams);
+	const TCHAR* WirePort = ParentResolve.WirePortIndex == 0
+		? TEXT("A")
+		: (ParentResolve.WirePortIndex == 1 ? TEXT("B") : TEXT("-"));
+
+	const bool bSwitchOn = Switch->IsBridgeActive();
 	const bool bKeyedSubnet = HasAssignedControl(Ctx, Switch);
-	const bool bWiredBridge = FStructuralSwitchParentResolver::IsWiredToStructureSide(Switch);
-	ApplyRuntimeAttach(Ctx, Switch, OutletBus, Root, SwitchId, AttachContext);
+	const bool bWired = FStructuralSwitchParentResolver::HasAnyVanillaWire(Switch);
 
-	LogSwitchOutlet(
-		OutletBus,
+	FStructuralPowerTransferGate::FlipBridgeGate(Ctx, Switch, bSwitchOn);
+
+	FStructuralSiteMembershipParams Params;
+	Params.bStripSwitchVanillaPortLinks = true;
+	Params.bBridgePeersOnly = true;
+	Params.bSkipEndpointIndexDirty = !bBulk && Root != INDEX_NONE;
+	if (Site.bAnchored && Root != INDEX_NONE)
+	{
+		FStructuralSiteMembership::IntegrateOnPlace(
+			Graph,
+			Switch,
+			OutletBus,
+			SwitchId,
+			EStructuralEndpointKind::Switch,
+			Tracked,
+			Site,
+			Params);
+	}
+	else
+	{
+		Tracked.Actor = Switch;
+		Tracked.ParentId = Site.ParentId;
+		Tracked.Kind = EStructuralEndpointKind::Switch;
+		Graph.RegisterBuildableActor(Switch);
+
+		if (!bBulk)
+		{
+			FStructuralPowerTrace::LogPlacementSkip(Switch, TEXT("switch_site_not_ready"));
+			Graph.EnqueuePlacement(Switch, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+			return;
+		}
+	}
+
+	if (Site.bAnchored && Root != INDEX_NONE && Site.ParentId.IsValid())
+	{
+		Graph.AddEndpointToRootIndex(Root, EStructuralEndpointKind::Switch, SwitchId);
+	}
+	else if (!bBulk)
+	{
+		Graph.MarkBridgeEndpointRootIndexDirty();
+	}
+
+	Graph.RefreshBridgeEndpointRootIndex();
+
+	FStructuralPowerSwitchProcessor::ArmPlacementSourceBridgeLegs(OutletBus, Switch);
+	if (bWired || bKeyedSubnet)
+	{
+		SyncDirectedBridgePair(Ctx, Switch);
+	}
+	else if (AttachContext == EAttachContext::WireDelta)
+	{
+		DisarmDirectedPair(Ctx, Switch);
+	}
+
+	if (bWired && Root != INDEX_NONE)
+	{
+		PropagateWiredFeedChange(Ctx, Switch, Root);
+	}
+
+	const FStructuralChannelKey ChannelKey = Graph.ResolveChannelKeyForBuildable(Switch);
+
+	const TCHAR* Mode = (!bWired && !bKeyedSubnet)
+		? TEXT("inert")
+		: (bSwitchOn ? AttachContextToString(AttachContext) : TEXT("bridge_idle"));
+
+	UE_LOG(LogStructuralPower, Log,
+		TEXT("[HALSP] outlet %s scope=%s site=%d role=%s root=%d parentValid=%d busCircuit=%d"
+			" powered=%d tag=%s source=%s control=%s wirePort=%s mode=%s"),
+		*Switch->GetName(),
+		StructuralPowerScopeToString(EStructuralPowerScope::Site),
+		Root,
+		StructuralPowerRoleToString(EStructuralPowerRole::Router),
+		Root,
+		Site.bAnchored ? 1 : 0,
+		OutletBus->GetCircuitID(),
 		FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0,
-		AttachContextToString(AttachContext));
+		StructuralChannelToString(ChannelKey.Tag),
+		*FStructuralPowerTrace::FormatSourceForTrace(ChannelKey),
+		*FStructuralPowerTrace::FormatControlForTrace(ChannelKey),
+		WirePort,
+		Mode);
 
-	if (IsBulkLoadAttachContext(AttachContext))
+	if (bBulk)
 	{
 		return;
 	}
 
-	if (Root != INDEX_NONE
-		&& bKeyedSubnet
-		&& FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
+	if (bSwitchOn && Root != INDEX_NONE && bKeyedSubnet && !bWired)
 	{
-		RestitchKeyedConsumersOnRoot(Ctx, Root, ChannelKey.Control);
+		FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
+			Ctx,
+			Root,
+			ChannelKey.Control,
+			/*bGateOpen=*/true,
+			/*bLocalPromoteOnly=*/true);
 	}
 }

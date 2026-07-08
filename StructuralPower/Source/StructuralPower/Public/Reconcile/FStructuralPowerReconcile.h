@@ -36,6 +36,8 @@ public:
 private:
 	void CollectKnownPanelEndpoints(TArray<AFGBuildableLightsControlPanel*>& OutPanels);
 	void ApplyKeyedSubnetAllPanels();
+	void RefreshKeyedTransferAfterLoad();
+	void RefreshNamedControlPanelsAfterLoad();
 
 	AStructuralPowerGraphSubsystem* Subsystem = nullptr;
 };

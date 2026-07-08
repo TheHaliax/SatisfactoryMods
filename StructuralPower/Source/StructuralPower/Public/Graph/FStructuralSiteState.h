@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "Core/FStructuralNodeId.h"
+#include "Graph/FStructuralSiteFeedSignature.h"
 
 class STRUCTURALPOWER_API FStructuralSiteState
 {
@@ -21,8 +22,14 @@ public:
 	bool WasPanelToggleHandledInScope(const FStructuralNodeId& PanelId) const;
 	void NotePanelToggleHandled(const FStructuralNodeId& PanelId);
 
+	void ClearFeedSignatures();
+	void SeedFeedSignature(int32 Site, const FStructuralSiteFeedSignature& Signature);
+	bool TryGetFeedSignature(int32 Site, FStructuralSiteFeedSignature& OutSignature) const;
+	void SetFeedSignature(int32 Site, const FStructuralSiteFeedSignature& Signature);
+
 private:
 	TSet<int32> EchoDirtySites;
 	TSet<FStructuralNodeId> EchoProcessedPanelsInScope;
 	TSet<FStructuralNodeId> EchoToggleHandledPanelsInScope;
+	TMap<int32, FStructuralSiteFeedSignature> FeedSignatures;
 };

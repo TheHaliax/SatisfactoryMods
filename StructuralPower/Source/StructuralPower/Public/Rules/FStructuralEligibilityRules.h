@@ -15,6 +15,7 @@ public:
 	static bool IsBusMember(const AFGBuildable* Buildable);
 	static bool IsPowerBridgePole(const AFGBuildable* Buildable);
 	static bool IsPowerBridgeSwitch(const AFGBuildable* Buildable);
+	static bool IsPowerStorage(const AFGBuildable* Buildable);
 	static bool IsStructuralLightConsumer(const AFGBuildable* Buildable);
 	static bool IsIdConfigTarget(const AFGBuildable* Buildable);
 	static bool IsValidOutletParent(const AFGBuildable* Parent);

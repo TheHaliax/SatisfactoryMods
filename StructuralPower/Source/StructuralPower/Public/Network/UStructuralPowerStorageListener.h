@@ -5,34 +5,33 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "UStructuralPowerPanelListener.generated.h"
+#include "UStructuralPowerStorageListener.generated.h"
 
-class AFGBuildableLightsControlPanel;
+class AFGBuildablePowerStorage;
 class AStructuralPowerGraphSubsystem;
+class UFGCircuitConnectionComponent;
 
 UCLASS()
-class STRUCTURALPOWER_API UStructuralPowerPanelListener : public UActorComponent
+class STRUCTURALPOWER_API UStructuralPowerStorageListener : public UActorComponent
 {
 	GENERATED_BODY()
 
 public:
 	void BindSubsystem(
 		AStructuralPowerGraphSubsystem* Graph,
-		AFGBuildableLightsControlPanel* Panel);
+		AFGBuildablePowerStorage* Storage);
 
 protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
-	UFUNCTION()
-	void HandleControlledBuildablesChanged();
-
-	UFUNCTION()
-	void HandleLightControlPanelStateChanged(bool bIsEnabled);
+	void HandleConnectionChanged(UFGCircuitConnectionComponent* Connection);
 
 	UPROPERTY()
 	TWeakObjectPtr<AStructuralPowerGraphSubsystem> GraphSubsystem;
 
 	UPROPERTY()
-	TWeakObjectPtr<AFGBuildableLightsControlPanel> BoundPanel;
+	TWeakObjectPtr<AFGBuildablePowerStorage> BoundStorage;
+
+	TArray<TWeakObjectPtr<UFGCircuitConnectionComponent>> BoundConns;
 };

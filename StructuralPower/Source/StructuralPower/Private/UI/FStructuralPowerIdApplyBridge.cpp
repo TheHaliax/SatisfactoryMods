@@ -122,7 +122,6 @@ void FStructuralPowerIdApplyBridge::ApplyControlIndex(
 
 	const FName Control = OptionManager->GetControlIdFromIndex(Index);
 	if (Control.IsNone()
-		|| Control == StructuralPowerConstants::ControlBypass
 		|| Control == StructuralPowerConstants::ControlUnconfigured)
 	{
 		Rco->Server_SetEndpointIds(Target, NAME_None, NAME_None, false, true);

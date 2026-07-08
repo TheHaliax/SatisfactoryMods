@@ -24,3 +24,8 @@ AFGBuildableLightsControlPanel* FTrackedEndpoint::GetPanel() const
 {
 	return FStructuralPowerBuildableCasts::AsPanel(Actor.Get());
 }
+
+AFGBuildablePowerStorage* FTrackedEndpoint::GetStorage() const
+{
+	return FStructuralPowerBuildableCasts::AsStorage(Actor.Get());
+}

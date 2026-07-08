@@ -29,5 +29,8 @@ public:
 		bool bGateOpen,
 		bool bLocalPromoteOnly = true);
 
-	static void RefreshKeyedTransferOnRoot(FStructuralPowerContext& Ctx, int32 Root);
+	static void RefreshKeyedTransferOnRoot(
+		FStructuralPowerContext& Ctx,
+		int32 Root,
+		bool bLocalPromoteOnly = true);
 };

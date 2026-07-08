@@ -30,10 +30,7 @@ bool FStructuralHoverpackEquipmentBridge::QueryHoverpackStructuralAnchor(
 {
 	Out = FStructuralHoverpackAnchorQuery{};
 
-	if (MaxHorizontal <= 0.0f
-		|| MaxVertical <= 0.0f
-		|| !FStructuralPowerSessionSettings::IsPropagationEnabled()
-		|| !FStructuralPowerModConfig::IsHoverpackStructuralEnabled())
+	if (MaxHorizontal <= 0.0f || MaxVertical <= 0.0f)
 	{
 		return false;
 	}

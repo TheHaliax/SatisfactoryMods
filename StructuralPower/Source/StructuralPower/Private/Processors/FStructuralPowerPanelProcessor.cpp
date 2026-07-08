@@ -118,10 +118,7 @@ void FStructuralPowerPanelProcessor::Process(
 		&& !FeedSwitchId.IsNone()
 		&& Ctx.Graph().IsSwitchFeedOpen(Root, FeedSwitchId))
 	{
-		if (!bRoutingUnchanged)
-		{
-			FStructuralPanelAttach::TearDownLinks(Panel, Ports);
-		}
+		FStructuralPanelAttach::TearDownLinks(Panel, Ports);
 
 		Tracked.bPanelLinksReady = false;
 		Tracked.bDownstreamLinksReady = false;
@@ -132,21 +129,33 @@ void FStructuralPowerPanelProcessor::Process(
 
 	if (bRoutingUnchanged)
 	{
-		const UFGPowerConnectionComponent* InputPower =
-			FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
-		if (!FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower))
+		if (Root != INDEX_NONE
+			&& !FeedSwitchId.IsNone()
+			&& Ctx.Graph().IsSwitchFeedOpen(Root, FeedSwitchId))
 		{
+			FStructuralPanelAttach::TearDownLinks(Panel, Ports);
 			Tracked.bPanelLinksReady = false;
 			Tracked.bDownstreamLinksReady = false;
+			Tracked.bStructuralPowerTransferActive = false;
+			LogPanelState(false, TEXT("switch_feed_open"));
+			return;
 		}
-		else
+
+		const bool bSupplyLinked = FStructuralPanelAttach::SupplyAlreadyLinked(
+			Ctx.Graph(),
+			Panel,
+			Ports,
+			Root,
+			ChannelKey);
+		if (bSupplyLinked)
 		{
 			LogPanelState(true, TEXT("routing_unchanged"));
 
+			const FName EffectiveControl =
+				FStructuralPanelControlledSync::ResolveEffectiveLightControl(Ctx.Graph(), Panel);
 			const bool bDownstreamUnchanged = Tracked.bDownstreamLinksReady
-				&& Tracked.CachedDownstreamControl == ChannelKey.Control;
-			if (Root != INDEX_NONE
-				&& ChannelKey.Control != StructuralPowerConstants::ControlUnconfigured)
+				&& Tracked.CachedDownstreamControl == EffectiveControl;
+			if (Root != INDEX_NONE && !EffectiveControl.IsNone())
 			{
 				if (!bDownstreamUnchanged)
 				{
@@ -155,9 +164,9 @@ void FStructuralPowerPanelProcessor::Process(
 						Panel,
 						Ports,
 						Root,
-						ChannelKey.Control);
+						EffectiveControl);
 					Tracked.bDownstreamLinksReady = true;
-					Tracked.CachedDownstreamControl = ChannelKey.Control;
+					Tracked.CachedDownstreamControl = EffectiveControl;
 				}
 				else
 				{
@@ -167,6 +176,9 @@ void FStructuralPowerPanelProcessor::Process(
 
 			return;
 		}
+
+		Tracked.bPanelLinksReady = false;
+		Tracked.bDownstreamLinksReady = false;
 	}
 
 	FStructuralPanelAttach::TearDownLinks(Panel, Ports);
@@ -204,11 +216,12 @@ void FStructuralPowerPanelProcessor::Process(
 		}
 	}
 
-	if (Root != INDEX_NONE
-		&& ChannelKey.Control != StructuralPowerConstants::ControlUnconfigured)
+	const FName EffectiveControl =
+		FStructuralPanelControlledSync::ResolveEffectiveLightControl(Ctx.Graph(), Panel);
+	if (Root != INDEX_NONE && !EffectiveControl.IsNone())
 	{
 		const bool bDownstreamUnchanged = Tracked.bDownstreamLinksReady
-			&& Tracked.CachedDownstreamControl == ChannelKey.Control;
+			&& Tracked.CachedDownstreamControl == EffectiveControl;
 		if (!bDownstreamUnchanged)
 		{
 			FStructuralPanelAttach::RestitchDownstream(
@@ -216,7 +229,7 @@ void FStructuralPowerPanelProcessor::Process(
 				Panel,
 				Ports,
 				Root,
-				ChannelKey.Control);
+				EffectiveControl);
 		}
 		else
 		{
@@ -224,7 +237,7 @@ void FStructuralPowerPanelProcessor::Process(
 		}
 
 		Tracked.bDownstreamLinksReady = true;
-		Tracked.CachedDownstreamControl = ChannelKey.Control;
+		Tracked.CachedDownstreamControl = EffectiveControl;
 	}
 	else
 	{
@@ -257,101 +270,3 @@ void FStructuralPowerPanelProcessor::Process(
 		TEXT("process"));
 }
 
-void FStructuralPowerPanelProcessor::FinishBridgeLegsAfterGateChange(
-	FStructuralPowerContext& Ctx,
-	AFGBuildableLightsControlPanel* Panel)
-{
-	if (!IsValid(Panel))
-	{
-		return;
-	}
-
-	FStructuralPanelConnectionPoint(Ctx.Graph(), Panel).OnWireOrGateChanged(EAttachContext::Toggle);
-}
-
-void FStructuralPowerPanelProcessor::RestitchOnRoot(
-	FStructuralPowerContext& Ctx,
-	int32 Root)
-{
-	if (Root == INDEX_NONE || !FStructuralPowerModConfig::IsGroupLightingEnabled())
-	{
-		return;
-	}
-
-	Ctx.Graph().RefreshBridgeEndpointRootIndex();
-
-	const TArray<FStructuralNodeId>* PanelIds =
-		Ctx.Graph().EndpointIndex.Get(Root, EStructuralEndpointKind::Panel);
-	if (!PanelIds || PanelIds->Num() == 0)
-	{
-		return;
-	}
-
-	const TArray<FStructuralNodeId> PanelIdsSnapshot = *PanelIds;
-	for (const FStructuralNodeId& PanelId : PanelIdsSnapshot)
-	{
-		const FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(PanelId);
-		if (!Tracked)
-		{
-			continue;
-		}
-
-		if (AFGBuildableLightsControlPanel* Panel = Tracked->GetPanel())
-		{
-			FTrackedEndpoint& Mutable = Ctx.Graph().TrackedEndpoints.FindOrAdd(PanelId);
-			Mutable.bPanelLinksReady = false;
-			Mutable.bDownstreamLinksReady = false;
-			Process(Ctx, Panel);
-		}
-	}
-}
-
-void FStructuralPowerPanelProcessor::RestitchWithControlOnRoot(
-	FStructuralPowerContext& Ctx,
-	int32 Root,
-	FName ControlId)
-{
-	if (Root == INDEX_NONE
-		|| !FStructuralPowerModConfig::IsGroupLightingEnabled()
-		|| ControlId.IsNone()
-		|| ControlId == StructuralPowerConstants::ControlUnconfigured)
-	{
-		return;
-	}
-
-	Ctx.Graph().RefreshBridgeEndpointRootIndex();
-
-	const TArray<FStructuralNodeId>* PanelIds =
-		Ctx.Graph().EndpointIndex.Get(Root, EStructuralEndpointKind::Panel);
-	if (!PanelIds || PanelIds->Num() == 0)
-	{
-		return;
-	}
-
-	const TArray<FStructuralNodeId> PanelIdsSnapshot = *PanelIds;
-	for (const FStructuralNodeId& PanelId : PanelIdsSnapshot)
-	{
-		const FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(PanelId);
-		if (!Tracked)
-		{
-			continue;
-		}
-
-		AFGBuildableLightsControlPanel* Panel = Tracked->GetPanel();
-		if (!IsValid(Panel))
-		{
-			continue;
-		}
-
-		const FStructuralChannelKey PanelKey = Ctx.Graph().ResolveChannelKeyForBuildable(Panel);
-		if (PanelKey.Control != ControlId)
-		{
-			continue;
-		}
-
-		FTrackedEndpoint& Mutable = Ctx.Graph().TrackedEndpoints.FindOrAdd(PanelId);
-		Mutable.bPanelLinksReady = false;
-		Mutable.bDownstreamLinksReady = false;
-		Process(Ctx, Panel);
-	}
-}

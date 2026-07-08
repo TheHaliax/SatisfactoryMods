@@ -18,6 +18,10 @@ class STRUCTURALPOWER_API FStructuralPanelAttach
 public:
 	static void TearDownLinks(AFGBuildableControlPanelHost* Panel, const FStructuralPanelPorts& Ports);
 
+	static void TearDownDownstreamLinks(
+		AFGBuildableControlPanelHost* Panel,
+		const FStructuralPanelPorts& Ports);
+
 	static bool SupplyAlreadyLinked(
 		AStructuralPowerGraphSubsystem& Graph,
 		AFGBuildableLightsControlPanel* Panel,

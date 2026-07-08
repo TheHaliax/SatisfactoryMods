@@ -37,6 +37,7 @@ class AFGBuildableGenerator;
 class AFGBuildableLightSource;
 class AFGBuildableLightsControlPanel;
 class AFGBuildablePowerPole;
+class AFGBuildablePowerStorage;
 class UFGCircuitConnectionComponent;
 class UFGPowerConnectionComponent;
 class UFGStructuralPowerConnectionComponent;
@@ -68,6 +69,7 @@ public:
 	static FStructuralNodeId MakeNodeId(const AFGBuildable* Buildable);
 	static UFGStructuralPowerConnectionComponent* FindBusConnector(const AFGBuildable* Host);
 	static UFGStructuralPowerConnectionComponent* FindPanelControlBus(const AFGBuildable* Host);
+	static UFGStructuralPowerConnectionComponent* FindSwitchControlBus(const AFGBuildable* Host);
 	static UFGStructuralPowerConnectionComponent* FindOutletBusConnector(const AFGBuildablePowerPole* Outlet);
 	static void StripPersistedEndpointModComponents(AFGBuildable* Host);
 
@@ -145,6 +147,8 @@ public:
 	bool ShouldDeferSwitchCircuitRefresh() const { return CircuitPromotionDepth > 0; }
 
 	bool IsBulkLoadDrainActive() const { return bBulkLoadDrainActive; }
+	bool IsPendingPostLoadLightReconcile() const { return bPendingPostLoadLightReconcile; }
+	bool ShouldDeferCircuitDrivenRefresh() const;
 
 	EAttachContext GetCurrentAttachContext() const;
 
@@ -164,16 +168,20 @@ public:
 	void EndCircuitPromotion();
 
 	bool LinkHiddenPair(UFGPowerConnectionComponent* A, UFGPowerConnectionComponent* B);
+	bool IsPanelSupplyLinked(
+		UFGPowerConnectionComponent* InputPower,
+		UFGPowerConnectionComponent* Feed) const;
 	bool IsPanelSupplyLinkedAndLive(
 		UFGPowerConnectionComponent* InputPower,
 		UFGPowerConnectionComponent* Feed) const;
 	void PromoteStructuralMeshFrom(UFGPowerConnectionComponent* Seed);
 	UFGStructuralPowerConnectionComponent* GetOrCreatePanelControlBus(
 		AFGBuildableLightsControlPanel* Panel);
+	UFGStructuralPowerConnectionComponent* GetOrCreateSwitchControlBus(
+		AFGBuildableCircuitSwitch* Switch);
 
 	virtual void PreSaveGame_Implementation(int32 saveVersion, int32 gameVersion) override {}
 	virtual void PostSaveGame_Implementation(int32 saveVersion, int32 gameVersion) override {}
-	virtual void PreLoadGame_Implementation(int32 saveVersion, int32 gameVersion) override {}
 	virtual void PostLoadGame_Implementation(int32 saveVersion, int32 gameVersion) override { bPostLoadRebuilt = false; }
 	virtual void GatherDependencies_Implementation(TArray<UObject*>& out_dependentObjects) override {}
 	virtual bool NeedTransform_Implementation() override { return false; }
@@ -182,14 +190,18 @@ public:
 	friend class FStructuralPowerGeneratorProcessor;
 	friend class FStructuralPowerLightProcessor;
 	friend class FStructuralPowerPanelProcessor;
+	friend struct FStructuralPanelControlledSync;
 	friend class FStructuralPowerSwitchProcessor;
 	friend class FStructuralPowerPoleProcessor;
+	friend class FStructuralPowerStorageProcessor;
 	friend class FStructuralPowerBridgeProcessor;
 	friend class FStructuralPowerTransferGate;
 	friend class FStructuralCrossSiteGraph;
 	friend class FStructuralPoleConnectionPoint;
 	friend class FStructuralSwitchConnectionPoint;
 	friend class FStructuralPanelConnectionPoint;
+	friend class FStructuralStorageConnectionPoint;
+	friend class FStructuralSiteMembership;
 	friend class FStructuralPowerReconcile;
 	friend class FStructuralPowerRestitch;
 	friend class FStructuralGraphCircuitOps;
@@ -202,6 +214,7 @@ private:
 	void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
 	void ProcessOutlet(AFGBuildable* Buildable);
 	void ProcessPoleEndpoint(AFGBuildablePowerPole* Pole);
+	void ProcessStorageEndpoint(AFGBuildablePowerStorage* Storage);
 	void ProcessSwitchEndpoint(AFGBuildableCircuitSwitch* Switch);
 	void ProcessGeneratorEndpoint(AFGBuildableGenerator* Generator);
 	void ProcessLightEndpoint(AFGBuildableLightSource* Light, bool bLocalPromoteOnly = false);
@@ -272,15 +285,6 @@ private:
 		AFGBuildable* Host,
 		UFGStructuralPowerConnectionComponent* Bus);
 	bool HasBridgeBusPeerMesh(UFGStructuralPowerConnectionComponent* Bus) const;
-	void RestitchLightEndpointsForRoot(int32 Root, EAttachContext AttachContext);
-	void RestitchPanelEndpointsForRoot(int32 Root, EAttachContext AttachContext);
-	void RestitchPanelsWithControlOnRoot(int32 Root, FName ControlId);
-	void RestitchKeyedSubnetsAfterMeshFeedRefresh(int32 Root, EAttachContext AttachContext);
-	void RestitchComponent(int32 Root, bool bTearDownFirst, EAttachContext AttachContext);
-	void ReEnergizeComponentRoots(
-		const TArray<int32>& Roots,
-		bool bTearDownFirst,
-		EAttachContext AttachContext);
 	bool EnsureParentRegisteredInGraph(
 		const FStructuralWallAnchor& Anchor,
 		FStructuralNodeId& OutParentId);

@@ -14,7 +14,8 @@ enum class EStructuralEndpointKind : uint8
 	Pole,
 	Switch,
 	Light,
-	Panel
+	Panel,
+	Storage
 };
 
 struct FTrackedEndpoint
@@ -30,6 +31,8 @@ struct FTrackedEndpoint
 	FName CachedDownstreamControl = NAME_None;
 	bool bDownstreamLinksReady = false;
 
+	uint8 CachedSwitchWireSignature = 0xFF;
+
 	// false suspends new wiring only — tracked topology stays until explicit tear-down.
 	bool bStructuralPowerTransferActive = false;
 
@@ -37,4 +40,5 @@ struct FTrackedEndpoint
 	class AFGBuildablePowerPole* GetPole() const;
 	class AFGBuildableLightSource* GetLight() const;
 	class AFGBuildableLightsControlPanel* GetPanel() const;
+	class AFGBuildablePowerStorage* GetStorage() const;
 };

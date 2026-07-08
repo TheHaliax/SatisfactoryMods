@@ -17,6 +17,7 @@
 #include "Buildables/FGBuildableFactoryBuilding.h"
 #include "Buildables/FGBuildableFoundation.h"
 #include "Buildables/FGBuildablePowerPole.h"
+#include "Buildables/FGBuildablePowerStorage.h"
 #include "Buildables/FGBuildableRamp.h"
 #include "Buildables/FGBuildableStair.h"
 #include "Buildables/FGBuildableWalkway.h"
@@ -105,6 +106,11 @@ bool FStructuralEligibilityRules::IsPowerBridgePole(const AFGBuildable* Buildabl
 	default:
 		return false;
 	}
+}
+
+bool FStructuralEligibilityRules::IsPowerStorage(const AFGBuildable* Buildable)
+{
+	return IsValid(Buildable) && Buildable->IsA<AFGBuildablePowerStorage>();
 }
 
 bool FStructuralEligibilityRules::IsValidOutletParent(const AFGBuildable* Parent)

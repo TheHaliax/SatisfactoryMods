@@ -89,8 +89,14 @@ bool UStructuralPowerRootInstanceModule::TryEnqueueBuildable(
 		return true;
 	}
 
-	if (FStructuralPowerModConfig::IsGatePowerSwitchesEnabled()
-		&& FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable))
+	if (FStructuralEligibilityRules::IsPowerStorage(Buildable))
+	{
+		FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("enqueue_storage"), SourceTag);
+		Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+		return true;
+	}
+
+	if (FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable))
 	{
 		FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("enqueue_switch"), SourceTag);
 		Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
@@ -125,11 +131,6 @@ bool UStructuralPowerRootInstanceModule::TryEnqueueBuildable(
 static void HandleSwitchBeginPlay(AFGBuildableCircuitSwitch* Switch)
 {
 	if (!IsValid(Switch) || !Switch->HasAuthority())
-	{
-		return;
-	}
-
-	if (!FStructuralPowerModConfig::IsGatePowerSwitchesEnabled())
 	{
 		return;
 	}
@@ -182,7 +183,7 @@ static void EnqueuePanelOutletWhenReady(
 		return;
 	}
 
-	if (Graph->IsBulkLoadDrainActive())
+	if (Graph->ShouldDeferCircuitDrivenRefresh())
 	{
 		WorldPtr->GetTimerManager().SetTimerForNextTick(
 			FTimerDelegate::CreateStatic(&EnqueuePanelOutletWhenReady, WorldWeak, PanelWeak));
@@ -445,11 +446,9 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 #if !WITH_EDITOR
 		UE_LOG(LogStructuralPower, Log,
 			TEXT("StructuralPower v2.2.0 — lighting + Id panel (I)"
-				" (groupLighting=%s propagation=%s gateSwitches=%s manualGroups=%s)"),
+				" (groupLighting=%s trace=%s)"),
 			FStructuralPowerModConfig::IsGroupLightingEnabled() ? TEXT("on") : TEXT("off"),
-			FStructuralPowerModConfig::IsPropagationEnabled() ? TEXT("on") : TEXT("off"),
-			FStructuralPowerModConfig::IsGatePowerSwitchesEnabled() ? TEXT("on") : TEXT("off"),
-			FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled() ? TEXT("on") : TEXT("off"));
+			FStructuralPowerModConfig::IsTraceEnabled() ? TEXT("on") : TEXT("off"));
 #endif
 	}
 
@@ -519,87 +518,6 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 			if (AFGBuildableLightsControlPanel* Panel = Cast<AFGBuildableLightsControlPanel>(Host))
 			{
 				HandlePanelBeginPlay(Panel);
-			}
-		});
-
-	SUBSCRIBE_METHOD_VIRTUAL_AFTER(
-		AFGBuildableCircuitBridge::OnCircuitsRebuilt,
-		GetMutableDefault<AFGBuildableCircuitBridge>(),
-		[](AFGBuildableCircuitBridge* Bridge)
-		{
-			if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
-			{
-				return;
-			}
-
-			AFGBuildableLightsControlPanel* Panel = Cast<AFGBuildableLightsControlPanel>(Bridge);
-			if (!IsValid(Panel) || !Panel->HasAuthority())
-			{
-				return;
-			}
-
-			UWorld* World = Panel->GetWorld();
-			if (!IsValid(World))
-			{
-				return;
-			}
-
-			if (AStructuralPowerGraphSubsystem* Graph =
-					AStructuralPowerGraphSubsystem::GetOrCreate(World))
-			{
-				if (Graph->ShouldDeferSwitchCircuitRefresh())
-				{
-					return;
-				}
-
-				if (Graph->IsBuildablePlacementPending(Panel))
-				{
-					return;
-				}
-
-				if (Graph->IsBulkLoadDrainActive())
-				{
-					return;
-				}
-
-				const FName Control = Graph->ResolveControl(Panel, EStructuralChannel::Light);
-				if (Control.IsNone()
-					|| Control == StructuralPowerConstants::ControlUnconfigured)
-				{
-					return;
-				}
-
-				const TCHAR* SkipReason = nullptr;
-				if (Graph->ShouldSkipPanelCircuitEcho(Panel, &SkipReason))
-				{
-					if (FStructuralPowerTrace::IsEnabled())
-					{
-						FStructuralPowerTrace::LogHook(
-							Panel,
-							TEXT("OnCircuitsRebuilt"),
-							TEXT("panel_subnet_sync"),
-							SkipReason ? SkipReason : TEXT("skip_circuit_echo"));
-					}
-					return;
-				}
-
-				if (FStructuralPowerTrace::IsEnabled())
-				{
-					FStructuralPowerTrace::LogHook(
-						Panel,
-						TEXT("OnCircuitsRebuilt"),
-						TEXT("panel_subnet_sync"),
-						TEXT("pre_apply"));
-				}
-
-				Graph->ProcessPanelWireDelta(Panel);
-				FStructuralPanelControlledSync::ApplyKeyedSubnet(*Graph, Panel);
-				Graph->NotePanelCircuitEchoProcessed(Panel);
-
-				if (FStructuralPowerTrace::IsEnabled())
-				{
-					Graph->LogPanelReconcileSummary(Panel);
-				}
 			}
 		});
 

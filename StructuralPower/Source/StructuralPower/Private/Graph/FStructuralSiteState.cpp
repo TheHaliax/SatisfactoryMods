@@ -54,3 +54,46 @@ void FStructuralSiteState::NotePanelToggleHandled(const FStructuralNodeId& Panel
 {
 	EchoToggleHandledPanelsInScope.Add(PanelId);
 }
+
+void FStructuralSiteState::ClearFeedSignatures()
+{
+	FeedSignatures.Reset();
+}
+
+void FStructuralSiteState::SeedFeedSignature(
+	int32 Site,
+	const FStructuralSiteFeedSignature& Signature)
+{
+	if (Site != INDEX_NONE)
+	{
+		FeedSignatures.Add(Site, Signature);
+	}
+}
+
+bool FStructuralSiteState::TryGetFeedSignature(
+	int32 Site,
+	FStructuralSiteFeedSignature& OutSignature) const
+{
+	if (Site == INDEX_NONE)
+	{
+		return false;
+	}
+
+	if (const FStructuralSiteFeedSignature* Cached = FeedSignatures.Find(Site))
+	{
+		OutSignature = *Cached;
+		return true;
+	}
+
+	return false;
+}
+
+void FStructuralSiteState::SetFeedSignature(
+	int32 Site,
+	const FStructuralSiteFeedSignature& Signature)
+{
+	if (Site != INDEX_NONE)
+	{
+		FeedSignatures.Add(Site, Signature);
+	}
+}

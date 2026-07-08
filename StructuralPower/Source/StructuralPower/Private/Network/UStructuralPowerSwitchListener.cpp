@@ -4,9 +4,8 @@
 #include "Network/UStructuralPowerSwitchListener.h"
 
 #include "Buildables/FGBuildableCircuitSwitch.h"
-#include "Config/FStructuralPowerModConfig.h"
+#include "Engine/World.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
-#include "Session/FStructuralPowerSessionSettings.h"
 
 void UStructuralPowerSwitchListener::BindSubsystem(
 	AStructuralPowerGraphSubsystem* Graph,
@@ -49,27 +48,34 @@ void UStructuralPowerSwitchListener::HandleSwitchOnChanged()
 
 void UStructuralPowerSwitchListener::HandleCircuitsChanged()
 {
-	if (AStructuralPowerGraphSubsystem* Graph = GraphSubsystem.Get())
+	AFGBuildableCircuitSwitch* Switch = BoundSwitch.Get();
+	AStructuralPowerGraphSubsystem* Graph = GraphSubsystem.Get();
+	if (!IsValid(Graph) || !IsValid(Switch))
 	{
-		if (Graph->ShouldDeferSwitchCircuitRefresh())
-		{
-			return;
-		}
-
-		if (Graph->IsBulkLoadDrainActive())
-		{
-			return;
-		}
-
-		// Manual groups: toggle owns restitch — circuit-changed must not re-enter switch attach.
-		if (FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
-		{
-			return;
-		}
-
-		if (AFGBuildableCircuitSwitch* Switch = BoundSwitch.Get())
-		{
-			Graph->ProcessSwitchWireDelta(Switch);
-		}
+		return;
 	}
+
+	if (Graph->ShouldDeferCircuitDrivenRefresh())
+	{
+		return;
+	}
+
+	UWorld* World = Switch->GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
+		[GraphWeak = TWeakObjectPtr<AStructuralPowerGraphSubsystem>(Graph),
+			SwitchWeak = TWeakObjectPtr<AFGBuildableCircuitSwitch>(Switch)]()
+		{
+			if (AStructuralPowerGraphSubsystem* GraphPtr = GraphWeak.Get())
+			{
+				if (AFGBuildableCircuitSwitch* SwitchPtr = SwitchWeak.Get())
+				{
+					GraphPtr->ProcessSwitchWireDelta(SwitchPtr);
+				}
+			}
+		}));
 }

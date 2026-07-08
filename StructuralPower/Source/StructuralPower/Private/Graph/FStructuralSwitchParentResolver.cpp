@@ -173,6 +173,35 @@ void FStructuralSwitchParentResolver::ForEachWiredStructureSideAnchor(
 	}
 }
 
+int32 FStructuralSwitchParentResolver::CountWiredVanillaPorts(
+	AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(Switch))
+	{
+		return 0;
+	}
+
+	int32 WiredVanilla = 0;
+	for (int32 PortIndex = 0; PortIndex < 2; ++PortIndex)
+	{
+		UFGCircuitConnectionComponent* Port = PortIndex == 0
+			? Switch->GetConnection0()
+			: Switch->GetConnection1();
+		if (IsValid(Port) && Port->GetNumConnections() > 0)
+		{
+			++WiredVanilla;
+		}
+	}
+
+	return WiredVanilla;
+}
+
+bool FStructuralSwitchParentResolver::HasAnyVanillaWire(
+	AFGBuildableCircuitSwitch* Switch)
+{
+	return CountWiredVanillaPorts(Switch) > 0;
+}
+
 bool FStructuralSwitchParentResolver::IsWiredToStructureSide(
 	AFGBuildableCircuitSwitch* Switch,
 	int32* OutWirePortIndex)

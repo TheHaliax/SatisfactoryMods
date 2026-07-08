@@ -16,7 +16,5 @@ public:
 		AFGBuildableLightSource* Light,
 		bool bLocalPromoteOnly = false);
 
-	static void RestitchOnRoot(FStructuralPowerContext& Ctx, int32 Root);
-
 	static void TearDown(FStructuralPowerContext& Ctx, AFGBuildableLightSource* Light);
 };

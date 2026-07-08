@@ -26,15 +26,17 @@ public:
 
 	static void TearDown(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 
-	static void StripInactiveLinksOnRoot(FStructuralPowerContext& Ctx, int32 Root);
+	static void DisarmDirectedPair(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 
-	static void RestitchKeyedConsumersOnRoot(
+	static void SyncDirectedBridgePair(
 		FStructuralPowerContext& Ctx,
-		int32 Root,
-		FName SwitchControlId,
-		bool bLocalPromoteOnly = false);
+		AFGBuildableCircuitSwitch* Switch);
 
-	static void RestitchActiveKeyedConsumersOnRoot(FStructuralPowerContext& Ctx, int32 Root);
+	static void ArmPlacementSourceBridgeLegs(
+		UFGStructuralPowerConnectionComponent* SourceBus,
+		AFGBuildableCircuitSwitch* Switch);
+
+	static void RemeshUnmeshedPeersAfterBulkLoad(FStructuralPowerContext& Ctx);
 
 	static void PropagateWiredFeedChange(
 		FStructuralPowerContext& Ctx,
@@ -63,55 +65,4 @@ private:
 		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch,
 		FTrackedEndpoint& Tracked);
-
-	static void RegisterOutletBase(
-		FStructuralPowerContext& Ctx,
-		AFGBuildableCircuitSwitch* Switch,
-		const FStructuralWallAnchor& ParentAnchor,
-		FTrackedEndpoint& InOutTracked,
-		int32& OutRoot,
-		FStructuralNodeId& OutParentId);
-
-	static void ApplyBaseOutletAttach(
-		FStructuralPowerContext& Ctx,
-		AFGBuildableCircuitSwitch* Switch,
-		UFGStructuralPowerConnectionComponent* OutletBus,
-		int32 Root);
-
-	static void ApplyRuntimeAttach(
-		FStructuralPowerContext& Ctx,
-		AFGBuildableCircuitSwitch* Switch,
-		UFGStructuralPowerConnectionComponent* OutletBus,
-		int32 Root,
-		const FStructuralNodeId& SwitchId,
-		EAttachContext AttachContext);
-
-	static void ApplyAdvancedAttach(
-		FStructuralPowerContext& Ctx,
-		AFGBuildableCircuitSwitch* Switch,
-		UFGStructuralPowerConnectionComponent* OutletBus,
-		int32 Root,
-		const FStructuralNodeId& SwitchId,
-		bool bKeyedSubnet);
-
-	static void RestitchKeyedSubnet(
-		FStructuralPowerContext& Ctx,
-		AFGBuildableCircuitSwitch* Switch,
-		UFGStructuralPowerConnectionComponent* OutletBus,
-		int32 ComponentRoot,
-		const FStructuralNodeId& SwitchNodeId);
-
-	static void LogConsumerRestitchSummary(
-		FStructuralPowerContext& Ctx,
-		AFGBuildableCircuitSwitch* Switch,
-		int32 Root,
-		FName SwitchControlId,
-		bool bSwitchOn,
-		const TCHAR* PhaseSuffix = TEXT(""));
-
-	static void ScheduleSettledRestitchSummary(
-		AStructuralPowerGraphSubsystem& Graph,
-		AFGBuildableCircuitSwitch* Switch,
-		int32 Root,
-		FName SwitchControlId);
 };

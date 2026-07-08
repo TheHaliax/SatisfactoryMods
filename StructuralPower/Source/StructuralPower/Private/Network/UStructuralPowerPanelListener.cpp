@@ -23,6 +23,9 @@ void UStructuralPowerPanelListener::BindSubsystem(
 	Panel->mOnControlledBuildablesChanged.AddDynamic(
 		this,
 		&UStructuralPowerPanelListener::HandleControlledBuildablesChanged);
+	Panel->OnLightControlPanelStateChanged.AddDynamic(
+		this,
+		&UStructuralPowerPanelListener::HandleLightControlPanelStateChanged);
 }
 
 void UStructuralPowerPanelListener::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -32,6 +35,9 @@ void UStructuralPowerPanelListener::EndPlay(const EEndPlayReason::Type EndPlayRe
 		Panel->mOnControlledBuildablesChanged.RemoveDynamic(
 			this,
 			&UStructuralPowerPanelListener::HandleControlledBuildablesChanged);
+		Panel->OnLightControlPanelStateChanged.RemoveDynamic(
+			this,
+			&UStructuralPowerPanelListener::HandleLightControlPanelStateChanged);
 	}
 
 	Super::EndPlay(EndPlayReason);
@@ -46,7 +52,7 @@ void UStructuralPowerPanelListener::HandleControlledBuildablesChanged()
 		return;
 	}
 
-	if (Graph->ShouldDeferSwitchCircuitRefresh())
+	if (Graph->ShouldDeferCircuitDrivenRefresh())
 	{
 		return;
 	}
@@ -63,4 +69,21 @@ void UStructuralPowerPanelListener::HandleControlledBuildablesChanged()
 	}
 
 	Graph->EnqueuePlacement(Panel, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+}
+
+void UStructuralPowerPanelListener::HandleLightControlPanelStateChanged(bool /*bIsEnabled*/)
+{
+	AStructuralPowerGraphSubsystem* Graph = GraphSubsystem.Get();
+	AFGBuildableLightsControlPanel* Panel = BoundPanel.Get();
+	if (!IsValid(Graph) || !IsValid(Panel))
+	{
+		return;
+	}
+
+	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
+	{
+		return;
+	}
+
+	FStructuralPanelControlledSync::MirrorSharedControlState(*Graph, Panel);
 }

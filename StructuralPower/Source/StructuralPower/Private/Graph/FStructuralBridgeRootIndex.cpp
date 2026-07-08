@@ -7,7 +7,6 @@
 
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildablePowerPole.h"
-#include "Graph/FStructuralAdjacencyHeuristics.h"
 #include "Graph/FStructuralAttachmentResolver.h"
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Rules/FStructuralEligibilityRules.h"
@@ -105,8 +104,7 @@ int32 FStructuralBridgeRootIndex::ResolveBridgeComponentRootBulk(
 		}
 	}
 
-	const FBox Bounds = FStructuralAdjacencyHeuristics::GetActorAdjacencyBounds(Host);
-	return Subsystem->StructureGraph.FindRootForBounds(Bounds, Host->GetClass(), &OutParentId);
+	return INDEX_NONE;
 }
 
 int32 FStructuralBridgeRootIndex::ResolvePoleComponentRoot(

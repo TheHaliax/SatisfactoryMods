@@ -32,6 +32,9 @@ public:
 	void PromoteStructuralMeshFrom(UFGPowerConnectionComponent* Seed);
 	void PromoteDirectHiddenLinks(UFGPowerConnectionComponent* Seed);
 
+	bool IsPanelSupplyLinked(
+		UFGPowerConnectionComponent* InputPower,
+		UFGPowerConnectionComponent* Feed) const;
 	bool IsPanelSupplyLinkedAndLive(
 		UFGPowerConnectionComponent* InputPower,
 		UFGPowerConnectionComponent* Feed) const;

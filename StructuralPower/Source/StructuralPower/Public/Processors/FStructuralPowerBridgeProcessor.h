@@ -29,27 +29,8 @@ public:
 		EAttachContext AttachContext,
 		bool bKeyedSubnet);
 
-	static void FinishPanelBridgeLegsOnSiteAfterGateChange(
-		FStructuralPowerContext& Ctx,
-		int32 SiteRoot);
-
 	static void ApplyLocalAttachForPanel(
 		FStructuralPowerContext& Ctx,
 		AFGBuildableLightsControlPanel* Panel,
 		bool bLocalPromoteOnly);
-
-private:
-	static void ApplyBaseOutletAttach(
-		FStructuralPowerContext& Ctx,
-		AFGBuildableCircuitSwitch* Switch,
-		UFGStructuralPowerConnectionComponent* OutletBus,
-		int32 Root);
-
-	static void ApplyAdvancedAttach(
-		FStructuralPowerContext& Ctx,
-		AFGBuildableCircuitSwitch* Switch,
-		UFGStructuralPowerConnectionComponent* OutletBus,
-		int32 Root,
-		const FStructuralNodeId& SwitchId,
-		bool bKeyedSubnet);
 };

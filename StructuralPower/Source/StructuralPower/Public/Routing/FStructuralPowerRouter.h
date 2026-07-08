@@ -24,6 +24,8 @@ public:
 
 	static bool IsPlayerChosenIdValid(FName Id);
 
+	static bool IsAssignedControl(FName Control);
+
 	static bool ShouldRouteChannelLink(
 		const FStructuralChannelKey& A,
 		const FStructuralChannelKey& B,

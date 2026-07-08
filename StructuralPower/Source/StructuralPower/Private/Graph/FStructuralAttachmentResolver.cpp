@@ -4,7 +4,6 @@
 #include "Graph/FStructuralAttachmentResolver.h"
 
 #include "Buildables/FGBuildable.h"
-#include "Graph/FStructuralAdjacencyHeuristics.h"
 #include "Graph/FStructuralConnectivityGraph.h"
 #include "Graph/FStructuralOutletParentResolver.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
@@ -80,6 +79,5 @@ int32 FStructuralAttachmentResolver::ResolveComponentRootForBuildable(
 		}
 	}
 
-	const FBox Bounds = FStructuralAdjacencyHeuristics::GetActorAdjacencyBounds(Buildable);
-	return Graph.FindRootForBounds(Bounds, Buildable->GetClass(), &OutParentId);
+	return INDEX_NONE;
 }

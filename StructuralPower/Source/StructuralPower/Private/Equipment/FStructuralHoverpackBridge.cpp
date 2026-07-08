@@ -452,9 +452,7 @@ FStructuralHoverpackSession& FStructuralHoverpackBridge::GetOrCreateSession(AFGH
 
 bool FStructuralHoverpackBridge::IsStructuralPathEnabled(const AFGHoverPack* Pack)
 {
-	return IsValid(Pack)
-		&& FStructuralPowerSessionSettings::IsPropagationEnabled()
-		&& FStructuralPowerModConfig::IsHoverpackStructuralEnabled();
+	return IsValid(Pack);
 }
 
 float FStructuralHoverpackBridge::GetBaseSearchRadius(const AFGHoverPack* Pack)

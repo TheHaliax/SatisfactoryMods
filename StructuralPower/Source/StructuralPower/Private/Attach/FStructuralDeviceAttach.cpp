@@ -66,17 +66,6 @@ bool FStructuralDeviceAttach::TryAttachConsumer(
 		return false;
 	}
 
-	if (!FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
-	{
-		FStructuralChannelKey FeedKey;
-		FeedKey.Tag = EStructuralChannel::Light;
-		FeedKey.Source = DeviceKey.Source;
-		if (!FStructuralPowerRouter::ShouldRouteChannelLink(DeviceKey, FeedKey, CompKey, CompKey))
-		{
-			return false;
-		}
-	}
-
 	UFGPowerConnectionComponent* SourcePower =
 		Graph.ResolveSubnetFeedConnector(ComponentRoot, DeviceKey);
 	if (!IsValid(SourcePower))

@@ -11,6 +11,7 @@
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Graph/FStructuralEndpointTypes.h"
+#include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Save/FStructuralPlacementQueue.h"
 #include "Graph/FStructuralAttachmentResolver.h"
 #include "Processors/FStructuralPowerProcessorRegistry.h"
@@ -121,16 +122,16 @@ FName FStructuralGraphIdOps::ResolveSource(
 	}
 
 	if (Tag == EStructuralChannel::Switch)
-	{
-		if (const AFGBuildableCircuitSwitch* Switch = Cast<AFGBuildableCircuitSwitch>(Buildable))
 		{
-			const FName Control = FStructuralPowerRouter::ResolveSwitchControlFromTag(Switch);
-			if (Control != StructuralPowerConstants::ControlBypass)
+			if (const AFGBuildableCircuitSwitch* Switch = Cast<AFGBuildableCircuitSwitch>(Buildable))
 			{
-				return Control;
+				const FName Control = FStructuralPowerRouter::ResolveSwitchControlFromTag(Switch);
+				if (FStructuralPowerRouter::IsAssignedControl(Control))
+				{
+					return Control;
+				}
 			}
 		}
-	}
 
 	if (const FStructuralComponentKey ComponentKey = MakeComponentKeyForBuildable(Buildable);
 		ComponentKey.IsValid())
@@ -153,6 +154,10 @@ FName FStructuralGraphIdOps::ResolveControl(
 	if (const FStructuralEndpointOverrides* Overrides = Subsystem->IdRegistry.FindPlayerOverride(AStructuralPowerGraphSubsystem::MakeNodeId(Buildable));
 		Overrides && !Overrides->ControlOverride.IsNone())
 	{
+		if (Overrides->ControlOverride == FName(TEXT("BYPASS")))
+		{
+			return NAME_None;
+		}
 		return Overrides->ControlOverride;
 	}
 
@@ -163,7 +168,7 @@ FName FStructuralGraphIdOps::ResolveControl(
 			return FStructuralPowerRouter::ResolveSwitchControlFromTag(Switch);
 		}
 
-		return StructuralPowerConstants::ControlBypass;
+		return NAME_None;
 	}
 
 	if (Buildable->IsA<AFGBuildableLightsControlPanel>())
@@ -217,10 +222,8 @@ void FStructuralGraphIdOps::SetEndpointIds(
 	const bool bIsPanel = Buildable->IsA<AFGBuildableLightsControlPanel>();
 	const bool bIsSwitch = Buildable->IsA<AFGBuildableCircuitSwitch>();
 	const bool bGroupLighting = FStructuralPowerModConfig::IsGroupLightingEnabled();
-	const bool bManualSwitchGroups = FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled();
 
-	const bool bSkipDeferredOutlet = (bGroupLighting && (bIsLight || bIsPanel))
-		|| (bManualSwitchGroups && bIsSwitch);
+	const bool bSkipDeferredOutlet = (bGroupLighting && (bIsLight || bIsPanel)) || bIsSwitch;
 	if (!bSkipDeferredOutlet)
 	{
 		Subsystem->EnqueuePlacement(
@@ -239,26 +242,32 @@ void FStructuralGraphIdOps::SetEndpointIds(
 
 	if (bIsLight && bGroupLighting)
 	{
-		Subsystem->ProcessLightEndpoint(Cast<AFGBuildableLightSource>(Buildable));
+		if (AFGBuildableLightSource* Light = FStructuralPowerBuildableCasts::AsLight(Buildable))
+		{
+			Subsystem->ProcessLightEndpoint(Light);
+		}
 	}
 	else if (bIsPanel && bGroupLighting)
 	{
-		FTrackedEndpoint& Tracked = Subsystem->TrackedEndpoints.FindOrAdd(AStructuralPowerGraphSubsystem::MakeNodeId(Buildable));
-		Tracked.bPanelLinksReady = false;
-		Tracked.bDownstreamLinksReady = false;
-		Subsystem->ProcessPanelEndpoint(Cast<AFGBuildableLightsControlPanel>(Buildable));
-	}
-	else if (bIsSwitch && bManualSwitchGroups)
-	{
-		AFGBuildableCircuitSwitch* Switch = Cast<AFGBuildableCircuitSwitch>(Buildable);
-		FStructuralPowerContext Ctx = Subsystem->MakeProcessorContext(EAttachContext::RuntimePlace, Root);
-	if (IStructuralPowerProcessor* Processor =
-			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Switch))
+		if (AFGBuildableLightsControlPanel* Panel = FStructuralPowerBuildableCasts::AsPanel(Buildable))
 		{
-			Processor->Process(Ctx, Switch);
+			FTrackedEndpoint& Tracked = Subsystem->TrackedEndpoints.FindOrAdd(AStructuralPowerGraphSubsystem::MakeNodeId(Buildable));
+			Tracked.bPanelLinksReady = false;
+			Tracked.bDownstreamLinksReady = false;
+			Subsystem->ProcessPanelEndpoint(Panel);
 		}
-		const FName SwitchControl = ResolveControl(Switch, EStructuralChannel::Switch);
-		FStructuralPowerSwitchProcessor::RestitchKeyedConsumersOnRoot(Ctx, Root, SwitchControl);
+	}
+	else if (bIsSwitch)
+	{
+		if (AFGBuildableCircuitSwitch* Switch = FStructuralPowerBuildableCasts::AsSwitch(Buildable))
+		{
+			FStructuralPowerContext Ctx = Subsystem->MakeProcessorContext(EAttachContext::RuntimePlace, Root);
+			if (IStructuralPowerProcessor* Processor =
+					FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Switch))
+			{
+				Processor->Process(Ctx, Switch);
+			}
+		}
 	}
 }
 

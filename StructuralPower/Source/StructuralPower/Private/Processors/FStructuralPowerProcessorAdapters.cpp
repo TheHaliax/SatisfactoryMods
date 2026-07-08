@@ -7,14 +7,18 @@
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Buildables/FGBuildablePowerPole.h"
+#include "Buildables/FGBuildablePowerStorage.h"
 #include "Connection/FStructuralPoleConnectionPoint.h"
 #include "Connection/FStructuralPanelConnectionPoint.h"
+#include "Connection/FStructuralStorageConnectionPoint.h"
 #include "Connection/FStructuralSwitchConnectionPoint.h"
+#include "Core/EAttachContext.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Processors/FStructuralPowerLightProcessor.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
 #include "Processors/FStructuralPowerPoleProcessor.h"
+#include "Processors/FStructuralPowerStorageProcessor.h"
 #include "Processors/FStructuralPowerSwitchProcessor.h"
 #include "Processors/IStructuralPowerProcessor.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
@@ -44,11 +48,6 @@ public:
 		{
 			FStructuralPowerLightProcessor::Process(Ctx, Light, bLocalPromoteOnly);
 		}
-	}
-
-	void RestitchOnRoot(FStructuralPowerContext& Ctx, int32 Root) override
-	{
-		FStructuralPowerLightProcessor::RestitchOnRoot(Ctx, Root);
 	}
 
 	void TearDown(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
@@ -82,11 +81,6 @@ public:
 		{
 			FStructuralPowerPanelProcessor::Process(Ctx, Panel, bLocalPromoteOnly);
 		}
-	}
-
-	void RestitchOnRoot(FStructuralPowerContext& Ctx, int32 Root) override
-	{
-		FStructuralPowerPanelProcessor::RestitchOnRoot(Ctx, Root);
 	}
 
 	void TearDown(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
@@ -182,6 +176,48 @@ public:
 	}
 };
 
+class FStructuralPowerStorageProcessorAdapter final : public IStructuralPowerProcessor
+{
+public:
+	EStructuralEndpointKind GetBuildableKind() const override
+	{
+		return EStructuralEndpointKind::Storage;
+	}
+
+	EStructuralPowerRole GetPowerRole() const override
+	{
+		return EStructuralPowerRole::Host;
+	}
+
+	void Process(
+		FStructuralPowerContext& Ctx,
+		AFGBuildable* Buildable,
+		bool bLocalPromoteOnly) override
+	{
+		if (AFGBuildablePowerStorage* Storage = FStructuralPowerBuildableCasts::AsStorage(Buildable))
+		{
+			FStructuralPowerStorageProcessor::Process(Ctx, Storage);
+		}
+	}
+
+	void TearDown(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
+	{
+		if (AFGBuildablePowerStorage* Storage = FStructuralPowerBuildableCasts::AsStorage(Buildable))
+		{
+			FStructuralPowerStorageProcessor::TearDown(Ctx, Storage);
+		}
+	}
+
+	void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
+	{
+		if (AFGBuildablePowerStorage* Storage = FStructuralPowerBuildableCasts::AsStorage(Buildable))
+		{
+			FStructuralStorageConnectionPoint(Ctx.Graph(), Storage).OnWireOrGateChanged(
+				EAttachContext::WireDelta);
+		}
+	}
+};
+
 } // namespace
 
 void FStructuralPowerProcessorRegistry::Register(
@@ -206,4 +242,5 @@ void FStructuralPowerProcessorRegistry::Initialize()
 	Register(MakeUnique<FStructuralPowerPanelProcessorAdapter>());
 	Register(MakeUnique<FStructuralPowerSwitchProcessorAdapter>());
 	Register(MakeUnique<FStructuralPowerPoleProcessorAdapter>());
+	Register(MakeUnique<FStructuralPowerStorageProcessorAdapter>());
 }

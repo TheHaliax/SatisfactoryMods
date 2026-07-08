@@ -13,6 +13,7 @@
 #include "Buildables/FGBuildableCircuitBridge.h"
 #include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Buildables/FGBuildablePowerPole.h"
+#include "Buildables/FGBuildablePowerStorage.h"
 #include "Circuit/FStructuralCircuitPromotionScope.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Circuit/FStructuralHiddenConnectionUtil.h"
@@ -27,7 +28,7 @@
 #include "FGCircuitSubsystem.h"
 #include "FGLightweightBuildableSubsystem.h"
 #include "FGPowerConnectionComponent.h"
-#include "Graph/FStructuralAdjacencyHeuristics.h"
+#include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Graph/FStructuralAttachmentResolver.h"
 #include "Graph/FStructuralOutletParentResolver.h"
 #include "Graph/FStructuralEndpointIndex.h"
@@ -38,6 +39,7 @@
 #include "Graph/FStructuralSwitchParentResolver.h"
 #include "Network/UStructuralPowerSwitchListener.h"
 #include "Network/UStructuralPowerPanelListener.h"
+#include "Network/UStructuralPowerStorageListener.h"
 #include "Panel/FStructuralPanelControlledSync.h"
 #include "Panel/FStructuralPanelPortResolver.h"
 #include "Processors/FStructuralPowerGeneratorProcessor.h"
@@ -48,7 +50,6 @@
 #include "Processors/FStructuralPowerSwitchProcessor.h"
 #include "Processors/FStructuralPowerTransferGate.h"
 #include "Processors/IStructuralPowerProcessor.h"
-#include "Reconcile/FStructuralSiteBusMesh.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "Session/FStructuralPowerSessionSettings.h"
 #include "StructuralPowerConstants.h"
@@ -156,6 +157,28 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindPanel
 	return nullptr;
 }
 
+UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindSwitchControlBus(
+	const AFGBuildable* Host)
+{
+	if (!IsValid(Host))
+	{
+		return nullptr;
+	}
+
+	TInlineComponentArray<UFGStructuralPowerConnectionComponent*> Connectors;
+	const_cast<AFGBuildable*>(Host)->GetComponents(Connectors);
+	for (UFGStructuralPowerConnectionComponent* Connector : Connectors)
+	{
+		if (IsValid(Connector)
+			&& Connector->GetFName() == StructuralPowerConstants::SwitchControlBusConnectorName)
+		{
+			return Connector;
+		}
+	}
+
+	return nullptr;
+}
+
 void AStructuralPowerGraphSubsystem::StripPersistedEndpointModComponents(AFGBuildable* Host)
 {
 	// Saved outlet/panel buses still reference torn mesh — strip before live restitch or load asserts.
@@ -175,7 +198,8 @@ void AStructuralPowerGraphSubsystem::StripPersistedEndpointModComponents(AFGBuil
 
 		const FName BusName = Bus->GetFName();
 		if (BusName != StructuralPowerConstants::OutletBusConnectorName
-			&& BusName != StructuralPowerConstants::PanelControlBusConnectorName)
+			&& BusName != StructuralPowerConstants::PanelControlBusConnectorName
+			&& BusName != StructuralPowerConstants::SwitchControlBusConnectorName)
 		{
 			continue;
 		}
@@ -235,6 +259,22 @@ void AStructuralPowerGraphSubsystem::StripPersistedEndpointModComponents(AFGBuil
 			Listener->DestroyComponent();
 		}
 	}
+
+	if (Host->IsA<AFGBuildablePowerStorage>())
+	{
+		TInlineComponentArray<UStructuralPowerStorageListener*> Listeners;
+		Host->GetComponents(Listeners);
+		for (UStructuralPowerStorageListener* Listener : Listeners)
+		{
+			if (!IsValid(Listener))
+			{
+				continue;
+			}
+
+			Host->RemoveInstanceComponent(Listener);
+			Listener->DestroyComponent();
+		}
+	}
 }
 
 UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindOutletBusConnector(const AFGBuildablePowerPole* Outlet)
@@ -251,7 +291,8 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCrea
 
 	const bool bPole = Host->IsA<AFGBuildablePowerPole>();
 	const bool bSwitch = Host->IsA<AFGBuildableCircuitSwitch>();
-	if (!bPole && !bSwitch)
+	const bool bStorage = Host->IsA<AFGBuildablePowerStorage>();
+	if (!bPole && !bSwitch && !bStorage)
 	{
 		return nullptr;
 	}
@@ -300,6 +341,34 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCrea
 
 	Connector->SetMobility(EComponentMobility::Static);
 	Panel->AddInstanceComponent(Connector);
+	Connector->RegisterComponent();
+	return Connector;
+}
+
+UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCreateSwitchControlBus(
+	AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(Switch))
+	{
+		return nullptr;
+	}
+
+	if (UFGStructuralPowerConnectionComponent* Existing = FindSwitchControlBus(Switch))
+	{
+		return Existing;
+	}
+
+	UFGStructuralPowerConnectionComponent* Connector = NewObject<UFGStructuralPowerConnectionComponent>(
+		Switch,
+		StructuralPowerConstants::SwitchControlBusConnectorName,
+		RF_Transient);
+	if (!Connector)
+	{
+		return nullptr;
+	}
+
+	Connector->SetMobility(EComponentMobility::Static);
+	Switch->AddInstanceComponent(Connector);
 	Connector->RegisterComponent();
 	return Connector;
 }
@@ -375,6 +444,7 @@ void AStructuralPowerGraphSubsystem::OnWorldReady(UWorld* World)
 	}
 
 	CrossSiteGraph.Clear();
+	SiteState.ClearFeedSignatures();
 
 	RebuildBuildableRegistry(World);
 	RebuildLightweightIndex(World);
@@ -384,28 +454,30 @@ void AStructuralPowerGraphSubsystem::OnWorldReady(UWorld* World)
 
 	int32 SeededPoles = 0;
 	int32 SeededSwitches = 0;
-	if (FStructuralPowerSessionSettings::IsPropagationEnabled())
+	int32 SeededStorage = 0;
+	if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World))
 	{
-		if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World))
+		for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef())
 		{
-			for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef())
+			if (!IsValid(Buildable) || !Buildable->HasAuthority())
 			{
-				if (!IsValid(Buildable) || !Buildable->HasAuthority())
-				{
-					continue;
-				}
+				continue;
+			}
 
-				if (FStructuralEligibilityRules::IsPowerBridgePole(Buildable))
-				{
-					EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
-					++SeededPoles;
-				}
-				else if (FStructuralPowerModConfig::IsGatePowerSwitchesEnabled()
-					&& FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable))
-				{
-					EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
-					++SeededSwitches;
-				}
+			if (FStructuralEligibilityRules::IsPowerBridgePole(Buildable))
+			{
+				EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+				++SeededPoles;
+			}
+			else if (FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable))
+			{
+				EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+				++SeededSwitches;
+			}
+			else if (FStructuralEligibilityRules::IsPowerStorage(Buildable))
+			{
+				EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+				++SeededStorage;
 			}
 		}
 	}
@@ -416,16 +488,17 @@ void AStructuralPowerGraphSubsystem::OnWorldReady(UWorld* World)
 
 	UE_LOG(LogStructuralPower, Log,
 		TEXT("Graph ready — %d structure node(s), %d component(s) (largest %d), %d LW tracked,"
-			" %d pole(s) seeded, %d switch(es) seeded"),
+			" %d pole(s) seeded, %d switch(es) seeded, %d storage seeded"),
 		StructureGraph.GetNodeCount(),
 		Components,
 		Largest,
 		LightweightIndex.GetTrackedCount(),
 		SeededPoles,
-		SeededSwitches);
+		SeededSwitches,
+		SeededStorage);
 
 	// Per-pole Restitch during save load was multi-second — drain in tick budget instead.
-	bBulkLoadDrainActive = (SeededPoles + SeededSwitches) > 0;
+	bBulkLoadDrainActive = (SeededPoles + SeededSwitches + SeededStorage) > 0;
 	if (bBulkLoadDrainActive)
 	{
 		EndpointIndex.Reset();
@@ -460,16 +533,17 @@ void AStructuralPowerGraphSubsystem::PurgeSavedOutletBusMesh(UWorld* World)
 		}
 
 		const bool bPole = FStructuralEligibilityRules::IsPowerBridgePole(Buildable);
-		const bool bSwitch = FStructuralPowerModConfig::IsGatePowerSwitchesEnabled()
-			&& FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable);
+		const bool bSwitch = FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable);
+		const bool bStorage = FStructuralEligibilityRules::IsPowerStorage(Buildable);
 		const bool bPanel = FStructuralPowerModConfig::IsGroupLightingEnabled()
 			&& Buildable->IsA<AFGBuildableLightsControlPanel>();
-		if (!bPole && !bSwitch && !bPanel)
+		if (!bPole && !bSwitch && !bStorage && !bPanel)
 		{
 			continue;
 		}
 
 		const bool bHasModBus = IsValid(FindBusConnector(Buildable))
+			|| (bSwitch && IsValid(FindSwitchControlBus(Buildable)))
 			|| (bPanel && IsValid(FindPanelControlBus(Buildable)));
 		if (!bHasModBus)
 		{
@@ -492,7 +566,7 @@ void AStructuralPowerGraphSubsystem::EnqueueLightweightPlacement(
 	const FStructuralLightweightKey& Key,
 	bool bDefer)
 {
-	if (!Key.IsValid() || !FStructuralPowerSessionSettings::IsPropagationEnabled())
+	if (!Key.IsValid())
 	{
 		return;
 	}
@@ -519,12 +593,6 @@ void AStructuralPowerGraphSubsystem::EnqueuePlacement(
 	if (!Buildable->HasAuthority())
 	{
 		FStructuralPowerTrace::LogPlacementSkip(Buildable, TEXT("no_authority"));
-		return;
-	}
-
-	if (!FStructuralPowerSessionSettings::IsPropagationEnabled())
-	{
-		FStructuralPowerTrace::LogPlacementSkip(Buildable, TEXT("propagation_disabled"));
 		return;
 	}
 
@@ -556,11 +624,6 @@ bool AStructuralPowerGraphSubsystem::IsBuildablePlacementPending(AFGBuildable* B
 
 void AStructuralPowerGraphSubsystem::TickDeferredPlacements(int32 MaxJobs)
 {
-	if (!FStructuralPowerSessionSettings::IsPropagationEnabled())
-	{
-		return;
-	}
-
 	PlacementQueue.Tick(
 		MaxJobs,
 		bBulkLoadDrainActive,
@@ -663,6 +726,13 @@ void AStructuralPowerGraphSubsystem::PromoteDirectHiddenLinks(UFGPowerConnection
 }
 
 
+bool AStructuralPowerGraphSubsystem::IsPanelSupplyLinked(
+	UFGPowerConnectionComponent* InputPower,
+	UFGPowerConnectionComponent* Feed) const
+{
+	return CircuitOps.IsPanelSupplyLinked(InputPower, Feed);
+}
+
 bool AStructuralPowerGraphSubsystem::IsPanelSupplyLinkedAndLive(
 	UFGPowerConnectionComponent* InputPower,
 	UFGPowerConnectionComponent* Feed) const
@@ -748,6 +818,13 @@ FStructuralPowerContext AStructuralPowerGraphSubsystem::GetProcessorContext() co
 	return MakeProcessorContext(GetCurrentAttachContext());
 }
 
+bool AStructuralPowerGraphSubsystem::ShouldDeferCircuitDrivenRefresh() const
+{
+	return bBulkLoadDrainActive
+		|| bPendingPostLoadLightReconcile
+		|| CircuitPromotionDepth > 0;
+}
+
 void AStructuralPowerGraphSubsystem::FinishBulkLoadDrain()
 {
 	if (!bBulkLoadDrainActive)
@@ -755,16 +832,24 @@ void AStructuralPowerGraphSubsystem::FinishBulkLoadDrain()
 		return;
 	}
 
-	bBulkLoadDrainActive = false;
-
 	MarkBridgeEndpointRootIndexDirty();
 	RefreshBridgeEndpointRootIndex();
+
+	FStructuralPowerContext SwitchCtx = MakeProcessorContext(EAttachContext::BulkLoad);
+	FStructuralPowerSwitchProcessor::RemeshUnmeshedPeersAfterBulkLoad(SwitchCtx);
 
 	TSet<int32> Roots;
 	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : TrackedEndpoints)
 	{
 		if (Pair.Value.Kind != EStructuralEndpointKind::Pole
-			&& Pair.Value.Kind != EStructuralEndpointKind::Switch)
+			&& Pair.Value.Kind != EStructuralEndpointKind::Switch
+			&& Pair.Value.Kind != EStructuralEndpointKind::Storage)
+		{
+			continue;
+		}
+
+		if (Pair.Value.Kind == EStructuralEndpointKind::Pole
+			&& !Pair.Value.bStructuralPowerTransferActive)
 		{
 			continue;
 		}
@@ -776,11 +861,31 @@ void AStructuralPowerGraphSubsystem::FinishBulkLoadDrain()
 		}
 	}
 
-	if (FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled())
+	if (Roots.Num() > 0)
 	{
-		for (int32 Root : Roots)
+		const TArray<int32> RootArray = Roots.Array();
+
+		FStructuralPowerContext BulkCtx = MakeProcessorContext(EAttachContext::BulkLoad);
+		for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : TrackedEndpoints)
 		{
-			RestitchOps.RestitchKeyedSubnetsAfterMeshFeedRefresh(Root, EAttachContext::BulkLoad);
+			if (Pair.Value.Kind != EStructuralEndpointKind::Switch)
+			{
+				continue;
+			}
+
+			if (AFGBuildableCircuitSwitch* Switch = Pair.Value.GetSwitch())
+			{
+				FStructuralPowerSwitchProcessor::SyncDirectedBridgePair(BulkCtx, Switch);
+			}
+		}
+
+		for (int32 Root : RootArray)
+		{
+			FStructuralPowerContext RootCtx = MakeProcessorContext(EAttachContext::BulkLoad, Root);
+			FStructuralPowerTransferGate::RefreshKeyedTransferOnRoot(
+				RootCtx,
+				Root,
+				/*bLocalPromoteOnly=*/false);
 		}
 	}
 
@@ -997,8 +1102,7 @@ UFGPowerConnectionComponent* AStructuralPowerGraphSubsystem::ResolveSubnetFeedCo
 
 bool AStructuralPowerGraphSubsystem::DoesComponentRootCarryPower(int32 ComponentRoot) const
 {
-	if (ComponentRoot == INDEX_NONE
-		|| !FStructuralPowerSessionSettings::IsPropagationEnabled())
+	if (ComponentRoot == INDEX_NONE)
 	{
 		return false;
 	}
@@ -1060,6 +1164,11 @@ bool AStructuralPowerGraphSubsystem::ShouldMeshEndpoints(
 
 void AStructuralPowerGraphSubsystem::OnSwitchStateChanged(AFGBuildableCircuitSwitch* Switch)
 {
+	if (ShouldDeferCircuitDrivenRefresh())
+	{
+		return;
+	}
+
 	FStructuralPowerContext Ctx = MakeProcessorContext(EAttachContext::Toggle);
 	FStructuralPowerSwitchProcessor::OnStateChanged(Ctx, Switch);
 }
@@ -1090,32 +1199,6 @@ void AStructuralPowerGraphSubsystem::EnsurePanelListener(AFGBuildableLightsContr
 	Listener->BindSubsystem(this, Panel);
 }
 
-void AStructuralPowerGraphSubsystem::RestitchComponent(
-	int32 Root,
-	bool bTearDownFirst,
-	EAttachContext AttachContext)
-{
-	RestitchOps.RestitchComponent(Root, bTearDownFirst, AttachContext);
-}
-
-
-void AStructuralPowerGraphSubsystem::ReEnergizeComponentRoots(
-	const TArray<int32>& Roots,
-	bool bTearDownFirst,
-	EAttachContext AttachContext)
-{
-	RestitchOps.ReEnergizeComponentRoots(Roots, bTearDownFirst, AttachContext);
-}
-
-
-void AStructuralPowerGraphSubsystem::RestitchKeyedSubnetsAfterMeshFeedRefresh(
-	int32 Root,
-	EAttachContext AttachContext)
-{
-	RestitchOps.RestitchKeyedSubnetsAfterMeshFeedRefresh(Root, AttachContext);
-}
-
-
 void AStructuralPowerGraphSubsystem::ProcessStructure(AFGBuildable* Buildable)
 {
 	if (!FStructuralEligibilityRules::IsBusMember(Buildable))
@@ -1132,13 +1215,10 @@ void AStructuralPowerGraphSubsystem::ProcessStructure(AFGBuildable* Buildable)
 		return;
 	}
 
-	// Pole regroup only when two+ roots fuse — single attach must not ReEnergize.
+	// Root fusion updates structure graph only — endpoints keep existing hidden links.
 	if (MergedRoots.Num() >= 2)
 	{
 		const int32 Root = StructureGraph.FindRoot(MakeNodeId(Buildable));
-		TArray<int32> Roots;
-		Roots.Add(Root);
-		ReEnergizeComponentRoots(Roots, /*bTearDownFirst=*/false, EAttachContext::RuntimePlace);
 
 		UE_LOG(LogStructuralPower, Verbose,
 			TEXT("[HALSP] structure %s fused %d component(s) -> root %d"),
@@ -1171,10 +1251,7 @@ void AStructuralPowerGraphSubsystem::ProcessLightweightStructure(const FStructur
 
 	if (MergedRoots.Num() >= 2)
 	{
-		const int32 Root = StructureGraph.FindRoot(FStructuralLightweightIndex::MakeNodeId(Key));
-		TArray<int32> Roots;
-		Roots.Add(Root);
-		ReEnergizeComponentRoots(Roots, /*bTearDownFirst=*/false, EAttachContext::RuntimePlace);
+		(void)StructureGraph.FindRoot(FStructuralLightweightIndex::MakeNodeId(Key));
 	}
 }
 
@@ -1200,7 +1277,10 @@ void AStructuralPowerGraphSubsystem::ProcessOutlet(AFGBuildable* Buildable)
 
 	if (FStructuralEligibilityRules::IsStructuralLightConsumer(Buildable))
 	{
-		ProcessLightEndpoint(Cast<AFGBuildableLightSource>(Buildable));
+		if (AFGBuildableLightSource* Light = FStructuralPowerBuildableCasts::AsLight(Buildable))
+		{
+			ProcessLightEndpoint(Light);
+		}
 		return;
 	}
 
@@ -1210,7 +1290,7 @@ void AStructuralPowerGraphSubsystem::ProcessOutlet(AFGBuildable* Buildable)
 		return;
 	}
 
-	if (AFGBuildableLightsControlPanel* Panel = Cast<AFGBuildableLightsControlPanel>(Buildable))
+	if (AFGBuildableLightsControlPanel* Panel = FStructuralPowerBuildableCasts::AsPanel(Buildable))
 	{
 		if (bBulkLoadDrainActive)
 		{
@@ -1221,16 +1301,30 @@ void AStructuralPowerGraphSubsystem::ProcessOutlet(AFGBuildable* Buildable)
 		return;
 	}
 
-	if (FStructuralPowerModConfig::IsGatePowerSwitchesEnabled()
-		&& FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable))
+	if (FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable))
 	{
-		ProcessSwitchEndpoint(Cast<AFGBuildableCircuitSwitch>(Buildable));
+		if (AFGBuildableCircuitSwitch* Switch = FStructuralPowerBuildableCasts::AsSwitch(Buildable))
+		{
+			ProcessSwitchEndpoint(Switch);
+		}
 		return;
 	}
 
 	if (FStructuralEligibilityRules::IsPowerBridgePole(Buildable))
 	{
-		ProcessPoleEndpoint(Cast<AFGBuildablePowerPole>(Buildable));
+		if (AFGBuildablePowerPole* Pole = FStructuralPowerBuildableCasts::AsPole(Buildable))
+		{
+			ProcessPoleEndpoint(Pole);
+		}
+		return;
+	}
+
+	if (FStructuralEligibilityRules::IsPowerStorage(Buildable))
+	{
+		if (AFGBuildablePowerStorage* Storage = FStructuralPowerBuildableCasts::AsStorage(Buildable))
+		{
+			ProcessStorageEndpoint(Storage);
+		}
 		return;
 	}
 
@@ -1254,12 +1348,22 @@ void AStructuralPowerGraphSubsystem::ProcessSwitchEndpoint(AFGBuildableCircuitSw
 
 void AStructuralPowerGraphSubsystem::ProcessSwitchWireDelta(AFGBuildableCircuitSwitch* Switch)
 {
+	if (ShouldDeferCircuitDrivenRefresh())
+	{
+		return;
+	}
+
 	WireDeltaHandler.ProcessSwitchWireDelta(Switch);
 }
 
 
 void AStructuralPowerGraphSubsystem::ProcessPanelWireDelta(AFGBuildableLightsControlPanel* Panel)
 {
+	if (ShouldDeferCircuitDrivenRefresh())
+	{
+		return;
+	}
+
 	WireDeltaHandler.ProcessPanelWireDelta(Panel);
 }
 
@@ -1276,9 +1380,7 @@ bool AStructuralPowerGraphSubsystem::ShouldSkipPanelCircuitEcho(
 		}
 	};
 
-	if (!IsValid(Panel)
-		|| !FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled()
-		|| !FStructuralPowerModConfig::IsGroupLightingEnabled())
+	if (!IsValid(Panel) || !FStructuralPowerModConfig::IsGroupLightingEnabled())
 	{
 		return false;
 	}
@@ -1333,9 +1435,15 @@ bool AStructuralPowerGraphSubsystem::ShouldSkipPanelCircuitEcho(
 		FStructuralPanelPorts Ports;
 		if (FStructuralPanelPortResolver::Resolve(Panel, Ports))
 		{
-			const UFGPowerConnectionComponent* InputPower =
+			UFGPowerConnectionComponent* InputPower =
 				FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
-			if (FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower))
+			if (FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower)
+				|| FStructuralPanelAttach::SupplyAlreadyLinked(
+					*this,
+					Panel,
+					Ports,
+					Root,
+					ChannelKey))
 			{
 				SetReason(TEXT("skip_routing_unchanged"));
 				return true;
@@ -1351,8 +1459,7 @@ void AStructuralPowerGraphSubsystem::MarkEchoDirtyForSwitchToggle(
 	AFGBuildableCircuitSwitch* Switch,
 	int32 LocalRoot)
 {
-	if (!FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled()
-		|| !FStructuralPowerModConfig::IsGroupLightingEnabled())
+	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
 	{
 		return;
 	}
@@ -1366,9 +1473,11 @@ void AStructuralPowerGraphSubsystem::MarkEchoDirtyForSwitchToggle(
 	if (IsValid(Switch)
 		&& FStructuralSwitchParentResolver::IsWiredToStructureSide(Switch))
 	{
-		TArray<int32> WiredSites;
-		CrossSiteGraph.GatherSwitchSiteRoots(*this, Switch, LocalRoot, WiredSites);
-		for (int32 Site : WiredSites)
+		CrossSiteGraph.RefreshCouplingsFromWiredSwitch(*this, Switch, LocalRoot);
+
+		TArray<int32> FeedAffectedSites;
+		CrossSiteGraph.TraceFeedAffected(*this, Switch, LocalRoot, FeedAffectedSites);
+		for (int32 Site : FeedAffectedSites)
 		{
 			DirtySites.AddUnique(Site);
 		}
@@ -1423,6 +1532,16 @@ void AStructuralPowerGraphSubsystem::ProcessPoleEndpoint(AFGBuildablePowerPole* 
 	}
 }
 
+void AStructuralPowerGraphSubsystem::ProcessStorageEndpoint(AFGBuildablePowerStorage* Storage)
+{
+	FStructuralPowerContext Ctx = GetProcessorContext();
+	if (IStructuralPowerProcessor* Processor =
+			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Storage))
+	{
+		Processor->Process(Ctx, Storage);
+	}
+}
+
 void AStructuralPowerGraphSubsystem::ProcessPoleEndpointDirect(AFGBuildablePowerPole* Pole)
 {
 	FStructuralPowerContext Ctx = GetProcessorContext();
@@ -1474,28 +1593,6 @@ void AStructuralPowerGraphSubsystem::ProcessPanelEndpoint(
 	}
 }
 
-void AStructuralPowerGraphSubsystem::RestitchPanelEndpointsForRoot(
-	int32 Root,
-	EAttachContext AttachContext)
-{
-	RestitchOps.RestitchPanelEndpointsForRoot(Root, AttachContext);
-}
-
-
-void AStructuralPowerGraphSubsystem::RestitchPanelsWithControlOnRoot(int32 Root, FName ControlId)
-{
-	RestitchOps.RestitchPanelsWithControlOnRoot(Root, ControlId);
-}
-
-
-void AStructuralPowerGraphSubsystem::RestitchLightEndpointsForRoot(
-	int32 Root,
-	EAttachContext AttachContext)
-{
-	RestitchOps.RestitchLightEndpointsForRoot(Root, AttachContext);
-}
-
-
 void AStructuralPowerGraphSubsystem::ProcessGeneratorEndpoint(AFGBuildableGenerator* Generator)
 {
 	FStructuralPowerContext Ctx = GetProcessorContext();
@@ -1541,17 +1638,24 @@ void AStructuralPowerGraphSubsystem::OnBuildableRemoved(AFGBuildable* Buildable)
 			if (Tracked->Kind == EStructuralEndpointKind::Switch)
 			{
 				FStructuralPowerContext Ctx = GetProcessorContext();
-				FStructuralPowerSwitchProcessor::TearDown(
-					Ctx,
-					Cast<AFGBuildableCircuitSwitch>(Host));
+				if (AFGBuildableCircuitSwitch* Switch = Tracked->GetSwitch())
+				{
+					FStructuralPowerSwitchProcessor::TearDown(Ctx, Switch);
+				}
 			}
 			else if (Tracked->Kind == EStructuralEndpointKind::Light)
 			{
-				TearDownLightStructuralLinks(Cast<AFGBuildableLightSource>(Host));
+				if (AFGBuildableLightSource* Light = Tracked->GetLight())
+				{
+					TearDownLightStructuralLinks(Light);
+				}
 			}
 			else if (Tracked->Kind == EStructuralEndpointKind::Panel)
 			{
-				TearDownPanelStructuralLinks(Cast<AFGBuildableLightsControlPanel>(Host));
+				if (AFGBuildableLightsControlPanel* Panel = Tracked->GetPanel())
+				{
+					TearDownPanelStructuralLinks(Panel);
+				}
 			}
 			else if (UFGStructuralPowerConnectionComponent* Bus = FindBusConnector(Host))
 			{
@@ -1569,19 +1673,11 @@ void AStructuralPowerGraphSubsystem::OnBuildableRemoved(AFGBuildable* Buildable)
 
 		TrackedEndpoints.Remove(NodeId);
 		MarkBridgeEndpointRootIndexDirty();
-
-		if (OldRoot != INDEX_NONE)
-		{
-			TArray<int32> Roots;
-			Roots.Add(OldRoot);
-			ReEnergizeComponentRoots(Roots, /*bTearDownFirst=*/true, EAttachContext::WireDelta);
-		}
 	}
 	else if (StructureGraph.IsTracked(NodeId))
 	{
 		TArray<int32> AffectedRoots;
 		StructureGraph.RemoveNode(NodeId, AffectedRoots);
-		ReEnergizeComponentRoots(AffectedRoots, /*bTearDownFirst=*/true, EAttachContext::WireDelta);
 	}
 
 	PlacementQueue.RemoveBuildable(Buildable);
@@ -1599,7 +1695,6 @@ void AStructuralPowerGraphSubsystem::OnLightweightRemoved(const FStructuralLight
 	{
 		TArray<int32> AffectedRoots;
 		StructureGraph.RemoveNode(NodeId, AffectedRoots);
-		ReEnergizeComponentRoots(AffectedRoots, /*bTearDownFirst=*/true, EAttachContext::WireDelta);
 	}
 
 	LightweightIndex.UnregisterMember(Key);
@@ -1666,8 +1761,7 @@ void AStructuralPowerGraphSubsystem::RebuildBuildableRegistry(UWorld* World)
 
 		if (FStructuralEligibilityRules::IsBusMember(Buildable)
 			|| FStructuralEligibilityRules::IsPowerBridgePole(Buildable)
-			|| (FStructuralPowerModConfig::IsGatePowerSwitchesEnabled()
-				&& FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable)))
+			|| FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable))
 		{
 			RegisteredBuildables.Add(MakeNodeId(Buildable), Buildable);
 		}

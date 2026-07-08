@@ -8,14 +8,14 @@
 
 namespace
 {
-static FArrayProperty* GetHiddenConnectionsArrayProperty()
+FArrayProperty* GetHiddenConnectionsArrayProperty()
 {
 	return FindFProperty<FArrayProperty>(
 		UFGCircuitConnectionComponent::StaticClass(),
 		TEXT("mHiddenConnections"));
 }
 
-static bool AppendHiddenConnectionEntry(
+bool AppendHiddenConnectionEntry(
 	UFGCircuitConnectionComponent* Owner,
 	UFGCircuitConnectionComponent* Other)
 {
@@ -31,7 +31,8 @@ static bool AppendHiddenConnectionEntry(
 	for (int32 Index = 0; Index < Helper.Num(); ++Index)
 	{
 		UFGCircuitConnectionComponent* const* Existing =
-			reinterpret_cast<UFGCircuitConnectionComponent* const*>(Helper.GetRawPtr(Index));
+			reinterpret_cast<UFGCircuitConnectionComponent* const*>(
+				Helper.GetRawPtr(Index));
 		if (Existing && *Existing == Other)
 		{
 			return false;
@@ -39,8 +40,37 @@ static bool AppendHiddenConnectionEntry(
 	}
 
 	const int32 NewIndex = Helper.AddValue();
-	*reinterpret_cast<TObjectPtr<UFGCircuitConnectionComponent>*>(Helper.GetRawPtr(NewIndex)) = Other;
+	*reinterpret_cast<TObjectPtr<UFGCircuitConnectionComponent>*>(
+		Helper.GetRawPtr(NewIndex)) = Other;
 	return true;
+}
+
+bool RemoveHiddenConnectionEntry(
+	UFGCircuitConnectionComponent* Owner,
+	UFGCircuitConnectionComponent* Other)
+{
+	FArrayProperty* ArrayProperty = GetHiddenConnectionsArrayProperty();
+	if (!ArrayProperty || !IsValid(Owner) || !IsValid(Other))
+	{
+		return false;
+	}
+
+	void* ArrayPtr = ArrayProperty->ContainerPtrToValuePtr<void>(Owner);
+	FScriptArrayHelper Helper(ArrayProperty, ArrayPtr);
+
+	for (int32 Index = 0; Index < Helper.Num(); ++Index)
+	{
+		UFGCircuitConnectionComponent* const* Existing =
+			reinterpret_cast<UFGCircuitConnectionComponent* const*>(
+				Helper.GetRawPtr(Index));
+		if (Existing && *Existing == Other)
+		{
+			Helper.RemoveValues(Index);
+			return true;
+		}
+	}
+
+	return false;
 }
 }
 
@@ -74,4 +104,26 @@ bool FStructuralHiddenConnectionUtil::AddMeshOnlyHiddenLink(
 	}
 
 	return bAdded;
+}
+
+bool FStructuralHiddenConnectionUtil::RemoveMeshOnlyHiddenLink(
+	UFGCircuitConnectionComponent* A,
+	UFGCircuitConnectionComponent* B)
+{
+	if (!IsValid(A) || !IsValid(B) || A == B)
+	{
+		return false;
+	}
+
+	bool bRemoved = false;
+	if (A->IsHidden())
+	{
+		bRemoved |= RemoveHiddenConnectionEntry(A, B);
+	}
+	if (B->IsHidden())
+	{
+		bRemoved |= RemoveHiddenConnectionEntry(B, A);
+	}
+
+	return bRemoved;
 }

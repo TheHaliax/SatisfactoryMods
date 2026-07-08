@@ -52,5 +52,4 @@ private:
 		int32 Site);
 
 	TMap<int32, TSet<int32>> SiteAdjacency;
-	TMap<int32, FStructuralSiteFeedSignature> CachedFeedSignatures;
 };

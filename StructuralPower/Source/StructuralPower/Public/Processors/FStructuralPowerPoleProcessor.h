@@ -6,10 +6,22 @@
 #include "CoreMinimal.h"
 
 class AFGBuildablePowerPole;
+class AStructuralPowerGraphSubsystem;
+struct FStructuralNodeId;
+struct FStructuralOutletParentResolveResult;
 struct FStructuralPowerContext;
 
 class STRUCTURALPOWER_API FStructuralPowerPoleProcessor
 {
 public:
 	static void Process(FStructuralPowerContext& Ctx, AFGBuildablePowerPole* Pole);
+
+private:
+	static void ResolvePoleStructuralSite(
+		AStructuralPowerGraphSubsystem& Graph,
+		AFGBuildablePowerPole* Pole,
+		FStructuralNodeId& OutParentId,
+		int32& OutRoot,
+		bool& bStructurallyAnchored,
+		FStructuralOutletParentResolveResult* OutParentResolve = nullptr);
 };

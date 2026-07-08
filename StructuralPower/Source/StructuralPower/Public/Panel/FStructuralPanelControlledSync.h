@@ -13,4 +13,12 @@ struct FStructuralPanelControlledSync
 	static void ApplyKeyedSubnet(
 		AStructuralPowerGraphSubsystem& Graph,
 		AFGBuildableLightsControlPanel* Panel);
+
+	static void MirrorSharedControlState(
+		AStructuralPowerGraphSubsystem& Graph,
+		AFGBuildableLightsControlPanel* Panel);
+
+	static FName ResolveEffectiveLightControl(
+		AStructuralPowerGraphSubsystem& Graph,
+		AFGBuildableLightsControlPanel* Panel);
 };

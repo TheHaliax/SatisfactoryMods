@@ -47,8 +47,7 @@ const IStructuralPowerProcessor* FStructuralPowerProcessorRegistry::FindForBuild
 		return Find(EStructuralEndpointKind::Panel);
 	}
 
-	if (FStructuralPowerModConfig::IsGatePowerSwitchesEnabled()
-		&& FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable))
+	if (FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable))
 	{
 		return Find(EStructuralEndpointKind::Switch);
 	}
@@ -56,6 +55,11 @@ const IStructuralPowerProcessor* FStructuralPowerProcessorRegistry::FindForBuild
 	if (FStructuralEligibilityRules::IsPowerBridgePole(Buildable))
 	{
 		return Find(EStructuralEndpointKind::Pole);
+	}
+
+	if (FStructuralEligibilityRules::IsPowerStorage(Buildable))
+	{
+		return Find(EStructuralEndpointKind::Storage);
 	}
 
 	return nullptr;

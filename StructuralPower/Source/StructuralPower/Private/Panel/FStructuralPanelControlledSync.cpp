@@ -7,6 +7,7 @@
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Config/FStructuralPowerModConfig.h"
+#include "Graph/FStructuralEndpointTypes.h"
 #include "Routing/EStructuralChannel.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerConstants.h"
@@ -15,6 +16,8 @@
 
 namespace
 {
+bool GPanelPeerMirrorGuard = false;
+
 FArrayProperty* GetControlledBuildablesProperty()
 {
 	return FindFProperty<FArrayProperty>(
@@ -72,6 +75,24 @@ void WriteControlledBuildables(
 }
 } // namespace
 
+FName FStructuralPanelControlledSync::ResolveEffectiveLightControl(
+	AStructuralPowerGraphSubsystem& Graph,
+	AFGBuildableLightsControlPanel* Panel)
+{
+	if (!IsValid(Panel))
+	{
+		return NAME_None;
+	}
+
+	const FName Control = Graph.ResolveControl(Panel, EStructuralChannel::Light);
+	if (Control.IsNone() || Control == StructuralPowerConstants::ControlUnconfigured)
+	{
+		return Graph.ResolveSource(Panel, EStructuralChannel::Light);
+	}
+
+	return Control;
+}
+
 void FStructuralPanelControlledSync::ApplyKeyedSubnet(
 	AStructuralPowerGraphSubsystem& Graph,
 	AFGBuildableLightsControlPanel* Panel)
@@ -86,8 +107,8 @@ void FStructuralPanelControlledSync::ApplyKeyedSubnet(
 		return;
 	}
 
-	const FName Control = Graph.ResolveControl(Panel, EStructuralChannel::Light);
-	if (Control.IsNone() || Control == StructuralPowerConstants::ControlUnconfigured)
+	const FName EffectiveControl = ResolveEffectiveLightControl(Graph, Panel);
+	if (EffectiveControl.IsNone())
 	{
 		return;
 	}
@@ -107,7 +128,7 @@ void FStructuralPanelControlledSync::ApplyKeyedSubnet(
 		}
 
 		const FName LightSource = Graph.ResolveSource(Light, EStructuralChannel::Light);
-		if (LightSource == Control)
+		if (LightSource == EffectiveControl)
 		{
 			KeyedLights.Add(Light);
 		}
@@ -126,5 +147,84 @@ void FStructuralPanelControlledSync::ApplyKeyedSubnet(
 		TEXT("[HALSP] panel %s keyed controlled=%d control=%s"),
 		*Panel->GetName(),
 		KeyedLights.Num(),
-		*Control.ToString());
+		*EffectiveControl.ToString());
+}
+
+void FStructuralPanelControlledSync::MirrorSharedControlState(
+	AStructuralPowerGraphSubsystem& Graph,
+	AFGBuildableLightsControlPanel* Panel)
+{
+	if (GPanelPeerMirrorGuard || !IsValid(Panel) || !Panel->HasAuthority())
+	{
+		return;
+	}
+
+	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
+	{
+		return;
+	}
+
+	const FName Control = Graph.ResolveControl(Panel, EStructuralChannel::Light);
+	const FName EffectiveControl = ResolveEffectiveLightControl(Graph, Panel);
+	if (EffectiveControl.IsNone())
+	{
+		return;
+	}
+
+	const int32 Root = Graph.GetEndpointComponentRoot(Panel);
+	if (Root == INDEX_NONE)
+	{
+		return;
+	}
+
+	Graph.RefreshBridgeEndpointRootIndex();
+	const TArray<FStructuralNodeId>* PanelIds =
+		Graph.EndpointIndex.Get(Root, EStructuralEndpointKind::Panel);
+	if (!PanelIds || PanelIds->Num() == 0)
+	{
+		return;
+	}
+
+	const bool bEnabled = Panel->IsLightEnabled();
+	const FLightSourceControlData ControlData = Panel->GetLightControlData();
+
+	GPanelPeerMirrorGuard = true;
+	for (const FStructuralNodeId& PeerId : *PanelIds)
+	{
+		const FTrackedEndpoint* Tracked = Graph.TrackedEndpoints.Find(PeerId);
+		if (!Tracked)
+		{
+			continue;
+		}
+
+		AFGBuildableLightsControlPanel* Peer = Tracked->GetPanel();
+		if (!IsValid(Peer) || Peer == Panel)
+		{
+			continue;
+		}
+
+		const FName PeerControl = Graph.ResolveControl(Peer, EStructuralChannel::Light);
+		const bool bSameBank = Control.IsNone()
+			|| Control == StructuralPowerConstants::ControlUnconfigured
+			? (PeerControl.IsNone() || PeerControl == StructuralPowerConstants::ControlUnconfigured)
+			: PeerControl == Control;
+		if (!bSameBank)
+		{
+			continue;
+		}
+
+		if (Peer->IsLightEnabled() != bEnabled)
+		{
+			Peer->SetLightEnabled(bEnabled);
+		}
+
+		const FLightSourceControlData PeerData = Peer->GetLightControlData();
+		if (PeerData.ColorSlotIndex != ControlData.ColorSlotIndex
+			|| PeerData.Intensity != ControlData.Intensity
+			|| PeerData.IsTimeOfDayAware != ControlData.IsTimeOfDayAware)
+		{
+			Peer->SetLightControlData(ControlData);
+		}
+	}
+	GPanelPeerMirrorGuard = false;
 }

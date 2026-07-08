@@ -92,12 +92,6 @@ FString FStructuralPowerTrace::FormatControlForTrace(const FStructuralChannelKey
 		return TEXT("-");
 	}
 
-	if (Key.Tag == EStructuralChannel::Switch
-		&& Key.Control == StructuralPowerConstants::ControlBypass)
-	{
-		return TEXT("BYPASS");
-	}
-
 	if (Key.Control.IsNone())
 	{
 		return TEXT("-");

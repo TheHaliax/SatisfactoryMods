@@ -43,6 +43,23 @@ void FStructuralPanelAttach::TearDownLinks(
 	}
 }
 
+void FStructuralPanelAttach::TearDownDownstreamLinks(
+	AFGBuildableControlPanelHost* Panel,
+	const FStructuralPanelPorts& Ports)
+{
+	if (UFGPowerConnectionComponent* Downstream =
+			FStructuralPanelPortResolver::AsPowerConnection(Ports.Downstream))
+	{
+		FStructuralDeviceAttach::TearDownConsumerLinks(Downstream);
+	}
+
+	if (UFGStructuralPowerConnectionComponent* ControlBus =
+			AStructuralPowerGraphSubsystem::FindPanelControlBus(Panel))
+	{
+		FStructuralDeviceAttach::TearDownConsumerLinks(ControlBus);
+	}
+}
+
 static UFGPowerConnectionComponent* ResolvePanelFeedConnector(
 	AStructuralPowerGraphSubsystem& Graph,
 	AFGBuildable* Panel,
@@ -69,7 +86,7 @@ bool FStructuralPanelAttach::SupplyAlreadyLinked(
 
 	UFGPowerConnectionComponent* Feed =
 		ResolvePanelFeedConnector(Graph, Panel, ComponentRoot, PanelKey);
-	return Graph.IsPanelSupplyLinkedAndLive(InputPower, Feed);
+	return Graph.IsPanelSupplyLinked(InputPower, Feed);
 }
 
 bool FStructuralPanelAttach::TryLinkSupply(
@@ -89,16 +106,6 @@ bool FStructuralPanelAttach::TryLinkSupply(
 
 	const FStructuralComponentKey CompKey = Graph.MakeComponentKeyForRoot(ComponentRoot);
 	if (!CompKey.IsValid())
-	{
-		return false;
-	}
-
-	FStructuralChannelKey FeedKey;
-	FeedKey.Tag = EStructuralChannel::Light;
-	FeedKey.Source = PanelKey.Source;
-
-	if (!FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled()
-		&& !FStructuralPowerRouter::ShouldRouteChannelLink(PanelKey, FeedKey, CompKey, CompKey))
 	{
 		return false;
 	}
@@ -145,9 +152,14 @@ void FStructuralPanelAttach::RestitchDownstream(
 {
 	UFGPowerConnectionComponent* Downstream =
 		FStructuralPanelPortResolver::AsPowerConnection(Ports.Downstream);
-	if (!IsValid(Panel) || !IsValid(Downstream) || ComponentRoot == INDEX_NONE
-		|| PanelControl.IsNone()
-		|| PanelControl == StructuralPowerConstants::ControlUnconfigured)
+	if (!IsValid(Panel) || !IsValid(Downstream) || ComponentRoot == INDEX_NONE)
+	{
+		return;
+	}
+
+	const FName EffectiveControl =
+		FStructuralPanelControlledSync::ResolveEffectiveLightControl(Graph, Panel);
+	if (EffectiveControl.IsNone())
 	{
 		return;
 	}
@@ -174,7 +186,7 @@ void FStructuralPanelAttach::RestitchDownstream(
 		}
 
 		const FName LightSource = Graph.ResolveSource(Light, EStructuralChannel::Light);
-		if (LightSource != PanelControl)
+		if (LightSource != EffectiveControl)
 		{
 			return;
 		}
@@ -202,13 +214,14 @@ void FStructuralPanelAttach::RestitchDownstream(
 					StructuralPowerScopeToString(EStructuralPowerScope::Site),
 					ComponentRoot,
 					StructuralPowerRoleToString(EStructuralPowerRole::Host),
-					*PanelControl.ToString());
+					*EffectiveControl.ToString());
 				FStructuralPowerTrace::LogConnector(TEXT("panel_control_bus"), Panel, ControlBus);
 				FStructuralPowerTrace::LogConnector(TEXT("light_plug"), Light, Plug);
 			}
 		}
 	});
 
+	(void)PanelControl;
 	FStructuralPanelControlledSync::ApplyKeyedSubnet(Graph, Panel);
 }
 

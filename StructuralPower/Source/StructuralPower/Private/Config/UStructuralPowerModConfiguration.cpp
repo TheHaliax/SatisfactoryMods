@@ -265,44 +265,6 @@ void InitializeSchema(UConfigPropertySection* Root)
 		NSLOCTEXT("StructuralPower", "Trace", "PWR trace logging"),
 		NSLOCTEXT("StructuralPower", "TraceTip", "Verbose [HALSP] diagnostics in FactoryGame.log. Chat: !tracetoggle"),
 		false);
-
-	AddBoolProperty(
-		Debug,
-		Debug,
-		TEXT("EnablePropagation"),
-		NSLOCTEXT("StructuralPower", "EnablePropagation", "Enable structural propagation"),
-		NSLOCTEXT("StructuralPower", "EnablePropagationTip", "Master toggle for the structural power bus."),
-		true);
-
-	AddBoolProperty(
-		Debug,
-		Debug,
-		TEXT("GatePowerSwitches"),
-		NSLOCTEXT("StructuralPower", "GatePowerSwitches", "Gate power switches"),
-		NSLOCTEXT("StructuralPower", "GatePowerSwitchesTip", "Structural switch gating (v2.1)."),
-		true);
-
-	AddBoolProperty(
-		Debug,
-		Debug,
-		TEXT("PowerSwitchManualGroups"),
-		NSLOCTEXT("StructuralPower", "PowerSwitchManualGroups", "Switch keyed subnets (Mode B)"),
-		NSLOCTEXT(
-			"StructuralPower",
-			"PowerSwitchManualGroupsTip",
-			"ON = keyed subnet mesh; OFF = whole-component gate."),
-		true);
-
-	AddBoolProperty(
-		Debug,
-		Debug,
-		TEXT("EnableHoverpackStructural"),
-		NSLOCTEXT("StructuralPower", "EnableHoverpackStructural", "Hoverpack structural tether"),
-		NSLOCTEXT(
-			"StructuralPower",
-			"EnableHoverpackStructuralTip",
-			"Virtual anchors on powered structure geometry."),
-		true);
 }
 
 UConfigProperty* UpgradeNestedSectionToSmlBlueprint(

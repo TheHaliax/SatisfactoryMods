@@ -17,16 +17,6 @@ void FStructuralPowerGeneratorProcessor::Process(
 	}
 }
 
-void FStructuralPowerGeneratorProcessor::RestitchOnRoot(
-	FStructuralPowerContext& /*Ctx*/,
-	int32 /*Root*/)
-{
-	if (!FStructuralPowerRouter::IsStructuralGeneratorRoutingEnabled())
-	{
-		return;
-	}
-}
-
 void FStructuralPowerGeneratorProcessor::TearDown(
 	FStructuralPowerContext& /*Ctx*/,
 	AFGBuildableGenerator* /*Generator*/)

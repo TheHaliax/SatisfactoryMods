@@ -7,6 +7,7 @@
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Buildables/FGBuildablePowerPole.h"
+#include "Buildables/FGBuildablePowerStorage.h"
 
 AFGBuildableCircuitSwitch* FStructuralPowerBuildableCasts::AsSwitch(AFGBuildable* Buildable)
 {
@@ -26,4 +27,9 @@ AFGBuildableLightSource* FStructuralPowerBuildableCasts::AsLight(AFGBuildable* B
 AFGBuildableLightsControlPanel* FStructuralPowerBuildableCasts::AsPanel(AFGBuildable* Buildable)
 {
 	return Cast<AFGBuildableLightsControlPanel>(Buildable);
+}
+
+AFGBuildablePowerStorage* FStructuralPowerBuildableCasts::AsStorage(AFGBuildable* Buildable)
+{
+	return Cast<AFGBuildablePowerStorage>(Buildable);
 }
