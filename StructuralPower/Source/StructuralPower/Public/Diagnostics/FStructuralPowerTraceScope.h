@@ -10,7 +10,6 @@
 #define ANONYMOUS_VARIABLE(Name) ANONYMOUS_VARIABLE_IMPL(Name, __LINE__)
 #endif
 
-/** RAII scope timer — logs enter/exit when Trace is on. */
 class STRUCTURALPOWER_API FStructuralPowerTraceScope
 {
 public:

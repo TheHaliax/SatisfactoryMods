@@ -641,7 +641,7 @@ void FStructuralPowerSwitchProcessor::Process(
 	FStructuralSiteMembershipParams Params;
 	Params.bStripSwitchVanillaPortLinks = bAdvancedWork;
 	Params.bBridgePeersOnly = true;
-	// DR-017: unwired+unconfigured place = peer mesh only; A/B arms on wire (SyncDirectedBridgePair).
+	// Place = peer mesh only; directed bridge arms on wire or configured ids.
 	Params.bLinkVisibleConnections = !bBulk && !bInertPlace;
 	Params.bMeshOnlyLinks = bInertPlace && !bBulk;
 	Params.bSkipEndpointIndexDirty = !bBulk && Root != INDEX_NONE;

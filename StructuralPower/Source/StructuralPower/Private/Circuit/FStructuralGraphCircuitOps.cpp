@@ -333,7 +333,7 @@ void FStructuralGraphCircuitOps::ApplyLocalBridgeBusAttach(
 		return;
 	}
 
-	// DR-017: structure feed attach is wire/config (SyncDirectedBridgePair), not place.
+	// Structure feed attaches on wire/config delta, not IntegrateOnPlace.
 	if (!HasBridgeBusPeerMesh(OutletBus))
 	{
 		TryMeshPeerBusOnComponent(

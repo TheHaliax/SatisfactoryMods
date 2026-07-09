@@ -15,8 +15,7 @@ Common case: **isolated structure** — a foundation with no adjacency to the re
 1. Verify continuous adjacency — no gaps in the foundation / wall / ramp chain between source and target.
 2. Connect **one** visible cable from your generator grid to the structural bus (a pole or wired machine on a tracked piece).
 3. Run `StructuralPower.Diag` — poles on powered structure should count under `IN_CIRCUIT`.
-4. Enable trace (`StructuralPower.Trace 1` or `!tracetoggle`), place or rewire one pole, and grep the log for `[HALSP]`.
-5. Check **Debug → Enable structural propagation** in the mod menu (or `StructuralPower.EnablePropagation 1`).
+4. Enable trace in console (`StructuralPower.Trace 1`), place or rewire one pole, and grep the log for `[HALSP]`.
 
 For switch/panel toggle debugging with trace on: grep `switch restitch_off_settled` — `passPanel=0` and `poweredDirect=0` mean OFF succeeded even if `armedPanel>0`. See [development.md](development.md#halsp-trace-developers).
 
@@ -24,7 +23,7 @@ For switch/panel toggle debugging with trace on: grep `switch restitch_off_settl
 
 | Symptom | Check |
 |---------|--------|
-| Lights need wires | **Structural lighting** off — enable in Debug or `!lighting` |
+| Lights need wires | **Structural lighting** off — enable with `!lighting` |
 | Light dark on powered base | Light `Source` id must match feed (structural default, switch id, or group); press **I** on light |
 | E panel affects all lights | Panel needs keyed **Control** id; lights need matching **Source** — see [v2.2.md](v2.2.md) |
 | Switch subnet wrong | Mode B on (`PowerSwitchManualGroups: 1`); panel/light `Source` = switch Control id; switch ON |
@@ -41,8 +40,8 @@ For switch/panel toggle debugging with trace on: grep `switch restitch_off_settl
 | Symptom | Check |
 |---------|--------|
 | No tether | **Enable hoverpack structural tether** in Debug; stand near **powered** structure |
-| Short reach | Raise `!HoverH` / `!HoverV` or mod menu multipliers (max 10× per axis) |
-| Vanilla behaviour | Disable tether in Debug or `StructuralPower.EnableHoverpackStructural 0` |
+| Short reach | Raise `!HoverH` / `!HoverV` (max 10× per axis) |
+| Vanilla behaviour | Hoverpack structural tether is always on in v2.2 — no user toggle |
 
 ## Save / reload crash (v2.2)
 
@@ -50,7 +49,7 @@ v2.2.0 strips persisted mod bus components before circuit bridge BeginPlay. If a
 
 ## No LogStructuralPower lines during gameplay
 
-Trace is **off by default**. Enable `StructuralPower.Trace 1`, mod menu **Debug → PWR trace logging**, or `!tracetoggle` before testing.
+Trace is **off by default**. Enable `StructuralPower.Trace 1` in the console before testing.
 
 ## Menu map shows nothing in the log
 

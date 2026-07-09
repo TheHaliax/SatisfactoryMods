@@ -23,12 +23,11 @@ Type in the in-game chat on the **server or listen host** (dedicated-server oper
 Available commands (`[]` — required argument):
 
 - `!lighting` — toggle **structural lighting** (v2.2; default off)
-- `!HoverH [1-10]` — set hoverpack **horizontal** reach multiplier (saved to mod config)
-- `!HoverV [1-10]` — set hoverpack **vertical** reach multiplier (saved to mod config)
-- `!tracetoggle` — debug: toggle verbose `[HALSP]` logging in `FactoryGame.log`
+- `!HoverH [1-10]` — set hoverpack **horizontal** reach multiplier (saved to cfg)
+- `!HoverV [1-10]` — set hoverpack **vertical** reach multiplier (saved to cfg)
 - `!pwrhelp` — list Structural Power chat commands
 
-Settings also live in **Pause → Mods → Structural Power** (hover multipliers on the main panel; propagation, switches, lighting, hoverpack tether, and trace under the collapsible **Debug** section). Host-only changes persist to `Configs/StructuralPower.cfg`.
+Settings persist to `Configs/StructuralPower.cfg` on the server/host. Change via chat, console (`StructuralPower.Set`), or edit the cfg file directly. Chat Mk 2 expandable help lists the same commands when installed.
 
 ## Roadmap
 
@@ -44,9 +43,8 @@ Feature releases after the base bus. Later categories are **opt-in** on servers 
 ### v2.1.0 — Switches & hoverpack *(prior release)*
 
 - **Power switches** on structures gate keyed subnets by default — wire optional pole-like bridge; assign building tag + matching device Ids for isolated subnets. Set `PowerSwitchManualGroups: false` in cfg for whole-component Mode A.
-- **Hoverpack** tethers from **powered structure** nearby — fly above, below, or beside your base without peppering poles; horizontal/vertical reach adjustable via pause menu or `!HoverH` / `!HoverV` (default 1.5× base radius each axis)
-- **Server config** via pause menu, `Configs/StructuralPower.cfg`, console `StructuralPower.Set`, and `!` chat commands
-- **Debug** section in mod config for propagation, switch gating, hoverpack tether toggle, and trace logging
+- **Hoverpack** tethers from **powered structure** nearby — fly above, below, or beside your base without peppering poles; horizontal/vertical reach adjustable via `!HoverH` / `!HoverV` (default 1.5× base radius each axis)
+- **Server config** via `Configs/StructuralPower.cfg`, console `StructuralPower.Set`, and `!` chat commands
 
 ### v2.2.0 — Lighting *(current · SMR/deploy pending)*
 
@@ -88,7 +86,7 @@ Feature releases after the base bus. Later categories are **opt-in** on servers 
 
 Works on client and all dedicated servers (Windows and Linux). **Required on remote** — all players need the same mod version (`^2.2.0`).
 
-Server operators: use the pause-menu mod config or `Configs/StructuralPower.cfg` on the dedicated host. See [Documentation/multiplayer.md](Documentation/multiplayer.md) and [Documentation/chat-commands.md](Documentation/chat-commands.md).
+Server operators: edit `Configs/StructuralPower.cfg` on the dedicated host, or use console / chat when connected as authority. See [Documentation/multiplayer.md](Documentation/multiplayer.md) and [Documentation/chat-commands.md](Documentation/chat-commands.md).
 
 ![StructuralPower in-game — foundation and pole on structural bus](https://raw.githubusercontent.com/TheHaliax/SatisfactoryMods/refs/heads/main/StructuralPower/Screenshots/gameplay-foundation-pole.jpg)
 

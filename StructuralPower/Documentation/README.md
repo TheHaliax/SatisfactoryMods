@@ -11,7 +11,7 @@ Player and developer docs for **StructuralPower v2.2.0**.
 ## Guides
 
 - [Player guide](player-guide.md) — what the mod does, retroactive load, lighting, switches, hoverpack, save behavior
-- [Chat commands](chat-commands.md) — `!lighting`, `!HoverH`, `!HoverV`, `!tracetoggle`, `!pwrhelp`
+- [Chat commands](chat-commands.md) — `!lighting`, `!HoverH`, `!HoverV`, `!pwrhelp`
 - [Console commands](console-commands.md) — `StructuralPower.Set`, trace, propagation, diagnostics
 - [Multiplayer](multiplayer.md) — client/server requirements and dedicated hosting
 - [Troubleshooting](troubleshooting.md) — log messages, common questions, support checklist

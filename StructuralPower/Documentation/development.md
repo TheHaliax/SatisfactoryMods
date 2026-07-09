@@ -54,8 +54,8 @@ Full checklist: [release.md](release.md).
 | Area | Path |
 |------|------|
 | Hooks & enqueue | `StructuralPowerRootInstanceModule.cpp` |
-| Mod config + SML menu | `UStructuralPowerModConfiguration.cpp`, `FStructuralPowerModConfig.cpp` |
-| Chat `!` commands | `FStructuralPowerBangCommands.cpp` |
+| Mod config | `FStructuralPowerModConfig.cpp` |
+| Chat `!` + SML help | `FStructuralPowerBangCommands.cpp`, `StructuralPowerSmlChatCommands.cpp` |
 | Hoverpack bridge | `FStructuralHoverpackBridge.cpp` |
 | Switch listener / RCO | `UStructuralPowerSwitchListener.cpp`, `UStructuralPowerRCO.cpp` |
 | Poles, circuit & subsystem | `AStructuralPowerGraphSubsystem.cpp` |
@@ -88,7 +88,7 @@ Feature notes: [v2.2.md](v2.2.md). Roadmap: [../README.md#roadmap](../README.md#
 
 ## HALSP trace (developers)
 
-Enable `StructuralPower.Trace 1`, mod menu **Debug → PWR trace logging**, or `!tracetoggle`.
+Enable `StructuralPower.Trace 1` in the console (debug only).
 
 | Prefix | Use |
 |--------|-----|

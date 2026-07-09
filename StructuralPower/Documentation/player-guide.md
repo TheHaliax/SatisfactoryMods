@@ -81,5 +81,5 @@ Device **Source/Control** overrides (lights, switches, panels) are stored in the
 |-------|------|
 | Pause → Mods → Structural Power | Hover multipliers; **Debug** (collapsed) for propagation, switches, **lighting**, hoverpack tether, trace |
 | `Configs/StructuralPower.cfg` | Server-persisted mod settings |
-| Chat `!` commands | `!lighting`, `!HoverH`, `!HoverV`, `!tracetoggle`, `!pwrhelp` |
+| Chat `!` commands | `!lighting`, `!HoverH`, `!HoverV`, `!pwrhelp` |
 | Console | `StructuralPower.Set` — [console-commands.md](console-commands.md) |

@@ -9,7 +9,6 @@
 
 class UWorld;
 
-/** Registers Structural Power player commands with SML for Chat Mk 2 help (/help, expandable UI). */
 class STRUCTURALPOWER_API FStructuralPowerSmlChatCommands
 {
 public:

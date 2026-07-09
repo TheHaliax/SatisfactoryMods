@@ -10,7 +10,7 @@ Version range in the plugin: `^2.2.0` (compatible 2.2.x).
 
 The host runs the graph subsystem and placement hooks. Clients do not simulate structural propagation.
 
-Mod config and chat commands apply on the **authority** (host). Clients changing settings in the pause menu only affect local UI unless the host saves — prefer host/dedicated operator for toggles.
+Mod config and chat commands apply on the **authority** (host). Clients cannot change server settings — host or dedicated operator uses cfg, console, or chat.
 
 **I-key Id panel** runs on the local client; apply sends RCO to server. All players need v2.2.0 for the panel UI.
 
@@ -31,7 +31,7 @@ Upload the **Alpakit Release** zip (`StructuralPower.zip`) to [ficsit.app](https
 <Satisfactory>/Configs/StructuralPower.cfg
 ```
 
-Edit via dedicated pause menu (if available), console `StructuralPower.Set`, or chat `!` commands when connected as authority. See [chat-commands.md](chat-commands.md).
+Edit via console `StructuralPower.Set`, chat `!` commands when connected as authority, or edit the cfg file on the server host. See [chat-commands.md](chat-commands.md).
 
 ## Save compatibility
 
