@@ -137,9 +137,10 @@ void FStructuralPanelConnectionPoint::OnWireOrGateChanged(EAttachContext AttachC
 			}
 
 			UE_LOG(LogStructuralPower, Log,
-				TEXT("[HALSP] panel wire delta %s scope=%s site=%d role=%s attach=%s"
+				TEXT("[HALSP] panel wire delta %s kind=%s scope=%s site=%d role=%s attach=%s"
 					" root=%d inputPowered=%d path=repair_only"),
 				*PanelPtr->GetName(),
+				StructuralEndpointKindToString(EStructuralEndpointKind::Panel),
 				StructuralPowerScopeToString(EStructuralPowerScope::Site),
 				Root,
 				StructuralPowerRoleToString(EStructuralPowerRole::Router),
@@ -160,9 +161,10 @@ void FStructuralPanelConnectionPoint::OnWireOrGateChanged(EAttachContext AttachC
 	const UFGPowerConnectionComponent* InputPower =
 		FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] panel wire delta %s scope=%s site=%d role=%s attach=%s"
+		TEXT("[HALSP] panel wire delta %s kind=%s scope=%s site=%d role=%s attach=%s"
 			" root=%d inputPowered=%d"),
 		*PanelPtr->GetName(),
+		StructuralEndpointKindToString(EStructuralEndpointKind::Panel),
 		StructuralPowerScopeToString(EStructuralPowerScope::Site),
 		Root,
 		StructuralPowerRoleToString(EStructuralPowerRole::Router),

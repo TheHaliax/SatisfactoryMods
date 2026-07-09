@@ -138,9 +138,10 @@ void FStructuralSwitchConnectionPoint::OnWireOrGateChanged(EAttachContext Attach
 		}
 
 		UE_LOG(LogStructuralPower, Log,
-			TEXT("[HALSP] switch wire delta %s scope=%s site=%d role=%s attach=%s"
+			TEXT("[HALSP] switch wire delta %s kind=%s scope=%s site=%d role=%s attach=%s"
 				" root=%d busCircuit=%d wired=%d"),
 			*SwitchPtr->GetName(),
+			StructuralEndpointKindToString(EStructuralEndpointKind::Switch),
 			StructuralPowerScopeToString(EStructuralPowerScope::Site),
 			Root,
 			StructuralPowerRoleToString(EStructuralPowerRole::Gateway),
@@ -211,9 +212,10 @@ void FStructuralSwitchConnectionPoint::OnWireOrGateChanged(EAttachContext Attach
 	}
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] switch wire delta %s scope=%s site=%d role=%s attach=%s"
+		TEXT("[HALSP] switch wire delta %s kind=%s scope=%s site=%d role=%s attach=%s"
 			" root=%d busCircuit=%d powered=%d wired=%d transfer=%d"),
 		*SwitchPtr->GetName(),
+		StructuralEndpointKindToString(EStructuralEndpointKind::Switch),
 		StructuralPowerScopeToString(EStructuralPowerScope::Site),
 		Root,
 		StructuralPowerRoleToString(EStructuralPowerRole::Gateway),

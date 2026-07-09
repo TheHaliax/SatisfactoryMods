@@ -39,13 +39,13 @@ static TAutoConsoleVariable<int32> CVarStructuralPowerGroupLighting(
 
 static TAutoConsoleVariable<float> CVarStructuralPowerHoverpackHorizontalMultiplier(
 	TEXT("StructuralPower.HoverpackStructuralHorizontalMultiplier"),
-	1.5f,
+	1.2f,
 	TEXT("Structural hoverpack horizontal radius multiplier (clamp 1.0-10.0)"),
 	ECVF_Default);
 
 static TAutoConsoleVariable<float> CVarStructuralPowerHoverpackVerticalMultiplier(
 	TEXT("StructuralPower.HoverpackStructuralVerticalMultiplier"),
-	1.5f,
+	1.2f,
 	TEXT("Structural hoverpack vertical radius multiplier (clamp 1.0-10.0)"),
 	ECVF_Default);
 
@@ -117,7 +117,7 @@ static void ApplyCvarsFromJson(const TSharedPtr<FJsonObject>& Object)
 
 	float Horizontal = ParseFloatField(Object, TEXT("HoverpackStructuralHorizontalMultiplier"), -1.0f);
 	float Vertical = ParseFloatField(Object, TEXT("HoverpackStructuralVerticalMultiplier"), -1.0f);
-	const float Legacy = ParseFloatField(Object, TEXT("HoverpackStructuralRadiusMultiplier"), 1.5f);
+	const float Legacy = ParseFloatField(Object, TEXT("HoverpackStructuralRadiusMultiplier"), 1.2f);
 	if (Horizontal < 0.0f)
 	{
 		Horizontal = Legacy;

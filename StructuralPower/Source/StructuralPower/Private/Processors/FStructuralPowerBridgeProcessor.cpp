@@ -10,6 +10,7 @@
 #include "Core/EStructuralPowerRole.h"
 #include "Core/EStructuralPowerScope.h"
 #include "Graph/FStructuralCrossSiteGraph.h"
+#include "Graph/FStructuralEndpointTypes.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Connection/FStructuralSwitchConnectionPoint.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
@@ -41,9 +42,10 @@ void FStructuralPowerBridgeProcessor::PropagateCrossSiteFeedChange(
 	}
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] wired switch %s scope=%s site=%d role=%s path=wire_bridge"
+		TEXT("[HALSP] wired switch %s kind=%s scope=%s site=%d role=%s path=wire_bridge"
 			" localRoot=%d feedAffected=%d"),
 		*Switch->GetName(),
+		StructuralEndpointKindToString(EStructuralEndpointKind::Switch),
 		StructuralPowerScopeToString(EStructuralPowerScope::CrossSite),
 		LocalRoot,
 		StructuralPowerRoleToString(EStructuralPowerRole::Gateway),

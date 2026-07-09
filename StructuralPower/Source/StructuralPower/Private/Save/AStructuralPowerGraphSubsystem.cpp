@@ -115,7 +115,8 @@ FStructuralNodeId AStructuralPowerGraphSubsystem::MakeNodeId(const AFGBuildable*
 	return Id;
 }
 
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindBusConnector(const AFGBuildable* Host)
+UFGStructuralPowerConnectionComponent*
+AStructuralPowerGraphSubsystem::FindBusConnector(const AFGBuildable* Host)
 {
 	if (!IsValid(Host))
 	{
@@ -126,7 +127,8 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindBusCo
 	const_cast<AFGBuildable*>(Host)->GetComponents(Connectors);
 	for (UFGStructuralPowerConnectionComponent* Connector : Connectors)
 	{
-		if (IsValid(Connector) && Connector->GetFName() == StructuralPowerConstants::OutletBusConnectorName)
+		if (IsValid(Connector)
+			&& Connector->GetFName() == StructuralPowerConstants::OutletBusConnectorName)
 		{
 			return Connector;
 		}
@@ -277,12 +279,14 @@ void AStructuralPowerGraphSubsystem::StripPersistedEndpointModComponents(AFGBuil
 	}
 }
 
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindOutletBusConnector(const AFGBuildablePowerPole* Outlet)
+UFGStructuralPowerConnectionComponent*
+AStructuralPowerGraphSubsystem::FindOutletBusConnector(const AFGBuildablePowerPole* Outlet)
 {
 	return FindBusConnector(Outlet);
 }
 
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCreateBusConnector(AFGBuildable* Host)
+UFGStructuralPowerConnectionComponent*
+AStructuralPowerGraphSubsystem::GetOrCreateBusConnector(AFGBuildable* Host)
 {
 	if (!IsValid(Host))
 	{
@@ -373,12 +377,14 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCrea
 	return Connector;
 }
 
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCreateOutletBusConnector(AFGBuildablePowerPole* Outlet)
+UFGStructuralPowerConnectionComponent*
+AStructuralPowerGraphSubsystem::GetOrCreateOutletBusConnector(AFGBuildablePowerPole* Outlet)
 {
 	return GetOrCreateBusConnector(Outlet);
 }
 
-FStructuralWallAnchor AStructuralPowerGraphSubsystem::ResolveOutletAnchor(AFGBuildable* Outlet) const
+FStructuralWallAnchor
+AStructuralPowerGraphSubsystem::ResolveOutletAnchor(AFGBuildable* Outlet) const
 {
 	return FStructuralAttachmentResolver::ResolveStructuralParent(
 		Outlet,
@@ -386,7 +392,8 @@ FStructuralWallAnchor AStructuralPowerGraphSubsystem::ResolveOutletAnchor(AFGBui
 		MakeOutletParentResolveParams());
 }
 
-FStructuralOutletParentResolveParams AStructuralPowerGraphSubsystem::MakeOutletParentResolveParams() const
+FStructuralOutletParentResolveParams
+AStructuralPowerGraphSubsystem::MakeOutletParentResolveParams() const
 {
 	FStructuralOutletParentResolveParams Params;
 	Params.LightweightIndex = &LightweightIndex;
@@ -416,7 +423,8 @@ FStructuralComponentResolveResult AStructuralPowerGraphSubsystem::ResolveStructu
 		ClassHint);
 }
 
-FStructuralNodeId AStructuralPowerGraphSubsystem::MakeParentNodeId(const FStructuralWallAnchor& Anchor)
+FStructuralNodeId
+AStructuralPowerGraphSubsystem::MakeParentNodeId(const FStructuralWallAnchor& Anchor)
 {
 	if (IsValid(Anchor.Actor))
 	{
@@ -914,7 +922,8 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindPower
 }
 
 
-FStructuralComponentKey AStructuralPowerGraphSubsystem::MakeComponentKeyForRoot(int32 ComponentRoot) const
+FStructuralComponentKey
+AStructuralPowerGraphSubsystem::MakeComponentKeyForRoot(int32 ComponentRoot) const
 {
 	return IdOps.MakeComponentKeyForRoot(ComponentRoot);
 }
@@ -1268,7 +1277,8 @@ void AStructuralPowerGraphSubsystem::ProcessStructure(AFGBuildable* Buildable)
 	}
 }
 
-void AStructuralPowerGraphSubsystem::ProcessLightweightStructure(const FStructuralLightweightKey& Key)
+void AStructuralPowerGraphSubsystem::ProcessLightweightStructure(
+	const FStructuralLightweightKey& Key)
 {
 	if (!Key.IsValid())
 	{

@@ -12,6 +12,7 @@
 #include "Core/EStructuralPowerScope.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "FGPowerConnectionComponent.h"
+#include "Graph/FStructuralEndpointTypes.h"
 #include "Panel/FStructuralPanelControlledSync.h"
 #include "Panel/FStructuralPanelPortResolver.h"
 #include "Config/FStructuralPowerModConfig.h"
@@ -207,10 +208,11 @@ void FStructuralPanelAttach::RestitchDownstream(
 			if (FStructuralPowerTrace::IsEnabled())
 			{
 				UE_LOG(LogStructuralPower, Log,
-					TEXT("[HALSP] panel %s linked light %s scope=%s site=%d role=%s path=panel_downstream"
-						" control=%s"),
+					TEXT("[HALSP] panel %s linked light %s kind=%s scope=%s site=%d role=%s"
+						" path=panel_downstream control=%s"),
 					*Panel->GetName(),
 					*Light->GetName(),
+					StructuralEndpointKindToString(EStructuralEndpointKind::Light),
 					StructuralPowerScopeToString(EStructuralPowerScope::Site),
 					ComponentRoot,
 					StructuralPowerRoleToString(EStructuralPowerRole::Host),

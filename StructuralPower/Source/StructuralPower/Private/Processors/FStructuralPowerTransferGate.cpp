@@ -122,9 +122,10 @@ void FStructuralPowerTransferGate::FlipBridgeGate(
 	SetTrackedTransfer(Tracked, bGateOpen);
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] switch transfer_%s %s scope=%s site=%d role=%s attach=%s transfer=%d"),
+		TEXT("[HALSP] switch transfer_%s %s kind=%s scope=%s site=%d role=%s attach=%s transfer=%d"),
 		bGateOpen ? TEXT("on") : TEXT("off"),
 		*Switch->GetName(),
+		StructuralEndpointKindToString(EStructuralEndpointKind::Switch),
 		StructuralPowerScopeToString(EStructuralPowerScope::Site),
 		Ctx.GetSiteRoot(),
 		StructuralPowerRoleToString(EStructuralPowerRole::Gateway),

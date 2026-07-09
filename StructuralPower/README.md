@@ -43,7 +43,7 @@ Feature releases after the base bus. Later categories are **opt-in** on servers 
 ### v2.1.0 — Switches & hoverpack *(prior release)*
 
 - **Power switches** on structures gate keyed subnets by default — wire optional pole-like bridge; assign building tag + matching device Ids for isolated subnets. Set `PowerSwitchManualGroups: false` in cfg for whole-component Mode A.
-- **Hoverpack** tethers from **powered structure** nearby — fly above, below, or beside your base without peppering poles; horizontal/vertical reach adjustable via `!HoverH` / `!HoverV` (default 1.5× base radius each axis)
+- **Hoverpack** tethers from **powered structure** nearby — fly above, below, or beside your base without peppering poles; horizontal/vertical reach adjustable via `!HoverH` / `!HoverV` (default 1.2× base radius each axis)
 - **Server config** via `Configs/StructuralPower.cfg`, console `StructuralPower.Set`, and `!` chat commands
 
 ### v2.2.0 — Lighting *(current · SMR/deploy pending)*

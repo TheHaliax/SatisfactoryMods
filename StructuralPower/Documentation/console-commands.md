@@ -15,9 +15,9 @@ Updates a config key and persists to `Configs/StructuralPower.cfg`. Authority on
 | Key | Values | Notes |
 |-----|--------|-------|
 | `GroupLighting` | `0` / `1` | Structural lighting (v2.2; chat: `!lighting`) |
-| `HoverpackStructuralHorizontalMultiplier` | `1.0`–`10.0` | Chat: `!HoverH` |
-| `HoverpackStructuralVerticalMultiplier` | `1.0`–`10.0` | Chat: `!HoverV` |
-| `HoverpackStructuralRadiusMultiplier` | `1.0`–`10.0` | Legacy alias — sets **both** H and V |
+| `HoverpackStructuralHorizontalMultiplier` | `1.0`–`10.0` (default `1.2`) | Chat: `!HoverH` |
+| `HoverpackStructuralVerticalMultiplier` | `1.0`–`10.0` (default `1.2`) | Chat: `!HoverV` |
+| `HoverpackStructuralRadiusMultiplier` | `1.0`–`10.0` (default `1.2`) | Legacy alias — sets **both** H and V |
 | `Trace` | `0` / `1` | `[HALSP]` logging (debug; console only) |
 | `ExtendedDebug` | `0` / `1` | Vanilla power/circuit hooks + fat logs (debug; console only) |
 

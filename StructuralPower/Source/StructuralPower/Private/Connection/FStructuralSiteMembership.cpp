@@ -10,6 +10,7 @@
 #include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "FGCircuitConnectionComponent.h"
 #include "Graph/FStructuralHostAttachAdapter.h"
+#include "Graph/FStructuralEndpointTypes.h"
 #include "Graph/FStructuralOutletParentHeuristics.h"
 #include "Graph/FStructuralOutletParentResolver.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
@@ -163,10 +164,10 @@ void FStructuralSiteMembership::IntegrateOnPlace(
 		: -1.0f;
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] site integrate %s kind=%d host=%d site=%d anchored=%d"
+		TEXT("[HALSP] site integrate %s kind=%s host=%d site=%d anchored=%d"
 			" parentMethod=%s distCm=%.0f busCircuit=%d powered=%d"),
 		*Host->GetName(),
-		static_cast<int32>(Kind),
+		StructuralEndpointKindToString(Kind),
 		static_cast<int32>(Site.HostKind),
 		Site.SiteRoot,
 		Site.bAnchored ? 1 : 0,

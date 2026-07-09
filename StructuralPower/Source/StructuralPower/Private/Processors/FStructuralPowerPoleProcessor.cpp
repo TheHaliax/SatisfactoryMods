@@ -8,6 +8,8 @@
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Connection/FStructuralPoleConnectionPoint.h"
 #include "Core/EAttachContext.h"
+#include "Core/EStructuralPowerRole.h"
+#include "Core/EStructuralPowerScope.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "Diagnostics/FStructuralPowerTraceScope.h"
@@ -92,7 +94,10 @@ void FStructuralPowerPoleProcessor::Process(
 		Cast<UFGStructuralPowerConnectionComponent>(Connection.GetStructuralConnector());
 	if (!OutletBus)
 	{
-		FStructuralPowerTrace::LogPlacementSkip(Pole, TEXT("outlet_bus_create_failed"));
+		FStructuralPowerTrace::LogPlacementSkip(
+			Pole,
+			TEXT("outlet_bus_create_failed"),
+			ELogVerbosity::Warning);
 		return;
 	}
 
@@ -173,9 +178,13 @@ void FStructuralPowerPoleProcessor::Process(
 	if (bBulk)
 	{
 		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[HALSP] outlet %s root=%d parentValid=%d parentMethod=%s distCm=%.0f"
-				" path=%s busCircuit=%d powered=%d tag=%s id=%s"),
+			TEXT("[HALSP] outlet %s kind=%s scope=%s site=%d role=%s root=%d parentValid=%d"
+				" parentMethod=%s distCm=%.0f path=%s busCircuit=%d powered=%d tag=%s id=%s"),
 			*Pole->GetName(),
+			StructuralEndpointKindToString(EStructuralEndpointKind::Pole),
+			StructuralPowerScopeToString(EStructuralPowerScope::Site),
+			Root,
+			StructuralPowerRoleToString(EStructuralPowerRole::Router),
 			Root,
 			bStructurallyAnchored ? 1 : 0,
 			FStructuralOutletParentResolver::FormatParentMethod(ParentResolve.Method),
@@ -189,9 +198,13 @@ void FStructuralPowerPoleProcessor::Process(
 	else
 	{
 		UE_LOG(LogStructuralPower, Log,
-			TEXT("[HALSP] outlet %s root=%d parentValid=%d parentMethod=%s distCm=%.0f"
-				" path=%s busCircuit=%d powered=%d tag=%s id=%s"),
+			TEXT("[HALSP] outlet %s kind=%s scope=%s site=%d role=%s root=%d parentValid=%d"
+				" parentMethod=%s distCm=%.0f path=%s busCircuit=%d powered=%d tag=%s id=%s"),
 			*Pole->GetName(),
+			StructuralEndpointKindToString(EStructuralEndpointKind::Pole),
+			StructuralPowerScopeToString(EStructuralPowerScope::Site),
+			Root,
+			StructuralPowerRoleToString(EStructuralPowerRole::Router),
 			Root,
 			bStructurallyAnchored ? 1 : 0,
 			FStructuralOutletParentResolver::FormatParentMethod(ParentResolve.Method),

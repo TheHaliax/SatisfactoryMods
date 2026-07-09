@@ -18,6 +18,8 @@ enum class EStructuralEndpointKind : uint8
 	Storage
 };
 
+STRUCTURALPOWER_API const TCHAR* StructuralEndpointKindToString(EStructuralEndpointKind Kind);
+
 struct FTrackedEndpoint
 {
 	TWeakObjectPtr<AFGBuildable> Actor;

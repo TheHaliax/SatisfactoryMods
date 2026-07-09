@@ -40,7 +40,7 @@ namespace FStructuralPowerTrace
 	void LogPlacementSkip(
 		AFGBuildable* Buildable,
 		const TCHAR* Reason,
-		ELogVerbosity::Type Verbosity = ELogVerbosity::Warning);
+		ELogVerbosity::Type Verbosity = ELogVerbosity::Verbose);
 	void LogLinkOp(
 		const TCHAR* Op,
 		UFGCircuitConnectionComponent* A,

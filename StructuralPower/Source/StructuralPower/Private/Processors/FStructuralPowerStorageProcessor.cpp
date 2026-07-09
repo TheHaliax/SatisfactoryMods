@@ -8,6 +8,8 @@
 #include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "Connection/FStructuralSiteMembership.h"
 #include "Connection/FStructuralStorageConnectionPoint.h"
+#include "Core/EStructuralPowerRole.h"
+#include "Core/EStructuralPowerScope.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "FGCircuitConnectionComponent.h"
@@ -103,7 +105,10 @@ void FStructuralPowerStorageProcessor::Process(
 		Cast<UFGStructuralPowerConnectionComponent>(Connection.GetStructuralConnector());
 	if (!OutletBus)
 	{
-		FStructuralPowerTrace::LogPlacementSkip(Storage, TEXT("storage_bus_create_failed"));
+		FStructuralPowerTrace::LogPlacementSkip(
+			Storage,
+			TEXT("storage_bus_create_failed"),
+			ELogVerbosity::Warning);
 		return;
 	}
 
@@ -167,8 +172,13 @@ void FStructuralPowerStorageProcessor::Process(
 	EnsureStorageListener(Graph, Storage);
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] storage %s root=%d parentValid=%d busCircuit=%d powered=%d"),
+		TEXT("[HALSP] storage %s kind=%s scope=%s site=%d role=%s root=%d parentValid=%d"
+			" busCircuit=%d powered=%d"),
 		*Storage->GetName(),
+		StructuralEndpointKindToString(EStructuralEndpointKind::Storage),
+		StructuralPowerScopeToString(EStructuralPowerScope::Site),
+		Site.SiteRoot,
+		StructuralPowerRoleToString(EStructuralPowerRole::Host),
 		Site.SiteRoot,
 		Site.bAnchored ? 1 : 0,
 		OutletBus->GetCircuitID(),

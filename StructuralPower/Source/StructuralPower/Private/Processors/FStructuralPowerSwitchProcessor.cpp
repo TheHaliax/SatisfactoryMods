@@ -581,7 +581,10 @@ void FStructuralPowerSwitchProcessor::Process(
 	UFGStructuralPowerConnectionComponent* OutletBus = Graph.GetOrCreateBusConnector(Switch);
 	if (!OutletBus)
 	{
-		FStructuralPowerTrace::LogPlacementSkip(Switch, TEXT("switch_bus_create_failed"));
+		FStructuralPowerTrace::LogPlacementSkip(
+			Switch,
+			TEXT("switch_bus_create_failed"),
+			ELogVerbosity::Warning);
 		return;
 	}
 
@@ -715,9 +718,10 @@ void FStructuralPowerSwitchProcessor::Process(
 		: (bSwitchOn ? AttachContextToString(AttachContext) : TEXT("bridge_idle"));
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] outlet %s scope=%s site=%d role=%s root=%d parentValid=%d busCircuit=%d"
+		TEXT("[HALSP] outlet %s kind=%s scope=%s site=%d role=%s root=%d parentValid=%d busCircuit=%d"
 			" powered=%d tag=%s source=%s control=%s wirePort=%s mode=%s"),
 		*Switch->GetName(),
+		StructuralEndpointKindToString(EStructuralEndpointKind::Switch),
 		StructuralPowerScopeToString(EStructuralPowerScope::Site),
 		Root,
 		StructuralPowerRoleToString(EStructuralPowerRole::Router),

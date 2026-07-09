@@ -63,7 +63,7 @@ Adjust reach on the server:
 - **Pause → Mods → Structural Power** — horizontal/vertical multipliers (main panel)
 - Chat: `!HoverH` / `!HoverV` — see [chat-commands.md](chat-commands.md)
 
-Defaults: **1.5×** base radius per axis (clamp 1.0–10.0). Disable tether in the **Debug** section.
+Defaults: **1.2×** base radius per axis (clamp 1.0–10.0). Disable tether in the **Debug** section.
 
 ## Isolated structures
 
