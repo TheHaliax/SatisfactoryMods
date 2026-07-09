@@ -71,7 +71,55 @@ void FStructuralPoleConnectionPoint::OnWireOrGateChanged(EAttachContext AttachCo
 		Site.bAnchored = false;
 	}
 
-	if (Graph.HasBridgeBusPeerMesh(OutletBus) && AttachContext != EAttachContext::WireDelta)
+	if (AttachContext == EAttachContext::WireDelta)
+	{
+		// FG pole OnPowerConnectionChanged already rebuilt wire circuits — delta only.
+		Graph.LinkBusToVisibleConnectionsLocal(PolePtr, OutletBus);
+
+		if (Site.bAnchored && Site.SiteRoot != INDEX_NONE && !Graph.HasBridgeBusPeerMesh(OutletBus))
+		{
+			Graph.TryMeshPeerBusOnComponent(
+				PolePtr,
+				OutletBus,
+				Site.SiteRoot,
+				PoleId,
+				/*bBridgePeersOnly=*/true,
+				/*bMeshOnlyLinks=*/true);
+		}
+		else if (FStructuralCircuitPromotionUtil::ComponentOnCircuit(OutletBus))
+		{
+			Graph.PromoteDirectHiddenLinks(OutletBus);
+		}
+
+		if (Site.bAnchored && Site.SiteRoot != INDEX_NONE)
+		{
+			Tracked.ParentId = Site.ParentId;
+			Graph.AddEndpointToRootIndex(
+				Site.SiteRoot,
+				EStructuralEndpointKind::Pole,
+				PoleId);
+		}
+
+		const FVector AnchorLocation = FStructuralOutletParentHeuristics::GetOutletAnchorLocation(PolePtr);
+		const float ParentDistCm = Site.ParentAnchor.IsValid()
+			? FVector::Dist(AnchorLocation, Site.ParentAnchor.WorldLocation)
+			: -1.0f;
+		const TCHAR* PowerPath = Site.bAnchored ? TEXT("structural_mesh") : TEXT("vanilla_wire");
+
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[HALSP] pole wire delta %s root=%d structural=%d distCm=%.0f"
+				" path=%s busCircuit=%d powered=%d"),
+			*PolePtr->GetName(),
+			Site.SiteRoot,
+			Site.bAnchored ? 1 : 0,
+			ParentDistCm,
+			PowerPath,
+			OutletBus->GetCircuitID(),
+			FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(OutletBus) ? 1 : 0);
+		return;
+	}
+
+	if (Graph.HasBridgeBusPeerMesh(OutletBus))
 	{
 		Graph.LinkBusToVisibleConnectionsLocal(PolePtr, OutletBus);
 	}
@@ -115,5 +163,5 @@ void FStructuralPoleConnectionPoint::OnWireOrGateChanged(EAttachContext AttachCo
 		ParentDistCm,
 		PowerPath,
 		OutletBus->GetCircuitID(),
-		FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0);
+		FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(OutletBus) ? 1 : 0);
 }

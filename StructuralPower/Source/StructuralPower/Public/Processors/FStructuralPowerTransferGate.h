@@ -33,4 +33,7 @@ public:
 		FStructuralPowerContext& Ctx,
 		int32 Root,
 		bool bLocalPromoteOnly = true);
+
+	/** GroupLighting off — suspend switch-keyed panel/light transfer on every tracked switch. */
+	static void SuspendAllKeyedLightingTransfer(FStructuralPowerContext& Ctx);
 };

@@ -6,7 +6,6 @@
 #include "Attach/FStructuralDeviceAttach.h"
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
-#include "Circuit/FStructuralCircuitPromotionScope.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "Core/EStructuralPowerRole.h"
@@ -94,7 +93,8 @@ bool FStructuralPanelAttach::TryLinkSupply(
 	AFGBuildableLightsControlPanel* Panel,
 	const FStructuralPanelPorts& Ports,
 	int32 ComponentRoot,
-	const FStructuralChannelKey& PanelKey)
+	const FStructuralChannelKey& PanelKey,
+	bool bMeshOnlyLinks)
 {
 	UFGPowerConnectionComponent* InputPower =
 		FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
@@ -127,7 +127,7 @@ bool FStructuralPanelAttach::TryLinkSupply(
 		return true;
 	}
 
-	const bool bLinked = Graph.LinkHiddenPair(InputPower, Feed);
+	const bool bLinked = Graph.LinkHiddenPair(InputPower, Feed, /*bPromoteCircuit=*/!bMeshOnlyLinks);
 	if (FStructuralPowerTrace::IsEnabled())
 	{
 		UE_LOG(LogStructuralPower, Log,
@@ -237,27 +237,12 @@ void FStructuralPanelAttach::PromotePanelDownstreamSubnet(
 		return;
 	}
 
-	UFGPowerConnectionComponent* Downstream =
-		FStructuralPanelPortResolver::AsPowerConnection(Ports.Downstream);
-	UFGStructuralPowerConnectionComponent* ControlBus = Graph.GetOrCreatePanelControlBus(Panel);
-	if (!IsValid(Downstream) || !IsValid(ControlBus))
-	{
-		return;
-	}
-
-	FStructuralCircuitPromotionScope PromotionScope(&Graph);
-
-	FStructuralCircuitPromotionUtil::PromoteCircuitLink(InputPower, Downstream);
-	if (ControlBus->HasHiddenConnection(Downstream))
-	{
-		FStructuralCircuitPromotionUtil::PromoteCircuitLink(ControlBus, Downstream);
-	}
-
 	Graph.PromoteStructuralMeshFrom(InputPower);
 
-	if (FStructuralCircuitPromotionUtil::ComponentCarriesPower(ControlBus)
-		&& !FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(ControlBus))
+	UFGStructuralPowerConnectionComponent* ControlBus = Graph.GetOrCreatePanelControlBus(Panel);
+	if (IsValid(ControlBus) && FStructuralCircuitPromotionUtil::ComponentOnCircuit(ControlBus))
 	{
 		Graph.PromoteStructuralMeshFrom(ControlBus);
 	}
+	(void)Ports;
 }

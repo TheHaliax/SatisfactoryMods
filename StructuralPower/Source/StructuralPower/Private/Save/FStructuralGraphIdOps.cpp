@@ -244,7 +244,13 @@ void FStructuralGraphIdOps::SetEndpointIds(
 	{
 		if (AFGBuildableLightSource* Light = FStructuralPowerBuildableCasts::AsLight(Buildable))
 		{
+			const FStructuralChannelKey LightKey =
+				Subsystem->IdOps.ResolveChannelKeyForBuildable(Light);
 			Subsystem->ProcessLightEndpoint(Light);
+			if (Subsystem->IsPanelDownstreamLight(Root, LightKey))
+			{
+				Subsystem->RefreshPanelsForLightSourceOnRoot(Root, LightKey.Source);
+			}
 		}
 	}
 	else if (bIsPanel && bGroupLighting)

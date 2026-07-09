@@ -4,10 +4,17 @@
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 
 #include "Diagnostics/FStructuralPowerTrace.h"
+#include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "Engine/World.h"
 #include "FGCircuitConnectionComponent.h"
 #include "FGCircuitSubsystem.h"
 #include "FGPowerConnectionComponent.h"
+
+bool FStructuralCircuitPromotionUtil::ComponentOnCircuit(
+	const UFGPowerConnectionComponent* Component)
+{
+	return IsValid(Component) && Component->GetCircuitID() != INDEX_NONE;
+}
 
 bool FStructuralCircuitPromotionUtil::ComponentCarriesPower(
 	const UFGPowerConnectionComponent* Component)
@@ -17,7 +24,7 @@ bool FStructuralCircuitPromotionUtil::ComponentCarriesPower(
 		return false;
 	}
 
-	if (Component->GetCircuitID() != INDEX_NONE || Component->IsConnected())
+	if (ComponentOnCircuit(Component))
 	{
 		return true;
 	}
@@ -28,7 +35,34 @@ bool FStructuralCircuitPromotionUtil::ComponentCarriesPower(
 bool FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(
 	const UFGPowerConnectionComponent* Component)
 {
-	return ComponentCarriesPower(Component) && Component->HasPower();
+	// FG: HasPower() reflects live production on the connector's circuit.
+	return IsValid(Component)
+		&& ComponentOnCircuit(Component)
+		&& Component->HasPower();
+}
+
+bool FStructuralCircuitPromotionUtil::HiddenLinkNeedsCircuitRepair(
+	UFGPowerConnectionComponent* A,
+	UFGPowerConnectionComponent* B)
+{
+	if (!IsValid(A) || !IsValid(B))
+	{
+		return false;
+	}
+
+	if (!A->HasHiddenConnection(B))
+	{
+		return false;
+	}
+
+	const int32 CircuitA = A->GetCircuitID();
+	const int32 CircuitB = B->GetCircuitID();
+	if (CircuitA != INDEX_NONE && CircuitA == CircuitB)
+	{
+		return false;
+	}
+
+	return ComponentCarriesPower(A) || ComponentCarriesPower(B);
 }
 
 void FStructuralCircuitPromotionUtil::PromoteCircuitLink(
@@ -36,19 +70,9 @@ void FStructuralCircuitPromotionUtil::PromoteCircuitLink(
 	UFGPowerConnectionComponent* B,
 	ELogVerbosity::Type PromoteVerbosity)
 {
-	if (!IsValid(A) || !IsValid(B))
-	{
-		return;
-	}
+	HALSP_TRACE_SCOPE(TEXT("mod"), TEXT("circuit.PromoteCircuitLink"));
 
-	const int32 CircuitA = A->GetCircuitID();
-	const int32 CircuitB = B->GetCircuitID();
-	if (CircuitA != INDEX_NONE && CircuitA == CircuitB)
-	{
-		return;
-	}
-
-	if (!ComponentCarriesPower(A) && !ComponentCarriesPower(B))
+	if (!HiddenLinkNeedsCircuitRepair(A, B))
 	{
 		return;
 	}
@@ -63,8 +87,41 @@ void FStructuralCircuitPromotionUtil::PromoteCircuitLink(
 				A,
 				B,
 				true,
-				TEXT("ConnectComponents"),
+				TEXT("ConnectComponents_repair"),
 				PromoteVerbosity);
 		}
 	}
+}
+
+void FStructuralCircuitPromotionUtil::DemoteHiddenCircuitLink(
+	UFGPowerConnectionComponent* A,
+	UFGPowerConnectionComponent* B)
+{
+	if (!IsValid(A) || !IsValid(B) || !A->HasHiddenConnection(B))
+	{
+		return;
+	}
+
+	if (UWorld* World = A->GetWorld())
+	{
+		if (AFGCircuitSubsystem* CircuitSubsystem = AFGCircuitSubsystem::Get(World))
+		{
+			const int32 CircuitA = A->GetCircuitID();
+			const int32 CircuitB = B->GetCircuitID();
+			if (CircuitA != INDEX_NONE && CircuitA == CircuitB)
+			{
+				CircuitSubsystem->DisconnectComponents(A, B);
+				FStructuralPowerTrace::LogLinkOp(
+					TEXT("demote"),
+					A,
+					B,
+					true,
+					TEXT("DisconnectComponents"),
+					ELogVerbosity::Verbose);
+			}
+		}
+	}
+
+	A->RemoveHiddenConnection(B);
+	B->RemoveHiddenConnection(A);
 }

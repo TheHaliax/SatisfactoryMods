@@ -60,6 +60,11 @@ bool FStructuralPowerTrace::IsEnabled()
 	return FStructuralPowerModConfig::IsTraceEnabled();
 }
 
+bool FStructuralPowerTrace::IsExtendedDebugEnabled()
+{
+	return FStructuralPowerModConfig::IsExtendedDebugEnabled();
+}
+
 FString FStructuralPowerTrace::FormatEffectiveIdForTrace(EStructuralChannel Tag, FName EffectiveId)
 {
 	if (Tag == EStructuralChannel::Structure)
@@ -134,28 +139,21 @@ void FStructuralPowerTrace::LogHook(
 		return;
 	}
 
-	if (IsEnabled())
+	if (!IsEnabled() || !IsExtendedDebugEnabled())
 	{
-		const FStructuralChannelKey Key = KeyForBuildable(Buildable);
-		UE_LOG(LogStructuralPower, Log,
-			TEXT("[HALSP] hook %s %s %s class=%s tag=%s source=%s control=%s detail=%s"),
-			Hook ? Hook : TEXT("?"),
-			*Buildable->GetName(),
-			Action ? Action : TEXT("?"),
-			*Buildable->GetClass()->GetName(),
-			StructuralChannelToString(Key.Tag),
-			*FormatSourceForTrace(Key),
-			*FormatControlForTrace(Key),
-			Detail ? Detail : TEXT(""));
 		return;
 	}
 
+	const FStructuralChannelKey Key = KeyForBuildable(Buildable);
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] hook %s %s %s class=%s detail=%s"),
+		TEXT("[HALSP] hook %s %s %s class=%s tag=%s source=%s control=%s detail=%s"),
 		Hook ? Hook : TEXT("?"),
 		*Buildable->GetName(),
 		Action ? Action : TEXT("?"),
 		*Buildable->GetClass()->GetName(),
+		StructuralChannelToString(Key.Tag),
+		*FormatSourceForTrace(Key),
+		*FormatControlForTrace(Key),
 		Detail ? Detail : TEXT(""));
 }
 
@@ -205,7 +203,14 @@ void FStructuralPowerTrace::LogLinkOp(
 	const TCHAR* Path,
 	ELogVerbosity::Type Verbosity)
 {
-	if (!IsEnabled() || !Op)
+	if (!Op)
+	{
+		return;
+	}
+
+	// Hot path: never touch subsystem / KeyForBuildable or Log-level I/O here.
+	// ExtendedDebug adds connector detail; otherwise skip (scopes cover timing).
+	if (!IsExtendedDebugEnabled())
 	{
 		return;
 	}

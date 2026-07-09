@@ -85,20 +85,24 @@ void FStructuralPowerLightProcessor::Process(
 
 	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
 	{
+		FStructuralDeviceAttach::TearDownConsumerLinks(Plug);
+		Tracked.bStructuralPowerTransferActive = false;
 		FStructuralPowerTrace::LogLightConsumer(
-			Light, Root, ParentAnchor.IsValid(), ChannelKey, Plug, TEXT("-"));
+			Light, Root, ParentAnchor.IsValid(), ChannelKey, Plug, TEXT("lighting_disabled"));
 		return;
 	}
 
-	if (Root == INDEX_NONE || !Ctx.Graph().DoesComponentRootCarryPower(Root))
+	const bool bPanelFed = Root != INDEX_NONE
+		&& Ctx.Graph().IsPanelDownstreamLight(Root, ChannelKey);
+
+	if (Root == INDEX_NONE
+		|| (!bPanelFed && !Ctx.Graph().DoesComponentRootCarryPower(Root)))
 	{
 		FStructuralPowerTrace::LogPlacementSkip(Light, TEXT("light_no_component_feed"));
 		FStructuralPowerTrace::LogLightConsumer(
 			Light, Root, ParentAnchor.IsValid(), ChannelKey, Plug, TEXT("-"));
 		return;
 	}
-
-	const bool bPanelFed = Ctx.Graph().IsPanelDownstreamLight(Root, ChannelKey);
 
 	const bool bWireOrToggle =
 		FStructuralPowerTransferGate::IsBridgeWireOrToggleContext(AttachContext);
@@ -138,43 +142,12 @@ void FStructuralPowerLightProcessor::Process(
 	if (bAttached)
 	{
 		Tracked.bStructuralPowerTransferActive = true;
-		if (bLocalPromoteOnly || IsBulkLoadAttachContext(AttachContext))
-		{
-			Ctx.Graph().PromoteDirectHiddenLinks(Plug);
-		}
-		else
-		{
-			Ctx.Graph().PromoteStructuralMeshFrom(Plug);
-		}
+		Ctx.Graph().PromoteDirectHiddenLinks(Plug);
 	}
 
 	if (bPanelFed && IsValid(Plug))
 	{
-		TArray<UFGCircuitConnectionComponent*> HiddenLinks;
-		Plug->GetHiddenConnections(HiddenLinks);
-		for (UFGCircuitConnectionComponent* OtherRaw : HiddenLinks)
-		{
-			UFGPowerConnectionComponent* Other = Cast<UFGPowerConnectionComponent>(OtherRaw);
-			if (IsValid(Other)
-				&& FStructuralCircuitPromotionUtil::ComponentCarriesPower(Other))
-			{
-				FStructuralCircuitPromotionUtil::PromoteCircuitLink(Other, Plug);
-			}
-		}
-
-		UFGPowerConnectionComponent* Seed =
-			FStructuralCircuitPromotionUtil::ComponentCarriesPower(Plug) ? Plug : nullptr;
-		if (Seed)
-		{
-			if (bLocalPromoteOnly || IsBulkLoadAttachContext(AttachContext))
-			{
-				Ctx.Graph().PromoteDirectHiddenLinks(Seed);
-			}
-			else
-			{
-				Ctx.Graph().PromoteStructuralMeshFrom(Seed);
-			}
-		}
+		Ctx.Graph().PromoteDirectHiddenLinks(Plug);
 	}
 
 	const TCHAR* PathLabel = bPanelFed ? TEXT("panel_downstream") : (bAttached ? TEXT("direct") : TEXT("-"));

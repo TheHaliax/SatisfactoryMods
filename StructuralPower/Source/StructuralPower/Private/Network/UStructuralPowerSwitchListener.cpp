@@ -4,8 +4,27 @@
 #include "Network/UStructuralPowerSwitchListener.h"
 
 #include "Buildables/FGBuildableCircuitSwitch.h"
+#include "Core/FStructuralPowerContext.h"
 #include "Engine/World.h"
+#include "Graph/FStructuralSwitchParentResolver.h"
+#include "Processors/FStructuralPowerSwitchProcessor.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
+
+namespace
+{
+static bool SwitchNeedsCircuitSubscription(
+	AStructuralPowerGraphSubsystem& Graph,
+	AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(Switch))
+	{
+		return false;
+	}
+
+	const FStructuralPowerContext Ctx = Graph.MakeProcessorContext(EAttachContext::WireDelta);
+	return FStructuralPowerSwitchProcessor::NeedsAdvancedWork(Ctx, Switch);
+}
+} // namespace
 
 void UStructuralPowerSwitchListener::BindSubsystem(
 	AStructuralPowerGraphSubsystem* Graph,
@@ -18,22 +37,74 @@ void UStructuralPowerSwitchListener::BindSubsystem(
 
 	GraphSubsystem = Graph;
 	BoundSwitch = Switch;
+	SyncSubscriptions(Graph, Switch);
+}
 
-	Switch->mOnIsSwitchOnChanged.AddDynamic(this, &UStructuralPowerSwitchListener::HandleSwitchOnChanged);
-	Switch->mOnCircuitsChanged.AddDynamic(this, &UStructuralPowerSwitchListener::HandleCircuitsChanged);
+void UStructuralPowerSwitchListener::SyncSubscriptions(
+	AStructuralPowerGraphSubsystem* Graph,
+	AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(Graph) || !IsValid(Switch))
+	{
+		return;
+	}
+
+	const bool bArmed = SwitchNeedsCircuitSubscription(*Graph, Switch);
+	const bool bNeedsToggle = bArmed;
+	const bool bNeedsCircuit = true;
+
+	if (bCircuitsBound && !bNeedsCircuit)
+	{
+		Switch->mOnCircuitsChanged.RemoveDynamic(
+			this,
+			&UStructuralPowerSwitchListener::HandleCircuitsChanged);
+		bCircuitsBound = false;
+	}
+	else if (!bCircuitsBound && bNeedsCircuit)
+	{
+		Switch->mOnCircuitsChanged.AddDynamic(
+			this,
+			&UStructuralPowerSwitchListener::HandleCircuitsChanged);
+		bCircuitsBound = true;
+	}
+
+	if (bToggleBound && !bNeedsToggle)
+	{
+		Switch->mOnIsSwitchOnChanged.RemoveDynamic(
+			this,
+			&UStructuralPowerSwitchListener::HandleSwitchOnChanged);
+		bToggleBound = false;
+	}
+	else if (!bToggleBound && bNeedsToggle)
+	{
+		Switch->mOnIsSwitchOnChanged.AddDynamic(
+			this,
+			&UStructuralPowerSwitchListener::HandleSwitchOnChanged);
+		bToggleBound = true;
+	}
 }
 
 void UStructuralPowerSwitchListener::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	if (AFGBuildableCircuitSwitch* Switch = BoundSwitch.Get())
 	{
-		Switch->mOnIsSwitchOnChanged.RemoveDynamic(
-			this,
-			&UStructuralPowerSwitchListener::HandleSwitchOnChanged);
-		Switch->mOnCircuitsChanged.RemoveDynamic(
-			this,
-			&UStructuralPowerSwitchListener::HandleCircuitsChanged);
+		if (bToggleBound)
+		{
+			Switch->mOnIsSwitchOnChanged.RemoveDynamic(
+				this,
+				&UStructuralPowerSwitchListener::HandleSwitchOnChanged);
+		}
+
+		if (bCircuitsBound)
+		{
+			Switch->mOnCircuitsChanged.RemoveDynamic(
+				this,
+				&UStructuralPowerSwitchListener::HandleCircuitsChanged);
+		}
 	}
+
+	bToggleBound = false;
+	bCircuitsBound = false;
 
 	Super::EndPlay(EndPlayReason);
 }
@@ -56,6 +127,11 @@ void UStructuralPowerSwitchListener::HandleCircuitsChanged()
 	}
 
 	if (Graph->ShouldDeferCircuitDrivenRefresh())
+	{
+		return;
+	}
+
+	if (Graph->ShouldSkipSwitchCircuitEcho(Switch))
 	{
 		return;
 	}

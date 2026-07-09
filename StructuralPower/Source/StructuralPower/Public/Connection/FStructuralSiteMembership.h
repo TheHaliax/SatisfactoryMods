@@ -17,6 +17,8 @@ struct FStructuralSiteMembershipParams
 	bool bLinkVisibleConnections = false;
 	bool bBridgePeersOnly = true;
 	bool bStripSwitchVanillaPortLinks = false;
+	/** When true, defer explicit ConnectComponents — FG AddHiddenConnection merges circuits. */
+	bool bMeshOnlyLinks = false;
 	/** When true, caller updates EndpointIndex incrementally — avoids full rebuild hitch on runtime place. */
 	bool bSkipEndpointIndexDirty = false;
 };

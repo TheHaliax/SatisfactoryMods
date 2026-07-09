@@ -5,6 +5,7 @@
 
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildableLightSource.h"
+#include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "Config/FStructuralPowerModConfig.h"
 #include "FGPowerConnectionComponent.h"
@@ -87,9 +88,13 @@ void FStructuralDeviceAttach::TearDownConsumerLinks(UFGPowerConnectionComponent*
 	DevicePlug->GetHiddenConnections(HiddenLinks);
 	for (UFGCircuitConnectionComponent* OtherRaw : HiddenLinks)
 	{
-		DevicePlug->RemoveHiddenConnection(OtherRaw);
-		if (IsValid(OtherRaw))
+		if (UFGPowerConnectionComponent* Other = Cast<UFGPowerConnectionComponent>(OtherRaw))
 		{
+			FStructuralCircuitPromotionUtil::DemoteHiddenCircuitLink(DevicePlug, Other);
+		}
+		else if (IsValid(OtherRaw))
+		{
+			DevicePlug->RemoveHiddenConnection(OtherRaw);
 			OtherRaw->RemoveHiddenConnection(DevicePlug);
 		}
 	}

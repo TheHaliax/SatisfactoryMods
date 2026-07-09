@@ -32,9 +32,7 @@ public:
 		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch);
 
-	static void ArmPlacementSourceBridgeLegs(
-		UFGStructuralPowerConnectionComponent* SourceBus,
-		AFGBuildableCircuitSwitch* Switch);
+	static uint8 BuildWireSignature(AFGBuildableCircuitSwitch* Switch);
 
 	static void RemeshUnmeshedPeersAfterBulkLoad(FStructuralPowerContext& Ctx);
 

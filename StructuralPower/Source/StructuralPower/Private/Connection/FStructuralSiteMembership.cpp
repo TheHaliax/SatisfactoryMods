@@ -13,6 +13,7 @@
 #include "Graph/FStructuralOutletParentHeuristics.h"
 #include "Graph/FStructuralOutletParentResolver.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
+#include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "StructuralPowerLog.h"
 
 namespace
@@ -102,6 +103,11 @@ void FStructuralSiteMembership::IntegrateOnPlace(
 	const FStructuralSiteContext& Site,
 	const FStructuralSiteMembershipParams& Params)
 {
+	HALSP_TRACE_SCOPE_DETAIL(
+		TEXT("mod"),
+		TEXT("site.IntegrateOnPlace"),
+		IsValid(Host) ? Host->GetName() : TEXT("null"));
+
 	if (!IsValid(Host) || !IsValid(OutletBus))
 	{
 		return;
@@ -131,32 +137,22 @@ void FStructuralSiteMembership::IntegrateOnPlace(
 
 	if (Params.bLinkVisibleConnections)
 	{
-		Graph.LinkBusToVisibleConnectionsLocal(Host, OutletBus);
+		Graph.LinkBusToVisibleConnectionsLocal(Host, OutletBus, Params.bMeshOnlyLinks);
 	}
 
-	if (Site.bAnchored && Site.SiteRoot != INDEX_NONE)
+	if (Site.bAnchored && Site.SiteRoot != INDEX_NONE && !Graph.HasBridgeBusPeerMesh(OutletBus))
 	{
-		if (Kind == EStructuralEndpointKind::Switch)
-		{
-			Graph.ApplyLocalBridgeBusAttach(
-				Host,
-				OutletBus,
-				Site.SiteRoot,
-				EndpointId,
-				Host);
-		}
-		else if (!Graph.HasBridgeBusPeerMesh(OutletBus))
-		{
-			Graph.TryMeshPeerBusOnComponent(
-				Host,
-				OutletBus,
-				Site.SiteRoot,
-				EndpointId,
-				Params.bBridgePeersOnly);
-		}
+		// DR-017: place = peer mesh only. Structure feed / directed pair arms on wire or config.
+		Graph.TryMeshPeerBusOnComponent(
+			Host,
+			OutletBus,
+			Site.SiteRoot,
+			EndpointId,
+			Params.bBridgePeersOnly,
+			Params.bMeshOnlyLinks);
 	}
 
-	if (Site.bAnchored)
+	if (Site.bAnchored && !Params.bMeshOnlyLinks)
 	{
 		Graph.PromoteOutletBusIfPowered(OutletBus, /*bLocalPromoteOnly=*/true);
 	}

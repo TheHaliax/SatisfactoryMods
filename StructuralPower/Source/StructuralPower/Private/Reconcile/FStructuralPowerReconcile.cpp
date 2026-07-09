@@ -5,6 +5,7 @@
 
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
+#include "Attach/FStructuralPanelAttach.h"
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Buildables/FGBuildableLightSource.h"
@@ -14,10 +15,13 @@
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "FGBuildableSubsystem.h"
 #include "FGPowerConnectionComponent.h"
+#include "Misc/App.h"
 #include "Panel/FStructuralPanelControlledSync.h"
 #include "Panel/FStructuralPanelPortResolver.h"
 #include "Processors/FStructuralPowerSwitchProcessor.h"
 #include "Processors/FStructuralPowerTransferGate.h"
+#include "Processors/FStructuralPowerPanelProcessor.h"
+#include "Processors/FStructuralPowerLightProcessor.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Core/EAttachContext.h"
 #include "Core/FStructuralPowerContext.h"
@@ -55,12 +59,112 @@ void FStructuralPowerReconcile::MaybeRunPostLoadLightReconcile()
 	if (FStructuralPowerModConfig::IsGroupLightingEnabled())
 	{
 		ReconcileAllPanelEndpoints();
-		ReconcileAllLightConsumers();
 		RefreshKeyedTransferAfterLoad();
 		RefreshNamedControlPanelsAfterLoad();
+		Subsystem->FinalLightingReconcilePass = 0;
+		// FG circuits often settle one tick later — defer consumer attach.
+		Subsystem->ScheduleFinalLightingReconcile();
 	}
 
 	Subsystem->bPendingPostLoadLightReconcile = false;
+}
+
+void FStructuralPowerReconcile::MaybeRunFinalLightingReconcile()
+{
+	if (!Subsystem->bPendingFinalLightingReconcile)
+	{
+		return;
+	}
+
+	if (Subsystem->GetPendingJobCount() > 0)
+	{
+		Subsystem->ScheduleFinalLightingReconcile();
+		return;
+	}
+
+	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
+	{
+		Subsystem->bPendingFinalLightingReconcile = false;
+		Subsystem->FinalLightingReconcilePass = 0;
+		return;
+	}
+
+	++Subsystem->FinalLightingReconcilePass;
+
+	UE_LOG(LogStructuralPower, Log,
+		TEXT("[HALSP] Final lighting reconcile pass=%d/%d — panels + keyed transfer + lights"),
+		Subsystem->FinalLightingReconcilePass,
+		AStructuralPowerGraphSubsystem::MaxFinalLightingReconcilePasses);
+
+	ReconcileAllPanelEndpoints();
+	RefreshKeyedTransferAfterLoad();
+	ReconcileAllLightConsumers();
+
+	if (LightingReconcileNeedsRetry()
+		&& Subsystem->FinalLightingReconcilePass
+			< AStructuralPowerGraphSubsystem::MaxFinalLightingReconcilePasses)
+	{
+		Subsystem->ScheduleFinalLightingReconcile();
+		return;
+	}
+
+	Subsystem->FinalLightingReconcilePass = 0;
+	Subsystem->bPendingFinalLightingReconcile = false;
+}
+
+bool FStructuralPowerReconcile::LightingReconcileNeedsRetry()
+{
+	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
+	{
+		return false;
+	}
+
+	TArray<AFGBuildableLightsControlPanel*> Panels;
+	CollectKnownPanelEndpoints(Panels);
+
+	for (AFGBuildableLightsControlPanel* Panel : Panels)
+	{
+		if (!IsValid(Panel))
+		{
+			continue;
+		}
+
+		const FName EffectiveControl =
+			FStructuralPanelControlledSync::ResolveEffectiveLightControl(*Subsystem, Panel);
+		if (EffectiveControl.IsNone())
+		{
+			continue;
+		}
+
+		FStructuralPanelPorts Ports;
+		if (!FStructuralPanelPortResolver::Resolve(Panel, Ports))
+		{
+			return true;
+		}
+
+		const FStructuralChannelKey ChannelKey =
+			Subsystem->IdOps.ResolveChannelKeyForBuildable(Panel);
+		const int32 Root = Subsystem->GetEndpointComponentRoot(Panel);
+		if (Root == INDEX_NONE)
+		{
+			return true;
+		}
+
+		if (!FStructuralPanelAttach::SupplyAlreadyLinked(
+				*Subsystem, Panel, Ports, Root, ChannelKey))
+		{
+			return true;
+		}
+
+		const UFGPowerConnectionComponent* InputPower =
+			FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
+		if (!FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower))
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 bool FStructuralPowerReconcile::IsDirectSwitchFedLight(
@@ -337,11 +441,6 @@ void FStructuralPowerReconcile::CollectKnownPanelEndpoints(
 
 void FStructuralPowerReconcile::ReconcileAllPanelEndpoints()
 {
-	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
-	{
-		return;
-	}
-
 	TArray<AFGBuildableLightsControlPanel*> Panels;
 	CollectKnownPanelEndpoints(Panels);
 
@@ -352,14 +451,30 @@ void FStructuralPowerReconcile::ReconcileAllPanelEndpoints()
 		Tracked.bPanelLinksReady = false;
 		Tracked.bDownstreamLinksReady = false;
 		Subsystem->ProcessPanelEndpoint(Panel);
-		LogPanelReconcileSummary(Panel);
+		if (FStructuralPowerModConfig::IsGroupLightingEnabled())
+		{
+			LogPanelReconcileSummary(Panel);
+		}
+		else
+		{
+			FStructuralPanelControlledSync::ReleaseIntegratedSubnet(*Subsystem, Panel);
+		}
 	}
 
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] Post-load panel reconcile complete — %d panel(s)"),
-		Panels.Num());
+	if (FStructuralPowerModConfig::IsGroupLightingEnabled())
+	{
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[HALSP] Post-load panel reconcile complete — %d panel(s)"),
+			Panels.Num());
 
-	ApplyKeyedSubnetAllPanels();
+		ApplyKeyedSubnetAllPanels();
+	}
+	else
+	{
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[HALSP] GroupLighting off — tore down structural links on %d panel(s)"),
+			Panels.Num());
+	}
 }
 
 void FStructuralPowerReconcile::ApplyKeyedSubnetAllPanels()
@@ -492,7 +607,6 @@ void FStructuralPowerReconcile::RefreshNamedControlPanelsAfterLoad()
 	TArray<AFGBuildableLightsControlPanel*> Panels;
 	CollectKnownPanelEndpoints(Panels);
 
-	bool bAnyNamedControl = false;
 	for (AFGBuildableLightsControlPanel* Panel : Panels)
 	{
 		if (!IsValid(Panel))
@@ -549,11 +663,120 @@ void FStructuralPowerReconcile::RefreshNamedControlPanelsAfterLoad()
 		Tracked.bDownstreamLinksReady = false;
 		Subsystem->ProcessPanelEndpoint(Panel, /*bLocalPromoteOnly=*/false);
 		FStructuralPanelControlledSync::ApplyKeyedSubnet(*Subsystem, Panel);
-		bAnyNamedControl = true;
+	}
+}
+
+void FStructuralPowerReconcile::SuspendAllIntegratedLighting()
+{
+	UWorld* World = Subsystem->GetWorld();
+	if (!IsValid(World) || IsEngineExitRequested())
+	{
+		return;
 	}
 
-	if (bAnyNamedControl)
+	FStructuralPowerContext Ctx = Subsystem->MakeProcessorContext(EAttachContext::Toggle);
+	FStructuralPowerTransferGate::SuspendAllKeyedLightingTransfer(Ctx);
+
+	TArray<AFGBuildableLightsControlPanel*> Panels;
+	CollectKnownPanelEndpoints(Panels);
+	for (AFGBuildableLightsControlPanel* Panel : Panels)
 	{
+		if (!IsValid(Panel))
+		{
+			continue;
+		}
+
+		const FStructuralNodeId PanelId = AStructuralPowerGraphSubsystem::MakeNodeId(Panel);
+		FTrackedEndpoint& Tracked = Subsystem->TrackedEndpoints.FindOrAdd(PanelId);
+		Tracked.bPanelLinksReady = false;
+		Tracked.bDownstreamLinksReady = false;
+		Tracked.bStructuralPowerTransferActive = false;
+
+		FStructuralPowerPanelProcessor::TearDown(Ctx, Panel);
+		FStructuralPanelControlledSync::ReleaseIntegratedSubnet(*Subsystem, Panel);
+	}
+
+	TArray<AFGBuildableLightSource*> Lights;
+	TSet<AFGBuildableLightSource*> Seen;
+	auto ConsiderLight = [&](AFGBuildableLightSource* Light)
+	{
+		if (!IsValid(Light) || Seen.Contains(Light))
+		{
+			return;
+		}
+
+		Seen.Add(Light);
+		Lights.Add(Light);
+	};
+
+	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Subsystem->TrackedEndpoints)
+	{
+		if (Pair.Value.Kind == EStructuralEndpointKind::Light)
+		{
+			ConsiderLight(Pair.Value.GetLight());
+		}
+	}
+
+	if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World))
+	{
+		for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef())
+		{
+			if (FStructuralEligibilityRules::IsStructuralLightConsumer(Buildable))
+			{
+				ConsiderLight(FStructuralPowerBuildableCasts::AsLight(Buildable));
+			}
+		}
+	}
+
+	for (AFGBuildableLightSource* Light : Lights)
+	{
+		const FStructuralNodeId LightId = AStructuralPowerGraphSubsystem::MakeNodeId(Light);
+		FTrackedEndpoint& Tracked = Subsystem->TrackedEndpoints.FindOrAdd(LightId);
+		Tracked.bStructuralPowerTransferActive = false;
+		FStructuralPowerLightProcessor::TearDown(Ctx, Light);
+	}
+
+	UE_LOG(LogStructuralPower, Log,
+		TEXT("[HALSP] suspended integrated lighting — %d panel(s) %d light(s)"),
+		Panels.Num(),
+		Lights.Num());
+}
+
+void FStructuralPowerReconcile::ReconcileGroupLightingState()
+{
+	const bool bOn = FStructuralPowerModConfig::IsGroupLightingEnabled();
+
+	UE_LOG(LogStructuralPower, Log,
+		TEXT("[HALSP] GroupLighting reconcile — enabled=%d"),
+		bOn ? 1 : 0);
+
+	if (bOn)
+	{
+		if (!FStructuralPowerModConfig::CanMutateLiveConfig(Subsystem->GetWorld()))
+		{
+			return;
+		}
+
+		ReconcileAllPanelEndpoints();
+		RefreshKeyedTransferAfterLoad();
+		RefreshNamedControlPanelsAfterLoad();
+		ReconcileAllLightConsumers();
+		Subsystem->FinalLightingReconcilePass = 0;
+		Subsystem->ScheduleFinalLightingReconcile();
+	}
+	else
+	{
+		Subsystem->bPendingFinalLightingReconcile = false;
+		Subsystem->FinalLightingReconcilePass = 0;
+
+		if (!FStructuralPowerModConfig::CanMutateLiveConfig(Subsystem->GetWorld()))
+		{
+			return;
+		}
+
+		SuspendAllIntegratedLighting();
+
+		ReconcileAllPanelEndpoints();
 		ReconcileAllLightConsumers();
 	}
 }
@@ -610,4 +833,70 @@ void FStructuralPowerReconcile::ReconcileAllLightConsumers()
 	}
 
 	Subsystem->BridgeRootIndex.RefreshBridgeEndpointRootIndex();
+}
+
+void FStructuralPowerReconcile::RefreshPanelsForLightSourceOnRoot(
+	int32 Root,
+	FName LightSource)
+{
+	if (Root == INDEX_NONE || LightSource.IsNone()
+		|| !FStructuralPowerModConfig::IsGroupLightingEnabled())
+	{
+		return;
+	}
+
+	Subsystem->RefreshBridgeEndpointRootIndex();
+
+	auto RefreshPanel = [&](AFGBuildableLightsControlPanel* Panel)
+	{
+		if (!IsValid(Panel))
+		{
+			return;
+		}
+
+		if (FStructuralPanelControlledSync::ResolveEffectiveLightControl(*Subsystem, Panel)
+			!= LightSource)
+		{
+			return;
+		}
+
+		const FStructuralNodeId PanelId = AStructuralPowerGraphSubsystem::MakeNodeId(Panel);
+		FTrackedEndpoint& Tracked = Subsystem->TrackedEndpoints.FindOrAdd(PanelId);
+		Tracked.bPanelLinksReady = false;
+		Tracked.bDownstreamLinksReady = false;
+		Subsystem->ProcessPanelEndpoint(Panel);
+		FStructuralPanelControlledSync::ApplyKeyedSubnet(*Subsystem, Panel);
+	};
+
+	if (const TArray<FStructuralNodeId>* PanelIds =
+			Subsystem->EndpointIndex.Get(Root, EStructuralEndpointKind::Panel))
+	{
+		for (const FStructuralNodeId& PanelId : *PanelIds)
+		{
+			if (const FTrackedEndpoint* Tracked = Subsystem->TrackedEndpoints.Find(PanelId))
+			{
+				RefreshPanel(Tracked->GetPanel());
+			}
+		}
+	}
+
+	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Subsystem->TrackedEndpoints)
+	{
+		if (Pair.Value.Kind != EStructuralEndpointKind::Panel)
+		{
+			continue;
+		}
+
+		const FStructuralWallAnchor Anchor = Subsystem->ResolveOutletAnchor(Pair.Value.GetPanel());
+		FStructuralNodeId ParentId;
+		if (Subsystem->BridgeRootIndex.ResolveEndpointComponentRoot(
+				Pair.Value.GetPanel(),
+				Anchor,
+				ParentId) != Root)
+		{
+			continue;
+		}
+
+		RefreshPanel(Pair.Value.GetPanel());
+	}
 }

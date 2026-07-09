@@ -10,9 +10,10 @@
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Buildables/FGBuildablePowerPole.h"
+#include "Command/StructuralPowerSmlChatCommands.h"
 #include "Config/FStructuralPowerModConfig.h"
-#include "Config/UStructuralPowerModConfiguration.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
+#include "Diagnostics/FStructuralVanillaPowerTrace.h"
 #include "FGLightweightBuildableSubsystem.h"
 #include "FGBuildableSubsystem.h"
 #include "Hologram/FGBlueprintHologram.h"
@@ -41,7 +42,6 @@ UStructuralPowerRootInstanceModule::UStructuralPowerRootInstanceModule()
 {
 	bRootModule = true;
 	RemoteCallObjects.Add(UStructuralPowerRCO::StaticClass());
-	ModConfigurations.Add(UStructuralPowerModConfiguration::StaticClass());
 }
 
 void UStructuralPowerRootInstanceModule::UnregisterGlobalDelegates()
@@ -434,6 +434,8 @@ void UStructuralPowerRootInstanceModule::HandlePostLoadMap(UWorld* World)
 				{
 					Graph->OnWorldReady(WorldPtr);
 				}
+
+				FStructuralPowerSmlChatCommands::RegisterWithWorld(WorldPtr);
 			}
 		}));
 }
@@ -442,13 +444,14 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 {
 	if (Phase == ELifecyclePhase::POST_INITIALIZATION)
 	{
-		FStructuralPowerModConfig::SyncRuntimeFromConfigManager(GetGameInstance());
+		FStructuralPowerModConfig::LoadRuntimeConfig();
 #if !WITH_EDITOR
 		UE_LOG(LogStructuralPower, Log,
 			TEXT("StructuralPower v2.2.0 — lighting + Id panel (I)"
-				" (groupLighting=%s trace=%s)"),
+				" (groupLighting=%s trace=%s extendedDebug=%s)"),
 			FStructuralPowerModConfig::IsGroupLightingEnabled() ? TEXT("on") : TEXT("off"),
-			FStructuralPowerModConfig::IsTraceEnabled() ? TEXT("on") : TEXT("off"));
+			FStructuralPowerModConfig::IsTraceEnabled() ? TEXT("on") : TEXT("off"),
+			FStructuralPowerModConfig::IsExtendedDebugEnabled() ? TEXT("on") : TEXT("off"));
 #endif
 	}
 
@@ -464,6 +467,7 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 	FStructuralEquipmentBridgeRegistry::Get().Initialize();
 	FStructuralPowerProcessorRegistry::Get().Initialize();
 	FStructuralPowerIdInput::Register();
+	FStructuralVanillaPowerTrace::RegisterHooks();
 
 	SUBSCRIBE_METHOD_AFTER(
 		UFGGameUI::RemoveInteractWidget,

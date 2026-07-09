@@ -11,6 +11,7 @@
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Config/FStructuralPowerModConfig.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
+#include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "FGPowerConnectionComponent.h"
 #include "Panel/FStructuralPanelControlledSync.h"
 #include "Panel/FStructuralPanelPortResolver.h"
@@ -44,6 +45,11 @@ void FStructuralPowerPanelProcessor::Process(
 	AFGBuildableLightsControlPanel* Panel,
 	bool bLocalPromoteOnly)
 {
+	HALSP_TRACE_SCOPE_DETAIL(
+		TEXT("mod"),
+		TEXT("panel.Process"),
+		IsValid(Panel) ? Panel->GetName() : TEXT("null"));
+
 	if (!IsValid(Panel))
 	{
 		return;
@@ -103,11 +109,10 @@ void FStructuralPowerPanelProcessor::Process(
 
 	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
 	{
-		if (!bRoutingUnchanged)
-		{
-			FStructuralPanelAttach::TearDownLinks(Panel, Ports);
-			Tracked.bPanelLinksReady = false;
-		}
+		FStructuralPanelAttach::TearDownLinks(Panel, Ports);
+		Tracked.bPanelLinksReady = false;
+		Tracked.bDownstreamLinksReady = false;
+		Tracked.bStructuralPowerTransferActive = false;
 
 		LogPanelState(false, TEXT("lighting_disabled"));
 		return;
@@ -188,25 +193,42 @@ void FStructuralPowerPanelProcessor::Process(
 	UFGPowerConnectionComponent* InputPower =
 		FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
 
+	const bool bMeshOnlySupply = IsBulkLoadAttachContext(AttachContext);
+
 	bool bSupplyReady = false;
-	if (Root != INDEX_NONE && Ctx.Graph().DoesComponentRootCarryPower(Root))
+	if (Root != INDEX_NONE)
 	{
-		if (FStructuralPanelAttach::SupplyAlreadyLinked(Ctx.Graph(), Panel, Ports, Root, ChannelKey))
+		const bool bFeedReady = Ctx.Graph().DoesComponentRootCarryPower(Root)
+			|| (!ChannelKey.Source.IsNone()
+				&& [&]() -> bool
+				{
+					UFGPowerConnectionComponent* Feed =
+						Ctx.Graph().ResolveSubnetFeedConnector(Root, ChannelKey);
+					return IsValid(Feed)
+						&& FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(Feed);
+				}());
+
+		if (bFeedReady)
 		{
-			bSupplyReady = true;
-		}
-		else
-		{
-			bSupplyReady = FStructuralPanelAttach::TryLinkSupply(
-				Ctx.Graph(),
-				Panel,
-				Ports,
-				Root,
-				ChannelKey);
+			if (FStructuralPanelAttach::SupplyAlreadyLinked(
+					Ctx.Graph(), Panel, Ports, Root, ChannelKey))
+			{
+				bSupplyReady = true;
+			}
+			else
+			{
+				bSupplyReady = FStructuralPanelAttach::TryLinkSupply(
+					Ctx.Graph(),
+					Panel,
+					Ports,
+					Root,
+					ChannelKey,
+					bMeshOnlySupply);
+			}
 		}
 	}
 
-	if (bSupplyReady && IsValid(InputPower))
+	if (bSupplyReady && IsValid(InputPower) && !bMeshOnlySupply)
 	{
 		UFGPowerConnectionComponent* Feed =
 			Ctx.Graph().ResolveSubnetFeedConnector(Root, ChannelKey);

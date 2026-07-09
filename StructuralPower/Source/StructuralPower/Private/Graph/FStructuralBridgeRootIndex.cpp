@@ -8,6 +8,7 @@
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildablePowerPole.h"
 #include "Graph/FStructuralAttachmentResolver.h"
+#include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "StructuralPowerLog.h"
@@ -29,6 +30,8 @@ void FStructuralBridgeRootIndex::RefreshBridgeEndpointRootIndex()
 	{
 		return;
 	}
+
+	HALSP_TRACE_SCOPE(TEXT("mod"), TEXT("graph.RefreshBridgeEndpointRootIndex"));
 
 	Subsystem->EndpointIndex.RebuildFrom(Subsystem->TrackedEndpoints, Subsystem->StructureGraph);
 	Subsystem->bBridgeEndpointRootIndexDirty = false;

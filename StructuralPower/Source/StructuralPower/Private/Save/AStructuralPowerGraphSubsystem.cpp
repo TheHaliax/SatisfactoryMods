@@ -16,7 +16,6 @@
 #include "Buildables/FGBuildablePowerStorage.h"
 #include "Circuit/FStructuralCircuitPromotionScope.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
-#include "Circuit/FStructuralHiddenConnectionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "Config/FStructuralPowerModConfig.h"
 #include "Diagnostics/FStructuralPowerDiagnostics.h"
@@ -54,6 +53,7 @@
 #include "Session/FStructuralPowerSessionSettings.h"
 #include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
+#include "TimerManager.h"
 #include "HAL/PlatformTime.h"
 
 AStructuralPowerGraphSubsystem::AStructuralPowerGraphSubsystem()
@@ -662,17 +662,19 @@ void AStructuralPowerGraphSubsystem::EndCircuitPromotion()
 
 bool AStructuralPowerGraphSubsystem::LinkHiddenPair(
 	UFGPowerConnectionComponent* A,
-	UFGPowerConnectionComponent* B)
+	UFGPowerConnectionComponent* B,
+	bool bPromoteCircuit)
 {
-	return CircuitOps.LinkHiddenPair(A, B);
+	return CircuitOps.LinkHiddenPair(A, B, bPromoteCircuit);
 }
 
 
 bool AStructuralPowerGraphSubsystem::LinkHiddenPairLocal(
 	UFGPowerConnectionComponent* A,
-	UFGPowerConnectionComponent* B)
+	UFGPowerConnectionComponent* B,
+	bool bPromoteCircuit)
 {
-	return CircuitOps.LinkHiddenPairLocal(A, B);
+	return CircuitOps.LinkHiddenPairLocal(A, B, bPromoteCircuit);
 }
 
 
@@ -774,9 +776,16 @@ bool AStructuralPowerGraphSubsystem::TryMeshPeerBusOnComponent(
 	UFGStructuralPowerConnectionComponent* OutletBus,
 	int32 Root,
 	const FStructuralNodeId& SelfId,
-	bool bBridgePeersOnly)
+	bool bBridgePeersOnly,
+	bool bMeshOnlyLinks)
 {
-	return CircuitOps.TryMeshPeerBusOnComponent(Host, OutletBus, Root, SelfId, bBridgePeersOnly);
+	return CircuitOps.TryMeshPeerBusOnComponent(
+		Host,
+		OutletBus,
+		Root,
+		SelfId,
+		bBridgePeersOnly,
+		bMeshOnlyLinks);
 }
 
 
@@ -822,6 +831,7 @@ bool AStructuralPowerGraphSubsystem::ShouldDeferCircuitDrivenRefresh() const
 {
 	return bBulkLoadDrainActive
 		|| bPendingPostLoadLightReconcile
+		|| bPendingFinalLightingReconcile
 		|| CircuitPromotionDepth > 0;
 }
 
@@ -1002,6 +1012,34 @@ void AStructuralPowerGraphSubsystem::MaybeRunPostLoadLightReconcile()
 	ReconcileOps.MaybeRunPostLoadLightReconcile();
 }
 
+void AStructuralPowerGraphSubsystem::MaybeRunFinalLightingReconcile()
+{
+	ReconcileOps.MaybeRunFinalLightingReconcile();
+}
+
+void AStructuralPowerGraphSubsystem::ScheduleFinalLightingReconcile()
+{
+	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
+	{
+		bPendingFinalLightingReconcile = false;
+		return;
+	}
+
+	bPendingFinalLightingReconcile = true;
+
+	UWorld* World = GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	World->GetTimerManager().SetTimerForNextTick(
+		FTimerDelegate::CreateWeakLambda(this, [this]()
+		{
+			MaybeRunFinalLightingReconcile();
+		}));
+}
+
 
 bool AStructuralPowerGraphSubsystem::IsDirectSwitchFedLight(
 	int32 Root,
@@ -1063,9 +1101,10 @@ bool AStructuralPowerGraphSubsystem::EnsureParentRegisteredInGraph(
 
 void AStructuralPowerGraphSubsystem::LinkBusToVisibleConnectionsLocal(
 	AFGBuildable* Host,
-	UFGStructuralPowerConnectionComponent* Bus)
+	UFGStructuralPowerConnectionComponent* Bus,
+	bool bMeshOnlyLinks)
 {
-	CircuitOps.LinkBusToVisibleConnectionsLocal(Host, Bus);
+	CircuitOps.LinkBusToVisibleConnectionsLocal(Host, Bus, bMeshOnlyLinks);
 }
 
 
@@ -1110,7 +1149,8 @@ bool AStructuralPowerGraphSubsystem::DoesComponentRootCarryPower(int32 Component
 	if (UFGCircuitConnectionComponent* Source = const_cast<AStructuralPowerGraphSubsystem*>(this)
 			->GetComponentSourceConnector(ComponentRoot, nullptr))
 	{
-		return FStructuralCircuitPromotionUtil::ComponentCarriesPower(Cast<UFGPowerConnectionComponent>(Source));
+		return FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(
+			Cast<UFGPowerConnectionComponent>(Source));
 	}
 
 	return false;
@@ -1455,22 +1495,82 @@ bool AStructuralPowerGraphSubsystem::ShouldSkipPanelCircuitEcho(
 }
 
 
+bool AStructuralPowerGraphSubsystem::ShouldSkipSwitchCircuitEcho(
+	AFGBuildableCircuitSwitch* Switch,
+	const TCHAR** OutReason)
+{
+	auto SetReason = [OutReason](const TCHAR* Reason)
+	{
+		if (OutReason)
+		{
+			*OutReason = Reason;
+		}
+	};
+
+	if (!IsValid(Switch))
+	{
+		return false;
+	}
+
+	const FStructuralNodeId SwitchId = MakeNodeId(Switch);
+	const FTrackedEndpoint* Tracked = TrackedEndpoints.Find(SwitchId);
+	FStructuralNodeId ParentId;
+	int32 Root = INDEX_NONE;
+	if (Tracked && Tracked->ParentId.IsValid())
+	{
+		ParentId = Tracked->ParentId;
+		Root = StructureGraph.FindRoot(ParentId);
+	}
+	else
+	{
+		FStructuralWallAnchor ParentAnchor = ResolveOutletAnchor(Switch);
+		Root = BridgeRootIndex.ResolveEndpointComponentRoot(Switch, ParentAnchor, ParentId);
+	}
+
+	const FStructuralPowerContext Ctx = MakeProcessorContext(EAttachContext::WireDelta);
+	if (!FStructuralPowerSwitchProcessor::NeedsAdvancedWork(Ctx, Switch))
+	{
+		SetReason(TEXT("skip_inert"));
+		return true;
+	}
+
+	if (SiteState.IsEchoScopeActive())
+	{
+		if (!SiteState.IsEchoDirtySite(Root))
+		{
+			SetReason(TEXT("skip_echo_scope"));
+			return true;
+		}
+
+		if (SiteState.WasSwitchToggleHandledInScope(SwitchId))
+		{
+			SetReason(TEXT("skip_echo_toggle"));
+			return true;
+		}
+
+		if (SiteState.WasSwitchEchoProcessedInScope(SwitchId))
+		{
+			SetReason(TEXT("skip_echo_coalesce"));
+			return true;
+		}
+	}
+
+	return false;
+}
+
+
 void AStructuralPowerGraphSubsystem::MarkEchoDirtyForSwitchToggle(
 	AFGBuildableCircuitSwitch* Switch,
 	int32 LocalRoot)
 {
-	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
-	{
-		return;
-	}
-
 	TArray<int32> DirtySites;
 	if (LocalRoot != INDEX_NONE)
 	{
 		DirtySites.Add(LocalRoot);
 	}
 
-	if (IsValid(Switch)
+	if (FStructuralPowerModConfig::IsGroupLightingEnabled()
+		&& IsValid(Switch)
 		&& FStructuralSwitchParentResolver::IsWiredToStructureSide(Switch))
 	{
 		CrossSiteGraph.RefreshCouplingsFromWiredSwitch(*this, Switch, LocalRoot);
@@ -1513,6 +1613,30 @@ void AStructuralPowerGraphSubsystem::NotePanelToggleHandled(
 	}
 
 	SiteState.NotePanelToggleHandled(MakeNodeId(Panel));
+}
+
+
+void AStructuralPowerGraphSubsystem::NoteSwitchCircuitEchoProcessed(
+	AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(Switch))
+	{
+		return;
+	}
+
+	SiteState.NoteSwitchEchoProcessed(MakeNodeId(Switch));
+}
+
+
+void AStructuralPowerGraphSubsystem::NoteSwitchToggleHandled(
+	AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(Switch))
+	{
+		return;
+	}
+
+	SiteState.NoteSwitchToggleHandled(MakeNodeId(Switch));
 }
 
 
@@ -1610,6 +1734,18 @@ void AStructuralPowerGraphSubsystem::EnumerateTrackedLightsOnRoot(
 void AStructuralPowerGraphSubsystem::ReconcileAllLightConsumers()
 {
 	ReconcileOps.ReconcileAllLightConsumers();
+}
+
+void AStructuralPowerGraphSubsystem::ReconcileGroupLightingState()
+{
+	ReconcileOps.ReconcileGroupLightingState();
+}
+
+void AStructuralPowerGraphSubsystem::RefreshPanelsForLightSourceOnRoot(
+	int32 Root,
+	FName LightSource)
+{
+	ReconcileOps.RefreshPanelsForLightSourceOnRoot(Root, LightSource);
 }
 
 

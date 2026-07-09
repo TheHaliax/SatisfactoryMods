@@ -29,6 +29,7 @@ struct FStructuralConnectorPowerSnapshot
 namespace FStructuralPowerTrace
 {
 	bool IsEnabled();
+	bool IsExtendedDebugEnabled();
 
 	FString FormatEffectiveIdForTrace(EStructuralChannel Tag, FName EffectiveId);
 	FString FormatSourceForTrace(const FStructuralChannelKey& Key);

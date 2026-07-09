@@ -62,6 +62,8 @@ class STRUCTURALPOWER_API AStructuralPowerGraphSubsystem : public AInfo, public 
 	GENERATED_BODY()
 
 public:
+	static constexpr int32 MaxFinalLightingReconcilePasses = 6;
+
 	AStructuralPowerGraphSubsystem();
 
 	static AStructuralPowerGraphSubsystem* GetOrCreate(UWorld* World);
@@ -85,13 +87,20 @@ public:
 	bool ShouldSkipPanelCircuitEcho(
 		AFGBuildableLightsControlPanel* Panel,
 		const TCHAR** OutReason = nullptr);
+	bool ShouldSkipSwitchCircuitEcho(
+		AFGBuildableCircuitSwitch* Switch,
+		const TCHAR** OutReason = nullptr);
 	void MarkEchoDirtyForSwitchToggle(AFGBuildableCircuitSwitch* Switch, int32 LocalRoot);
 	void NotePanelCircuitEchoProcessed(AFGBuildableLightsControlPanel* Panel);
 	void NotePanelToggleHandled(AFGBuildableLightsControlPanel* Panel);
+	void NoteSwitchCircuitEchoProcessed(AFGBuildableCircuitSwitch* Switch);
+	void NoteSwitchToggleHandled(AFGBuildableCircuitSwitch* Switch);
 	void ProcessPoleWireDelta(AFGBuildablePowerPole* Pole);
 	void ProcessPoleEndpointDirect(AFGBuildablePowerPole* Pole);
 	void OnSwitchStateChanged(AFGBuildableCircuitSwitch* Switch);
 	void ReconcileAllLightConsumers();
+	void ReconcileGroupLightingState();
+	void RefreshPanelsForLightSourceOnRoot(int32 Root, FName LightSource);
 	void RunDiagnostics() const;
 
 	FStructuralWallAnchor ResolveOutletAnchor(AFGBuildable* Outlet) const;
@@ -148,6 +157,7 @@ public:
 
 	bool IsBulkLoadDrainActive() const { return bBulkLoadDrainActive; }
 	bool IsPendingPostLoadLightReconcile() const { return bPendingPostLoadLightReconcile; }
+	bool IsPendingFinalLightingReconcile() const { return bPendingFinalLightingReconcile; }
 	bool ShouldDeferCircuitDrivenRefresh() const;
 
 	EAttachContext GetCurrentAttachContext() const;
@@ -167,7 +177,10 @@ public:
 	void BeginCircuitPromotion();
 	void EndCircuitPromotion();
 
-	bool LinkHiddenPair(UFGPowerConnectionComponent* A, UFGPowerConnectionComponent* B);
+	bool LinkHiddenPair(
+		UFGPowerConnectionComponent* A,
+		UFGPowerConnectionComponent* B,
+		bool bPromoteCircuit = true);
 	bool IsPanelSupplyLinked(
 		UFGPowerConnectionComponent* InputPower,
 		UFGPowerConnectionComponent* Feed) const;
@@ -249,13 +262,17 @@ private:
 		int32 Root,
 		const FStructuralNodeId& SelfId,
 		const AFGBuildable* FeedExcludeHost = nullptr);
-	bool LinkHiddenPairLocal(UFGPowerConnectionComponent* A, UFGPowerConnectionComponent* B);
+	bool LinkHiddenPairLocal(
+		UFGPowerConnectionComponent* A,
+		UFGPowerConnectionComponent* B,
+		bool bPromoteCircuit = true);
 	bool TryMeshPeerBusOnComponent(
 		AFGBuildable* Host,
 		UFGStructuralPowerConnectionComponent* OutletBus,
 		int32 Root,
 		const FStructuralNodeId& SelfId,
-		bool bBridgePeersOnly);
+		bool bBridgePeersOnly,
+		bool bMeshOnlyLinks = false);
 	int32 FindRootForTrackedEndpoint(const FTrackedEndpoint& Tracked) const;
 	int32 ResolveBridgeRootFromAnchor(
 		AFGBuildable* Host,
@@ -277,13 +294,16 @@ private:
 	bool IsSwitchFeedOpen(int32 Root, FName SwitchControlId);
 	void FinishBulkLoadDrain();
 	void MaybeRunPostLoadLightReconcile();
+	void MaybeRunFinalLightingReconcile();
+	void ScheduleFinalLightingReconcile();
 	void ReconcileAllPanelEndpoints();
 	void CollectKnownPanelEndpoints(TArray<AFGBuildableLightsControlPanel*>& OutPanels);
 	void ApplyKeyedSubnetAllPanels();
 	void LinkBusToVisibleConnections(AFGBuildable* Host, UFGStructuralPowerConnectionComponent* Bus);
 	void LinkBusToVisibleConnectionsLocal(
 		AFGBuildable* Host,
-		UFGStructuralPowerConnectionComponent* Bus);
+		UFGStructuralPowerConnectionComponent* Bus,
+		bool bMeshOnlyLinks = false);
 	bool HasBridgeBusPeerMesh(UFGStructuralPowerConnectionComponent* Bus) const;
 	bool EnsureParentRegisteredInGraph(
 		const FStructuralWallAnchor& Anchor,
@@ -331,6 +351,8 @@ private:
 	int32 CircuitPromotionDepth = 0;
 	bool bPostLoadRebuilt = false;
 	bool bPendingPostLoadLightReconcile = false;
+	bool bPendingFinalLightingReconcile = false;
+	int32 FinalLightingReconcilePass = 0;
 	bool bBulkLoadDrainActive = false;
 	bool bBridgeEndpointRootIndexDirty = true;
 	FStructuralEndpointIndex EndpointIndex;

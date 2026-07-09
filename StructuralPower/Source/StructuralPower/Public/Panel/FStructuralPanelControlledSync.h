@@ -18,6 +18,11 @@ struct FStructuralPanelControlledSync
 		AStructuralPowerGraphSubsystem& Graph,
 		AFGBuildableLightsControlPanel* Panel);
 
+	/** GroupLighting off — return panel light ownership to vanilla circuit search. */
+	static void ReleaseIntegratedSubnet(
+		AStructuralPowerGraphSubsystem& Graph,
+		AFGBuildableLightsControlPanel* Panel);
+
 	static FName ResolveEffectiveLightControl(
 		AStructuralPowerGraphSubsystem& Graph,
 		AFGBuildableLightsControlPanel* Panel);

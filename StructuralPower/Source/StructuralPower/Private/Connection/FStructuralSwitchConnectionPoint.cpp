@@ -73,9 +73,6 @@ bool FStructuralSwitchConnectionPoint::ResolveTrackedRoot(
 	Tracked.Kind = EStructuralEndpointKind::Switch;
 	Graph.RegisterBuildableActor(SwitchPtr);
 
-	FStructuralPowerContext ListenerCtx = Graph.MakeProcessorContext(EAttachContext::WireDelta);
-	FStructuralPowerSwitchProcessor::EnsureListener(ListenerCtx, SwitchPtr);
-
 	if (Tracked.ParentId.IsValid())
 	{
 		OutRoot = Graph.FindRootForTrackedEndpoint(Tracked);
@@ -200,11 +197,13 @@ void FStructuralSwitchConnectionPoint::OnWireOrGateChanged(EAttachContext Attach
 			SwitchId);
 	}
 
-	FStructuralPowerSwitchProcessor::ArmPlacementSourceBridgeLegs(OutletBus, SwitchPtr);
 	if (bHasWire || bKeyedSubnet)
 	{
 		FStructuralPowerSwitchProcessor::SyncDirectedBridgePair(Ctx, SwitchPtr);
 	}
+
+	Tracked.CachedSwitchWireSignature =
+		FStructuralPowerSwitchProcessor::BuildWireSignature(SwitchPtr);
 
 	if (bHasWire && Root != INDEX_NONE)
 	{

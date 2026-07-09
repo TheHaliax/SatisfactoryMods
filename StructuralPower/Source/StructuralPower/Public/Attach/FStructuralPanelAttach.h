@@ -34,7 +34,8 @@ public:
 		AFGBuildableLightsControlPanel* Panel,
 		const FStructuralPanelPorts& Ports,
 		int32 ComponentRoot,
-		const FStructuralChannelKey& PanelKey);
+		const FStructuralChannelKey& PanelKey,
+		bool bMeshOnlyLinks = false);
 
 	static void RestitchDownstream(
 		AStructuralPowerGraphSubsystem& Graph,

@@ -60,10 +60,10 @@ bool FStructuralPowerIdFieldMatrix::Build(
 	const FString HintLine = bDual
 		? FString::Printf(
 			TEXT("Light source id must match panel control id. Group Lighting: %s."),
-			bGroupLighting ? TEXT("ON") : TEXT("OFF (enable in mod config or !lighting)"))
+			bGroupLighting ? TEXT("ON") : TEXT("OFF (use !lighting)"))
 		: FString::Printf(
 			TEXT("Set this light's source id; match it on a panel's control id. Group Lighting: %s."),
-			bGroupLighting ? TEXT("ON") : TEXT("OFF (enable in mod config or !lighting)"));
+			bGroupLighting ? TEXT("ON") : TEXT("OFF (use !lighting)"));
 	SetTextStyle(Hint, HintLine, 11);
 	AddVBoxRow(ContentVBox, Hint, FMargin(0.0f, 0.0f, 0.0f, 8.0f));
 

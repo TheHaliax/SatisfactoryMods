@@ -2,7 +2,7 @@
 
 Open the in-game console (`~`) on the **server or listen host** (not pure clients).
 
-Chat equivalents: see [chat-commands.md](chat-commands.md) (`!lighting`, `!HoverH`, `!HoverV`, `!tracetoggle`).
+Chat equivalents: see [chat-commands.md](chat-commands.md) (`!lighting`, `!HoverH`, `!HoverV`).
 
 ## StructuralPower.Set
 
@@ -10,19 +10,16 @@ Chat equivalents: see [chat-commands.md](chat-commands.md) (`!lighting`, `!Hover
 StructuralPower.Set <key> <value>
 ```
 
-Updates a mod config key, mirrors the pause menu, and marks `Configs/StructuralPower.cfg` dirty. Authority only.
+Updates a config key and persists to `Configs/StructuralPower.cfg`. Authority only.
 
 | Key | Values | Notes |
 |-----|--------|-------|
-| `EnablePropagation` | `0` / `1` | Master bus toggle (Debug section) |
-| `Trace` | `0` / `1` | `[HALSP]` logging (Debug; chat: `!tracetoggle`) |
-| `GatePowerSwitches` | `0` / `1` | Structural switch gating (Debug) |
-| `PowerSwitchManualGroups` | `0` / `1` | `1` = Mode B keyed subnets; `0` = Mode A whole-component (Debug) |
-| `GroupLighting` | `0` / `1` | Structural lighting (v2.2; Debug; chat: `!lighting`) |
-| `EnableHoverpackStructural` | `0` / `1` | Hoverpack tether (Debug) |
+| `GroupLighting` | `0` / `1` | Structural lighting (v2.2; chat: `!lighting`) |
 | `HoverpackStructuralHorizontalMultiplier` | `1.0`–`10.0` | Chat: `!HoverH` |
 | `HoverpackStructuralVerticalMultiplier` | `1.0`–`10.0` | Chat: `!HoverV` |
 | `HoverpackStructuralRadiusMultiplier` | `1.0`–`10.0` | Legacy alias — sets **both** H and V |
+| `Trace` | `0` / `1` | `[HALSP]` logging (debug; console only) |
+| `ExtendedDebug` | `0` / `1` | Vanilla power/circuit hooks + fat logs (debug; console only) |
 
 ## StructuralPower.Trace
 
@@ -32,7 +29,7 @@ StructuralPower.Trace 1
 
 Enables deep `[HALSP]` logging in `FactoryGame.log` — placement hooks, hidden links, circuit promotion.
 
-**Default: `0` (off)** in shipping builds. Turn on when reporting bugs. Same as `!tracetoggle` or the **Debug** toggle in the mod menu.
+**Default: `0` (off)** in shipping builds. Turn on when reporting bugs.
 
 To disable:
 
@@ -40,32 +37,21 @@ To disable:
 StructuralPower.Trace 0
 ```
 
-## StructuralPower.EnablePropagation
+## StructuralPower.ExtendedDebug
 
 ```
-StructuralPower.EnablePropagation 0
+StructuralPower.ExtendedDebug 1
 ```
 
-Disables structural power propagation without unloading the mod. Existing hidden links remain until removed in-game.
+Extra vanilla power/circuit instrumentation. **Default: `0` (off).**
 
-Re-enable:
-
-```
-StructuralPower.EnablePropagation 1
-```
-
-## StructuralPower.GatePowerSwitches / PowerSwitchManualGroups / GroupLighting / EnableHoverpackStructural
-
-CVars mirror the **Debug** section in the mod menu:
+## StructuralPower.GroupLighting
 
 ```
-StructuralPower.GatePowerSwitches 1
-StructuralPower.PowerSwitchManualGroups 1
 StructuralPower.GroupLighting 1
-StructuralPower.EnableHoverpackStructural 1
-StructuralPower.HoverpackStructuralHorizontalMultiplier 1.5
-StructuralPower.HoverpackStructuralVerticalMultiplier 1.5
 ```
+
+Enables structural lighting (same as `!lighting` toggle). **Default: `0` (off).**
 
 ## StructuralPower.Diag
 
@@ -85,7 +71,7 @@ Server/host:
 <Satisfactory>/Configs/StructuralPower.cfg
 ```
 
-SML-managed JSON; written when the mod menu or `StructuralPower.Set` / chat commands change values.
+JSON; written when `StructuralPower.Set` or chat commands change values.
 
 ## Log location
 

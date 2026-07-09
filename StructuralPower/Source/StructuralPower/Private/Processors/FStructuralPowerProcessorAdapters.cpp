@@ -171,7 +171,8 @@ public:
 	{
 		if (AFGBuildablePowerPole* Pole = FStructuralPowerBuildableCasts::AsPole(Buildable))
 		{
-			FStructuralPoleConnectionPoint(Ctx.Graph(), Pole).OnWireOrGateChanged();
+			FStructuralPoleConnectionPoint(Ctx.Graph(), Pole).OnWireOrGateChanged(
+				EAttachContext::WireDelta);
 		}
 	}
 };

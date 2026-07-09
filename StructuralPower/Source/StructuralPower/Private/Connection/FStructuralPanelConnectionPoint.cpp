@@ -3,6 +3,7 @@
 
 #include "Connection/FStructuralPanelConnectionPoint.h"
 
+#include "Attach/FStructuralPanelAttach.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Config/FStructuralPowerModConfig.h"
@@ -11,6 +12,8 @@
 #include "Core/EStructuralPowerScope.h"
 #include "FGPowerConnectionComponent.h"
 #include "Graph/FStructuralEndpointTypes.h"
+#include "Routing/EStructuralChannel.h"
+#include "Panel/FStructuralPanelControlledSync.h"
 #include "Panel/FStructuralPanelPortResolver.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Processors/FStructuralPowerBridgeProcessor.h"
@@ -107,6 +110,48 @@ void FStructuralPanelConnectionPoint::OnWireOrGateChanged(EAttachContext AttachC
 		|| AttachContext == EAttachContext::WireDelta
 		|| AttachContext == EAttachContext::Toggle;
 	FStructuralPowerContext Ctx = Graph.MakeProcessorContext(AttachContext, Root);
+
+	if (AttachContext == EAttachContext::WireDelta && Tracked.bPanelLinksReady
+		&& Tracked.CachedPanelRoot == Root)
+	{
+		const FStructuralChannelKey ChannelKey = Graph.ResolveChannelKeyForBuildable(PanelPtr);
+		if (FStructuralPanelAttach::SupplyAlreadyLinked(
+				Graph,
+				PanelPtr,
+				Ports,
+				Root,
+				ChannelKey))
+		{
+			UFGPowerConnectionComponent* InputPower =
+				FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
+			if (IsValid(InputPower))
+			{
+				Graph.PromoteDirectHiddenLinks(InputPower);
+			}
+
+			const FName EffectiveControl =
+				FStructuralPanelControlledSync::ResolveEffectiveLightControl(Graph, PanelPtr);
+			if (!EffectiveControl.IsNone())
+			{
+				FStructuralPanelControlledSync::ApplyKeyedSubnet(Graph, PanelPtr);
+			}
+
+			UE_LOG(LogStructuralPower, Log,
+				TEXT("[HALSP] panel wire delta %s scope=%s site=%d role=%s attach=%s"
+					" root=%d inputPowered=%d path=repair_only"),
+				*PanelPtr->GetName(),
+				StructuralPowerScopeToString(EStructuralPowerScope::Site),
+				Root,
+				StructuralPowerRoleToString(EStructuralPowerRole::Router),
+				AttachContextToString(AttachContext),
+				Root,
+				InputPower && FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower)
+					? 1
+					: 0);
+			return;
+		}
+	}
+
 	FStructuralPowerBridgeProcessor::ApplyLocalAttachForPanel(
 		Ctx,
 		PanelPtr,
@@ -123,7 +168,7 @@ void FStructuralPanelConnectionPoint::OnWireOrGateChanged(EAttachContext AttachC
 		StructuralPowerRoleToString(EStructuralPowerRole::Router),
 		AttachContextToString(AttachContext),
 		Root,
-		InputPower && FStructuralCircuitPromotionUtil::ComponentCarriesPower(InputPower) ? 1 : 0);
+		InputPower && FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower) ? 1 : 0);
 
 	if (AttachContext == EAttachContext::Toggle)
 	{

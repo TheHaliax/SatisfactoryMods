@@ -168,8 +168,10 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 			return;
 		}
 
-		SetTrackedTransfer(*Tracked, bAllowTransfer);
-		if (bAllowTransfer && FStructuralPowerModConfig::IsGroupLightingEnabled())
+		const bool bPanelTransfer =
+			bAllowTransfer && FStructuralPowerModConfig::IsGroupLightingEnabled();
+		SetTrackedTransfer(*Tracked, bPanelTransfer);
+		if (bPanelTransfer)
 		{
 			FStructuralPowerBridgeProcessor::ApplyLocalAttachForPanel(
 				Ctx,
@@ -177,7 +179,7 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 				bLocalPromoteOnly);
 			FStructuralPanelControlledSync::ApplyKeyedSubnet(Ctx.Graph(), Panel);
 		}
-		else if (!bAllowTransfer)
+		else if (!bGateOpen || !FStructuralPowerModConfig::IsGroupLightingEnabled())
 		{
 			SuspendPanelTransfer(Ctx, Panel, *Tracked);
 		}
@@ -185,11 +187,6 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 
 	auto ApplyLight = [&](const FStructuralNodeId& NodeId)
 	{
-		if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
-		{
-			return;
-		}
-
 		FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(NodeId);
 		if (!Tracked)
 		{
@@ -211,14 +208,17 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 
 		const bool bVanillaWired = IsConsumerVanillaWired(
 			FStructuralDeviceAttach::FindLightWireConnection(Light));
-		const bool bLightTransfer = bAllowTransfer && !bVanillaWired;
+		const bool bLightTransfer =
+			bAllowTransfer
+			&& FStructuralPowerModConfig::IsGroupLightingEnabled()
+			&& !bVanillaWired;
 		SetTrackedTransfer(*Tracked, bLightTransfer);
 
 		if (bLightTransfer)
 		{
 			FStructuralPowerLightProcessor::Process(Ctx, Light, bLocalPromoteOnly);
 		}
-		else if (!bAllowTransfer)
+		else if (!bGateOpen || !FStructuralPowerModConfig::IsGroupLightingEnabled())
 		{
 			SuspendLightTransfer(Ctx, Light, *Tracked);
 		}
@@ -242,6 +242,53 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 		{
 			ApplyLight(NodeId);
 		}
+	}
+}
+
+void FStructuralPowerTransferGate::SuspendAllKeyedLightingTransfer(FStructuralPowerContext& Ctx)
+{
+	Ctx.Graph().RefreshBridgeEndpointRootIndex();
+
+	TSet<int32> Roots;
+	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Ctx.Graph().TrackedEndpoints)
+	{
+		if (Pair.Value.Kind != EStructuralEndpointKind::Switch)
+		{
+			continue;
+		}
+
+		AFGBuildableCircuitSwitch* Switch = Pair.Value.GetSwitch();
+		if (!IsValid(Switch))
+		{
+			continue;
+		}
+
+		const FName Control = Ctx.Graph().ResolveControl(Switch, EStructuralChannel::Switch);
+		if (!FStructuralPowerRouter::IsAssignedControl(Control))
+		{
+			continue;
+		}
+
+		const int32 Root = Ctx.Graph().StructureGraph.FindRoot(Pair.Value.ParentId);
+		if (Root == INDEX_NONE)
+		{
+			continue;
+		}
+
+		Roots.Add(Root);
+		ApplyKeyedTransferOnRoot(
+			Ctx,
+			Root,
+			Control,
+			/*bGateOpen=*/false,
+			/*bLocalPromoteOnly=*/false);
+	}
+
+	if (FStructuralPowerTrace::IsEnabled())
+	{
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[HALSP] suspended keyed lighting transfer on %d root(s)"),
+			Roots.Num());
 	}
 }
 

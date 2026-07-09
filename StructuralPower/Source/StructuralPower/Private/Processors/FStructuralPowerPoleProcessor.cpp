@@ -10,6 +10,7 @@
 #include "Core/EAttachContext.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
+#include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "Connection/FStructuralSiteMembership.h"
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Graph/FStructuralOutletParentHeuristics.h"
@@ -59,6 +60,11 @@ void FStructuralPowerPoleProcessor::Process(
 	FStructuralPowerContext& Ctx,
 	AFGBuildablePowerPole* Pole)
 {
+	HALSP_TRACE_SCOPE_DETAIL(
+		TEXT("mod"),
+		TEXT("pole.Process"),
+		IsValid(Pole) ? Pole->GetName() : TEXT("null"));
+
 	if (!IsValid(Pole))
 	{
 		return;

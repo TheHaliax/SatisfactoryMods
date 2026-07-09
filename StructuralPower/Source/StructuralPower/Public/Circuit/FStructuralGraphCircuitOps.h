@@ -26,8 +26,14 @@ public:
 	void BeginCircuitPromotion();
 	void EndCircuitPromotion();
 
-	bool LinkHiddenPair(UFGPowerConnectionComponent* A, UFGPowerConnectionComponent* B);
-	bool LinkHiddenPairLocal(UFGPowerConnectionComponent* A, UFGPowerConnectionComponent* B);
+	bool LinkHiddenPair(
+		UFGPowerConnectionComponent* A,
+		UFGPowerConnectionComponent* B,
+		bool bPromoteCircuit = true);
+	bool LinkHiddenPairLocal(
+		UFGPowerConnectionComponent* A,
+		UFGPowerConnectionComponent* B,
+		bool bPromoteCircuit = true);
 
 	void PromoteStructuralMeshFrom(UFGPowerConnectionComponent* Seed);
 	void PromoteDirectHiddenLinks(UFGPowerConnectionComponent* Seed);
@@ -60,11 +66,13 @@ public:
 		UFGStructuralPowerConnectionComponent* OutletBus,
 		int32 Root,
 		const FStructuralNodeId& SelfId,
-		bool bBridgePeersOnly);
+		bool bBridgePeersOnly,
+		bool bMeshOnlyLinks = false);
 
 	void LinkBusToVisibleConnectionsLocal(
 		AFGBuildable* Host,
-		UFGStructuralPowerConnectionComponent* Bus);
+		UFGStructuralPowerConnectionComponent* Bus,
+		bool bMeshOnlyLinks = false);
 
 	void LinkBusToVisibleConnections(
 		AFGBuildable* Host,

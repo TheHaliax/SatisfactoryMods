@@ -22,6 +22,12 @@ public:
 	bool WasPanelToggleHandledInScope(const FStructuralNodeId& PanelId) const;
 	void NotePanelToggleHandled(const FStructuralNodeId& PanelId);
 
+	bool WasSwitchEchoProcessedInScope(const FStructuralNodeId& SwitchId) const;
+	void NoteSwitchEchoProcessed(const FStructuralNodeId& SwitchId);
+
+	bool WasSwitchToggleHandledInScope(const FStructuralNodeId& SwitchId) const;
+	void NoteSwitchToggleHandled(const FStructuralNodeId& SwitchId);
+
 	void ClearFeedSignatures();
 	void SeedFeedSignature(int32 Site, const FStructuralSiteFeedSignature& Signature);
 	bool TryGetFeedSignature(int32 Site, FStructuralSiteFeedSignature& OutSignature) const;
@@ -31,5 +37,7 @@ private:
 	TSet<int32> EchoDirtySites;
 	TSet<FStructuralNodeId> EchoProcessedPanelsInScope;
 	TSet<FStructuralNodeId> EchoToggleHandledPanelsInScope;
+	TSet<FStructuralNodeId> EchoProcessedSwitchesInScope;
+	TSet<FStructuralNodeId> EchoToggleHandledSwitchesInScope;
 	TMap<int32, FStructuralSiteFeedSignature> FeedSignatures;
 };

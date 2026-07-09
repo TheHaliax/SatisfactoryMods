@@ -11,11 +11,13 @@
 #include "Config/FStructuralPowerModConfig.h"
 #include "Core/EAttachContext.h"
 #include "Connection/FStructuralSwitchConnectionPoint.h"
+#include "Graph/FStructuralSwitchParentResolver.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
-#include "FGPowerConnectionComponent.h"
+#include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Panel/FStructuralPanelPortResolver.h"
 #include "Processors/FStructuralPowerProcessorRegistry.h"
+#include "Processors/FStructuralPowerSwitchProcessor.h"
 #include "Processors/IStructuralPowerProcessor.h"
 
 void FStructuralWireDeltaHandler::Bind(AStructuralPowerGraphSubsystem* InSubsystem)
@@ -23,35 +25,13 @@ void FStructuralWireDeltaHandler::Bind(AStructuralPowerGraphSubsystem* InSubsyst
 	Subsystem = InSubsystem;
 }
 
-static uint8 BuildSwitchWireSignature(AFGBuildableCircuitSwitch* Switch)
-{
-	if (!IsValid(Switch))
-	{
-		return 0;
-	}
-
-	uint8 Signature = 0;
-	if (UFGPowerConnectionComponent* Conn0 = Cast<UFGPowerConnectionComponent>(Switch->GetConnection0()))
-	{
-		if (Conn0->GetNumConnections() > 0)
-		{
-			Signature |= 0x1;
-		}
-	}
-
-	if (UFGPowerConnectionComponent* Conn1 = Cast<UFGPowerConnectionComponent>(Switch->GetConnection1()))
-	{
-		if (Conn1->GetNumConnections() > 0)
-		{
-			Signature |= 0x2;
-		}
-	}
-
-	return Signature;
-}
-
 void FStructuralWireDeltaHandler::ProcessSwitchWireDelta(AFGBuildableCircuitSwitch* Switch)
 {
+	HALSP_TRACE_SCOPE_DETAIL(
+		TEXT("mod"),
+		TEXT("wireDelta.switch"),
+		IsValid(Switch) ? Switch->GetName() : TEXT("null"));
+
 	if (!IsValid(Switch) || !Switch->HasAuthority())
 	{
 		return;
@@ -62,26 +42,50 @@ void FStructuralWireDeltaHandler::ProcessSwitchWireDelta(AFGBuildableCircuitSwit
 		return;
 	}
 
+	if (Subsystem->ShouldSkipSwitchCircuitEcho(Switch))
+	{
+		return;
+	}
+
+	FStructuralPowerContext Ctx = Subsystem->MakeProcessorContext(EAttachContext::WireDelta);
+	const bool bWired = FStructuralSwitchParentResolver::HasAnyVanillaWire(Switch);
+	const bool bConfigured = FStructuralPowerSwitchProcessor::HasAssignedControl(Ctx, Switch);
+	if (!bWired && !bConfigured)
+	{
+		return;
+	}
+
 	const FStructuralNodeId SwitchId = AStructuralPowerGraphSubsystem::MakeNodeId(Switch);
 	FTrackedEndpoint& Tracked = Subsystem->TrackedEndpoints.FindOrAdd(SwitchId);
-	const uint8 WireSignature = BuildSwitchWireSignature(Switch);
+	const uint8 WireSignature = FStructuralPowerSwitchProcessor::BuildWireSignature(Switch);
 	if (Tracked.CachedSwitchWireSignature == WireSignature)
 	{
 		return;
 	}
 	Tracked.CachedSwitchWireSignature = WireSignature;
 
-	FStructuralPowerTrace::LogHook(
-		Switch,
-		TEXT("OnCircuitsChanged"),
-		TEXT("wire_refresh"),
-		TEXT("switch_wire_delta"));
+	if (FStructuralPowerTrace::IsExtendedDebugEnabled())
+	{
+		FStructuralPowerTrace::LogHook(
+			Switch,
+			TEXT("OnCircuitsChanged"),
+			TEXT("wire_refresh"),
+			TEXT("switch_wire_delta"));
+	}
 
 	FStructuralSwitchConnectionPoint(*Subsystem, Switch).OnWireOrGateChanged(EAttachContext::WireDelta);
+
+	FStructuralPowerSwitchProcessor::EnsureListener(Ctx, Switch);
+	Subsystem->NoteSwitchCircuitEchoProcessed(Switch);
 }
 
 void FStructuralWireDeltaHandler::ProcessPanelWireDelta(AFGBuildableLightsControlPanel* Panel)
 {
+	HALSP_TRACE_SCOPE_DETAIL(
+		TEXT("mod"),
+		TEXT("wireDelta.panel"),
+		IsValid(Panel) ? Panel->GetName() : TEXT("null"));
+
 	if (!IsValid(Panel) || !Panel->HasAuthority())
 	{
 		return;

@@ -21,8 +21,11 @@ public:
 	void Bind(AStructuralPowerGraphSubsystem* InSubsystem);
 
 	void MaybeRunPostLoadLightReconcile();
+	void MaybeRunFinalLightingReconcile();
 	void ReconcileAllPanelEndpoints();
 	void ReconcileAllLightConsumers();
+	void ReconcileGroupLightingState();
+	void RefreshPanelsForLightSourceOnRoot(int32 Root, FName LightSource);
 	void LogPanelReconcileSummary(AFGBuildableLightsControlPanel* Panel);
 
 	void EnumerateTrackedLightsOnRoot(
@@ -38,6 +41,8 @@ private:
 	void ApplyKeyedSubnetAllPanels();
 	void RefreshKeyedTransferAfterLoad();
 	void RefreshNamedControlPanelsAfterLoad();
+	bool LightingReconcileNeedsRetry();
+	void SuspendAllIntegratedLighting();
 
 	AStructuralPowerGraphSubsystem* Subsystem = nullptr;
 };

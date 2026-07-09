@@ -5,8 +5,7 @@
 
 #include "CoreMinimal.h"
 
-class UConfigPropertySection;
-class UGameInstance;
+class UWorld;
 
 class STRUCTURALPOWER_API FStructuralPowerModConfig
 {
@@ -14,13 +13,11 @@ public:
 	static constexpr const TCHAR* ModReference = TEXT("StructuralPower");
 
 	static void RegisterConsoleVariables();
-	static void LoadLegacyFromDisk();
+	static void LoadRuntimeConfig();
 	static void SaveLegacyToDisk();
 
-	static void SyncRuntimeFromConfigManager(UGameInstance* GameInstance);
-	static void BindLiveConfigHandlers(UGameInstance* GameInstance);
-	static void ApplyFromConfigRoot(UConfigPropertySection* Root);
-	static void PushToConfigRoot(UConfigPropertySection* Root);
+	static bool CanMutateLiveConfig(UWorld* World);
+	static void RequestGroupLightingReconcile(UWorld* World);
 
 	static bool TryApplySetCommand(const TArray<FString>& Args, UWorld* World);
 
@@ -28,6 +25,7 @@ public:
 	static float GetHoverpackHorizontalMultiplier();
 	static float GetHoverpackVerticalMultiplier();
 	static bool IsTraceEnabled();
+	static bool IsExtendedDebugEnabled();
 
 	static FString GetConfigFilePath();
 };

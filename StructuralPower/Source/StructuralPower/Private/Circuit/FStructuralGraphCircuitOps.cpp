@@ -11,10 +11,10 @@
 #include "Buildables/FGBuildablePowerPole.h"
 #include "Circuit/FStructuralCircuitPromotionScope.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
-#include "Circuit/FStructuralHiddenConnectionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "Config/FStructuralPowerModConfig.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
+#include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "Engine/World.h"
 #include "FGCircuitConnectionComponent.h"
 #include "FGCircuitSubsystem.h"
@@ -80,10 +80,24 @@ void FStructuralGraphCircuitOps::EndCircuitPromotion()
 	--Subsystem->CircuitPromotionDepth;
 }
 
-bool FStructuralGraphCircuitOps::LinkHiddenPair(
-	UFGPowerConnectionComponent* A,
-	UFGPowerConnectionComponent* B)
+namespace
 {
+bool LinkHiddenPairImpl(
+	AStructuralPowerGraphSubsystem* Subsystem,
+	UFGPowerConnectionComponent* A,
+	UFGPowerConnectionComponent* B,
+	bool bPromoteCircuit,
+	ELogVerbosity::Type PromoteVerbosity)
+{
+	HALSP_TRACE_SCOPE_DETAIL(
+		TEXT("mod"),
+		TEXT("circuit.LinkHiddenPair"),
+		FString::Printf(
+			TEXT("promote=%d A=%s B=%s"),
+			bPromoteCircuit ? 1 : 0,
+			IsValid(A) ? *A->GetName() : TEXT("null"),
+			IsValid(B) ? *B->GetName() : TEXT("null")));
+
 	if (!IsValid(A) || !IsValid(B) || A == B)
 	{
 		return false;
@@ -111,20 +125,21 @@ bool FStructuralGraphCircuitOps::LinkHiddenPair(
 
 	if (A->IsHidden() && B->IsHidden())
 	{
-		bAdded = FStructuralHiddenConnectionUtil::AddMeshOnlyHiddenLink(A, B);
-		Path = TEXT("mesh_bidir");
+		A->AddHiddenConnection(B);
+		bAdded = true;
+		Path = bPromoteCircuit ? TEXT("mesh_bidir") : TEXT("mesh_bidir_only");
 	}
 	else if (A->IsHidden())
 	{
 		A->AddHiddenConnection(B);
 		bAdded = true;
-		Path = TEXT("hidden_A_to_B");
+		Path = bPromoteCircuit ? TEXT("hidden_A_to_B") : TEXT("hidden_A_to_B_only");
 	}
 	else if (B->IsHidden())
 	{
 		B->AddHiddenConnection(A);
 		bAdded = true;
-		Path = TEXT("hidden_B_to_A");
+		Path = bPromoteCircuit ? TEXT("hidden_B_to_A") : TEXT("hidden_B_to_A_only");
 	}
 	else
 	{
@@ -133,98 +148,51 @@ bool FStructuralGraphCircuitOps::LinkHiddenPair(
 
 	FStructuralPowerTrace::LogLinkOp(TEXT("link"), A, B, bAdded, Path);
 
-	if (bAdded)
-	{
-		FStructuralCircuitPromotionScope PromotionScope(Subsystem);
-		FStructuralCircuitPromotionUtil::PromoteCircuitLink(A, B);
-	}
+	// FG UFGCircuitConnectionComponent::AddHiddenConnection — "Connects both ends … and the
+	// circuits." No explicit ConnectComponents here (avoids double merge).
+	(void)bPromoteCircuit;
+	(void)PromoteVerbosity;
+	(void)Subsystem;
 
 	return bAdded;
+}
+} // namespace
+
+bool FStructuralGraphCircuitOps::LinkHiddenPair(
+	UFGPowerConnectionComponent* A,
+	UFGPowerConnectionComponent* B,
+	bool bPromoteCircuit)
+{
+	return LinkHiddenPairImpl(
+		Subsystem,
+		A,
+		B,
+		bPromoteCircuit,
+		ELogVerbosity::Log);
 }
 
 bool FStructuralGraphCircuitOps::LinkHiddenPairLocal(
 	UFGPowerConnectionComponent* A,
-	UFGPowerConnectionComponent* B)
+	UFGPowerConnectionComponent* B,
+	bool bPromoteCircuit)
 {
-	if (!IsValid(A) || !IsValid(B) || A == B)
-	{
-		return false;
-	}
-
-	if (A->HasHiddenConnection(B))
-	{
-		return false;
-	}
-
-	if (!A->IsHidden() && !B->IsHidden())
-	{
-		return false;
-	}
-
-	const int32 CircuitA = A->GetCircuitID();
-	const int32 CircuitB = B->GetCircuitID();
-	if (CircuitA != INDEX_NONE && CircuitA == CircuitB)
-	{
-		return false;
-	}
-
-	bool bAdded = false;
-	const TCHAR* Path = TEXT("?");
-
-	if (A->IsHidden() && B->IsHidden())
-	{
-		bAdded = FStructuralHiddenConnectionUtil::AddMeshOnlyHiddenLink(A, B);
-		Path = TEXT("mesh_bidir");
-	}
-	else if (A->IsHidden())
-	{
-		A->AddHiddenConnection(B);
-		bAdded = true;
-		Path = TEXT("hidden_A_to_B");
-	}
-	else if (B->IsHidden())
-	{
-		B->AddHiddenConnection(A);
-		bAdded = true;
-		Path = TEXT("hidden_B_to_A");
-	}
-	else
-	{
-		return false;
-	}
-
-	FStructuralPowerTrace::LogLinkOp(TEXT("link"), A, B, bAdded, Path);
-
-	if (bAdded)
-	{
-		FStructuralCircuitPromotionScope PromotionScope(Subsystem);
-		FStructuralCircuitPromotionUtil::PromoteCircuitLink(A, B, ELogVerbosity::Verbose);
-	}
-
-	return bAdded;
+	return LinkHiddenPairImpl(
+		Subsystem,
+		A,
+		B,
+		bPromoteCircuit,
+		ELogVerbosity::Verbose);
 }
 
 void FStructuralGraphCircuitOps::PromoteStructuralMeshFrom(UFGPowerConnectionComponent* Seed)
 {
-	if (!IsValid(Seed) || !FStructuralCircuitPromotionUtil::ComponentCarriesPower(Seed))
-	{
-		return;
-	}
+	// Bulk/runtime: repair split hidden edges only — AddHiddenConnection already merged on add.
+	PromoteDirectHiddenLinks(Seed);
+}
 
-	if (Subsystem->bBulkLoadDrainActive)
-	{
-		PromoteDirectHiddenLinks(Seed);
-		return;
-	}
-
-	UWorld* World = Subsystem->GetWorld();
-	if (!IsValid(World))
-	{
-		return;
-	}
-
-	AFGCircuitSubsystem* CircuitSubsystem = AFGCircuitSubsystem::Get(World);
-	if (!IsValid(CircuitSubsystem))
+void FStructuralGraphCircuitOps::PromoteDirectHiddenLinks(UFGPowerConnectionComponent* Seed)
+{
+	if (!IsValid(Seed))
 	{
 		return;
 	}
@@ -236,8 +204,7 @@ void FStructuralGraphCircuitOps::PromoteStructuralMeshFrom(UFGPowerConnectionCom
 	TArray<UFGPowerConnectionComponent*> Queue;
 	Queue.Add(Seed);
 
-	int32 EdgesPromoted = 0;
-	int32 EdgesSkipped = 0;
+	int32 Repaired = 0;
 	int32 QueueHead = 0;
 
 	while (QueueHead < Queue.Num())
@@ -255,16 +222,13 @@ void FStructuralGraphCircuitOps::PromoteStructuralMeshFrom(UFGPowerConnectionCom
 				continue;
 			}
 
-			const int32 CircuitCurrent = Current->GetCircuitID();
-			const int32 CircuitOther = Other->GetCircuitID();
-			if (CircuitCurrent != INDEX_NONE && CircuitCurrent == CircuitOther)
+			if (FStructuralCircuitPromotionUtil::HiddenLinkNeedsCircuitRepair(Current, Other))
 			{
-				++EdgesSkipped;
-			}
-			else
-			{
-				CircuitSubsystem->ConnectComponents(Current, Other);
-				++EdgesPromoted;
+				FStructuralCircuitPromotionUtil::PromoteCircuitLink(
+					Current,
+					Other,
+					ELogVerbosity::Verbose);
+				++Repaired;
 			}
 
 			if (Other->IsHidden() && !Visited.Contains(Other))
@@ -275,38 +239,13 @@ void FStructuralGraphCircuitOps::PromoteStructuralMeshFrom(UFGPowerConnectionCom
 		}
 	}
 
-	if (EdgesPromoted > 0 || EdgesSkipped > 0)
+	if (Repaired > 0)
 	{
 		UE_LOG(LogStructuralPower, Verbose,
-			TEXT("[HALSP] mesh flood from %s promoted=%d skipped=%d visited=%d"),
+			TEXT("[HALSP] hidden mesh repair from %s repaired=%d visited=%d"),
 			*Seed->GetName(),
-			EdgesPromoted,
-			EdgesSkipped,
+			Repaired,
 			Visited.Num());
-	}
-}
-
-void FStructuralGraphCircuitOps::PromoteDirectHiddenLinks(UFGPowerConnectionComponent* Seed)
-{
-	if (!IsValid(Seed) || !FStructuralCircuitPromotionUtil::ComponentCarriesPower(Seed))
-	{
-		return;
-	}
-
-	FStructuralCircuitPromotionScope PromotionScope(Subsystem);
-
-	TArray<UFGCircuitConnectionComponent*> HiddenLinks;
-	Seed->GetHiddenConnections(HiddenLinks);
-
-	for (UFGCircuitConnectionComponent* OtherRaw : HiddenLinks)
-	{
-		UFGPowerConnectionComponent* Other = Cast<UFGPowerConnectionComponent>(OtherRaw);
-		if (!IsValid(Other))
-		{
-			continue;
-		}
-
-		FStructuralCircuitPromotionUtil::PromoteCircuitLink(Seed, Other, ELogVerbosity::Verbose);
 	}
 }
 
@@ -335,14 +274,14 @@ void FStructuralGraphCircuitOps::PromotePanelSupplyConnection(
 		return;
 	}
 
-	if (!FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower))
+	if (InputPower->HasHiddenConnection(Feed))
 	{
 		FStructuralCircuitPromotionUtil::PromoteCircuitLink(Feed, InputPower);
 	}
 
 	UFGPowerConnectionComponent* Seed = FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower)
 		? InputPower
-		: (FStructuralCircuitPromotionUtil::ComponentCarriesPower(Feed) ? Feed : nullptr);
+		: (FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(Feed) ? Feed : nullptr);
 	if (!Seed)
 	{
 		if (UFGStructuralPowerConnectionComponent* FeedBus =
@@ -352,19 +291,11 @@ void FStructuralGraphCircuitOps::PromotePanelSupplyConnection(
 		}
 	}
 
-	if (!Seed)
-	{
-		return;
-	}
-
-	if (bLocalPromoteOnly || Subsystem->bBulkLoadDrainActive)
+	if (Seed)
 	{
 		PromoteDirectHiddenLinks(Seed);
 	}
-	else
-	{
-		PromoteStructuralMeshFrom(Seed);
-	}
+	(void)bLocalPromoteOnly;
 }
 
 void FStructuralGraphCircuitOps::PromoteOutletBusIfPowered(
@@ -376,7 +307,8 @@ void FStructuralGraphCircuitOps::PromoteOutletBusIfPowered(
 		return;
 	}
 
-	UFGStructuralPowerConnectionComponent* Seed = FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus)
+	UFGStructuralPowerConnectionComponent* Seed =
+		FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(OutletBus)
 		? OutletBus
 		: FindPoweredHiddenReachable(OutletBus);
 	if (!Seed)
@@ -384,14 +316,8 @@ void FStructuralGraphCircuitOps::PromoteOutletBusIfPowered(
 		return;
 	}
 
-	if (Subsystem->bBulkLoadDrainActive || bLocalPromoteOnly)
-	{
-		PromoteDirectHiddenLinks(Seed);
-	}
-	else
-	{
-		PromoteStructuralMeshFrom(Seed);
-	}
+	PromoteDirectHiddenLinks(Seed);
+	(void)bLocalPromoteOnly;
 }
 
 void FStructuralGraphCircuitOps::ApplyLocalBridgeBusAttach(
@@ -407,18 +333,7 @@ void FStructuralGraphCircuitOps::ApplyLocalBridgeBusAttach(
 		return;
 	}
 
-	if (Cast<AFGBuildableCircuitSwitch>(Host))
-	{
-		if (UFGCircuitConnectionComponent* Feed =
-				GetComponentSourceConnector(Root, FeedExcludeHost))
-		{
-			if (UFGPowerConnectionComponent* FeedPower = Cast<UFGPowerConnectionComponent>(Feed))
-			{
-				LinkHiddenPairLocal(OutletBus, FeedPower);
-			}
-		}
-	}
-
+	// DR-017: structure feed attach is wire/config (SyncDirectedBridgePair), not place.
 	if (!HasBridgeBusPeerMesh(OutletBus))
 	{
 		TryMeshPeerBusOnComponent(
@@ -435,8 +350,14 @@ bool FStructuralGraphCircuitOps::TryMeshPeerBusOnComponent(
 	UFGStructuralPowerConnectionComponent* OutletBus,
 	int32 Root,
 	const FStructuralNodeId& SelfId,
-	bool bBridgePeersOnly)
+	bool bBridgePeersOnly,
+	bool bMeshOnlyLinks)
 {
+	HALSP_TRACE_SCOPE_DETAIL(
+		TEXT("mod"),
+		TEXT("circuit.TryMeshPeerBus"),
+		IsValid(Host) ? Host->GetName() : TEXT("null"));
+
 	if (Root == INDEX_NONE || !IsValid(Host) || !IsValid(OutletBus))
 	{
 		return false;
@@ -444,6 +365,7 @@ bool FStructuralGraphCircuitOps::TryMeshPeerBusOnComponent(
 
 	Subsystem->BridgeRootIndex.RefreshBridgeEndpointRootIndex();
 
+	const bool bPromoteCircuit = !bMeshOnlyLinks;
 	bool bLinked = false;
 	Subsystem->EndpointIndex.ForEachBridgeOnRoot(Root, [&](const FStructuralNodeId& PeerId)
 	{
@@ -485,7 +407,7 @@ bool FStructuralGraphCircuitOps::TryMeshPeerBusOnComponent(
 
 		if (UFGStructuralPowerConnectionComponent* SiblingBus = AStructuralPowerGraphSubsystem::FindBusConnector(SiblingHost))
 		{
-			bLinked = LinkHiddenPairLocal(OutletBus, SiblingBus);
+			bLinked = LinkHiddenPairLocal(OutletBus, SiblingBus, bPromoteCircuit);
 		}
 	});
 
@@ -494,29 +416,48 @@ bool FStructuralGraphCircuitOps::TryMeshPeerBusOnComponent(
 
 void FStructuralGraphCircuitOps::LinkBusToVisibleConnectionsLocal(
 	AFGBuildable* Host,
-	UFGStructuralPowerConnectionComponent* Bus)
+	UFGStructuralPowerConnectionComponent* Bus,
+	bool bMeshOnlyLinks)
 {
+	HALSP_TRACE_SCOPE_DETAIL(
+		TEXT("mod"),
+		TEXT("circuit.LinkBusToVisible"),
+		IsValid(Host) ? Host->GetName() : TEXT("null"));
+
 	if (!IsValid(Host) || !IsValid(Bus))
 	{
 		return;
 	}
 
+	const bool bPromoteCircuit = !bMeshOnlyLinks;
+
+	auto LinkVisiblePort = [&](UFGPowerConnectionComponent* Visible)
+	{
+		if (IsValid(Visible) && !Visible->IsHidden())
+		{
+			LinkHiddenPairLocal(Bus, Visible, bPromoteCircuit);
+		}
+	};
+
 	if (AFGBuildablePowerPole* Pole = Cast<AFGBuildablePowerPole>(Host))
 	{
 		for (UFGPowerConnectionComponent* Visible : Pole->GetPowerConnections())
 		{
-			if (!IsValid(Visible) || Visible->IsHidden())
-			{
-				continue;
-			}
-
-			LinkHiddenPairLocal(Bus, Visible);
+			LinkVisiblePort(Visible);
 		}
 		return;
 	}
 
-	if (Cast<AFGBuildableCircuitSwitch>(Host))
+	if (AFGBuildableCircuitSwitch* Switch = Cast<AFGBuildableCircuitSwitch>(Host))
 	{
+		if (UFGPowerConnectionComponent* Conn0 = Cast<UFGPowerConnectionComponent>(Switch->GetConnection0()))
+		{
+			LinkVisiblePort(Conn0);
+		}
+		if (UFGPowerConnectionComponent* Conn1 = Cast<UFGPowerConnectionComponent>(Switch->GetConnection1()))
+		{
+			LinkVisiblePort(Conn1);
+		}
 		return;
 	}
 
@@ -524,17 +465,11 @@ void FStructuralGraphCircuitOps::LinkBusToVisibleConnectionsLocal(
 	{
 		if (UFGCircuitConnectionComponent* Conn0 = Bridge->GetConnection0())
 		{
-			if (UFGPowerConnectionComponent* Visible = Cast<UFGPowerConnectionComponent>(Conn0))
-			{
-				LinkHiddenPairLocal(Bus, Visible);
-			}
+			LinkVisiblePort(Cast<UFGPowerConnectionComponent>(Conn0));
 		}
 		if (UFGCircuitConnectionComponent* Conn1 = Bridge->GetConnection1())
 		{
-			if (UFGPowerConnectionComponent* Visible = Cast<UFGPowerConnectionComponent>(Conn1))
-			{
-				LinkHiddenPairLocal(Bus, Visible);
-			}
+			LinkVisiblePort(Cast<UFGPowerConnectionComponent>(Conn1));
 		}
 		return;
 	}
@@ -548,7 +483,7 @@ void FStructuralGraphCircuitOps::LinkBusToVisibleConnectionsLocal(
 			continue;
 		}
 
-		LinkHiddenPairLocal(Bus, Visible);
+		LinkHiddenPairLocal(Bus, Visible, bPromoteCircuit);
 	}
 }
 

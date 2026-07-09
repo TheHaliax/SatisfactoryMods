@@ -30,7 +30,8 @@ tools/*
 !tools/README.md
 
 # Local development notes (roadmap, research, scratch specs) — not for repo
-development/
+StructuralPower/development/
+FactoryGameRE/
 
 # Personal monorepo-wide planning (future mods, cross-project notes) — not for repo
 monodev/

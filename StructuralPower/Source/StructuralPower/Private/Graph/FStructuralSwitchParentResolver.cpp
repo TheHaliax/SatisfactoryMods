@@ -8,6 +8,7 @@
 #include "Buildables/FGBuildableWire.h"
 #include "FGCircuitConnectionComponent.h"
 #include "Graph/FStructuralAttachmentResolver.h"
+#include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "StructuralPowerLog.h"
 
@@ -187,7 +188,7 @@ int32 FStructuralSwitchParentResolver::CountWiredVanillaPorts(
 		UFGCircuitConnectionComponent* Port = PortIndex == 0
 			? Switch->GetConnection0()
 			: Switch->GetConnection1();
-		if (IsValid(Port) && Port->GetNumConnections() > 0)
+		if (IsValid(Port) && IsValid(GetVisibleNeighborBuildable(Port)))
 		{
 			++WiredVanilla;
 		}
@@ -251,6 +252,11 @@ FStructuralSwitchParentResolveResult FStructuralSwitchParentResolver::Resolve(
 	bool bPreferWirePort,
 	const FStructuralOutletParentResolveParams* ParentResolveParams)
 {
+	HALSP_TRACE_SCOPE_DETAIL(
+		TEXT("mod"),
+		TEXT("switch.Resolve"),
+		IsValid(Switch) ? Switch->GetName() : TEXT("null"));
+
 	FStructuralSwitchParentResolveResult Result;
 	if (!IsValid(Switch) || !IsValid(World))
 	{

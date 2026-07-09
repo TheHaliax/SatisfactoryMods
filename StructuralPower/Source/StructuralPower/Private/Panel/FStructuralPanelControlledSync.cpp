@@ -3,12 +3,18 @@
 
 #include "Panel/FStructuralPanelControlledSync.h"
 
+#include "Components/UFGStructuralPowerConnectionComponent.h"
+#include "Attach/FStructuralPanelAttach.h"
 #include "Buildables/FGBuildableControlPanelHost.h"
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Config/FStructuralPowerModConfig.h"
+#include "FGPowerConnectionComponent.h"
 #include "Graph/FStructuralEndpointTypes.h"
+#include "Misc/App.h"
+#include "Panel/FStructuralPanelPortResolver.h"
 #include "Routing/EStructuralChannel.h"
+#include "Routing/FStructuralPowerRouter.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
@@ -73,6 +79,75 @@ void WriteControlledBuildables(
 		Inner->SetObjectPropertyValue(Helper.GetRawPtr(Index), Buildable);
 	}
 }
+
+bool PanelHasStructuralHiddenPath(
+	AStructuralPowerGraphSubsystem& Graph,
+	AFGBuildableLightsControlPanel* Panel,
+	int32 Root,
+	const FStructuralChannelKey& ChannelKey,
+	const FStructuralPanelPorts& Ports)
+{
+	if (Root == INDEX_NONE || ChannelKey.Source.IsNone())
+	{
+		return false;
+	}
+
+	UFGPowerConnectionComponent* InputPower =
+		FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
+	if (!IsValid(InputPower))
+	{
+		return false;
+	}
+
+	UFGPowerConnectionComponent* Feed = Graph.ResolveSubnetFeedConnector(Root, ChannelKey);
+	if (IsValid(Feed) && InputPower->HasHiddenConnection(Feed))
+	{
+		return true;
+	}
+
+	if (UFGPowerConnectionComponent* Downstream =
+			FStructuralPanelPortResolver::AsPowerConnection(Ports.Downstream))
+	{
+		if (UFGStructuralPowerConnectionComponent* ControlBus =
+				AStructuralPowerGraphSubsystem::FindPanelControlBus(Panel))
+		{
+			if (ControlBus->HasHiddenConnection(Downstream))
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool ShouldOverrideControlledBuildables(
+	AStructuralPowerGraphSubsystem& Graph,
+	AFGBuildableLightsControlPanel* Panel,
+	int32 Root,
+	const FStructuralChannelKey& ChannelKey,
+	const FStructuralPanelPorts& Ports)
+{
+	if (!FStructuralPowerModConfig::IsGroupLightingEnabled() || Root == INDEX_NONE)
+	{
+		return false;
+	}
+
+	UFGPowerConnectionComponent* InputPower =
+		FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
+	if (!IsValid(InputPower))
+	{
+		return false;
+	}
+
+	if (PanelHasStructuralHiddenPath(Graph, Panel, Root, ChannelKey, Ports))
+	{
+		return true;
+	}
+
+	const FName Control = Graph.ResolveControl(Panel, EStructuralChannel::Light);
+	return FStructuralPowerRouter::IsAssignedControl(Control);
+}
 } // namespace
 
 FName FStructuralPanelControlledSync::ResolveEffectiveLightControl(
@@ -119,6 +194,19 @@ void FStructuralPanelControlledSync::ApplyKeyedSubnet(
 		return;
 	}
 
+	FStructuralPanelPorts Ports;
+	if (!FStructuralPanelPortResolver::Resolve(Panel, Ports))
+	{
+		return;
+	}
+
+	const FStructuralChannelKey ChannelKey = Graph.ResolveChannelKeyForBuildable(Panel);
+	if (!ShouldOverrideControlledBuildables(Graph, Panel, Root, ChannelKey, Ports))
+	{
+		// FG AFGBuildableControlPanelHost::SearchDownstreamCircuit owns mControlledBuildables.
+		return;
+	}
+
 	TArray<AFGBuildable*> KeyedLights;
 	Graph.EnumerateTrackedLightsOnRoot(Root, [&](AFGBuildableLightSource* Light)
 	{
@@ -148,6 +236,39 @@ void FStructuralPanelControlledSync::ApplyKeyedSubnet(
 		*Panel->GetName(),
 		KeyedLights.Num(),
 		*EffectiveControl.ToString());
+}
+
+void FStructuralPanelControlledSync::ReleaseIntegratedSubnet(
+	AStructuralPowerGraphSubsystem& Graph,
+	AFGBuildableLightsControlPanel* Panel)
+{
+	if (!IsValid(Panel) || !Panel->HasAuthority() || IsEngineExitRequested())
+	{
+		return;
+	}
+
+	UWorld* World = Panel->GetWorld();
+	if (!IsValid(World) || World->bIsTearingDown)
+	{
+		return;
+	}
+
+	const FName EffectiveControl = ResolveEffectiveLightControl(Graph, Panel);
+	const FName PanelControl = Graph.ResolveControl(Panel, EStructuralChannel::Light);
+	if (FStructuralPowerRouter::IsAssignedControl(EffectiveControl)
+		|| FStructuralPowerRouter::IsAssignedControl(PanelControl))
+	{
+		WriteControlledBuildables(Panel, {});
+	}
+
+	if (UFunction* SearchFn = Panel->FindFunction(TEXT("SearchDownstreamCircuit")))
+	{
+		Panel->ProcessEvent(SearchFn, nullptr);
+	}
+
+	UE_LOG(LogStructuralPower, Log,
+		TEXT("[HALSP] panel %s released integrated subnet — vanilla downstream search"),
+		*Panel->GetName());
 }
 
 void FStructuralPanelControlledSync::MirrorSharedControlState(

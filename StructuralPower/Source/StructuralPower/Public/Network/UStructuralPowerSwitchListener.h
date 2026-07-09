@@ -17,6 +17,7 @@ class STRUCTURALPOWER_API UStructuralPowerSwitchListener : public UActorComponen
 
 public:
 	void BindSubsystem(AStructuralPowerGraphSubsystem* Graph, AFGBuildableCircuitSwitch* Switch);
+	void SyncSubscriptions(AStructuralPowerGraphSubsystem* Graph, AFGBuildableCircuitSwitch* Switch);
 
 protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -33,4 +34,7 @@ private:
 
 	UPROPERTY()
 	TWeakObjectPtr<AFGBuildableCircuitSwitch> BoundSwitch;
+
+	bool bCircuitsBound = false;
+	bool bToggleBound = false;
 };

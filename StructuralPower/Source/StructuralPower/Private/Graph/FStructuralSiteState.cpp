@@ -21,6 +21,8 @@ void FStructuralSiteState::ClearEchoScope()
 	EchoDirtySites.Reset();
 	EchoProcessedPanelsInScope.Reset();
 	EchoToggleHandledPanelsInScope.Reset();
+	EchoProcessedSwitchesInScope.Reset();
+	EchoToggleHandledSwitchesInScope.Reset();
 }
 
 bool FStructuralSiteState::IsEchoScopeActive() const
@@ -53,6 +55,28 @@ bool FStructuralSiteState::WasPanelToggleHandledInScope(
 void FStructuralSiteState::NotePanelToggleHandled(const FStructuralNodeId& PanelId)
 {
 	EchoToggleHandledPanelsInScope.Add(PanelId);
+}
+
+bool FStructuralSiteState::WasSwitchEchoProcessedInScope(
+	const FStructuralNodeId& SwitchId) const
+{
+	return EchoProcessedSwitchesInScope.Contains(SwitchId);
+}
+
+void FStructuralSiteState::NoteSwitchEchoProcessed(const FStructuralNodeId& SwitchId)
+{
+	EchoProcessedSwitchesInScope.Add(SwitchId);
+}
+
+bool FStructuralSiteState::WasSwitchToggleHandledInScope(
+	const FStructuralNodeId& SwitchId) const
+{
+	return EchoToggleHandledSwitchesInScope.Contains(SwitchId);
+}
+
+void FStructuralSiteState::NoteSwitchToggleHandled(const FStructuralNodeId& SwitchId)
+{
+	EchoToggleHandledSwitchesInScope.Add(SwitchId);
 }
 
 void FStructuralSiteState::ClearFeedSignatures()
