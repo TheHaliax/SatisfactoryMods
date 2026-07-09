@@ -19,33 +19,31 @@ Common case: **isolated structure** — a foundation with no adjacency to the re
 
 For switch/panel toggle debugging with trace on: grep `switch restitch_off_settled` — `passPanel=0` and `poweredDirect=0` mean OFF succeeded even if `armedPanel>0`. See [development.md](development.md#halsp-trace-developers).
 
-## Structural lighting (v2.2)
+## Structural lighting
 
 | Symptom | Check |
 |---------|--------|
-| Lights need wires | **Structural lighting** off — enable with `!lighting` |
+| Lights need wires | **Structural lighting** off — enable with `!lighting` or `GroupLighting` in cfg |
 | Light dark on powered base | Light `Source` id must match feed (structural default, switch id, or group); press **I** on light |
-| E panel affects all lights | Panel needs keyed **Control** id; lights need matching **Source** — see [v2.2.md](v2.2.md) |
+| E panel affects all lights | Panel needs keyed **Control** id; lights need matching **Source** — see [player-guide.md](player-guide.md#named-light-groups) |
 | Switch subnet wrong | Mode B on (`PowerSwitchManualGroups: 1`); panel/light `Source` = switch Control id; switch ON |
 | Dropdown missing switch id | Assign switch Control first; ids pool is structure-island scoped |
 
-## Switch gating unexpected (v2.1)
+## Switch gating unexpected
 
-1. Confirm **Gate power switches** is on in **Debug**.
-2. Mode B (default): keyed subnets need matching building tag + device Id — **I** key or building tag.
-3. Mode A: set `PowerSwitchManualGroups` to `0` in config for whole-component gate.
+1. Mode B (default): keyed subnets need matching building tag + device Id — **I** key or building tag.
+2. Mode A: set `PowerSwitchManualGroups` to `0` in config for whole-component gate.
 
-## Hoverpack tether (v2.1)
+## Hoverpack tether
 
 | Symptom | Check |
 |---------|--------|
-| No tether | **Enable hoverpack structural tether** in Debug; stand near **powered** structure |
-| Short reach | Raise `!HoverH` / `!HoverV` (max 10× per axis) |
-| Vanilla behaviour | Hoverpack structural tether is always on in v2.2 — no user toggle |
+| No tether | Stand near **powered** structure within reach |
+| Short reach | Raise `!HoverH` / `!HoverV` (max 10× per axis) or edit cfg multipliers |
 
-## Save / reload crash (v2.2)
+## Save / reload issues
 
-v2.2.0 strips persisted mod bus components before circuit bridge BeginPlay. If an older dev build crashed on reload, update to **2.2.0** and retry. Report with `FactoryGame.log` from load if it persists.
+v3.0.0 strips persisted mod bus components before circuit bridge BeginPlay and rebuilds topology from geometry. If an older v2.1/v2.2 build failed on load, update to **3.0.0** and retry. Report with `FactoryGame.log` from load if it persists.
 
 ## No LogStructuralPower lines during gameplay
 
@@ -59,7 +57,7 @@ Automatic diagnostics skip menu worlds (`Map_Menu_*`). Load a save or run `Struc
 
 Include:
 
-- StructuralPower version (2.2.0)
+- StructuralPower version (3.0.0)
 - SML version
 - Single-player, listen host, or dedicated server
 - Group Lighting on/off

@@ -16,11 +16,11 @@ Each mod has its own folder and README with features, requirements, and roadmap.
 |---|---|
 | **Added** | 2026-06-30 |
 | **Published** | 2026-07-02 |
-| **Updated** | 2026-07-05 |
-| **Version** | 2.2.0 |
-| **Next** | **2.3** — [Generators & storage](StructuralPower/README.md#v23--generators--storage-in-development) ([roadmap](StructuralPower/README.md#roadmap)) |
+| **Updated** | 2026-07-09 |
+| **Version** | 3.0.0 |
+| **Next** | **3.1** — [Machines](StructuralPower/README.md#v31--machines-in-development) ([roadmap](StructuralPower/README.md#roadmap)) |
 
-Hidden structural power bus for foundations, walls, ramps, and bridge poles. Retroactive — existing builds are wired on load. **v2.2:** opt-in structural lighting, named light groups, I-key Id config. **v2.1:** switch gating, hoverpack tether, pause-menu config, `!` chat commands.
+Hidden structural power bus for foundations, walls, ramps, and bridge poles. Retroactive — existing builds are wired on load. **v3.0:** vanilla-first architecture rewrite + stable load after v2.1 pain; lighting, Id panel, switches, hoverpack. Config via cfg / console / `!` chat.
 
 Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 

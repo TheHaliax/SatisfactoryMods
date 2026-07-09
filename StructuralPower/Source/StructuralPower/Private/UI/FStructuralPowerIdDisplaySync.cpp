@@ -23,14 +23,16 @@ bool FStructuralPowerIdDisplaySync::AreFormWidgetsReady(UStructuralPowerIdConfig
 		return false;
 	}
 
-	if (!IsValid(Widget->SuggestedSourceCombo) || !IsValid(Widget->AssignSourceText))
+	if (Widget->OptionManager->ShowsSourceIdField()
+		&& (!IsValid(Widget->SuggestedSourceCombo) || !IsValid(Widget->AssignSourceText)))
 	{
 		return false;
 	}
 
-	if (Widget->OptionManager->NeedsDualFields())
+	if (Widget->OptionManager->ShowsControlIdField()
+		&& (!IsValid(Widget->SuggestedControlCombo) || !IsValid(Widget->AssignControlText)))
 	{
-		return IsValid(Widget->SuggestedControlCombo) && IsValid(Widget->AssignControlText);
+		return false;
 	}
 
 	return true;
@@ -116,7 +118,7 @@ void FStructuralPowerIdDisplaySync::RefreshIdDisplayFromList(
 	Widget->bSuppressServerApply = true;
 
 	RepopulateComboFromManager(Widget->SuggestedSourceCombo, Widget->OptionManager, true);
-	if (Widget->OptionManager->NeedsDualFields())
+	if (Widget->OptionManager->ShowsControlIdField())
 	{
 		RepopulateComboFromManager(Widget->SuggestedControlCombo, Widget->OptionManager, false);
 	}
@@ -186,10 +188,21 @@ void FStructuralPowerIdDisplaySync::RefreshIdDisplayFromList(
 			? (List.ResolvedControl.IsNone() ? TEXT("-") : List.ResolvedControl.ToString())
 			: FString::Printf(TEXT("%s*"), *List.ControlOverride.ToString());
 
-		const bool bDual = Widget->OptionManager->NeedsDualFields();
-		const FString Status = bDual
-			? FString::Printf(TEXT("Active — source: %s   control: %s"), *SourceLine, *ControlLine)
-			: FString::Printf(TEXT("Active — source: %s"), *SourceLine);
+		const bool bShowSource = Widget->OptionManager->ShowsSourceIdField();
+		const bool bShowControl = Widget->OptionManager->ShowsControlIdField();
+		FString Status;
+		if (bShowSource && bShowControl)
+		{
+			Status = FString::Printf(TEXT("Active — source: %s   control: %s"), *SourceLine, *ControlLine);
+		}
+		else if (bShowControl)
+		{
+			Status = FString::Printf(TEXT("Active — control: %s"), *ControlLine);
+		}
+		else
+		{
+			Status = FString::Printf(TEXT("Active — source: %s"), *SourceLine);
+		}
 		SetTextStyle(Widget->ActiveIdsText, Status, 12);
 	}
 

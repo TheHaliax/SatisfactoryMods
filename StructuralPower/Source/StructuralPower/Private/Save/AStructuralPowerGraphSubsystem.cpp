@@ -32,6 +32,7 @@
 #include "Graph/FStructuralOutletParentResolver.h"
 #include "Graph/FStructuralEndpointIndex.h"
 #include "Graph/FStructuralBusMemberSpatialIndex.h"
+#include "Routing/FStructuralMembershipRole.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Kismet/GameplayStatics.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
@@ -998,6 +999,64 @@ bool AStructuralPowerGraphSubsystem::CollectIdsOnComponent(
 	return IdOps.CollectIdsOnComponent(Key, Out);
 }
 
+void AStructuralPowerGraphSubsystem::RebuildControlIdGangsForRoot(const int32 ComponentRoot)
+{
+	if (ComponentRoot == INDEX_NONE)
+	{
+		return;
+	}
+
+	const FStructuralComponentKey ComponentKey = MakeComponentKeyForRoot(ComponentRoot);
+	ControlIdGangIndex.ClearComponent(ComponentKey);
+
+	auto RegisterPublisher = [&](const FStructuralNodeId& NodeId, AFGBuildable* Buildable)
+	{
+		if (!IsValid(Buildable))
+		{
+			return;
+		}
+
+		if (MakeComponentKeyForBuildable(Buildable) != ComponentKey)
+		{
+			return;
+		}
+
+		const EStructuralChannel Tag = FStructuralEligibilityRules::ClassifyBuildable(Buildable);
+		const EStructuralMembershipRole Role = FStructuralMembershipRole::Resolve(Buildable, Tag);
+		if (!FStructuralMembershipRole::PublishesControl(Role))
+		{
+			return;
+		}
+
+		const FName ControlId = ResolveControl(Buildable, Tag);
+		if (!FStructuralPowerRouter::IsAssignedControl(ControlId))
+		{
+			return;
+		}
+
+		ControlIdGangIndex.RegisterPublisher(
+			NodeId,
+			FStructuralControlGangKey{ComponentKey, ControlId});
+	};
+
+	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : TrackedEndpoints)
+	{
+		RegisterPublisher(Pair.Key, Pair.Value.Actor.Get());
+	}
+
+	for (const TPair<FStructuralNodeId, TWeakObjectPtr<AFGBuildable>>& Pair : RegisteredBuildables)
+	{
+		RegisterPublisher(Pair.Key, Pair.Value.Get());
+	}
+}
+
+TArray<FStructuralNodeId> AStructuralPowerGraphSubsystem::GetControlIdGangMembers(
+	const FStructuralComponentKey& ComponentKey,
+	const FName ControlId) const
+{
+	return ControlIdGangIndex.GetGangMembers(ComponentKey, ControlId);
+}
+
 
 int32 AStructuralPowerGraphSubsystem::ResolveEndpointComponentRoot(
 	AFGBuildable* Endpoint,
@@ -1773,6 +1832,13 @@ void AStructuralPowerGraphSubsystem::OnBuildableRemoved(AFGBuildable* Buildable)
 	}
 
 	const FStructuralNodeId NodeId = MakeNodeId(Buildable);
+	int32 GangRoot = INDEX_NONE;
+	if (const FTrackedEndpoint* TrackedBefore = TrackedEndpoints.Find(NodeId))
+	{
+		GangRoot = StructureGraph.FindRoot(TrackedBefore->ParentId);
+	}
+
+	ControlIdGangIndex.RemoveNode(NodeId);
 	UnregisterBuildableActor(NodeId);
 
 	if (FTrackedEndpoint* Tracked = TrackedEndpoints.Find(NodeId))
@@ -1827,6 +1893,11 @@ void AStructuralPowerGraphSubsystem::OnBuildableRemoved(AFGBuildable* Buildable)
 	}
 
 	PlacementQueue.RemoveBuildable(Buildable);
+
+	if (GangRoot != INDEX_NONE)
+	{
+		RebuildControlIdGangsForRoot(GangRoot);
+	}
 }
 
 void AStructuralPowerGraphSubsystem::OnLightweightRemoved(const FStructuralLightweightKey& Key)

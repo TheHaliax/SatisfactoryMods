@@ -78,5 +78,5 @@ bool FStructuralPowerRestitch::ShouldMeshEndpoints(
 		return true;
 	}
 
-	return FStructuralPowerRouter::ShouldRouteSwitchGate(SwitchControl, DeviceSource, CompKey, CompKey);
+	return FStructuralPowerRouter::ShouldRouteKeyedJoin(SwitchControl, DeviceSource, CompKey, CompKey);
 }

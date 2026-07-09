@@ -8,7 +8,9 @@
 
 bool FStructuralPowerRouter::UsesSourceControlModel(EStructuralChannel Tag)
 {
-	return Tag == EStructuralChannel::Light || Tag == EStructuralChannel::Switch;
+	return Tag == EStructuralChannel::Light
+		|| Tag == EStructuralChannel::Switch
+		|| Tag == EStructuralChannel::Generator;
 }
 
 bool FStructuralPowerRouter::IsStructuralGeneratorRoutingEnabled()
@@ -83,21 +85,30 @@ bool FStructuralPowerRouter::ShouldRouteChannelLink(
 	return !A.EffectiveId.IsNone() && A.EffectiveId == B.EffectiveId;
 }
 
+bool FStructuralPowerRouter::ShouldRouteKeyedJoin(
+	FName PublisherControl,
+	FName JoinerSource,
+	const FStructuralComponentKey& ComponentA,
+	const FStructuralComponentKey& ComponentB)
+{
+	if (!ComponentA.IsValid()
+		|| ComponentA != ComponentB
+		|| !IsAssignedControl(PublisherControl)
+		|| JoinerSource.IsNone())
+	{
+		return false;
+	}
+
+	return PublisherControl == JoinerSource;
+}
+
 bool FStructuralPowerRouter::ShouldRouteSwitchGate(
 	FName SwitchControl,
 	FName DeviceSource,
 	const FStructuralComponentKey& ComponentA,
 	const FStructuralComponentKey& ComponentB)
 {
-	if (!ComponentA.IsValid()
-		|| ComponentA != ComponentB
-		|| !IsAssignedControl(SwitchControl)
-		|| DeviceSource.IsNone())
-	{
-		return false;
-	}
-
-	return SwitchControl == DeviceSource;
+	return ShouldRouteKeyedJoin(SwitchControl, DeviceSource, ComponentA, ComponentB);
 }
 
 FName FStructuralPowerRouter::ResolveSwitchControlFromTag(const AFGBuildableCircuitSwitch* Switch)

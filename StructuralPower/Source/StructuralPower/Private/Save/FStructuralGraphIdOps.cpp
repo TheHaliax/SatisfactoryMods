@@ -8,6 +8,7 @@
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Buildables/FGBuildableLightSource.h"
+#include "Buildables/FGBuildableGenerator.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Graph/FStructuralEndpointTypes.h"
@@ -17,6 +18,7 @@
 #include "Processors/FStructuralPowerProcessorRegistry.h"
 #include "Processors/FStructuralPowerSwitchProcessor.h"
 #include "Processors/IStructuralPowerProcessor.h"
+#include "Routing/FStructuralMembershipRole.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "StructuralPowerConstants.h"
@@ -100,8 +102,15 @@ FName FStructuralGraphIdOps::ResolveSource(
 		return NAME_None;
 	}
 
+	const EStructuralMembershipRole Role = FStructuralMembershipRole::Resolve(Buildable, Tag);
+	if (Role == EStructuralMembershipRole::Source)
+	{
+		return NAME_None;
+	}
+
 	const FStructuralNodeId BuildableId = AStructuralPowerGraphSubsystem::MakeNodeId(Buildable);
-	if (FStructuralPowerRouter::UsesSourceControlModel(Tag))
+	if (FStructuralPowerRouter::UsesSourceControlModel(Tag)
+		|| FStructuralMembershipRole::UsesKeyedMembership(Role))
 	{
 		if (const FStructuralEndpointOverrides* Overrides =
 				Subsystem->IdRegistry.FindPlayerOverride(BuildableId);
@@ -127,16 +136,16 @@ FName FStructuralGraphIdOps::ResolveSource(
 	}
 
 	if (Tag == EStructuralChannel::Switch)
+	{
+		if (const AFGBuildableCircuitSwitch* Switch = Cast<AFGBuildableCircuitSwitch>(Buildable))
 		{
-			if (const AFGBuildableCircuitSwitch* Switch = Cast<AFGBuildableCircuitSwitch>(Buildable))
+			const FName Control = FStructuralPowerRouter::ResolveSwitchControlFromTag(Switch);
+			if (FStructuralPowerRouter::IsAssignedControl(Control))
 			{
-				const FName Control = FStructuralPowerRouter::ResolveSwitchControlFromTag(Switch);
-				if (FStructuralPowerRouter::IsAssignedControl(Control))
-				{
-					return Control;
-				}
+				return Control;
 			}
 		}
+	}
 
 	if (const FStructuralComponentKey ComponentKey = MakeComponentKeyForBuildable(Buildable);
 		ComponentKey.IsValid())
@@ -151,7 +160,19 @@ FName FStructuralGraphIdOps::ResolveControl(
 	AFGBuildable* Buildable,
 	EStructuralChannel Tag)
 {
-	if (!IsValid(Buildable) || !FStructuralPowerRouter::UsesSourceControlModel(Tag))
+	if (!IsValid(Buildable))
+	{
+		return NAME_None;
+	}
+
+	const EStructuralMembershipRole Role = FStructuralMembershipRole::Resolve(Buildable, Tag);
+	if (Role == EStructuralMembershipRole::Control)
+	{
+		return NAME_None;
+	}
+
+	if (!FStructuralPowerRouter::UsesSourceControlModel(Tag)
+		&& !FStructuralMembershipRole::PublishesControl(Role))
 	{
 		return NAME_None;
 	}
@@ -183,6 +204,15 @@ FName FStructuralGraphIdOps::ResolveControl(
 		return StructuralPowerConstants::ControlUnconfigured;
 	}
 
+	if (Role == EStructuralMembershipRole::Source)
+	{
+		if (const FStructuralComponentKey ComponentKey = MakeComponentKeyForBuildable(Buildable);
+			ComponentKey.IsValid())
+		{
+			return GetOrCreateComponentDefaultId(ComponentKey);
+		}
+	}
+
 	return NAME_None;
 }
 
@@ -196,11 +226,13 @@ FStructuralChannelKey FStructuralGraphIdOps::ResolveChannelKeyForBuildable(
 	}
 
 	Key.Tag = FStructuralEligibilityRules::ClassifyBuildable(Buildable);
-	if (FStructuralPowerRouter::UsesSourceControlModel(Key.Tag))
+	const EStructuralMembershipRole Role = FStructuralMembershipRole::Resolve(Buildable, Key.Tag);
+	if (FStructuralPowerRouter::UsesSourceControlModel(Key.Tag)
+		|| FStructuralMembershipRole::UsesKeyedMembership(Role))
 	{
 		Key.Source = ResolveSource(Buildable, Key.Tag);
 		Key.Control = ResolveControl(Buildable, Key.Tag);
-		Key.EffectiveId = Key.Source;
+		Key.EffectiveId = Role == EStructuralMembershipRole::Source ? Key.Control : Key.Source;
 	}
 	else
 	{
@@ -291,6 +323,8 @@ void FStructuralGraphIdOps::SetEndpointIds(
 			}
 		}
 	}
+
+	Subsystem->RebuildControlIdGangsForRoot(Root);
 }
 
 bool FStructuralGraphIdOps::CollectIdsOnComponent(
@@ -334,6 +368,7 @@ bool FStructuralGraphIdOps::CollectIdsOnComponent(
 		const bool bIsLight = FStructuralEligibilityRules::IsStructuralLightConsumer(Buildable);
 		const bool bIsPanel = Buildable->IsA<AFGBuildableLightsControlPanel>();
 		const bool bIsSwitch = Buildable->IsA<AFGBuildableCircuitSwitch>();
+		const bool bIsGenerator = Buildable->IsA<AFGBuildableGenerator>();
 
 		if (const FStructuralEndpointOverrides* Overrides = Subsystem->IdRegistry.FindPlayerOverride(NodeId))
 		{
@@ -354,6 +389,10 @@ bool FStructuralGraphIdOps::CollectIdsOnComponent(
 				else if (bIsSwitch)
 				{
 					NamedSwitchControls.Add(Overrides->ControlOverride);
+				}
+				else if (bIsGenerator)
+				{
+					NamedControls.Add(Overrides->ControlOverride);
 				}
 			}
 		}

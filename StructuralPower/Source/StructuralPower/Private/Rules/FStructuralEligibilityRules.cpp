@@ -68,6 +68,11 @@ bool FStructuralEligibilityRules::IsStructuralLightConsumer(const AFGBuildable* 
 		&& !Buildable->IsA<AFGBuildableLightsControlPanel>();
 }
 
+bool FStructuralEligibilityRules::IsStructuralGenerator(const AFGBuildable* Buildable)
+{
+	return IsValid(Buildable) && Buildable->IsA<AFGBuildableGenerator>();
+}
+
 bool FStructuralEligibilityRules::IsIdConfigTarget(const AFGBuildable* Buildable)
 {
 	if (!IsValid(Buildable))
@@ -85,7 +90,12 @@ bool FStructuralEligibilityRules::IsIdConfigTarget(const AFGBuildable* Buildable
 		return true;
 	}
 
-	return Buildable->IsA<AFGBuildableLightsControlPanel>();
+	if (Buildable->IsA<AFGBuildableLightsControlPanel>())
+	{
+		return true;
+	}
+
+	return IsStructuralGenerator(Buildable);
 }
 
 bool FStructuralEligibilityRules::IsPowerBridgePole(const AFGBuildable* Buildable)

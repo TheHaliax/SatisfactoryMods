@@ -34,7 +34,7 @@ static TAutoConsoleVariable<int32> CVarStructuralPowerExtendedDebug(
 static TAutoConsoleVariable<int32> CVarStructuralPowerGroupLighting(
 	TEXT("StructuralPower.GroupLighting"),
 	0,
-	TEXT("1 = lights draw structural power on powered foundations (v2.2 M3); 0 = wire required"),
+	TEXT("1 = lights draw structural power on powered foundations; 0 = wire required"),
 	ECVF_Default);
 
 static TAutoConsoleVariable<float> CVarStructuralPowerHoverpackHorizontalMultiplier(

@@ -1,16 +1,16 @@
 # StructuralPower Documentation
 
-Player and developer docs for **StructuralPower v2.2.0**.
+Player and developer docs for **StructuralPower** (version in [CHANGELOG](../CHANGELOG.md) and `.uplugin`).
 
 ## Mod overview
 
 - [Mod README](../README.md) — what ships today, chat commands, roadmap, requirements, multiplayer
-- [v2.2 features](v2.2.md) — lighting, Id panel, switch subnets, extension model
-- [Roadmap](../README.md#roadmap) — v2.3–v2.6 planned features
+- [Player guide](player-guide.md) — retroactive load, lighting, Id panel, switches, hoverpack
+- [Roadmap](../README.md#roadmap) — upcoming features
+- [Changelog](../CHANGELOG.md) — release history and upgrade notes
 
 ## Guides
 
-- [Player guide](player-guide.md) — what the mod does, retroactive load, lighting, switches, hoverpack, save behavior
 - [Chat commands](chat-commands.md) — `!lighting`, `!HoverH`, `!HoverV`, `!pwrhelp`
 - [Console commands](console-commands.md) — `StructuralPower.Set`, trace, propagation, diagnostics
 - [Multiplayer](multiplayer.md) — client/server requirements and dedicated hosting
@@ -20,12 +20,13 @@ Player and developer docs for **StructuralPower v2.2.0**.
 
 ## Agent / as-built docs (local, gitignored)
 
-Not in the public repo — on Haliax machine under `SatisfactoryMods/development/`:
+Not in the public repo — on Haliax machine under `StructuralPower/development/`:
 
 | File | Role |
 |------|------|
-| `DOCUMENTATION.md` | Doc layers, what/why/how vs code WTF-only |
-| `CURRENT-STATE.md` | As-built architecture |
+| `ARCHITECTURE.md` | As-built architecture |
+| `POLICY.md` | Locked rules |
+| `TODO.md` | Wave tracker |
 | `LOG-INTERPRETATION.md` | HALSP toggle pass/fail rules |
 
 ## Quick links

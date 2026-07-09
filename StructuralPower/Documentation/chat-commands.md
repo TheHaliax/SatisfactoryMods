@@ -12,7 +12,7 @@ The same four commands are also registered with **SML** (`AChatCommandSubsystem:
 
 `[]` — required argument.
 
-- `!lighting` — toggle **structural lighting** (v2.2 M3; default off; saved to `Configs/StructuralPower.cfg`)
+- `!lighting` — toggle **structural lighting** (default off; saved to `Configs/StructuralPower.cfg`)
 - `!HoverH [1-10]` — set hoverpack **horizontal** reach multiplier (clamped 1.0–10.0; saved to cfg)
 - `!HoverV [1-10]` — set hoverpack **vertical** reach multiplier (clamped 1.0–10.0; saved to cfg)
 - `!pwrhelp` — list commands (same list as this section)
@@ -24,7 +24,7 @@ Trace and extended debug are **console-only** (`StructuralPower.Trace`, `Structu
 ```
 !lighting
 !HoverH 2
-!HoverV 1.5
+!HoverV 1.2
 !pwrhelp
 ```
 

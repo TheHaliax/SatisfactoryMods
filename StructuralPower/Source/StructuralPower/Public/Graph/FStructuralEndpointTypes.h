@@ -15,7 +15,8 @@ enum class EStructuralEndpointKind : uint8
 	Switch,
 	Light,
 	Panel,
-	Storage
+	Storage,
+	Generator
 };
 
 STRUCTURALPOWER_API const TCHAR* StructuralEndpointKindToString(EStructuralEndpointKind Kind);
@@ -43,4 +44,5 @@ struct FTrackedEndpoint
 	class AFGBuildableLightSource* GetLight() const;
 	class AFGBuildableLightsControlPanel* GetPanel() const;
 	class AFGBuildablePowerStorage* GetStorage() const;
+	class AFGBuildableGenerator* GetGenerator() const;
 };

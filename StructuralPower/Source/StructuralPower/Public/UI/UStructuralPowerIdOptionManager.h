@@ -6,6 +6,7 @@
 #include "CoreMinimal.h"
 #include "FGOptionInterfaceImpl.h"
 #include "Routing/EStructuralChannel.h"
+#include "Routing/FStructuralMembershipRole.h"
 #include "UStructuralPowerIdOptionManager.generated.h"
 
 class AFGBuildable;
@@ -39,7 +40,11 @@ public:
 	FName GetSuggestedOptionAt(int32 Index) const;
 	int32 FindSuggestedOptionIndex(FName Id, int32 Fallback = 0) const;
 	bool UsesSourceChannel() const;
+	bool UsesControlChannel() const;
 	bool NeedsDualFields() const;
+	bool ShowsSourceIdField() const;
+	bool ShowsControlIdField() const;
+	EStructuralMembershipRole GetMembershipRole() const;
 
 	int32 GetSourceOptionCount() const;
 	int32 GetControlOptionCount() const;

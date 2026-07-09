@@ -48,5 +48,6 @@ public:
 	static void ResetEndpointIds(
 		AFGPlayerController* PlayerController,
 		AFGBuildable* Target,
-		bool bDualFields);
+		bool bClearSource,
+		bool bClearControl);
 };

@@ -39,31 +39,51 @@ bool FStructuralPowerIdFieldMatrix::Build(
 		return false;
 	}
 
-	const bool bLight = FStructuralEligibilityRules::IsStructuralLightConsumer(TargetBuildable);
-	const bool bDual = OptionManager->NeedsDualFields();
-	if (!bLight && !bDual)
+	const bool bShowSource = OptionManager->ShowsSourceIdField();
+	const bool bShowControl = OptionManager->ShowsControlIdField();
+	if (!bShowSource && !bShowControl)
 	{
 		return false;
 	}
 
+	const bool bDual = bShowSource && bShowControl;
+	const bool bGroupLighting = FStructuralPowerModConfig::IsGroupLightingEnabled();
+
 	UTextBlock* Subtitle = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("Subtitle"));
-	SetTextStyle(
-		Subtitle,
-		bDual
-			? TEXT("Set source and control ids for this endpoint.")
-			: TEXT("Set the source id for this endpoint."),
-		13);
+	FString SubtitleText = TEXT("Set endpoint ids.");
+	if (bDual)
+	{
+		SubtitleText = TEXT("Set source and control ids for this endpoint.");
+	}
+	else if (bShowSource)
+	{
+		SubtitleText = TEXT("Set the source id for this endpoint.");
+	}
+	else
+	{
+		SubtitleText = TEXT("Set the control id for this endpoint.");
+	}
+	SetTextStyle(Subtitle, SubtitleText, 13);
 	AddVBoxRow(ContentVBox, Subtitle, FMargin(0.0f, 0.0f, 0.0f, 6.0f));
 
 	UTextBlock* Hint = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("HintText"));
-	const bool bGroupLighting = FStructuralPowerModConfig::IsGroupLightingEnabled();
-	const FString HintLine = bDual
-		? FString::Printf(
+	FString HintLine;
+	if (FStructuralEligibilityRules::IsStructuralGenerator(TargetBuildable))
+	{
+		HintLine = TEXT("Export group (control id) feeds switches whose source id matches.");
+	}
+	else if (bDual)
+	{
+		HintLine = FString::Printf(
 			TEXT("Light source id must match panel control id. Group Lighting: %s."),
-			bGroupLighting ? TEXT("ON") : TEXT("OFF (use !lighting)"))
-		: FString::Printf(
+			bGroupLighting ? TEXT("ON") : TEXT("OFF (use !lighting)"));
+	}
+	else
+	{
+		HintLine = FString::Printf(
 			TEXT("Set this light's source id; match it on a panel's control id. Group Lighting: %s."),
 			bGroupLighting ? TEXT("ON") : TEXT("OFF (use !lighting)"));
+	}
 	SetTextStyle(Hint, HintLine, 11);
 	AddVBoxRow(ContentVBox, Hint, FMargin(0.0f, 0.0f, 0.0f, 8.0f));
 
@@ -129,17 +149,20 @@ bool FStructuralPowerIdFieldMatrix::Build(
 		AddVBoxRow(ContentVBox, TextHost, FMargin(0.0f, 0.0f, 0.0f, 12.0f));
 	};
 
-	AddSuggestedSection(
-		TEXT("Suggested source id"),
-		TEXT("Custom source id"),
-		TEXT("SuggestedSourceCombo"),
-		TEXT("AssignSourceText"),
-		OutWidgets.SuggestedSourceCombo,
-		OutWidgets.AssignSourceText,
-		OptionManager->GetSourceOptionCount(),
-		[OptionManager](int32 Index) { return OptionManager->GetSourceOptionAt(Index); });
+	if (bShowSource)
+	{
+		AddSuggestedSection(
+			TEXT("Suggested source id"),
+			TEXT("Custom source id"),
+			TEXT("SuggestedSourceCombo"),
+			TEXT("AssignSourceText"),
+			OutWidgets.SuggestedSourceCombo,
+			OutWidgets.AssignSourceText,
+			OptionManager->GetSourceOptionCount(),
+			[OptionManager](int32 Index) { return OptionManager->GetSourceOptionAt(Index); });
+	}
 
-	if (bDual)
+	if (bShowControl)
 	{
 		AddSuggestedSection(
 			TEXT("Suggested control id"),
@@ -174,8 +197,10 @@ bool FStructuralPowerIdFieldMatrix::Build(
 	AddVBoxRow(ContentVBox, ButtonRow, FMargin(0.0f, 4.0f, 0.0f, 0.0f));
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] Id panel form built dual=%d sourceOpts=%d controlOpts=%d"),
+		TEXT("[HALSP] Id panel form built dual=%d source=%d control=%d sourceOpts=%d controlOpts=%d"),
 		bDual ? 1 : 0,
+		bShowSource ? 1 : 0,
+		bShowControl ? 1 : 0,
 		OptionManager->GetSourceOptionCount(),
 		OptionManager->GetControlOptionCount());
 

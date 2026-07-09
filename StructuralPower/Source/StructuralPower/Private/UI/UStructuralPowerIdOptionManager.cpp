@@ -4,11 +4,14 @@
 #include "UI/UStructuralPowerIdOptionManager.h"
 
 #include "Buildables/FGBuildable.h"
-#include "Routing/FStructuralPowerRouter.h"
 #include "Buildables/FGBuildableCircuitSwitch.h"
+#include "Buildables/FGBuildableGenerator.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
+#include "Routing/FStructuralMembershipRole.h"
+#include "Routing/FStructuralPowerRouter.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "Settings/FGUserSetting.h"
+#include "StructuralPowerConstants.h"
 #include "FGOptionsLibrary.h"
 #include "Settings/FGUserSettingCategory.h"
 #include "Settings/FGUserSettingApplyType.h"
@@ -69,6 +72,23 @@ void UStructuralPowerIdOptionManager::ResetSettings()
 	ControlOptions.Reset();
 }
 
+EStructuralMembershipRole UStructuralPowerIdOptionManager::GetMembershipRole() const
+{
+	return IsValid(TargetBuildable)
+		? FStructuralMembershipRole::Resolve(TargetBuildable, TargetChannel)
+		: EStructuralMembershipRole::None;
+}
+
+bool UStructuralPowerIdOptionManager::ShowsSourceIdField() const
+{
+	return FStructuralMembershipRole::UsesSourceField(GetMembershipRole());
+}
+
+bool UStructuralPowerIdOptionManager::ShowsControlIdField() const
+{
+	return FStructuralMembershipRole::UsesControlField(GetMembershipRole());
+}
+
 void UStructuralPowerIdOptionManager::ConfigureForTarget(AFGBuildable* Target, EStructuralChannel Channel)
 {
 	TargetBuildable = Target;
@@ -80,7 +100,8 @@ void UStructuralPowerIdOptionManager::ConfigureForTarget(AFGBuildable* Target, E
 		return;
 	}
 
-	if (FStructuralEligibilityRules::IsStructuralLightConsumer(Target))
+	const EStructuralMembershipRole Role = GetMembershipRole();
+	if (FStructuralMembershipRole::UsesSourceField(Role))
 	{
 		SourceOptions = {NAME_None};
 		CreateDropdownSetting(
@@ -89,20 +110,15 @@ void UStructuralPowerIdOptionManager::ConfigureForTarget(AFGBuildable* Target, E
 			SourceOptions,
 			0);
 	}
-	else if (Target->IsA<AFGBuildableCircuitSwitch>() || Target->IsA<AFGBuildableLightsControlPanel>())
+
+	if (FStructuralMembershipRole::UsesControlField(Role))
 	{
-		SourceOptions = {NAME_None};
 		ControlOptions = {NAME_None};
 		if (Target->IsA<AFGBuildableLightsControlPanel>())
 		{
 			ControlOptions[0] = StructuralPowerConstants::ControlUnconfigured;
 		}
 
-		CreateDropdownSetting(
-			SourceSettingId,
-			FText::FromString(TEXT("Suggested Source Ids")),
-			SourceOptions,
-			0);
 		CreateDropdownSetting(
 			ControlSettingId,
 			FText::FromString(TEXT("Suggested Control Ids")),
@@ -113,7 +129,7 @@ void UStructuralPowerIdOptionManager::ConfigureForTarget(AFGBuildable* Target, E
 
 void UStructuralPowerIdOptionManager::SyncFromComponentList(const FStructuralComponentIdList& List)
 {
-	if (FStructuralEligibilityRules::IsStructuralLightConsumer(TargetBuildable))
+	if (ShowsSourceIdField() && !ShowsControlIdField())
 	{
 		SourceOptions.Reset();
 		AppendUniqueNamedIds(SourceOptions, List.NamedSourceIds);
@@ -144,8 +160,38 @@ void UStructuralPowerIdOptionManager::SyncFromComponentList(const FStructuralCom
 			ApplyType->ForceSetValue(FVariant(Selected), true);
 		}
 	}
-	else if (TargetBuildable.IsA<AFGBuildableCircuitSwitch>()
-		|| TargetBuildable.IsA<AFGBuildableLightsControlPanel>())
+	else if (ShowsControlIdField() && !ShowsSourceIdField())
+	{
+		ControlOptions.Reset();
+		AppendUniqueNamedIds(ControlOptions, List.NamedControlIds);
+		AppendUniqueNamedIds(ControlOptions, List.NamedSwitchControlIds);
+		AppendUniqueNamedIds(ControlOptions, List.NamedLightGroupIds);
+
+		if (ControlOptions.IsEmpty())
+		{
+			ControlOptions.Add(NAME_None);
+		}
+
+		const FName ActiveControl = List.ControlOverride.IsNone()
+			? List.ResolvedControl
+			: List.ControlOverride;
+		if (FStructuralPowerRouter::IsPlayerChosenIdValid(ActiveControl))
+		{
+			ControlOptions.AddUnique(ActiveControl);
+		}
+
+		const int32 Selected = FindOptionIndex(
+			ControlOptions,
+			List.ControlOverride.IsNone() ? List.ResolvedControl : List.ControlOverride,
+			0);
+
+		if (UFGUserSettingApplyType* ApplyType = FindUserSetting(ControlSettingId))
+		{
+			PopulateSelector(ApplyType->GetUserSetting(), ControlOptions, Selected);
+			ApplyType->ForceSetValue(FVariant(Selected), true);
+		}
+	}
+	else if (ShowsSourceIdField() && ShowsControlIdField())
 	{
 		SourceOptions.Reset();
 		AppendUniqueNamedIds(SourceOptions, List.NamedSourceIds);
@@ -222,14 +268,17 @@ FName UStructuralPowerIdOptionManager::GetControlIdFromIndex(int32 Index) const
 
 bool UStructuralPowerIdOptionManager::UsesSourceChannel() const
 {
-	return FStructuralEligibilityRules::IsStructuralLightConsumer(TargetBuildable);
+	return ShowsSourceIdField() && !ShowsControlIdField();
+}
+
+bool UStructuralPowerIdOptionManager::UsesControlChannel() const
+{
+	return ShowsControlIdField() && !ShowsSourceIdField();
 }
 
 bool UStructuralPowerIdOptionManager::NeedsDualFields() const
 {
-	return IsValid(TargetBuildable)
-		&& (TargetBuildable->IsA<AFGBuildableCircuitSwitch>()
-			|| TargetBuildable->IsA<AFGBuildableLightsControlPanel>());
+	return ShowsSourceIdField() && ShowsControlIdField();
 }
 
 int32 UStructuralPowerIdOptionManager::GetSourceOptionCount() const

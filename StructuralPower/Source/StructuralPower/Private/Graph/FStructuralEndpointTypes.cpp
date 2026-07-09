@@ -7,6 +7,7 @@
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Buildables/FGBuildablePowerPole.h"
+#include "Buildables/FGBuildableGenerator.h"
 #include "Buildables/FGBuildablePowerStorage.h"
 #include "Graph/FStructuralPowerBuildableCasts.h"
 
@@ -19,6 +20,7 @@ const TCHAR* StructuralEndpointKindToString(const EStructuralEndpointKind Kind)
 	case EStructuralEndpointKind::Light: return TEXT("light");
 	case EStructuralEndpointKind::Panel: return TEXT("panel");
 	case EStructuralEndpointKind::Storage: return TEXT("storage");
+	case EStructuralEndpointKind::Generator: return TEXT("generator");
 	default: return TEXT("?");
 	}
 }
@@ -55,5 +57,12 @@ AFGBuildablePowerStorage* FTrackedEndpoint::GetStorage() const
 {
 	return Kind == EStructuralEndpointKind::Storage
 		? FStructuralPowerBuildableCasts::AsStorage(Actor.Get())
+		: nullptr;
+}
+
+AFGBuildableGenerator* FTrackedEndpoint::GetGenerator() const
+{
+	return Kind == EStructuralEndpointKind::Generator
+		? Cast<AFGBuildableGenerator>(Actor.Get())
 		: nullptr;
 }

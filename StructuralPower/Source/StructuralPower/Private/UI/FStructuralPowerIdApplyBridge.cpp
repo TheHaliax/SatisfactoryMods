@@ -156,11 +156,12 @@ void FStructuralPowerIdApplyBridge::ApplyTypedIds(
 		return;
 	}
 
-	const bool bDual = OptionManager->NeedsDualFields();
-	bool bTouchSource = HasTypedEntry(AssignSourceText);
-	bool bTouchControl = bDual && HasTypedEntry(AssignControlText);
+	const bool bShowSource = OptionManager->ShowsSourceIdField();
+	const bool bShowControl = OptionManager->ShowsControlIdField();
+	bool bTouchSource = bShowSource && HasTypedEntry(AssignSourceText);
+	bool bTouchControl = bShowControl && HasTypedEntry(AssignControlText);
 
-	if (!bTouchSource && IsValid(SuggestedSourceCombo))
+	if (bShowSource && !bTouchSource && IsValid(SuggestedSourceCombo))
 	{
 		const FName ComboSource = OptionManager->GetSourceIdFromIndex(
 			SuggestedSourceCombo->GetSelectedIndex());
@@ -170,7 +171,7 @@ void FStructuralPowerIdApplyBridge::ApplyTypedIds(
 		}
 	}
 
-	if (bDual && !bTouchControl && IsValid(SuggestedControlCombo))
+	if (bShowControl && !bTouchControl && IsValid(SuggestedControlCombo))
 	{
 		const FName ComboControl = OptionManager->GetControlIdFromIndex(
 			SuggestedControlCombo->GetSelectedIndex());
@@ -180,13 +181,7 @@ void FStructuralPowerIdApplyBridge::ApplyTypedIds(
 		}
 	}
 
-	if (!bDual && !bTouchSource)
-	{
-		UE_LOG(LogStructuralPower, Warning, TEXT("[HALSP] Id panel apply — no source id selected or typed"));
-		return;
-	}
-
-	if (bDual && !bTouchSource && !bTouchControl)
+	if (!bTouchSource && !bTouchControl)
 	{
 		UE_LOG(LogStructuralPower, Warning, TEXT("[HALSP] Id panel apply — no ids selected or typed"));
 		return;
@@ -201,7 +196,9 @@ void FStructuralPowerIdApplyBridge::ApplyTypedIds(
 	{
 		const FName TypedSource = HasTypedEntry(AssignSourceText)
 			? ParseTypedId(AssignSourceText)
-			: OptionManager->GetSourceIdFromIndex(SuggestedSourceCombo->GetSelectedIndex());
+			: (IsValid(SuggestedSourceCombo)
+				? OptionManager->GetSourceIdFromIndex(SuggestedSourceCombo->GetSelectedIndex())
+				: NAME_None);
 		if (TypedSource.IsNone())
 		{
 			bClearSource = true;
@@ -223,7 +220,9 @@ void FStructuralPowerIdApplyBridge::ApplyTypedIds(
 	{
 		const FName TypedControl = HasTypedEntry(AssignControlText)
 			? ParseTypedId(AssignControlText)
-			: OptionManager->GetControlIdFromIndex(SuggestedControlCombo->GetSelectedIndex());
+			: (IsValid(SuggestedControlCombo)
+				? OptionManager->GetControlIdFromIndex(SuggestedControlCombo->GetSelectedIndex())
+				: NAME_None);
 		if (TypedControl.IsNone())
 		{
 			bClearControl = true;
@@ -264,7 +263,8 @@ void FStructuralPowerIdApplyBridge::ApplyTypedIds(
 void FStructuralPowerIdApplyBridge::ResetEndpointIds(
 	AFGPlayerController* PlayerController,
 	AFGBuildable* Target,
-	const bool bDualFields)
+	const bool bClearSource,
+	const bool bClearControl)
 {
 	if (!IsValid(Target))
 	{
@@ -277,8 +277,8 @@ void FStructuralPowerIdApplyBridge::ResetEndpointIds(
 			Target,
 			NAME_None,
 			NAME_None,
-			/*bClearSource=*/true,
-			/*bClearControl=*/bDualFields);
+			bClearSource,
+			bClearControl);
 	}
 
 	RequestComponentIdList(PlayerController, Target);

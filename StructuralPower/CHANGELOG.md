@@ -1,5 +1,29 @@
 # Changelog
 
+## 3.0.0 — 2026-07-09
+
+Major architecture release — **stable retroactive load**, lighting, switches, and hoverpack on a rewritten power stack.
+
+### If v2.1 put you off — read this first
+
+- **v2.0.0** retroactively wired existing saves on load — no rebuild required after install.
+- **v2.1.0** added power-switch gating and hoverpack tether, but changed how existing saves are processed on load. On many bases that **broke first-time use entirely**. Unintentional — sorry for the hassle.
+- **v2.2.0** added structural lighting and Id config and tried to patch load edge cases, but the underlying attach/reconcile model still had save-load and toggle regressions.
+- **v3.0.0** rewrites the stack around **vanilla circuit APIs** (processors, transfer-gated bridges, rebuild-from-geometry). Retroactive support is **kept**. If you bounced on v2.1 or an unstable v2.2 dev build, **this is the version worth another shot**.
+
+### What changed
+
+- **Vanilla-first reconcile** — promote/demote and panel downstream via FactoryGame circuit APIs; no parallel power sim
+- **Processor architecture** — light, panel, switch, bridge, and site-bus paths split into dedicated processors + reconcile facade
+- **DR-017 connection model** — bridge pairs, transfer-gated wire/toggle, integrate-on-place for eligible buildables
+- **GroupLighting reconcile** — toggling structural lighting demotes/suspends keyed transfer cleanly
+- **Load performance** — bulk load drain, spatial parent resolve, indexed runtime restitch
+- **Config surface** — server settings via `Configs/StructuralPower.cfg`, console `StructuralPower.Set`, and `!` chat only; **SML pause-menu UI removed**
+- **Hoverpack defaults** — horizontal/vertical reach multipliers default **1.2×** (was 1.5×); clamp 1.0–10.0
+- **Logging** — `[HALSP]` prefix; trace/extended debug console-only (no `!tracetoggle`)
+- **Structural lighting + Id panel** — opt-in `GroupLighting`; **I** key for Source/Control ids; switch subnets (Mode B default)
+- **Save hygiene** — mod bus components stripped before bridge BeginPlay; topology rebuilt from live geometry every load
+
 ## 2.2.0 — 2026-07-05
 Structural lighting, named light groups, and unified device Id config (I key).
 - **Structural lighting (M3):** lights on powered structure draw from the bus — no per-foundation wire daisy-chain. **Opt-in** — default OFF (`!lighting` or console)

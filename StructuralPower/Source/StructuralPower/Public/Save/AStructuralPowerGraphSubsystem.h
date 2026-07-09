@@ -21,6 +21,7 @@
 #include "Routing/EStructuralChannel.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
 #include "Lightweight/FStructuralLightweightTypes.h"
+#include "Save/FStructuralControlIdGangIndex.h"
 #include "Save/FStructuralEndpointIdRegistry.h"
 #include "Save/FStructuralGraphIdOps.h"
 #include "Save/FStructuralPlacementQueue.h"
@@ -132,6 +133,11 @@ public:
 	bool GetEndpointOverrides(const AFGBuildable* Buildable, FStructuralEndpointOverrides& Out) const;
 	bool CollectIdsOnComponent(const FStructuralComponentKey& Key, FStructuralComponentIdList& Out) const;
 	FName GetOrCreateComponentDefaultId(const FStructuralComponentKey& ComponentKey);
+
+	void RebuildControlIdGangsForRoot(int32 ComponentRoot);
+	TArray<FStructuralNodeId> GetControlIdGangMembers(
+		const FStructuralComponentKey& ComponentKey,
+		FName ControlId) const;
 
 	int32 GetStructureNodeCount() const { return StructureGraph.GetNodeCount(); }
 	int32 GetTrackedPoleCount() const { return TrackedEndpoints.Num(); }
@@ -341,6 +347,7 @@ private:
 	TMap<FStructuralNodeId, FStructuralEndpointOverrides> PlayerEndpointOverrides;
 
 	FStructuralEndpointIdRegistry IdRegistry;
+	FStructuralControlIdGangIndex ControlIdGangIndex;
 	FStructuralGraphIdOps IdOps;
 	FStructuralPowerReconcile ReconcileOps;
 	FStructuralPowerRestitch RestitchOps;

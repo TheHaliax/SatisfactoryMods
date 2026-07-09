@@ -14,7 +14,7 @@ Updates a config key and persists to `Configs/StructuralPower.cfg`. Authority on
 
 | Key | Values | Notes |
 |-----|--------|-------|
-| `GroupLighting` | `0` / `1` | Structural lighting (v2.2; chat: `!lighting`) |
+| `GroupLighting` | `0` / `1` | Structural lighting (chat: `!lighting`) |
 | `HoverpackStructuralHorizontalMultiplier` | `1.0`–`10.0` (default `1.2`) | Chat: `!HoverH` |
 | `HoverpackStructuralVerticalMultiplier` | `1.0`–`10.0` (default `1.2`) | Chat: `!HoverV` |
 | `HoverpackStructuralRadiusMultiplier` | `1.0`–`10.0` (default `1.2`) | Legacy alias — sets **both** H and V |

@@ -71,20 +71,34 @@ Full checklist: [release.md](release.md).
 | Eligibility rules | `FStructuralEligibilityRules.cpp` |
 | Factory tick drain | `UStructuralPowerFactoryTickHandler.cpp` |
 | Diagnostics | `FStructuralPowerDiagnostics.cpp`, `FStructuralPowerTrace.cpp` |
-| **v2.2 — I-key input** | `FStructuralPowerIdInput.cpp` |
-| **v2.2 — Id panel UI** | `UStructuralPowerIdConfigWidget.cpp`, `UStructuralPowerIdOptionManager.cpp` |
-| **v2.2 — Panel attach / control bus** | `FStructuralPanelAttach.cpp` |
-| **v2.2 — Keyed panel sync** | `FStructuralPanelControlledSync.cpp`, `UStructuralPowerPanelListener.cpp` |
-| **v2.2 — Light consumer attach** | `FStructuralDeviceAttach.cpp` |
-| **v2.2 — Routing / id pools** | `FStructuralPowerRouter.cpp`, `EStructuralChannel.h`, `CollectIdsOnComponent` |
+| **I-key input / Id panel** | `FStructuralPowerIdInput.cpp`, `UStructuralPowerIdConfigWidget.cpp`, `UStructuralPowerIdOptionManager.cpp` |
+| **Panel attach / control bus** | `FStructuralPanelAttach.cpp`, `FStructuralPanelControlledSync.cpp`, `UStructuralPowerPanelListener.cpp` |
+| **Light consumer attach** | `FStructuralDeviceAttach.cpp` |
+| **Routing / id pools** | `FStructuralPowerRouter.cpp`, `EStructuralChannel.h`, `CollectIdsOnComponent` |
+| **Id RCO apply** | `Network/UStructuralPowerRCO.cpp` |
+| **Reload safety** | `StripPersistedEndpointModComponents`, pre-`BeginPlay` hooks in `StructuralPowerRootInstanceModule.cpp` |
 
-Feature notes: [v2.2.md](v2.2.md). Roadmap: [../README.md#roadmap](../README.md#roadmap).
+Roadmap: [../README.md#roadmap](../README.md#roadmap). Player-facing behavior: [player-guide.md](player-guide.md). Release history: [../CHANGELOG.md](../CHANGELOG.md).
 
-### Transfer-gated switch path (v2.2)
+### Source/Control extension model
+
+Lighting uses **Source/Control** on `Light` and `Switch` channels. The router reserves `Generator`, `Extractor`, `Manufacturer`, `Transport`, and `Misc` for future opt-in features.
+
+| Mechanism | Reuse |
+|-----------|-------|
+| `FStructuralEndpointOverrides` (save) | Any buildable |
+| `CollectIdsOnComponent` id pools | Per-feature namespace buckets |
+| `ResolveSubnetFeedConnector` | Switch-gated sources |
+| `FStructuralDeviceAttach` | Consumer hidden-link pattern |
+| Pre-`BeginPlay` mod component strip | Transient outlet bus |
+
+Lighting-specific: `PanelControlBus`, `FStructuralPanelControlledSync`, panel listener — not reused by generators; same graph/RCO/hook patterns apply.
+
+### Transfer-gated switch path
 
 **What:** Keyed switch OFF tears down consumer hidden links without removing structure topology.  
 **Why:** Old toggle path remeshed whole sites → stalls + circuit storms.  
-**How:** `FStructuralPowerTransferGate` flips `bStructuralPowerTransferActive`; verify with `restitch_off_settled` (`passPanel=0`, `poweredDirect=0`). Full architecture: local `development/CURRENT-STATE.md` §7 (gitignored).
+**How:** `FStructuralPowerTransferGate` flips `bStructuralPowerTransferActive`; verify with `restitch_off_settled` (`passPanel=0`, `poweredDirect=0`). Full architecture: local `development/ARCHITECTURE.md` (gitignored).
 
 ## HALSP trace (developers)
 

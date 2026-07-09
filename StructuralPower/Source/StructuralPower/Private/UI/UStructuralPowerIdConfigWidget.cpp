@@ -399,11 +399,16 @@ void UStructuralPowerIdConfigWidget::ApplyControlIndex(int32 Index)
 
 void UStructuralPowerIdConfigWidget::ApplySuggestedIndex(int32 Index)
 {
+	if (!IsValid(OptionManager))
+	{
+		return;
+	}
+
 	if (OptionManager->UsesSourceChannel())
 	{
 		ApplySourceIndex(Index);
 	}
-	else
+	else if (OptionManager->UsesControlChannel())
 	{
 		ApplyControlIndex(Index);
 	}
@@ -514,8 +519,9 @@ void UStructuralPowerIdConfigWidget::OnResetIdClicked()
 	}
 
 	AFGPlayerController* PC = GetOwningPlayer<AFGPlayerController>();
-	const bool bDual = IsValid(OptionManager) && OptionManager->NeedsDualFields();
-	FStructuralPowerIdApplyBridge::ResetEndpointIds(PC, TargetBuildable, bDual);
+	const bool bClearSource = IsValid(OptionManager) && OptionManager->ShowsSourceIdField();
+	const bool bClearControl = IsValid(OptionManager) && OptionManager->ShowsControlIdField();
+	FStructuralPowerIdApplyBridge::ResetEndpointIds(PC, TargetBuildable, bClearSource, bClearControl);
 }
 
 void UStructuralPowerIdConfigWidget::RequestIdList()

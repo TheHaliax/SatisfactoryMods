@@ -32,6 +32,12 @@ public:
 		const FStructuralComponentKey& ComponentA,
 		const FStructuralComponentKey& ComponentB);
 
+	static bool ShouldRouteKeyedJoin(
+		FName PublisherControl,
+		FName JoinerSource,
+		const FStructuralComponentKey& ComponentA,
+		const FStructuralComponentKey& ComponentB);
+
 	static bool ShouldRouteSwitchGate(
 		FName SwitchControl,
 		FName DeviceSource,
