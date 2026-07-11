@@ -26,15 +26,11 @@ private:
 	UFUNCTION()
 	void HandleSwitchOnChanged();
 
-	UFUNCTION()
-	void HandleCircuitsChanged();
-
 	UPROPERTY()
 	TWeakObjectPtr<AStructuralPowerGraphSubsystem> GraphSubsystem;
 
 	UPROPERTY()
 	TWeakObjectPtr<AFGBuildableCircuitSwitch> BoundSwitch;
 
-	bool bCircuitsBound = false;
 	bool bToggleBound = false;
 };

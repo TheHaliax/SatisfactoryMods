@@ -23,11 +23,11 @@ void FStructuralWireDeltaHandler::Bind(AStructuralPowerGraphSubsystem* InSubsyst
 	Subsystem = InSubsystem;
 }
 
-void FStructuralWireDeltaHandler::ProcessSwitchWireDelta(AFGBuildableCircuitSwitch* Switch)
+void FStructuralWireDeltaHandler::ProcessSwitchCircuitsRebuilt(AFGBuildableCircuitSwitch* Switch)
 {
 	HALSP_TRACE_SCOPE_DETAIL(
 		TEXT("mod"),
-		TEXT("wireDelta.switch"),
+		TEXT("circuitsRebuilt.switch"),
 		IsValid(Switch) ? Switch->GetName() : TEXT("null"));
 
 	if (!IsValid(Switch) || !Switch->HasAuthority())
@@ -45,36 +45,24 @@ void FStructuralWireDeltaHandler::ProcessSwitchWireDelta(AFGBuildableCircuitSwit
 		return;
 	}
 
-	FStructuralPowerContext Ctx = Subsystem->MakeProcessorContext(EAttachContext::WireDelta);
 	const FStructuralNodeId SwitchId = AStructuralPowerGraphSubsystem::MakeNodeId(Switch);
-	FTrackedEndpoint& Tracked = Subsystem->TrackedEndpoints.FindOrAdd(SwitchId);
-	const uint8 WireSignature = FStructuralPowerSwitchProcessor::BuildWireSignature(Switch);
-	if (Tracked.CachedSwitchWireSignature == WireSignature)
+	const FTrackedEndpoint* Tracked = Subsystem->TrackedEndpoints.Find(SwitchId);
+	if (!Tracked || !Tracked->ParentId.IsValid())
 	{
 		return;
 	}
 
-	int32 Root = INDEX_NONE;
-	if (Tracked.ParentId.IsValid())
-	{
-		Root = Subsystem->StructureGraph.FindRoot(Tracked.ParentId);
-	}
-	Ctx = Subsystem->MakeProcessorContext(EAttachContext::WireDelta, Root);
+	const int32 Root = Subsystem->StructureGraph.FindRoot(Tracked->ParentId);
+	FStructuralPowerContext Ctx = Subsystem->MakeProcessorContext(EAttachContext::WireDelta, Root);
 
-	if (FStructuralPowerTrace::IsExtendedDebugEnabled())
-	{
-		FStructuralPowerTrace::LogHook(
-			Switch,
-			TEXT("OnCircuitsChanged"),
-			TEXT("wire_refresh"),
-			TEXT("switch_wire_delta"));
-	}
-
-	FStructuralPowerSwitchProcessor::ApplyStructureMembership(Ctx, Switch);
-	FStructuralPowerSwitchProcessor::ApplyWireDeltaTransferSideEffects(Ctx, Switch, Root);
-
+	FStructuralPowerSwitchProcessor::OnCircuitsRebuilt(Ctx, Switch);
 	FStructuralPowerSwitchProcessor::EnsureListener(Ctx, Switch);
 	Subsystem->NoteSwitchCircuitEchoProcessed(Switch);
+}
+
+void FStructuralWireDeltaHandler::ProcessSwitchWireDelta(AFGBuildableCircuitSwitch* Switch)
+{
+	ProcessSwitchCircuitsRebuilt(Switch);
 }
 
 void FStructuralWireDeltaHandler::ProcessPanelWireDelta(AFGBuildableLightsControlPanel* Panel)

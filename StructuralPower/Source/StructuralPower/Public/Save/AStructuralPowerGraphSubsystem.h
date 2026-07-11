@@ -84,6 +84,7 @@ public:
 	void OnLightweightRemoved(const FStructuralLightweightKey& Key);
 	void ProcessWallOutletAfterWire(AFGBuildablePowerPole* Pole);
 	void ProcessSwitchWireDelta(AFGBuildableCircuitSwitch* Switch);
+	void ProcessSwitchCircuitsRebuilt(AFGBuildableCircuitSwitch* Switch);
 	void ProcessPanelWireDelta(AFGBuildableLightsControlPanel* Panel);
 	bool ShouldSkipPanelCircuitEcho(
 		AFGBuildableLightsControlPanel* Panel,

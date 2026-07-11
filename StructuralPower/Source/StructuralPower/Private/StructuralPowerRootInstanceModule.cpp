@@ -302,6 +302,47 @@ void UStructuralPowerRootInstanceModule::HandleBuildablesConstructed(const TArra
 	}
 }
 
+static void HandleSwitchCircuitsRebuilt(AFGBuildableCircuitBridge* Bridge)
+{
+	AFGBuildableCircuitSwitch* Switch = Cast<AFGBuildableCircuitSwitch>(Bridge);
+	if (!IsValid(Switch) || !Switch->HasAuthority())
+	{
+		return;
+	}
+
+	UWorld* World = Switch->GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
+		[WorldWeak = TWeakObjectPtr<UWorld>(World),
+			SwitchWeak = TWeakObjectPtr<AFGBuildableCircuitSwitch>(Switch)]()
+		{
+			if (AFGBuildableCircuitSwitch* SwitchPtr = SwitchWeak.Get())
+			{
+				if (UWorld* WorldPtr = WorldWeak.Get())
+				{
+					if (AStructuralPowerGraphSubsystem* Graph =
+						AStructuralPowerGraphSubsystem::GetOrCreate(WorldPtr))
+					{
+						if (Graph->ShouldDeferCircuitDrivenRefresh())
+						{
+							WorldPtr->GetTimerManager().SetTimerForNextTick(
+								FTimerDelegate::CreateStatic(
+									&HandleSwitchCircuitsRebuilt,
+									static_cast<AFGBuildableCircuitBridge*>(SwitchPtr)));
+							return;
+						}
+
+						Graph->ProcessSwitchCircuitsRebuilt(SwitchPtr);
+					}
+				}
+			}
+		}));
+}
+
 void UStructuralPowerRootInstanceModule::HandlePowerConnectionChanged(
 	AFGBuildablePowerPole* Pole,
 	UFGCircuitConnectionComponent* /*Connection*/)
@@ -583,6 +624,14 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 		[](AFGBuildableSubsystem* /*Subsystem*/, AFGBuildable* Buildable)
 		{
 			HandleBuildableRemoved(Buildable);
+		});
+
+	SUBSCRIBE_METHOD_VIRTUAL_AFTER(
+		AFGBuildableCircuitBridge::OnCircuitsRebuilt,
+		GetMutableDefault<AFGBuildableCircuitBridge>(),
+		[](AFGBuildableCircuitBridge* Bridge)
+		{
+			HandleSwitchCircuitsRebuilt(Bridge);
 		});
 
 	SUBSCRIBE_METHOD_VIRTUAL_AFTER(

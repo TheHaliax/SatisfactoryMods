@@ -5,8 +5,6 @@
 
 #include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Core/FStructuralPowerContext.h"
-#include "Engine/World.h"
-#include "Graph/FStructuralSwitchParentResolver.h"
 #include "Processors/FStructuralPowerSwitchProcessor.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
@@ -21,13 +19,7 @@ static bool SwitchNeedsToggleSubscription(
 		return false;
 	}
 
-	const FStructuralPowerContext Ctx = Graph.MakeProcessorContext(EAttachContext::WireDelta);
-	return FStructuralPowerSwitchProcessor::NeedsAdvancedWork(Ctx, Switch);
-}
-
-static bool SwitchNeedsCircuitSubscription(AFGBuildableCircuitSwitch* Switch)
-{
-	return IsValid(Switch);
+	return true;
 }
 } // namespace
 
@@ -54,24 +46,7 @@ void UStructuralPowerSwitchListener::SyncSubscriptions(
 		return;
 	}
 
-	const bool bArmed = SwitchNeedsToggleSubscription(*Graph, Switch);
-	const bool bNeedsToggle = bArmed;
-	const bool bNeedsCircuit = SwitchNeedsCircuitSubscription(Switch);
-
-	if (bCircuitsBound && !bNeedsCircuit)
-	{
-		Switch->mOnCircuitsChanged.RemoveDynamic(
-			this,
-			&UStructuralPowerSwitchListener::HandleCircuitsChanged);
-		bCircuitsBound = false;
-	}
-	else if (!bCircuitsBound && bNeedsCircuit)
-	{
-		Switch->mOnCircuitsChanged.AddDynamic(
-			this,
-			&UStructuralPowerSwitchListener::HandleCircuitsChanged);
-		bCircuitsBound = true;
-	}
+	const bool bNeedsToggle = SwitchNeedsToggleSubscription(*Graph, Switch);
 
 	if (bToggleBound && !bNeedsToggle)
 	{
@@ -99,17 +74,9 @@ void UStructuralPowerSwitchListener::EndPlay(const EEndPlayReason::Type EndPlayR
 				this,
 				&UStructuralPowerSwitchListener::HandleSwitchOnChanged);
 		}
-
-		if (bCircuitsBound)
-		{
-			Switch->mOnCircuitsChanged.RemoveDynamic(
-				this,
-				&UStructuralPowerSwitchListener::HandleCircuitsChanged);
-		}
 	}
 
 	bToggleBound = false;
-	bCircuitsBound = false;
 
 	Super::EndPlay(EndPlayReason);
 }
@@ -120,43 +87,4 @@ void UStructuralPowerSwitchListener::HandleSwitchOnChanged()
 	{
 		Graph->OnSwitchStateChanged(BoundSwitch.Get());
 	}
-}
-
-void UStructuralPowerSwitchListener::HandleCircuitsChanged()
-{
-	AFGBuildableCircuitSwitch* Switch = BoundSwitch.Get();
-	AStructuralPowerGraphSubsystem* Graph = GraphSubsystem.Get();
-	if (!IsValid(Graph) || !IsValid(Switch))
-	{
-		return;
-	}
-
-	if (Graph->ShouldDeferCircuitDrivenRefresh())
-	{
-		return;
-	}
-
-	if (Graph->ShouldSkipSwitchCircuitEcho(Switch))
-	{
-		return;
-	}
-
-	UWorld* World = Switch->GetWorld();
-	if (!IsValid(World))
-	{
-		return;
-	}
-
-	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
-		[GraphWeak = TWeakObjectPtr<AStructuralPowerGraphSubsystem>(Graph),
-			SwitchWeak = TWeakObjectPtr<AFGBuildableCircuitSwitch>(Switch)]()
-		{
-			if (AStructuralPowerGraphSubsystem* GraphPtr = GraphWeak.Get())
-			{
-				if (AFGBuildableCircuitSwitch* SwitchPtr = SwitchWeak.Get())
-				{
-					GraphPtr->ProcessSwitchWireDelta(SwitchPtr);
-				}
-			}
-		}));
 }

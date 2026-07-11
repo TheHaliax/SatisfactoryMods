@@ -894,7 +894,7 @@ void AStructuralPowerGraphSubsystem::FinishBulkLoadDrain()
 
 			if (AFGBuildableCircuitSwitch* Switch = Pair.Value.GetSwitch())
 			{
-				FStructuralPowerSwitchProcessor::SyncDirectedBridgePair(BulkCtx, Switch);
+				FStructuralPowerSwitchProcessor::ApplySwitchBridgeStrategy(BulkCtx, Switch);
 			}
 		}
 
@@ -1511,12 +1511,17 @@ void AStructuralPowerGraphSubsystem::ProcessSwitchEndpoint(AFGBuildableCircuitSw
 
 void AStructuralPowerGraphSubsystem::ProcessSwitchWireDelta(AFGBuildableCircuitSwitch* Switch)
 {
+	ProcessSwitchCircuitsRebuilt(Switch);
+}
+
+void AStructuralPowerGraphSubsystem::ProcessSwitchCircuitsRebuilt(AFGBuildableCircuitSwitch* Switch)
+{
 	if (ShouldDeferCircuitDrivenRefresh())
 	{
 		return;
 	}
 
-	WireDeltaHandler.ProcessSwitchWireDelta(Switch);
+	WireDeltaHandler.ProcessSwitchCircuitsRebuilt(Switch);
 }
 
 

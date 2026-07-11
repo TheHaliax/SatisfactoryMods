@@ -37,6 +37,16 @@ public:
 		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch);
 
+	/** DR-011 bridge Strategy — open A+B baseline, overwrite leg per wire/config/lever. */
+	static void ApplySwitchBridgeStrategy(
+		FStructuralPowerContext& Ctx,
+		AFGBuildableCircuitSwitch* Switch);
+
+	/** FG OnCircuitsRebuilt — wire-count delta only; mesh already from place/load. */
+	static void OnCircuitsRebuilt(
+		FStructuralPowerContext& Ctx,
+		AFGBuildableCircuitSwitch* Switch);
+
 	static uint8 BuildWireSignature(AFGBuildableCircuitSwitch* Switch);
 
 	static void RemeshUnmeshedPeersAfterBulkLoad(FStructuralPowerContext& Ctx);
