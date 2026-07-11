@@ -223,6 +223,7 @@ public:
 	friend class FStructuralPanelConnectionPoint;
 	friend class FStructuralStorageConnectionPoint;
 	friend class FStructuralSiteMembership;
+	friend class FStructuralBridgeAttach;
 	friend class FStructuralPowerReconcile;
 	friend class FStructuralPowerRestitch;
 	friend class FStructuralGraphCircuitOps;

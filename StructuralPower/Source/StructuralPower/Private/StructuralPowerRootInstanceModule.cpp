@@ -128,6 +128,44 @@ bool UStructuralPowerRootInstanceModule::TryEnqueueBuildable(
 	return false;
 }
 
+static void HandlePoleBeginPlay(AFGBuildablePowerPole* Pole)
+{
+	if (!IsValid(Pole) || !Pole->HasAuthority())
+	{
+		return;
+	}
+
+	UWorld* World = Pole->GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	UE_LOG(LogStructuralPower, Log,
+		TEXT("[HALSP] pole BeginPlay %s — enqueue outlet"),
+		*Pole->GetName());
+
+	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
+		[WorldWeak = TWeakObjectPtr<UWorld>(World),
+			PoleWeak = TWeakObjectPtr<AFGBuildablePowerPole>(Pole)]()
+		{
+			if (AFGBuildablePowerPole* PolePtr = PoleWeak.Get())
+			{
+				if (UWorld* WorldPtr = WorldWeak.Get())
+				{
+					if (AStructuralPowerGraphSubsystem* Graph =
+						AStructuralPowerGraphSubsystem::GetOrCreate(WorldPtr))
+					{
+						Graph->EnqueuePlacement(
+							PolePtr,
+							EStructuralPlacementJobType::Outlet,
+							/*bDefer=*/true);
+					}
+				}
+			}
+		}));
+}
+
 static void HandleSwitchBeginPlay(AFGBuildableCircuitSwitch* Switch)
 {
 	if (!IsValid(Switch) || !Switch->HasAuthority())
@@ -593,6 +631,14 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 			}
 
 			AStructuralPowerGraphSubsystem::StripPersistedEndpointModComponents(Switch);
+		});
+
+	SUBSCRIBE_METHOD_VIRTUAL_AFTER(
+		AFGBuildablePowerPole::BeginPlay,
+		GetMutableDefault<AFGBuildablePowerPole>(),
+		[](AFGBuildablePowerPole* Pole)
+		{
+			HandlePoleBeginPlay(Pole);
 		});
 
 	SUBSCRIBE_METHOD_VIRTUAL_AFTER(

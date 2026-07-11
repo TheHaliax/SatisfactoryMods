@@ -333,7 +333,6 @@ void FStructuralGraphCircuitOps::ApplyLocalBridgeBusAttach(
 		return;
 	}
 
-	// Structure feed attaches on wire/config delta, not IntegrateOnPlace.
 	if (!HasBridgeBusPeerMesh(OutletBus))
 	{
 		TryMeshPeerBusOnComponent(

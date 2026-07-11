@@ -14,6 +14,7 @@
 #include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Panel/FStructuralPanelPortResolver.h"
+#include "Attach/FStructuralBridgeAttach.h"
 #include "Processors/FStructuralPowerProcessorRegistry.h"
 #include "Processors/FStructuralPowerSwitchProcessor.h"
 #include "Processors/IStructuralPowerProcessor.h"
@@ -126,6 +127,26 @@ void FStructuralWireDeltaHandler::ProcessPanelWireDelta(AFGBuildableLightsContro
 
 void FStructuralWireDeltaHandler::ProcessPoleWireDelta(AFGBuildablePowerPole* Pole)
 {
+	if (!IsValid(Pole) || !Pole->HasAuthority())
+	{
+		return;
+	}
+
+	if (Subsystem->ShouldDeferCircuitDrivenRefresh())
+	{
+		Subsystem->EnqueuePlacement(Pole, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+		return;
+	}
+
+	if (!FStructuralBridgeAttach::HasPlacementMembership(
+			*Subsystem,
+			Pole,
+			EStructuralEndpointKind::Pole))
+	{
+		Subsystem->ProcessPoleEndpoint(Pole);
+		return;
+	}
+
 	FStructuralPowerContext Ctx = Subsystem->GetProcessorContext();
 	if (IStructuralPowerProcessor* Processor =
 			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Pole))

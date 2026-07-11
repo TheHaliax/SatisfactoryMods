@@ -143,7 +143,6 @@ void FStructuralSiteMembership::IntegrateOnPlace(
 
 	if (Site.bAnchored && Site.SiteRoot != INDEX_NONE && !Graph.HasBridgeBusPeerMesh(OutletBus))
 	{
-		// Place = peer mesh only; structure feed arms on wire or config.
 		Graph.TryMeshPeerBusOnComponent(
 			Host,
 			OutletBus,

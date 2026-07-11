@@ -3,10 +3,10 @@
 
 #include "Processors/FStructuralPowerStorageProcessor.h"
 
+#include "Attach/FStructuralBridgeAttach.h"
 #include "Buildables/FGBuildablePowerStorage.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
-#include "Connection/FStructuralSiteMembership.h"
 #include "Connection/FStructuralStorageConnectionPoint.h"
 #include "Core/EStructuralPowerRole.h"
 #include "Core/EStructuralPowerScope.h"
@@ -87,23 +87,28 @@ void FStructuralPowerStorageProcessor::Process(
 
 	AStructuralPowerGraphSubsystem& Graph = Ctx.Graph();
 	const bool bBulk = Graph.IsBulkLoadDrainActive();
-	FStructuralStorageConnectionPoint Connection(Graph, Storage);
 	const FStructuralNodeId StorageId = Graph.MakeNodeId(Storage);
+
 	if (!bBulk)
 	{
-		if (const FTrackedEndpoint* Existing = Graph.TrackedEndpoints.Find(StorageId))
+		if (FStructuralBridgeAttach::HasPlacementMembership(
+				Graph,
+				Storage,
+				EStructuralEndpointKind::Storage))
 		{
-			if (Existing->Kind == EStructuralEndpointKind::Storage && Existing->ParentId.IsValid())
-			{
-				Connection.OnWireOrGateChanged(Ctx.GetAttachContext());
-				return;
-			}
+			FStructuralStorageConnectionPoint Connection(Graph, Storage);
+			Connection.OnWireOrGateChanged(Ctx.GetAttachContext());
+			return;
 		}
 	}
 
-	UFGStructuralPowerConnectionComponent* OutletBus =
-		Cast<UFGStructuralPowerConnectionComponent>(Connection.GetStructuralConnector());
-	if (!OutletBus)
+	FStructuralBridgeAttachRequest Request;
+	Request.Host = Storage;
+	Request.Kind = EStructuralEndpointKind::Storage;
+	Request.bUsePoleRootResolver = false;
+
+	const FStructuralBridgeAttachOutcome Outcome = FStructuralBridgeAttach::AttachOnPlace(Ctx, Request);
+	if (!Outcome.OutletBus)
 	{
 		FStructuralPowerTrace::LogPlacementSkip(
 			Storage,
@@ -112,53 +117,7 @@ void FStructuralPowerStorageProcessor::Process(
 		return;
 	}
 
-	FStructuralSiteContext Site;
-	FTrackedEndpoint& Tracked = Graph.TrackedEndpoints.FindOrAdd(StorageId);
-	if (!FStructuralSiteMembership::ResolveSiteContext(Graph, Storage, Site))
-	{
-		const FStructuralWallAnchor ParentAnchor = Connection.GetStructureAnchor();
-		Graph.ResolveEndpointComponentRoot(Storage, ParentAnchor, Site.ParentId);
-		Tracked.ParentId = Site.ParentId;
-		Site.SiteRoot = Graph.FindRootForTrackedEndpoint(Tracked);
-		Site.bAnchored = Site.SiteRoot != INDEX_NONE;
-	}
-
-	FStructuralSiteMembershipParams Params;
-	Params.bLinkVisibleConnections = !bBulk;
-	if (bBulk)
-	{
-		Graph.LinkBusToVisibleConnections(Storage, OutletBus);
-	}
-	else
-	{
-		Params.bLinkVisibleConnections = true;
-	}
-	Params.bBridgePeersOnly = bBulk;
-
-	if (Site.SiteRoot != INDEX_NONE && (bBulk || !Graph.HasBridgeBusPeerMesh(OutletBus)))
-	{
-		FStructuralSiteMembership::IntegrateOnPlace(
-			Graph,
-			Storage,
-			OutletBus,
-			StorageId,
-			EStructuralEndpointKind::Storage,
-			Tracked,
-			Site,
-			Params);
-	}
-	else
-	{
-		Tracked.Actor = Storage;
-		Tracked.ParentId = Site.ParentId;
-		Tracked.Kind = EStructuralEndpointKind::Storage;
-		Tracked.bStructuralPowerTransferActive = Site.bAnchored;
-		Graph.RegisterBuildableActor(Storage);
-		if (Params.bLinkVisibleConnections)
-		{
-			Graph.LinkBusToVisibleConnectionsLocal(Storage, OutletBus);
-		}
-	}
+	const FStructuralSiteContext& Site = Outcome.Site;
 
 	if (bBulk && Site.SiteRoot != INDEX_NONE && Site.ParentId.IsValid())
 	{
@@ -181,6 +140,6 @@ void FStructuralPowerStorageProcessor::Process(
 		StructuralPowerRoleToString(EStructuralPowerRole::Host),
 		Site.SiteRoot,
 		Site.bAnchored ? 1 : 0,
-		OutletBus->GetCircuitID(),
-		FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0);
+		Outcome.OutletBus->GetCircuitID(),
+		FStructuralCircuitPromotionUtil::ComponentCarriesPower(Outcome.OutletBus) ? 1 : 0);
 }
