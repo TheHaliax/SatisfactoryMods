@@ -22,7 +22,6 @@ class STRUCTURALPOWER_API FStructuralPowerSwitchProcessor
 public:
 	static void Process(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 
-	/** FG-fact-driven structure mesh, SP# legs, gate — no cross-site wire propagation. */
 	static void ApplyStructureMembership(
 		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch);
@@ -37,12 +36,10 @@ public:
 		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch);
 
-	/** DR-011 bridge Strategy — open A+B baseline, overwrite leg per wire/config/lever. */
 	static void ApplySwitchBridgeStrategy(
 		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch);
 
-	/** FG OnCircuitsRebuilt — wire-count delta only; mesh already from place/load. */
 	static void OnCircuitsRebuilt(
 		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch);
@@ -56,7 +53,6 @@ public:
 		AFGBuildableCircuitSwitch* Switch,
 		int32 LocalRoot);
 
-	/** Post-topology consumer refresh — parity with toggle transfer pass. */
 	static void ApplyWireDeltaTransferSideEffects(
 		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch,

@@ -27,7 +27,6 @@ struct FStructuralBridgeAttachOutcome
 	UFGStructuralPowerConnectionComponent* OutletBus = nullptr;
 };
 
-/** Shared place/load attach for non-toggle bridge endpoints (pole, storage). */
 class STRUCTURALPOWER_API FStructuralBridgeAttach
 {
 public:

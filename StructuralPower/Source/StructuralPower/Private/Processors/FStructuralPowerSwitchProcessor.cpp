@@ -372,7 +372,6 @@ void FStructuralPowerSwitchProcessor::ApplySwitchBridgeStrategy(
 		return;
 	}
 
-	// BYPASS unconfigured, ON, 0 wire — structure feed ↔ SP# (append once).
 	Graph.LinkBusToVisibleConnectionsLocal(Switch, SourceBus, /*bMeshOnlyLinks=*/true);
 	CloseBypassZeroWireOnLegs(SourceBus, Switch);
 }

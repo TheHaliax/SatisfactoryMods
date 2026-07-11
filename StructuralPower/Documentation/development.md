@@ -4,9 +4,11 @@
 
 | Surface | Role |
 |---------|------|
-| **`Source/`** | Almost no comments — only non-obvious engine traps inline. If behavior needs explanation, it belongs in docs. |
+| **`Source/`** | Default **no comments** — only non-obvious engine traps inline (FG circuit side-effects, load asserts, MP client gaps). If behavior needs teaching, put it here or in local `development/ARCHITECTURE.md`. |
 | **`Documentation/`** (this folder) | Player + contributor **what**, **why**, **how** |
 | **`development/`** (gitignored, local) | As-built architecture, log semantics, ship gate — agents read [DOCUMENTATION.md](../../development/DOCUMENTATION.md) first |
+
+**Policy (POLICY §13):** no class blurbs, no `DR-*` refs, no milestone notes in `Source/`. SPDX headers stay.
 
 ## Repository layout
 
@@ -64,8 +66,9 @@ Full checklist: [release.md](release.md).
 | Site echo state | `FStructuralSiteState.cpp` |
 | Cross-site graph | `FStructuralCrossSiteGraph.cpp` |
 | Id widget helpers | `FStructuralPowerIdShellBuilder.cpp`, `FStructuralPowerIdModalHost.cpp`, … |
-| **Processors** | `FStructuralPowerSwitchProcessor`, `FStructuralPowerPanelProcessor`, `FStructuralPowerLightProcessor`, `FStructuralPowerPoleProcessor`, `FStructuralPowerTransferGate`, `FStructuralPowerBridgeProcessor` |
-| **Connection points** | `FStructuralPoleConnectionPoint`, `FStructuralSwitchConnectionPoint`, `FStructuralPanelConnectionPoint` |
+| **Processors** | `FStructuralPowerSwitchProcessor`, `FStructuralPowerPanelProcessor`, `FStructuralPowerLightProcessor`, `FStructuralPowerPoleProcessor`, `FStructuralPowerStorageProcessor`, `FStructuralPowerTransferGate`, `FStructuralPowerBridgeProcessor` |
+| **Bridge attach (pole + storage)** | `Attach/FStructuralBridgeAttach.cpp` — shared `IntegrateOnPlace` place/load path |
+| **Connection points** | `FStructuralPoleConnectionPoint`, `FStructuralSwitchConnectionPoint`, `FStructuralPanelConnectionPoint`, `FStructuralStorageConnectionPoint` |
 | Structural connectivity graph (spatial hash + union-find) | `FStructuralConnectivityGraph.cpp` |
 | Lightweight index | `FStructuralLightweightIndex.cpp` |
 | Eligibility rules | `FStructuralEligibilityRules.cpp` |
@@ -94,6 +97,23 @@ Lighting uses **Source/Control** on `Light` and `Switch` channels. The router re
 
 Lighting-specific: `PanelControlBus`, `FStructuralPanelControlledSync`, panel listener — not reused by generators; same graph/RCO/hook patterns apply.
 
+### Bridge attach (pole + storage)
+
+**What:** `FStructuralBridgeAttach::AttachOnPlace` — one place/load pipeline for non-toggle bridges.  
+**Why:** Runtime poles skipped `ProcessOutlet` when build hooks missed; wire-delta duplicated partial integrate.  
+**How:**
+
+```
+BeginPlay / OnBuildEffectFinished / bulk drain
+  → ProcessOutlet → pole|storage processor
+  → FStructuralBridgeAttach::AttachOnPlace
+  → IntegrateOnPlace (link FG visible ports → SP#, peer mesh, promote)
+```
+
+Wire delta: no `ParentId` membership yet → full `ProcessPoleEndpoint` once; else thin link/mesh in connection point. **Switch** keeps `ApplyStructureMembership` + bridge strategy; **panel** unchanged (`FStructuralPanelAttach`, `GroupLighting` gate).
+
+`bStructuralPowerTransferActive = false` suspends new consumer wiring only — tracked topology stays until explicit tear-down.
+
 ### Transfer-gated switch path
 
 **What:** Keyed switch OFF tears down consumer hidden links without removing structure topology.  
@@ -111,6 +131,9 @@ Enable `StructuralPower.Trace 1` in the console (debug only).
 | `[HALSP] light path=panel_downstream` | `pass=` = `panelFed AND armedOn` |
 | `[HALSP] panel ctx=restitch_summary` | `panelFed=` = upstream supplies at snapshot |
 | `[HALSP] hook … panel_subnet_sync detail=` | Echo skip reason — see local `LOG-INTERPRETATION.md` |
+| `[HALSP] outlet Build_PowerPole` | Runtime pole place — bus↔visible + site integrate |
+| `[HALSP] pole BeginPlay` | Pole enqueue when build-effect hook missed |
+| `[HALSP] pole wire delta` | Thin delta after membership exists |
 
 **OFF result:** read `switch restitch_off_settled` — expect `poweredDirect=0 passPanel=0`.  
 `armedPanel>0` with `passPanel=0` after OFF is normal (panel still armed, no feed).

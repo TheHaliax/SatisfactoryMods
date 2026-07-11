@@ -36,7 +36,6 @@ struct FTrackedEndpoint
 
 	uint8 CachedSwitchWireSignature = 0xFF;
 
-	// false suspends new wiring only — tracked topology stays until explicit tear-down.
 	bool bStructuralPowerTransferActive = false;
 
 	class AFGBuildableCircuitSwitch* GetSwitch() const;

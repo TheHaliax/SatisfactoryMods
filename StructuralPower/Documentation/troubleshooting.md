@@ -8,6 +8,8 @@
 
 The outlet bus exists but the pole's structural component was never powered. A component only joins the game circuit once a pole in it is actually powered — wire one visible cable from your generator grid to the structure (or to any pole on it).
 
+**Fresh pole on powered structure, empty circuit graph UI:** update to latest dev build — runtime place should log `[HALSP] pole BeginPlay` then `site integrate` before any wire. If only `pole wire delta` appears, attach pipeline did not run on place.
+
 Common case: **isolated structure** — a foundation with no adjacency to the rest of your base stays on its own island. Not a bug if you kept it separate.
 
 ## Power not propagating
