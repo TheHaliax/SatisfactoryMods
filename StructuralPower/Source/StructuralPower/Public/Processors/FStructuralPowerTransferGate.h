@@ -34,5 +34,11 @@ public:
 		int32 Root,
 		bool bLocalPromoteOnly = true);
 
+	/** Foundation-default lights on a site root (not panel / keyed-direct). */
+	static void RefreshSiteStructuralConsumersOnRoot(
+		FStructuralPowerContext& Ctx,
+		int32 Root,
+		bool bGateOpen);
+
 	static void SuspendAllKeyedLightingTransfer(FStructuralPowerContext& Ctx);
 };

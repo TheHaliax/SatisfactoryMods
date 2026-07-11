@@ -682,14 +682,11 @@ UFGCircuitConnectionComponent* FStructuralGraphCircuitOps::GetComponentSourceCon
 			return;
 		}
 
-		if (Tracked->Kind != EStructuralEndpointKind::Switch)
+		if (UFGStructuralPowerConnectionComponent* Bus = AStructuralPowerGraphSubsystem::FindBusConnector(Host))
 		{
-			if (UFGStructuralPowerConnectionComponent* Bus = AStructuralPowerGraphSubsystem::FindBusConnector(Host))
+			if (!PoweredBus && FStructuralCircuitPromotionUtil::ComponentCarriesPower(Bus))
 			{
-				if (!PoweredBus && FStructuralCircuitPromotionUtil::ComponentCarriesPower(Bus))
-				{
-					PoweredBus = Bus;
-				}
+				PoweredBus = Bus;
 			}
 		}
 

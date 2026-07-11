@@ -35,7 +35,9 @@ void SetTrackedTransfer(FTrackedEndpoint& Tracked, bool bActive)
 
 bool RootAllowsTransfer(FStructuralPowerContext& Ctx, int32 Root)
 {
-	return Root != INDEX_NONE && Ctx.Graph().DoesComponentRootCarryPower(Root);
+	return Root != INDEX_NONE
+		&& (Ctx.Graph().DoesComponentRootCarryPower(Root)
+			|| Ctx.Graph().DoesSiteStructuralBusCarryPower(Root));
 }
 
 FName ResolveSwitchGateId(const FStructuralChannelKey& ChannelKey)
@@ -321,6 +323,7 @@ void FStructuralPowerTransferGate::RefreshKeyedTransferOnRoot(
 	}
 
 	const TArray<FStructuralNodeId> SwitchSnapshot = *SwitchIds;
+	bool bSiteGateOpen = false;
 	for (const FStructuralNodeId& NodeId : SwitchSnapshot)
 	{
 		const FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(NodeId);
@@ -341,11 +344,81 @@ void FStructuralPowerTransferGate::RefreshKeyedTransferOnRoot(
 			continue;
 		}
 
+		bSiteGateOpen = true;
 		ApplyKeyedTransferOnRoot(
 			Ctx,
 			Root,
 			Control,
 			/*bGateOpen=*/true,
 			bLocalPromoteOnly);
+	}
+
+	RefreshSiteStructuralConsumersOnRoot(Ctx, Root, bSiteGateOpen);
+}
+
+void FStructuralPowerTransferGate::RefreshSiteStructuralConsumersOnRoot(
+	FStructuralPowerContext& Ctx,
+	int32 Root,
+	bool bGateOpen)
+{
+	if (Root == INDEX_NONE || !FStructuralPowerModConfig::IsGroupLightingEnabled())
+	{
+		return;
+	}
+
+	Ctx.Graph().RefreshBridgeEndpointRootIndex();
+
+	const FStructuralComponentKey CompKey = Ctx.Graph().MakeComponentKeyForRoot(Root);
+	const FName ComponentDefaultId = CompKey.IsValid()
+		? Ctx.Graph().GetOrCreateComponentDefaultId(CompKey)
+		: NAME_None;
+
+	const bool bAllowTransfer = bGateOpen && RootAllowsTransfer(Ctx, Root);
+
+	auto RefreshFoundationLight = [&](const FStructuralNodeId& NodeId)
+	{
+		FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(NodeId);
+		if (!Tracked)
+		{
+			return;
+		}
+
+		AFGBuildableLightSource* Light = Tracked->GetLight();
+		if (!IsValid(Light))
+		{
+			return;
+		}
+
+		const FStructuralChannelKey LightKey = Ctx.Graph().ResolveChannelKeyForBuildable(Light);
+		if (LightKey.Source.IsNone()
+			|| LightKey.Source != ComponentDefaultId
+			|| Ctx.Graph().IsPanelDownstreamLight(Root, LightKey))
+		{
+			return;
+		}
+
+		const bool bVanillaWired = IsConsumerVanillaWired(
+			FStructuralDeviceAttach::FindLightWireConnection(Light));
+		const bool bLightTransfer = bAllowTransfer && !bVanillaWired;
+		SetTrackedTransfer(*Tracked, bLightTransfer);
+
+		if (bLightTransfer)
+		{
+			FStructuralPowerLightProcessor::Process(Ctx, Light, /*bLocalPromoteOnly=*/true);
+		}
+		else
+		{
+			SuspendLightTransfer(Ctx, Light, *Tracked);
+		}
+	};
+
+	if (const TArray<FStructuralNodeId>* LightIds =
+			Ctx.Graph().EndpointIndex.Get(Root, EStructuralEndpointKind::Light))
+	{
+		const TArray<FStructuralNodeId> Snapshot = *LightIds;
+		for (const FStructuralNodeId& NodeId : Snapshot)
+		{
+			RefreshFoundationLight(NodeId);
+		}
 	}
 }

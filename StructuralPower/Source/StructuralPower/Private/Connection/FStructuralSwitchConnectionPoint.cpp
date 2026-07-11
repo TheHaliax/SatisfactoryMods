@@ -119,55 +119,18 @@ void FStructuralSwitchConnectionPoint::OnWireOrGateChanged(EAttachContext Attach
 	ResolveTrackedRoot(SwitchId, Root, bStructurallyAnchored);
 
 	FStructuralPowerContext Ctx = Graph.MakeProcessorContext(AttachContext, Root);
-
-	const bool bKeyedSubnet = FStructuralPowerSwitchProcessor::HasAssignedControl(Ctx, SwitchPtr);
-	const bool bHasWire = FStructuralSwitchParentResolver::HasAnyVanillaWire(SwitchPtr);
+	FStructuralPowerSwitchProcessor::ApplyStructureMembership(Ctx, SwitchPtr);
 
 	if (AttachContext == EAttachContext::WireDelta)
 	{
-		UFGStructuralPowerConnectionComponent* OutletBus =
-			Cast<UFGStructuralPowerConnectionComponent>(GetStructuralConnector());
-
-		if (bHasWire || bKeyedSubnet)
-		{
-			FStructuralPowerSwitchProcessor::SyncDirectedBridgePair(Ctx, SwitchPtr);
-		}
-		else
-		{
-			FStructuralPowerSwitchProcessor::DisarmDirectedPair(Ctx, SwitchPtr);
-		}
-
-		UE_LOG(LogStructuralPower, Log,
-			TEXT("[HALSP] switch wire delta %s kind=%s scope=%s site=%d role=%s attach=%s"
-				" root=%d busCircuit=%d wired=%d"),
-			*SwitchPtr->GetName(),
-			StructuralEndpointKindToString(EStructuralEndpointKind::Switch),
-			StructuralPowerScopeToString(EStructuralPowerScope::Site),
-			Root,
-			StructuralPowerRoleToString(EStructuralPowerRole::Gateway),
-			AttachContextToString(AttachContext),
-			Root,
-			IsValid(OutletBus) ? OutletBus->GetCircuitID() : INDEX_NONE,
-			bHasWire ? 1 : 0);
-		return;
+		FStructuralPowerSwitchProcessor::ApplyWireDeltaTransferSideEffects(Ctx, SwitchPtr, Root);
 	}
 
-	FTrackedEndpoint& Tracked = Graph.TrackedEndpoints.FindOrAdd(SwitchId);
-
-	FStructuralSiteContext Site;
-	if (FStructuralSiteMembership::ResolveSiteContext(Graph, SwitchPtr, Site))
-	{
-		Root = Site.SiteRoot;
-		bStructurallyAnchored = Site.bAnchored;
-	}
-	else
-	{
-		Site.ParentId = Tracked.ParentId;
-		Site.SiteRoot = Root;
-		Site.bAnchored = bStructurallyAnchored;
-	}
-
+	const bool bHasWire = FStructuralSwitchParentResolver::HasAnyVanillaWire(SwitchPtr);
 	const bool bSwitchOn = SwitchPtr->IsBridgeActive();
+
+	const FTrackedEndpoint* Tracked = Graph.TrackedEndpoints.Find(SwitchId);
+	const bool bGateOpen = Tracked && Tracked->bStructuralPowerTransferActive;
 
 	UFGStructuralPowerConnectionComponent* OutletBus =
 		Cast<UFGStructuralPowerConnectionComponent>(GetStructuralConnector());
@@ -176,44 +139,9 @@ void FStructuralSwitchConnectionPoint::OnWireOrGateChanged(EAttachContext Attach
 		return;
 	}
 
-	FStructuralSiteMembershipParams Params;
-	Params.bStripSwitchVanillaPortLinks = true;
-	Params.bBridgePeersOnly = true;
-	Params.bSkipEndpointIndexDirty = Site.SiteRoot != INDEX_NONE;
-	FStructuralSiteMembership::IntegrateOnPlace(
-		Graph,
-		SwitchPtr,
-		OutletBus,
-		SwitchId,
-		EStructuralEndpointKind::Switch,
-		Tracked,
-		Site,
-		Params);
-
-	if (Site.bAnchored && Site.SiteRoot != INDEX_NONE)
-	{
-		Graph.AddEndpointToRootIndex(
-			Site.SiteRoot,
-			EStructuralEndpointKind::Switch,
-			SwitchId);
-	}
-
-	if (bHasWire || bKeyedSubnet)
-	{
-		FStructuralPowerSwitchProcessor::SyncDirectedBridgePair(Ctx, SwitchPtr);
-	}
-
-	Tracked.CachedSwitchWireSignature =
-		FStructuralPowerSwitchProcessor::BuildWireSignature(SwitchPtr);
-
-	if (bHasWire && Root != INDEX_NONE)
-	{
-		FStructuralPowerSwitchProcessor::PropagateWiredFeedChange(Ctx, SwitchPtr, Root);
-	}
-
 	UE_LOG(LogStructuralPower, Log,
 		TEXT("[HALSP] switch wire delta %s kind=%s scope=%s site=%d role=%s attach=%s"
-			" root=%d busCircuit=%d powered=%d wired=%d transfer=%d"),
+			" root=%d busCircuit=%d powered=%d wired=%d transfer=%d gate=%d"),
 		*SwitchPtr->GetName(),
 		StructuralEndpointKindToString(EStructuralEndpointKind::Switch),
 		StructuralPowerScopeToString(EStructuralPowerScope::Site),
@@ -224,5 +152,6 @@ void FStructuralSwitchConnectionPoint::OnWireOrGateChanged(EAttachContext Attach
 		OutletBus->GetCircuitID(),
 		FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0,
 		bHasWire ? 1 : 0,
-		bSwitchOn ? 1 : 0);
+		bSwitchOn ? 1 : 0,
+		bGateOpen ? 1 : 0);
 }

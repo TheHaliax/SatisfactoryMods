@@ -22,6 +22,11 @@ class STRUCTURALPOWER_API FStructuralPowerSwitchProcessor
 public:
 	static void Process(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 
+	/** FG-fact-driven structure mesh, SP# legs, gate — no cross-site wire propagation. */
+	static void ApplyStructureMembership(
+		FStructuralPowerContext& Ctx,
+		AFGBuildableCircuitSwitch* Switch);
+
 	static void OnStateChanged(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 
 	static void TearDown(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
@@ -40,6 +45,12 @@ public:
 		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch,
 		int32 LocalRoot);
+
+	/** Post-topology consumer refresh — parity with toggle transfer pass. */
+	static void ApplyWireDeltaTransferSideEffects(
+		FStructuralPowerContext& Ctx,
+		AFGBuildableCircuitSwitch* Switch,
+		int32 Root);
 
 	static bool HasAssignedControl(
 		const FStructuralPowerContext& Ctx,

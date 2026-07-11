@@ -147,6 +147,7 @@ public:
 	void GetGraphStats(int32& OutComponents, int32& OutLargest) { StructureGraph.GetComponentStats(OutComponents, OutLargest); }
 
 	bool DoesComponentRootCarryPower(int32 ComponentRoot) const;
+	bool DoesSiteStructuralBusCarryPower(int32 ComponentRoot) const;
 	bool FindNearestStructureAnchorForEquipment(
 		const FVector& QueryLoc,
 		float MaxHorizontal,

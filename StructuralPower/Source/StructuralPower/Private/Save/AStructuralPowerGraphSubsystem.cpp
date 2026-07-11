@@ -906,6 +906,19 @@ void AStructuralPowerGraphSubsystem::FinishBulkLoadDrain()
 				Root,
 				/*bLocalPromoteOnly=*/false);
 		}
+
+		for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : TrackedEndpoints)
+		{
+			if (Pair.Value.Kind != EStructuralEndpointKind::Switch)
+			{
+				continue;
+			}
+
+			if (AFGBuildableCircuitSwitch* Switch = Pair.Value.GetSwitch())
+			{
+				FStructuralPowerSwitchProcessor::EnsureListener(BulkCtx, Switch);
+			}
+		}
 	}
 
 	UE_LOG(LogStructuralPower, Log,
@@ -1222,6 +1235,47 @@ bool AStructuralPowerGraphSubsystem::DoesComponentRootCarryPower(int32 Component
 	}
 
 	return false;
+}
+
+bool AStructuralPowerGraphSubsystem::DoesSiteStructuralBusCarryPower(int32 ComponentRoot) const
+{
+	if (ComponentRoot == INDEX_NONE)
+	{
+		return false;
+	}
+
+	bool bPowered = false;
+	EndpointIndex.ForEachBridgeOnRoot(
+		ComponentRoot,
+		[this, &bPowered](const FStructuralNodeId& EndpointId)
+		{
+			if (bPowered)
+			{
+				return;
+			}
+
+			const FTrackedEndpoint* Tracked = TrackedEndpoints.Find(EndpointId);
+			if (!Tracked)
+			{
+				return;
+			}
+
+			const AFGBuildable* Host = Tracked->Actor.Get();
+			if (!IsValid(Host))
+			{
+				return;
+			}
+
+			if (UFGStructuralPowerConnectionComponent* Bus = FindBusConnector(Host))
+			{
+				if (FStructuralCircuitPromotionUtil::ComponentCarriesPower(Bus))
+				{
+					bPowered = true;
+				}
+			}
+		});
+
+	return bPowered;
 }
 
 bool AStructuralPowerGraphSubsystem::FindNearestStructureAnchorForEquipment(
@@ -1594,13 +1648,6 @@ bool AStructuralPowerGraphSubsystem::ShouldSkipSwitchCircuitEcho(
 	{
 		FStructuralWallAnchor ParentAnchor = ResolveOutletAnchor(Switch);
 		Root = BridgeRootIndex.ResolveEndpointComponentRoot(Switch, ParentAnchor, ParentId);
-	}
-
-	const FStructuralPowerContext Ctx = MakeProcessorContext(EAttachContext::WireDelta);
-	if (!FStructuralPowerSwitchProcessor::NeedsAdvancedWork(Ctx, Switch))
-	{
-		SetReason(TEXT("skip_inert"));
-		return true;
 	}
 
 	if (SiteState.IsEchoScopeActive())

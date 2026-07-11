@@ -12,7 +12,7 @@
 
 namespace
 {
-static bool SwitchNeedsCircuitSubscription(
+static bool SwitchNeedsToggleSubscription(
 	AStructuralPowerGraphSubsystem& Graph,
 	AFGBuildableCircuitSwitch* Switch)
 {
@@ -23,6 +23,11 @@ static bool SwitchNeedsCircuitSubscription(
 
 	const FStructuralPowerContext Ctx = Graph.MakeProcessorContext(EAttachContext::WireDelta);
 	return FStructuralPowerSwitchProcessor::NeedsAdvancedWork(Ctx, Switch);
+}
+
+static bool SwitchNeedsCircuitSubscription(AFGBuildableCircuitSwitch* Switch)
+{
+	return IsValid(Switch);
 }
 } // namespace
 
@@ -49,9 +54,9 @@ void UStructuralPowerSwitchListener::SyncSubscriptions(
 		return;
 	}
 
-	const bool bArmed = SwitchNeedsCircuitSubscription(*Graph, Switch);
+	const bool bArmed = SwitchNeedsToggleSubscription(*Graph, Switch);
 	const bool bNeedsToggle = bArmed;
-	const bool bNeedsCircuit = true;
+	const bool bNeedsCircuit = SwitchNeedsCircuitSubscription(Switch);
 
 	if (bCircuitsBound && !bNeedsCircuit)
 	{

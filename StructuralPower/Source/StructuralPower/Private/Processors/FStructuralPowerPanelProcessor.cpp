@@ -199,6 +199,7 @@ void FStructuralPowerPanelProcessor::Process(
 	if (Root != INDEX_NONE)
 	{
 		const bool bFeedReady = Ctx.Graph().DoesComponentRootCarryPower(Root)
+			|| Ctx.Graph().DoesSiteStructuralBusCarryPower(Root)
 			|| (!ChannelKey.Source.IsNone()
 				&& [&]() -> bool
 				{

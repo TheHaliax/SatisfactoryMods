@@ -10,8 +10,6 @@
 #include "Buildables/FGBuildablePowerPole.h"
 #include "Config/FStructuralPowerModConfig.h"
 #include "Core/EAttachContext.h"
-#include "Connection/FStructuralSwitchConnectionPoint.h"
-#include "Graph/FStructuralSwitchParentResolver.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "Graph/FStructuralEndpointTypes.h"
@@ -48,13 +46,6 @@ void FStructuralWireDeltaHandler::ProcessSwitchWireDelta(AFGBuildableCircuitSwit
 	}
 
 	FStructuralPowerContext Ctx = Subsystem->MakeProcessorContext(EAttachContext::WireDelta);
-	const bool bWired = FStructuralSwitchParentResolver::HasAnyVanillaWire(Switch);
-	const bool bConfigured = FStructuralPowerSwitchProcessor::HasAssignedControl(Ctx, Switch);
-	if (!bWired && !bConfigured)
-	{
-		return;
-	}
-
 	const FStructuralNodeId SwitchId = AStructuralPowerGraphSubsystem::MakeNodeId(Switch);
 	FTrackedEndpoint& Tracked = Subsystem->TrackedEndpoints.FindOrAdd(SwitchId);
 	const uint8 WireSignature = FStructuralPowerSwitchProcessor::BuildWireSignature(Switch);
@@ -62,7 +53,13 @@ void FStructuralWireDeltaHandler::ProcessSwitchWireDelta(AFGBuildableCircuitSwit
 	{
 		return;
 	}
-	Tracked.CachedSwitchWireSignature = WireSignature;
+
+	int32 Root = INDEX_NONE;
+	if (Tracked.ParentId.IsValid())
+	{
+		Root = Subsystem->StructureGraph.FindRoot(Tracked.ParentId);
+	}
+	Ctx = Subsystem->MakeProcessorContext(EAttachContext::WireDelta, Root);
 
 	if (FStructuralPowerTrace::IsExtendedDebugEnabled())
 	{
@@ -73,7 +70,8 @@ void FStructuralWireDeltaHandler::ProcessSwitchWireDelta(AFGBuildableCircuitSwit
 			TEXT("switch_wire_delta"));
 	}
 
-	FStructuralSwitchConnectionPoint(*Subsystem, Switch).OnWireOrGateChanged(EAttachContext::WireDelta);
+	FStructuralPowerSwitchProcessor::ApplyStructureMembership(Ctx, Switch);
+	FStructuralPowerSwitchProcessor::ApplyWireDeltaTransferSideEffects(Ctx, Switch, Root);
 
 	FStructuralPowerSwitchProcessor::EnsureListener(Ctx, Switch);
 	Subsystem->NoteSwitchCircuitEchoProcessed(Switch);

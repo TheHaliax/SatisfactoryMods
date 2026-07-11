@@ -96,7 +96,9 @@ void FStructuralPowerLightProcessor::Process(
 		&& Ctx.Graph().IsPanelDownstreamLight(Root, ChannelKey);
 
 	if (Root == INDEX_NONE
-		|| (!bPanelFed && !Ctx.Graph().DoesComponentRootCarryPower(Root)))
+		|| (!bPanelFed
+			&& !Ctx.Graph().DoesComponentRootCarryPower(Root)
+			&& !Ctx.Graph().DoesSiteStructuralBusCarryPower(Root)))
 	{
 		FStructuralPowerTrace::LogPlacementSkip(Light, TEXT("light_no_component_feed"));
 		FStructuralPowerTrace::LogLightConsumer(
