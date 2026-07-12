@@ -7,7 +7,7 @@
 #include "Buildables/FGBuildablePowerStorage.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
-#include "Connection/FStructuralStorageConnectionPoint.h"
+#include "Connection/FStructuralSiteMembership.h"
 #include "Core/EStructuralPowerRole.h"
 #include "Core/EStructuralPowerScope.h"
 #include "Core/FStructuralPowerContext.h"
@@ -96,8 +96,7 @@ void FStructuralPowerStorageProcessor::Process(
 				Storage,
 				EStructuralEndpointKind::Storage))
 		{
-			FStructuralStorageConnectionPoint Connection(Graph, Storage);
-			Connection.OnWireOrGateChanged(Ctx.GetAttachContext());
+			OnWireDelta(Ctx, Storage);
 			return;
 		}
 	}
@@ -142,4 +141,56 @@ void FStructuralPowerStorageProcessor::Process(
 		Site.bAnchored ? 1 : 0,
 		Outcome.OutletBus->GetCircuitID(),
 		FStructuralCircuitPromotionUtil::ComponentCarriesPower(Outcome.OutletBus) ? 1 : 0);
+}
+
+void FStructuralPowerStorageProcessor::OnWireDelta(
+	FStructuralPowerContext& Ctx,
+	AFGBuildablePowerStorage* Storage)
+{
+	if (!IsValid(Storage))
+	{
+		return;
+	}
+
+	AStructuralPowerGraphSubsystem& Graph = Ctx.Graph();
+	UFGStructuralPowerConnectionComponent* OutletBus =
+		Cast<UFGStructuralPowerConnectionComponent>(Graph.GetOrCreateBusConnector(Storage));
+	if (!OutletBus)
+	{
+		return;
+	}
+
+	const FStructuralNodeId StorageId = Graph.MakeNodeId(Storage);
+	FTrackedEndpoint& Tracked = Graph.TrackedEndpoints.FindOrAdd(StorageId);
+
+	FStructuralSiteContext Site;
+	if (!FStructuralSiteMembership::ResolveSiteContext(Graph, Storage, Site))
+	{
+		if (Tracked.ParentId.IsValid())
+		{
+			Site.ParentId = Tracked.ParentId;
+			Site.SiteRoot = Graph.FindRootForTrackedEndpoint(Tracked);
+			Site.bAnchored = Site.SiteRoot != INDEX_NONE;
+		}
+	}
+
+	FStructuralSiteMembershipParams Params;
+	Params.bLinkVisibleConnections = true;
+	Params.bBridgePeersOnly = true;
+	FStructuralSiteMembership::IntegrateOnPlace(
+		Graph,
+		Storage,
+		OutletBus,
+		StorageId,
+		EStructuralEndpointKind::Storage,
+		Tracked,
+		Site,
+		Params);
+
+	UE_LOG(LogStructuralPower, Log,
+		TEXT("[HALSP] storage wire delta %s root=%d busCircuit=%d powered=%d"),
+		*Storage->GetName(),
+		Site.SiteRoot,
+		OutletBus->GetCircuitID(),
+		FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0);
 }

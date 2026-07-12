@@ -16,6 +16,8 @@ class STRUCTURALPOWER_API FStructuralPowerPoleProcessor
 public:
 	static void Process(FStructuralPowerContext& Ctx, AFGBuildablePowerPole* Pole);
 
+	static void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildablePowerPole* Pole);
+
 private:
 	static void ResolvePoleStructuralSite(
 		AStructuralPowerGraphSubsystem& Graph,

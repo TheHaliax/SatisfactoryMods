@@ -51,6 +51,7 @@ void FStructuralPowerReconcile::MaybeRunPostLoadLightReconcile()
 	if (!Subsystem->bPendingPostLoadLightReconcile)
 	{
 		Subsystem->bBulkLoadDrainActive = false;
+		Subsystem->MaybeReleaseFactoryTick();
 		return;
 	}
 
@@ -67,6 +68,7 @@ void FStructuralPowerReconcile::MaybeRunPostLoadLightReconcile()
 	}
 
 	Subsystem->bPendingPostLoadLightReconcile = false;
+	Subsystem->MaybeReleaseFactoryTick();
 }
 
 void FStructuralPowerReconcile::MaybeRunFinalLightingReconcile()
@@ -86,6 +88,7 @@ void FStructuralPowerReconcile::MaybeRunFinalLightingReconcile()
 	{
 		Subsystem->bPendingFinalLightingReconcile = false;
 		Subsystem->FinalLightingReconcilePass = 0;
+		Subsystem->MaybeReleaseFactoryTick();
 		return;
 	}
 
@@ -110,6 +113,7 @@ void FStructuralPowerReconcile::MaybeRunFinalLightingReconcile()
 
 	Subsystem->FinalLightingReconcilePass = 0;
 	Subsystem->bPendingFinalLightingReconcile = false;
+	Subsystem->MaybeReleaseFactoryTick();
 }
 
 bool FStructuralPowerReconcile::PanelNeedsLightingReconcileRetry(

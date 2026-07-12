@@ -7,7 +7,6 @@
 #include "Buildables/FGBuildablePowerPole.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
-#include "Connection/FStructuralPoleConnectionPoint.h"
 #include "Core/EAttachContext.h"
 #include "Core/EStructuralPowerRole.h"
 #include "Core/EStructuralPowerScope.h"
@@ -98,8 +97,7 @@ void FStructuralPowerPoleProcessor::Process(
 				Pole,
 				EStructuralEndpointKind::Pole))
 		{
-			FStructuralPoleConnectionPoint Connection(Graph, Pole);
-			Connection.OnWireOrGateChanged(Ctx.GetAttachContext());
+			OnWireDelta(Ctx, Pole);
 			return;
 		}
 	}
@@ -177,4 +175,86 @@ void FStructuralPowerPoleProcessor::Process(
 			StructuralChannelToString(EStructuralChannel::Structure),
 			TEXT("-"));
 	}
+}
+
+void FStructuralPowerPoleProcessor::OnWireDelta(
+	FStructuralPowerContext& Ctx,
+	AFGBuildablePowerPole* Pole)
+{
+	if (!IsValid(Pole) || Ctx.GetAttachContext() != EAttachContext::WireDelta)
+	{
+		return;
+	}
+
+	AStructuralPowerGraphSubsystem& Graph = Ctx.Graph();
+	if (!FStructuralBridgeAttach::HasPlacementMembership(
+			Graph,
+			Pole,
+			EStructuralEndpointKind::Pole))
+	{
+		return;
+	}
+
+	UFGStructuralPowerConnectionComponent* OutletBus =
+		Cast<UFGStructuralPowerConnectionComponent>(Graph.GetOrCreateBusConnector(Pole));
+	if (!OutletBus)
+	{
+		return;
+	}
+
+	const FStructuralNodeId PoleId = Graph.MakeNodeId(Pole);
+	FTrackedEndpoint& Tracked = Graph.TrackedEndpoints.FindOrAdd(PoleId);
+
+	FStructuralSiteContext Site;
+	if (!FStructuralSiteMembership::ResolveSiteContext(
+			Graph,
+			Pole,
+			Site,
+			/*bUsePoleRootResolver=*/true))
+	{
+		Site.bAnchored = false;
+	}
+
+	Graph.LinkBusToVisibleConnectionsLocal(Pole, OutletBus);
+
+	if (Site.bAnchored && Site.SiteRoot != INDEX_NONE && !Graph.HasBridgeBusPeerMesh(OutletBus))
+	{
+		Graph.TryMeshPeerBusOnComponent(
+			Pole,
+			OutletBus,
+			Site.SiteRoot,
+			PoleId,
+			/*bBridgePeersOnly=*/true,
+			/*bMeshOnlyLinks=*/true);
+	}
+	else if (FStructuralCircuitPromotionUtil::ComponentOnCircuit(OutletBus))
+	{
+		Graph.PromoteDirectHiddenLinks(OutletBus);
+	}
+
+	if (Site.bAnchored && Site.SiteRoot != INDEX_NONE)
+	{
+		Tracked.ParentId = Site.ParentId;
+		Graph.AddEndpointToRootIndex(
+			Site.SiteRoot,
+			EStructuralEndpointKind::Pole,
+			PoleId);
+	}
+
+	const FVector AnchorLocation = FStructuralOutletParentHeuristics::GetOutletAnchorLocation(Pole);
+	const float ParentDistCm = Site.ParentAnchor.IsValid()
+		? FVector::Dist(AnchorLocation, Site.ParentAnchor.WorldLocation)
+		: -1.0f;
+	const TCHAR* PowerPath = Site.bAnchored ? TEXT("structural_mesh") : TEXT("vanilla_wire");
+
+	UE_LOG(LogStructuralPower, Log,
+		TEXT("[HALSP] pole wire delta %s root=%d structural=%d distCm=%.0f"
+			" path=%s busCircuit=%d powered=%d"),
+		*Pole->GetName(),
+		Site.SiteRoot,
+		Site.bAnchored ? 1 : 0,
+		ParentDistCm,
+		PowerPath,
+		OutletBus->GetCircuitID(),
+		FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(OutletBus) ? 1 : 0);
 }

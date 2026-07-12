@@ -168,6 +168,9 @@ public:
 	bool IsBulkLoadDrainActive() const { return bBulkLoadDrainActive; }
 	bool IsPendingPostLoadLightReconcile() const { return bPendingPostLoadLightReconcile; }
 	bool IsPendingFinalLightingReconcile() const { return bPendingFinalLightingReconcile; }
+	bool HasActiveDeferredWork() const;
+	void NotifyDeferredWorkRegistered();
+	void MaybeReleaseFactoryTick();
 	bool ShouldDeferCircuitDrivenRefresh() const;
 
 	EAttachContext GetCurrentAttachContext() const;
@@ -224,10 +227,6 @@ public:
 	friend class FStructuralPowerBridgeProcessor;
 	friend class FStructuralPowerTransferGate;
 	friend class FStructuralCrossSiteGraph;
-	friend class FStructuralPoleConnectionPoint;
-	friend class FStructuralSwitchConnectionPoint;
-	friend class FStructuralPanelConnectionPoint;
-	friend class FStructuralStorageConnectionPoint;
 	friend class FStructuralSiteMembership;
 	friend class FStructuralBridgeAttach;
 	friend class FStructuralPowerReconcile;

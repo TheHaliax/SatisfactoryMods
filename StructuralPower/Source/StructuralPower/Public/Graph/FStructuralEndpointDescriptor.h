@@ -20,7 +20,6 @@ struct STRUCTURALPOWER_API FStructuralEndpointDescriptor
 	EStructuralAttachStrategy AttachStrategy = EStructuralAttachStrategy::Bridge;
 	EStructuralPlacementJobType PlacementJob = EStructuralPlacementJobType::Outlet;
 	bool bParticipatesInSiteMesh = true;
-	bool bWireDeltaViaConnectionPoint = true;
 	bool (*Classifier)(const AFGBuildable*) = nullptr;
 	bool (*GroupGate)() = nullptr;
 };

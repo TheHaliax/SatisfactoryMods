@@ -4,11 +4,11 @@
 #include "Network/UStructuralPowerStorageListener.h"
 
 #include "Buildables/FGBuildablePowerStorage.h"
-#include "Connection/FStructuralStorageConnectionPoint.h"
 #include "Core/EAttachContext.h"
 #include "Core/FStructuralPowerContext.h"
 #include "FGCircuitConnectionComponent.h"
 #include "FGPowerConnectionComponent.h"
+#include "Processors/FStructuralPowerStorageProcessor.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
 void UStructuralPowerStorageListener::BindSubsystem(
@@ -71,5 +71,6 @@ void UStructuralPowerStorageListener::HandleConnectionChanged(
 		return;
 	}
 
-	FStructuralStorageConnectionPoint(*Graph, Storage).OnWireOrGateChanged(EAttachContext::WireDelta);
+	FStructuralPowerContext Ctx = Graph->MakeProcessorContext(EAttachContext::WireDelta);
+	FStructuralPowerStorageProcessor::OnWireDelta(Ctx, Storage);
 }

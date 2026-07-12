@@ -12,8 +12,8 @@
 #include "Graph/FStructuralCrossSiteGraph.h"
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Core/FStructuralPowerContext.h"
-#include "Connection/FStructuralSwitchConnectionPoint.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
+#include "Processors/FStructuralPowerSwitchProcessor.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerLog.h"
 
@@ -67,7 +67,7 @@ void FStructuralPowerBridgeProcessor::ApplyLocalAttachForSwitch(
 		return;
 	}
 
-	FStructuralSwitchConnectionPoint(Ctx.Graph(), Switch).OnWireOrGateChanged(AttachContext);
+	FStructuralPowerSwitchProcessor::OnWireDelta(Ctx, Switch);
 }
 
 void FStructuralPowerBridgeProcessor::ApplyLocalAttachForPanel(

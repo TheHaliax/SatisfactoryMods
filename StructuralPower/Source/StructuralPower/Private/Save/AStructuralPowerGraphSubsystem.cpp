@@ -5,7 +5,6 @@
 
 #include "Attach/FStructuralDeviceAttach.h"
 #include "Attach/FStructuralPanelAttach.h"
-#include "Connection/FStructuralPoleConnectionPoint.h"
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildableGenerator.h"
 #include "Buildables/FGBuildableLightSource.h"
@@ -18,6 +17,7 @@
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "Config/FStructuralPowerModConfig.h"
+#include "Core/FStructuralPowerWorldGate.h"
 #include "Diagnostics/FStructuralPowerDiagnostics.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "Equipment/FStructuralEquipmentBridgeRegistry.h"
@@ -55,7 +55,7 @@
 #include "Processors/FStructuralPowerTransferGate.h"
 #include "Processors/IStructuralPowerProcessor.h"
 #include "Rules/FStructuralEligibilityRules.h"
-#include "Session/FStructuralPowerSessionSettings.h"
+#include "Subsystems/UStructuralPowerFactoryTickHandler.h"
 #include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
 #include "TimerManager.h"
@@ -89,7 +89,7 @@ const FStructuralGraphSession& AStructuralPowerGraphSubsystem::GetGraphSession()
 
 AStructuralPowerGraphSubsystem* AStructuralPowerGraphSubsystem::GetOrCreate(UWorld* World)
 {
-	if (!IsValid(World) || World->GetNetMode() == NM_Client)
+	if (!FStructuralPowerWorldGate::IsGameplayWorld(World) || World->GetNetMode() == NM_Client)
 	{
 		return nullptr;
 	}
@@ -460,7 +460,7 @@ AStructuralPowerGraphSubsystem::MakeParentNodeId(const FStructuralWallAnchor& An
 
 void AStructuralPowerGraphSubsystem::OnWorldReady(UWorld* World)
 {
-	if (!IsValid(World) || World->GetNetMode() == NM_Client)
+	if (!FStructuralPowerWorldGate::IsGameplayWorld(World) || World->GetNetMode() == NM_Client)
 	{
 		return;
 	}
@@ -540,6 +540,43 @@ void AStructuralPowerGraphSubsystem::OnWorldReady(UWorld* World)
 	{
 		bPendingPostLoadLightReconcile = true;
 	}
+
+	if (HasActiveDeferredWork())
+	{
+		NotifyDeferredWorkRegistered();
+	}
+}
+
+bool AStructuralPowerGraphSubsystem::HasActiveDeferredWork() const
+{
+	return GetPendingJobCount() > 0
+		|| bBulkLoadDrainActive
+		|| bPendingPostLoadLightReconcile
+		|| bPendingFinalLightingReconcile;
+}
+
+void AStructuralPowerGraphSubsystem::NotifyDeferredWorkRegistered()
+{
+	if (UWorld* World = GetWorld())
+	{
+		if (FStructuralPowerWorldGate::IsGameplayWorld(World))
+		{
+			UStructuralPowerFactoryTickHandler::RegisterForWorld(World);
+		}
+	}
+}
+
+void AStructuralPowerGraphSubsystem::MaybeReleaseFactoryTick()
+{
+	if (HasActiveDeferredWork())
+	{
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		UStructuralPowerFactoryTickHandler::UnregisterForWorld(World);
+	}
 }
 
 void AStructuralPowerGraphSubsystem::PurgeSavedOutletBusMesh(UWorld* World)
@@ -600,7 +637,10 @@ void AStructuralPowerGraphSubsystem::EnqueueLightweightPlacement(
 
 	if (bDefer)
 	{
-		PlacementQueue.EnqueueLightweight(Key);
+		if (PlacementQueue.EnqueueLightweight(Key))
+		{
+			NotifyDeferredWorkRegistered();
+		}
 		return;
 	}
 
@@ -617,6 +657,11 @@ void AStructuralPowerGraphSubsystem::EnqueuePlacement(
 		return;
 	}
 
+	if (!FStructuralPowerWorldGate::IsGameplayWorld(Buildable->GetWorld()))
+	{
+		return;
+	}
+
 	if (!Buildable->HasAuthority())
 	{
 		FStructuralPowerTrace::LogPlacementSkip(Buildable, TEXT("no_authority"));
@@ -625,7 +670,10 @@ void AStructuralPowerGraphSubsystem::EnqueuePlacement(
 
 	if (bDefer)
 	{
-		PlacementQueue.EnqueueBuildable(Buildable, JobType);
+		if (PlacementQueue.EnqueueBuildable(Buildable, JobType))
+		{
+			NotifyDeferredWorkRegistered();
+		}
 		return;
 	}
 
@@ -672,6 +720,7 @@ void AStructuralPowerGraphSubsystem::TickDeferredPlacements(int32 MaxJobs)
 		[this]()
 		{
 			MaybeRunPostLoadLightReconcile();
+			MaybeReleaseFactoryTick();
 		});
 }
 
@@ -1128,10 +1177,13 @@ void AStructuralPowerGraphSubsystem::ScheduleFinalLightingReconcile()
 	bPendingFinalLightingReconcile = true;
 
 	UWorld* World = GetWorld();
-	if (!IsValid(World))
+	if (!IsValid(World) || !FStructuralPowerWorldGate::IsGameplayWorld(World))
 	{
+		bPendingFinalLightingReconcile = false;
 		return;
 	}
+
+	NotifyDeferredWorkRegistered();
 
 	World->GetTimerManager().SetTimerForNextTick(
 		FTimerDelegate::CreateWeakLambda(this, [this]()

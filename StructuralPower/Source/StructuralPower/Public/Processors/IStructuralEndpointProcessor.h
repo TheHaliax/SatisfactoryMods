@@ -9,8 +9,6 @@
 #include "Graph/FStructuralEndpointTypes.h"
 
 class AFGBuildable;
-class FStructuralGraphSession;
-struct IStructuralConnectionPoint;
 struct FStructuralPowerContext;
 
 class STRUCTURALPOWER_API IStructuralEndpointProcessor
@@ -40,10 +38,6 @@ public:
 	virtual void OnToggleChanged(FStructuralPowerContext& Ctx, AFGBuildable* Host) {}
 	virtual void RestitchOnRoot(FStructuralPowerContext& Ctx, int32 Root) {}
 	virtual void TearDown(FStructuralPowerContext& Ctx, AFGBuildable* Host) {}
-
-	virtual TUniquePtr<IStructuralConnectionPoint> MakeConnectionPoint(
-		FStructuralGraphSession& Session,
-		AFGBuildable* Host);
 };
 
 using IStructuralPowerProcessor = IStructuralEndpointProcessor;

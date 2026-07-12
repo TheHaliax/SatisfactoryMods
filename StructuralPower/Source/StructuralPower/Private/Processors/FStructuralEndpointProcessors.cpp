@@ -11,10 +11,6 @@
 #include "Buildables/FGBuildablePowerPole.h"
 #include "Buildables/FGBuildablePowerStorage.h"
 #include "Config/FStructuralPowerModConfig.h"
-#include "Connection/FStructuralPanelConnectionPoint.h"
-#include "Connection/FStructuralPoleConnectionPoint.h"
-#include "Connection/FStructuralStorageConnectionPoint.h"
-#include "Connection/FStructuralSwitchConnectionPoint.h"
 #include "Core/FStructuralGraphSession.h"
 #include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Processors/FStructuralEndpointCatalog.h"
@@ -100,19 +96,8 @@ public:
 	{
 		if (AFGBuildablePowerPole* Pole = FStructuralPowerBuildableCasts::AsPole(Buildable))
 		{
-			FStructuralPoleConnectionPoint(Ctx.Graph(), Pole).OnWireOrGateChanged(Ctx.GetAttachContext());
+			FStructuralPowerPoleProcessor::OnWireDelta(Ctx, Pole);
 		}
-	}
-
-	TUniquePtr<IStructuralConnectionPoint> MakeConnectionPoint(
-		FStructuralGraphSession& Session,
-		AFGBuildable* Host) override
-	{
-		if (AFGBuildablePowerPole* Pole = FStructuralPowerBuildableCasts::AsPole(Host))
-		{
-			return MakeUnique<FStructuralPoleConnectionPoint>(Session.Owner(), Pole);
-		}
-		return nullptr;
 	}
 };
 
@@ -157,8 +142,7 @@ public:
 	{
 		if (AFGBuildablePowerStorage* Storage = FStructuralPowerBuildableCasts::AsStorage(Buildable))
 		{
-			FStructuralStorageConnectionPoint(Ctx.Graph(), Storage).OnWireOrGateChanged(
-				EAttachContext::WireDelta);
+			FStructuralPowerStorageProcessor::OnWireDelta(Ctx, Storage);
 		}
 	}
 
@@ -170,16 +154,6 @@ public:
 		}
 	}
 
-	TUniquePtr<IStructuralConnectionPoint> MakeConnectionPoint(
-		FStructuralGraphSession& Session,
-		AFGBuildable* Host) override
-	{
-		if (AFGBuildablePowerStorage* Storage = FStructuralPowerBuildableCasts::AsStorage(Host))
-		{
-			return MakeUnique<FStructuralStorageConnectionPoint>(Session.Owner(), Storage);
-		}
-		return nullptr;
-	}
 };
 
 class FSwitchEndpointProcessor final : public IStructuralEndpointProcessor
@@ -223,8 +197,7 @@ public:
 	{
 		if (AFGBuildableCircuitSwitch* Switch = FStructuralPowerBuildableCasts::AsSwitch(Buildable))
 		{
-			FStructuralSwitchConnectionPoint(Ctx.Graph(), Switch).OnWireOrGateChanged(
-				EAttachContext::WireDelta);
+			FStructuralPowerSwitchProcessor::OnWireDelta(Ctx, Switch);
 		}
 	}
 
@@ -253,16 +226,6 @@ public:
 		}
 	}
 
-	TUniquePtr<IStructuralConnectionPoint> MakeConnectionPoint(
-		FStructuralGraphSession& Session,
-		AFGBuildable* Host) override
-	{
-		if (AFGBuildableCircuitSwitch* Switch = FStructuralPowerBuildableCasts::AsSwitch(Host))
-		{
-			return MakeUnique<FStructuralSwitchConnectionPoint>(Session.Owner(), Switch);
-		}
-		return nullptr;
-	}
 };
 
 class FLightEndpointProcessor final : public IStructuralEndpointProcessor
@@ -351,8 +314,7 @@ public:
 	{
 		if (AFGBuildableLightsControlPanel* Panel = FStructuralPowerBuildableCasts::AsPanel(Buildable))
 		{
-			FStructuralPanelConnectionPoint(Ctx.Graph(), Panel).OnWireOrGateChanged(
-				EAttachContext::WireDelta);
+			FStructuralPowerPanelProcessor::OnWireDelta(Ctx, Panel);
 		}
 	}
 
@@ -364,16 +326,6 @@ public:
 		}
 	}
 
-	TUniquePtr<IStructuralConnectionPoint> MakeConnectionPoint(
-		FStructuralGraphSession& Session,
-		AFGBuildable* Host) override
-	{
-		if (AFGBuildableLightsControlPanel* Panel = FStructuralPowerBuildableCasts::AsPanel(Host))
-		{
-			return MakeUnique<FStructuralPanelConnectionPoint>(Session.Owner(), Panel);
-		}
-		return nullptr;
-	}
 };
 
 class FGeneratorEndpointProcessor final : public IStructuralEndpointProcessor

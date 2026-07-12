@@ -58,6 +58,8 @@ public:
 		AFGBuildableCircuitSwitch* Switch,
 		int32 Root);
 
+	static void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
+
 	static bool HasAssignedControl(
 		const FStructuralPowerContext& Ctx,
 		const AFGBuildableCircuitSwitch* Switch);
@@ -80,4 +82,11 @@ private:
 		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch,
 		FTrackedEndpoint& Tracked);
+
+	static bool ResolveSwitchTrackedRoot(
+		AStructuralPowerGraphSubsystem& Graph,
+		AFGBuildableCircuitSwitch* Switch,
+		FStructuralNodeId& OutSwitchId,
+		int32& OutRoot,
+		bool& OutStructurallyAnchored);
 };

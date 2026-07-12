@@ -12,6 +12,7 @@
 #include "Buildables/FGBuildablePowerPole.h"
 #include "Command/StructuralPowerSmlChatCommands.h"
 #include "Config/FStructuralPowerModConfig.h"
+#include "Core/FStructuralPowerWorldGate.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "Diagnostics/FStructuralVanillaPowerTrace.h"
 #include "FGLightweightBuildableSubsystem.h"
@@ -476,7 +477,7 @@ void UStructuralPowerRootInstanceModule::HandleLightweightMemberRemoved(
 
 void UStructuralPowerRootInstanceModule::HandlePostLoadMap(UWorld* World)
 {
-	if (!IsValid(World) || !World->IsGameWorld())
+	if (!FStructuralPowerWorldGate::IsGameplayWorld(World))
 	{
 		return;
 	}
@@ -488,9 +489,12 @@ void UStructuralPowerRootInstanceModule::HandlePostLoadMap(UWorld* World)
 		{
 			if (UWorld* WorldPtr = WorldWeak.Get())
 			{
-				AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::GetOrCreate(WorldPtr);
-				UStructuralPowerFactoryTickHandler::RegisterForWorld(WorldPtr);
-				if (Graph)
+				if (!FStructuralPowerWorldGate::IsGameplayWorld(WorldPtr))
+				{
+					return;
+				}
+
+				if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::GetOrCreate(WorldPtr))
 				{
 					Graph->OnWorldReady(WorldPtr);
 				}

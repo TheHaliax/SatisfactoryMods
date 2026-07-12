@@ -20,4 +20,6 @@ public:
 		bool bLocalPromoteOnly = false);
 
 	static void TearDown(FStructuralPowerContext& Ctx, AFGBuildableLightsControlPanel* Panel);
+
+	static void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildableLightsControlPanel* Panel);
 };

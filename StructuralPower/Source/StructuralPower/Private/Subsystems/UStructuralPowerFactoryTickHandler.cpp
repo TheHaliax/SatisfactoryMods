@@ -3,6 +3,7 @@
 
 #include "Subsystems/UStructuralPowerFactoryTickHandler.h"
 
+#include "Core/FStructuralPowerWorldGate.h"
 #include "Engine/World.h"
 #include "FGBuildableSubsystem.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
@@ -108,14 +109,26 @@ void UStructuralPowerFactoryTickHandler::PostFactoryTick(
 	AFGBuildableSubsystem* /*Subsystem*/,
 	float /*DeltaTime*/)
 {
-	if (UWorld* World = GetWorld())
+	UWorld* World = GetWorld();
+	if (!FStructuralPowerWorldGate::IsGameplayWorld(World))
 	{
-		if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::Find(World))
+		UnregisterForWorld(World);
+		return;
+	}
+
+	if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::Find(World))
+	{
+		if (Graph->GetPendingJobCount() > 0)
 		{
-			if (Graph->GetPendingJobCount() > 0)
-			{
-				Graph->TickDeferredPlacements(StructuralPowerConstants::DeferredPlacementsPerTick);
-			}
+			Graph->TickDeferredPlacements(StructuralPowerConstants::DeferredPlacementsPerTick);
 		}
+		else
+		{
+			Graph->MaybeReleaseFactoryTick();
+		}
+	}
+	else
+	{
+		UnregisterForWorld(World);
 	}
 }

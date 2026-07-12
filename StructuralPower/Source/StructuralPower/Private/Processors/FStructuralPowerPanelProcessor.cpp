@@ -15,8 +15,10 @@
 #include "FGPowerConnectionComponent.h"
 #include "Panel/FStructuralPanelControlledSync.h"
 #include "Panel/FStructuralPanelPortResolver.h"
-#include "Connection/FStructuralPanelConnectionPoint.h"
+#include "Processors/FStructuralPowerBridgeProcessor.h"
 #include "Routing/EStructuralChannel.h"
+#include "Core/EStructuralPowerRole.h"
+#include "Core/EStructuralPowerScope.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Graph/FStructuralEndpointTypes.h"
@@ -297,5 +299,130 @@ void FStructuralPowerPanelProcessor::Process(
 		bSupplyReady,
 		Controlled,
 		TEXT("process"));
+}
+
+void FStructuralPowerPanelProcessor::OnWireDelta(
+	FStructuralPowerContext& Ctx,
+	AFGBuildableLightsControlPanel* Panel)
+{
+	if (!IsValid(Panel) || !FStructuralPowerModConfig::IsGroupLightingEnabled())
+	{
+		return;
+	}
+
+	AStructuralPowerGraphSubsystem& Graph = Ctx.Graph();
+	const EAttachContext AttachContext = Ctx.GetAttachContext();
+
+	if (AttachContext != EAttachContext::Toggle
+		&& Graph.ShouldSkipPanelCircuitEcho(Panel))
+	{
+		return;
+	}
+
+	if (AttachContext == EAttachContext::Toggle)
+	{
+		const TCHAR* SkipReason = nullptr;
+		if (Graph.ShouldSkipPanelCircuitEcho(Panel, &SkipReason)
+			&& SkipReason
+			&& FCString::Strcmp(SkipReason, TEXT("skip_feed_open")) == 0)
+		{
+			Graph.NotePanelToggleHandled(Panel);
+			return;
+		}
+	}
+
+	FStructuralPanelPorts Ports;
+	if (!FStructuralPanelPortResolver::Resolve(Panel, Ports))
+	{
+		return;
+	}
+
+	const FStructuralWallAnchor ParentAnchor = Graph.ResolveOutletAnchor(Panel);
+	FStructuralNodeId ParentId;
+	const int32 Root = Graph.ResolveEndpointComponentRoot(Panel, ParentAnchor, ParentId);
+
+	const FStructuralNodeId PanelId = Graph.MakeNodeId(Panel);
+	FTrackedEndpoint& Tracked = Graph.TrackedEndpoints.FindOrAdd(PanelId);
+	Tracked.Actor = Panel;
+	Tracked.ParentId = ParentId;
+	Tracked.Kind = EStructuralEndpointKind::Panel;
+	Graph.RegisterBuildableActor(Panel);
+	Graph.EnsurePanelListener(Panel);
+	if (Root != INDEX_NONE)
+	{
+		Graph.MarkBridgeEndpointRootIndexDirty();
+	}
+
+	const bool bLocalPromoteOnly =
+		AttachContext != EAttachContext::RuntimePlace
+		|| IsBulkLoadAttachContext(AttachContext)
+		|| AttachContext == EAttachContext::WireDelta
+		|| AttachContext == EAttachContext::Toggle;
+
+	if (AttachContext == EAttachContext::WireDelta && Tracked.bPanelLinksReady
+		&& Tracked.CachedPanelRoot == Root)
+	{
+		const FStructuralChannelKey ChannelKey = Graph.ResolveChannelKeyForBuildable(Panel);
+		if (FStructuralPanelAttach::SupplyAlreadyLinked(
+				Graph,
+				Panel,
+				Ports,
+				Root,
+				ChannelKey))
+		{
+			UFGPowerConnectionComponent* InputPower =
+				FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
+			if (IsValid(InputPower))
+			{
+				Graph.PromoteDirectHiddenLinks(InputPower);
+			}
+
+			const FName EffectiveControl =
+				FStructuralPanelControlledSync::ResolveEffectiveLightControl(Graph, Panel);
+			if (!EffectiveControl.IsNone())
+			{
+				FStructuralPanelControlledSync::ApplyKeyedSubnet(Graph, Panel);
+			}
+
+			UE_LOG(LogStructuralPower, Log,
+				TEXT("[HALSP] panel wire delta %s kind=%s scope=%s site=%d role=%s attach=%s"
+					" root=%d inputPowered=%d path=repair_only"),
+				*Panel->GetName(),
+				StructuralEndpointKindToString(EStructuralEndpointKind::Panel),
+				StructuralPowerScopeToString(EStructuralPowerScope::Site),
+				Root,
+				StructuralPowerRoleToString(EStructuralPowerRole::Router),
+				AttachContextToString(AttachContext),
+				Root,
+				InputPower && FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower)
+					? 1
+					: 0);
+			return;
+		}
+	}
+
+	FStructuralPowerBridgeProcessor::ApplyLocalAttachForPanel(
+		Ctx,
+		Panel,
+		bLocalPromoteOnly);
+
+	const UFGPowerConnectionComponent* InputPower =
+		FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
+	UE_LOG(LogStructuralPower, Log,
+		TEXT("[HALSP] panel wire delta %s kind=%s scope=%s site=%d role=%s attach=%s"
+			" root=%d inputPowered=%d"),
+		*Panel->GetName(),
+		StructuralEndpointKindToString(EStructuralEndpointKind::Panel),
+		StructuralPowerScopeToString(EStructuralPowerScope::Site),
+		Root,
+		StructuralPowerRoleToString(EStructuralPowerRole::Router),
+		AttachContextToString(AttachContext),
+		Root,
+		InputPower && FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower) ? 1 : 0);
+
+	if (AttachContext == EAttachContext::Toggle)
+	{
+		Graph.NotePanelToggleHandled(Panel);
+	}
 }
 
