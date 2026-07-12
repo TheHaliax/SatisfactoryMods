@@ -152,7 +152,12 @@ void FStructuralPowerPanelProcessor::Process(
 			Ports,
 			Root,
 			ChannelKey);
-		if (bSupplyLinked)
+		const UFGPowerConnectionComponent* InputPower =
+			FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
+		const bool bInputLive = bSupplyLinked
+			&& IsValid(InputPower)
+			&& FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower);
+		if (bInputLive)
 		{
 			LogPanelState(true, TEXT("routing_unchanged"));
 
@@ -279,7 +284,8 @@ void FStructuralPowerPanelProcessor::Process(
 
 	Tracked.CachedPanelKey = ChannelKey;
 	Tracked.CachedPanelRoot = Root;
-	Tracked.bPanelLinksReady = true;
+	Tracked.bPanelLinksReady = IsValid(InputPower)
+		&& FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower);
 
 	const int32 Controlled =
 		Panel->GetControlledBuildables(AFGBuildableLightSource::StaticClass()).Num();

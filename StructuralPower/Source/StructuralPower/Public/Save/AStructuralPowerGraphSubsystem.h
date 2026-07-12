@@ -247,7 +247,10 @@ private:
 	void ProcessSwitchEndpoint(AFGBuildableCircuitSwitch* Switch);
 	void ProcessGeneratorEndpoint(AFGBuildableGenerator* Generator);
 	void ProcessLightEndpoint(AFGBuildableLightSource* Light, bool bLocalPromoteOnly = false);
-	void ProcessPanelEndpoint(AFGBuildableLightsControlPanel* Panel, bool bLocalPromoteOnly = false);
+	void ProcessPanelEndpoint(
+		AFGBuildableLightsControlPanel* Panel,
+		bool bLocalPromoteOnly = false,
+		bool bForceRuntimePlace = false);
 	void TearDownLightStructuralLinks(AFGBuildableLightSource* Light);
 	void TearDownPanelStructuralLinks(AFGBuildableLightsControlPanel* Panel);
 

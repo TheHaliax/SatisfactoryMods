@@ -42,6 +42,7 @@ private:
 	void RefreshKeyedTransferAfterLoad();
 	void RefreshNamedControlPanelsAfterLoad();
 	bool LightingReconcileNeedsRetry();
+	bool PanelNeedsLightingReconcileRetry(AFGBuildableLightsControlPanel* Panel) const;
 	void SuspendAllIntegratedLighting();
 
 	AStructuralPowerGraphSubsystem* Subsystem = nullptr;

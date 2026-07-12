@@ -112,6 +112,46 @@ void FStructuralPowerReconcile::MaybeRunFinalLightingReconcile()
 	Subsystem->bPendingFinalLightingReconcile = false;
 }
 
+bool FStructuralPowerReconcile::PanelNeedsLightingReconcileRetry(
+	AFGBuildableLightsControlPanel* Panel) const
+{
+	if (!IsValid(Panel))
+	{
+		return false;
+	}
+
+	const FName EffectiveControl =
+		FStructuralPanelControlledSync::ResolveEffectiveLightControl(*Subsystem, Panel);
+	if (EffectiveControl.IsNone())
+	{
+		return true;
+	}
+
+	FStructuralPanelPorts Ports;
+	if (!FStructuralPanelPortResolver::Resolve(Panel, Ports))
+	{
+		return true;
+	}
+
+	const FStructuralChannelKey ChannelKey =
+		Subsystem->IdOps.ResolveChannelKeyForBuildable(Panel);
+	const int32 Root = Subsystem->GetEndpointComponentRoot(Panel);
+	if (Root == INDEX_NONE)
+	{
+		return true;
+	}
+
+	if (!FStructuralPanelAttach::SupplyAlreadyLinked(
+			*Subsystem, Panel, Ports, Root, ChannelKey))
+	{
+		return true;
+	}
+
+	const UFGPowerConnectionComponent* InputPower =
+		FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
+	return !FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower);
+}
+
 bool FStructuralPowerReconcile::LightingReconcileNeedsRetry()
 {
 	if (!FStructuralPowerModConfig::IsGroupLightingEnabled())
@@ -124,41 +164,7 @@ bool FStructuralPowerReconcile::LightingReconcileNeedsRetry()
 
 	for (AFGBuildableLightsControlPanel* Panel : Panels)
 	{
-		if (!IsValid(Panel))
-		{
-			continue;
-		}
-
-		const FName EffectiveControl =
-			FStructuralPanelControlledSync::ResolveEffectiveLightControl(*Subsystem, Panel);
-		if (EffectiveControl.IsNone())
-		{
-			continue;
-		}
-
-		FStructuralPanelPorts Ports;
-		if (!FStructuralPanelPortResolver::Resolve(Panel, Ports))
-		{
-			return true;
-		}
-
-		const FStructuralChannelKey ChannelKey =
-			Subsystem->IdOps.ResolveChannelKeyForBuildable(Panel);
-		const int32 Root = Subsystem->GetEndpointComponentRoot(Panel);
-		if (Root == INDEX_NONE)
-		{
-			return true;
-		}
-
-		if (!FStructuralPanelAttach::SupplyAlreadyLinked(
-				*Subsystem, Panel, Ports, Root, ChannelKey))
-		{
-			return true;
-		}
-
-		const UFGPowerConnectionComponent* InputPower =
-			FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
-		if (!FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower))
+		if (PanelNeedsLightingReconcileRetry(Panel))
 		{
 			return true;
 		}
@@ -448,9 +454,16 @@ void FStructuralPowerReconcile::ReconcileAllPanelEndpoints()
 	{
 		const FStructuralNodeId PanelId = AStructuralPowerGraphSubsystem::MakeNodeId(Panel);
 		FTrackedEndpoint& Tracked = Subsystem->TrackedEndpoints.FindOrAdd(PanelId);
-		Tracked.bPanelLinksReady = false;
-		Tracked.bDownstreamLinksReady = false;
-		Subsystem->ProcessPanelEndpoint(Panel);
+		if (!FStructuralPowerModConfig::IsGroupLightingEnabled()
+			|| PanelNeedsLightingReconcileRetry(Panel))
+		{
+			Tracked.bPanelLinksReady = false;
+			Tracked.bDownstreamLinksReady = false;
+		}
+		Subsystem->ProcessPanelEndpoint(
+			Panel,
+			/*bLocalPromoteOnly=*/false,
+			/*bForceRuntimePlace=*/true);
 		if (FStructuralPowerModConfig::IsGroupLightingEnabled())
 		{
 			LogPanelReconcileSummary(Panel);
@@ -661,7 +674,10 @@ void FStructuralPowerReconcile::RefreshNamedControlPanelsAfterLoad()
 		FTrackedEndpoint& Tracked = Subsystem->TrackedEndpoints.FindOrAdd(PanelId);
 		Tracked.bPanelLinksReady = false;
 		Tracked.bDownstreamLinksReady = false;
-		Subsystem->ProcessPanelEndpoint(Panel, /*bLocalPromoteOnly=*/false);
+		Subsystem->ProcessPanelEndpoint(
+			Panel,
+			/*bLocalPromoteOnly=*/false,
+			/*bForceRuntimePlace=*/true);
 		FStructuralPanelControlledSync::ApplyKeyedSubnet(*Subsystem, Panel);
 	}
 }

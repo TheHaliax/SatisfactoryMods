@@ -1780,9 +1780,12 @@ void AStructuralPowerGraphSubsystem::TearDownPanelStructuralLinks(
 
 void AStructuralPowerGraphSubsystem::ProcessPanelEndpoint(
 	AFGBuildableLightsControlPanel* Panel,
-	bool bLocalPromoteOnly)
+	bool bLocalPromoteOnly,
+	bool bForceRuntimePlace)
 {
-	FStructuralPowerContext Ctx = GetProcessorContext();
+	FStructuralPowerContext Ctx = bForceRuntimePlace
+		? MakeProcessorContext(EAttachContext::RuntimePlace)
+		: GetProcessorContext();
 	if (IStructuralPowerProcessor* Processor =
 			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Panel))
 	{
