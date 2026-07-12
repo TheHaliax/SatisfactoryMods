@@ -323,7 +323,6 @@ void FStructuralPowerTransferGate::RefreshKeyedTransferOnRoot(
 	}
 
 	const TArray<FStructuralNodeId> SwitchSnapshot = *SwitchIds;
-	bool bSiteGateOpen = false;
 	for (const FStructuralNodeId& NodeId : SwitchSnapshot)
 	{
 		const FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(NodeId);
@@ -344,7 +343,6 @@ void FStructuralPowerTransferGate::RefreshKeyedTransferOnRoot(
 			continue;
 		}
 
-		bSiteGateOpen = true;
 		ApplyKeyedTransferOnRoot(
 			Ctx,
 			Root,
@@ -353,7 +351,7 @@ void FStructuralPowerTransferGate::RefreshKeyedTransferOnRoot(
 			bLocalPromoteOnly);
 	}
 
-	RefreshSiteStructuralConsumersOnRoot(Ctx, Root, bSiteGateOpen);
+	RefreshSiteStructuralConsumersOnRoot(Ctx, Root, RootAllowsTransfer(Ctx, Root));
 }
 
 void FStructuralPowerTransferGate::RefreshSiteStructuralConsumersOnRoot(

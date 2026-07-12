@@ -37,6 +37,7 @@ struct FTrackedEndpoint
 	uint8 CachedSwitchWireSignature = 0xFF;
 
 	bool bStructuralPowerTransferActive = false;
+	bool bAwaitingStructuralSite = false;
 
 	class AFGBuildableCircuitSwitch* GetSwitch() const;
 	class AFGBuildablePowerPole* GetPole() const;

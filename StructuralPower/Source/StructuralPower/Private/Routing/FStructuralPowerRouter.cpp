@@ -4,6 +4,7 @@
 #include "Routing/FStructuralPowerRouter.h"
 
 #include "Buildables/FGBuildableCircuitSwitch.h"
+#include "Config/FStructuralPowerModConfig.h"
 #include "StructuralPowerConstants.h"
 
 bool FStructuralPowerRouter::UsesSourceControlModel(EStructuralChannel Tag)
@@ -15,7 +16,7 @@ bool FStructuralPowerRouter::UsesSourceControlModel(EStructuralChannel Tag)
 
 bool FStructuralPowerRouter::IsStructuralGeneratorRoutingEnabled()
 {
-	return false;
+	return FStructuralPowerModConfig::IsGroupGenerationEnabled();
 }
 
 bool FStructuralPowerRouter::IsGeneratorChannel(const EStructuralChannel Tag)

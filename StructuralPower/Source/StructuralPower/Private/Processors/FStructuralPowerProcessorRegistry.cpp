@@ -3,11 +3,8 @@
 
 #include "Processors/FStructuralPowerProcessorRegistry.h"
 
-#include "Buildables/FGBuildable.h"
-#include "Buildables/FGBuildableLightsControlPanel.h"
-#include "Config/FStructuralPowerModConfig.h"
-#include "Processors/IStructuralPowerProcessor.h"
-#include "Rules/FStructuralEligibilityRules.h"
+#include "Processors/FStructuralEndpointCatalog.h"
+#include "Processors/IStructuralEndpointProcessor.h"
 
 FStructuralPowerProcessorRegistry& FStructuralPowerProcessorRegistry::Get()
 {
@@ -15,52 +12,25 @@ FStructuralPowerProcessorRegistry& FStructuralPowerProcessorRegistry::Get()
 	return Instance;
 }
 
+void FStructuralPowerProcessorRegistry::Initialize()
+{
+	FStructuralEndpointCatalog::Get().Initialize();
+}
+
 const IStructuralPowerProcessor* FStructuralPowerProcessorRegistry::Find(
 	const EStructuralEndpointKind Kind) const
 {
-	const TUniquePtr<IStructuralPowerProcessor>* Found = ByKind.Find(Kind);
-	return Found ? Found->Get() : nullptr;
+	return FStructuralEndpointCatalog::Get().Find(Kind);
 }
 
-IStructuralPowerProcessor* FStructuralPowerProcessorRegistry::FindMutable(
+IStructuralEndpointProcessor* FStructuralPowerProcessorRegistry::FindMutable(
 	const EStructuralEndpointKind Kind)
 {
-	TUniquePtr<IStructuralPowerProcessor>* Found = ByKind.Find(Kind);
-	return Found ? Found->Get() : nullptr;
+	return FStructuralEndpointCatalog::Get().FindMutable(Kind);
 }
 
-const IStructuralPowerProcessor* FStructuralPowerProcessorRegistry::FindForBuildable(
+const IStructuralEndpointProcessor* FStructuralPowerProcessorRegistry::FindForBuildable(
 	const AFGBuildable* Buildable) const
 {
-	if (!IsValid(Buildable))
-	{
-		return nullptr;
-	}
-
-	if (FStructuralEligibilityRules::IsStructuralLightConsumer(Buildable))
-	{
-		return Find(EStructuralEndpointKind::Light);
-	}
-
-	if (Buildable->IsA<AFGBuildableLightsControlPanel>())
-	{
-		return Find(EStructuralEndpointKind::Panel);
-	}
-
-	if (FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable))
-	{
-		return Find(EStructuralEndpointKind::Switch);
-	}
-
-	if (FStructuralEligibilityRules::IsPowerBridgePole(Buildable))
-	{
-		return Find(EStructuralEndpointKind::Pole);
-	}
-
-	if (FStructuralEligibilityRules::IsPowerStorage(Buildable))
-	{
-		return Find(EStructuralEndpointKind::Storage);
-	}
-
-	return nullptr;
+	return FStructuralEndpointCatalog::Get().Classify(Buildable);
 }

@@ -5,6 +5,7 @@
 
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
+#include "Attach/FStructuralBridgeAttach.h"
 #include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Buildables/FGBuildablePowerPole.h"
@@ -13,11 +14,10 @@
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "Graph/FStructuralEndpointTypes.h"
+#include "Graph/FStructuralPoleWireUtil.h"
 #include "Panel/FStructuralPanelPortResolver.h"
-#include "Attach/FStructuralBridgeAttach.h"
-#include "Processors/FStructuralPowerProcessorRegistry.h"
-#include "Processors/FStructuralPowerSwitchProcessor.h"
-#include "Processors/IStructuralPowerProcessor.h"
+#include "Processors/FStructuralEndpointCatalog.h"
+#include "Processors/IStructuralEndpointProcessor.h"
 
 void FStructuralWireDeltaHandler::Bind(AStructuralPowerGraphSubsystem* InSubsystem)
 {
@@ -56,14 +56,13 @@ void FStructuralWireDeltaHandler::ProcessSwitchCircuitsRebuilt(AFGBuildableCircu
 	const int32 Root = Subsystem->StructureGraph.FindRoot(Tracked->ParentId);
 	FStructuralPowerContext Ctx = Subsystem->MakeProcessorContext(EAttachContext::WireDelta, Root);
 
-	FStructuralPowerSwitchProcessor::OnCircuitsRebuilt(Ctx, Switch);
-	FStructuralPowerSwitchProcessor::EnsureListener(Ctx, Switch);
-	Subsystem->NoteSwitchCircuitEchoProcessed(Switch);
-}
+	if (IStructuralEndpointProcessor* Processor =
+			FStructuralEndpointCatalog::Get().FindMutable(EStructuralEndpointKind::Switch))
+	{
+		Processor->OnCircuitsRebuilt(Ctx, Switch);
+	}
 
-void FStructuralWireDeltaHandler::ProcessSwitchWireDelta(AFGBuildableCircuitSwitch* Switch)
-{
-	ProcessSwitchCircuitsRebuilt(Switch);
+	Subsystem->NoteSwitchCircuitEchoProcessed(Switch);
 }
 
 void FStructuralWireDeltaHandler::ProcessPanelWireDelta(AFGBuildableLightsControlPanel* Panel)
@@ -112,8 +111,8 @@ void FStructuralWireDeltaHandler::ProcessPanelWireDelta(AFGBuildableLightsContro
 		if (Existing->Kind == EStructuralEndpointKind::Panel && Existing->ParentId.IsValid())
 		{
 			FStructuralPowerContext Ctx = Subsystem->MakeProcessorContext(EAttachContext::WireDelta);
-			if (IStructuralPowerProcessor* Processor =
-					FStructuralPowerProcessorRegistry::Get().FindMutable(
+			if (IStructuralEndpointProcessor* Processor =
+					FStructuralEndpointCatalog::Get().FindMutable(
 						EStructuralEndpointKind::Panel))
 			{
 				Processor->OnWireDelta(Ctx, Panel);
@@ -143,13 +142,23 @@ void FStructuralWireDeltaHandler::ProcessPoleWireDelta(AFGBuildablePowerPole* Po
 			Pole,
 			EStructuralEndpointKind::Pole))
 	{
+		const FStructuralNodeId PoleId = AStructuralPowerGraphSubsystem::MakeNodeId(Pole);
+		const FTrackedEndpoint* Tracked = Subsystem->TrackedEndpoints.Find(PoleId);
+		if (Tracked
+			&& Tracked->Kind == EStructuralEndpointKind::Pole
+			&& !FStructuralPoleWireUtil::HasVanillaWire(Pole))
+		{
+			// Placement bootstrap already linked the hidden bus; internal echo only.
+			return;
+		}
+
 		Subsystem->ProcessPoleEndpoint(Pole);
 		return;
 	}
 
 	FStructuralPowerContext Ctx = Subsystem->GetProcessorContext();
-	if (IStructuralPowerProcessor* Processor =
-			FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Pole))
+	if (IStructuralEndpointProcessor* Processor =
+			FStructuralEndpointCatalog::Get().FindMutable(EStructuralEndpointKind::Pole))
 	{
 		Processor->OnWireDelta(Ctx, Pole);
 	}

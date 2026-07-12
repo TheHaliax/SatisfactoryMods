@@ -26,6 +26,7 @@
 #include "Connection/FStructuralSiteMembership.h"
 #include "Processors/FStructuralPowerBridgeProcessor.h"
 #include "Processors/FStructuralPowerTransferGate.h"
+#include "Processors/FStructuralSwitchWireEcho.h"
 #include "Routing/EStructuralChannel.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Core/FStructuralPowerContext.h"
@@ -191,31 +192,7 @@ static void OpenConfiguredBridgeSlots(
 
 uint8 FStructuralPowerSwitchProcessor::BuildWireSignature(AFGBuildableCircuitSwitch* Switch)
 {
-	if (!IsValid(Switch))
-	{
-		return 0;
-	}
-
-	uint8 Signature = 0;
-	if (const UFGPowerConnectionComponent* Conn0 =
-			Cast<UFGPowerConnectionComponent>(Switch->GetConnection0()))
-	{
-		if (Conn0->GetNumConnections() > 0)
-		{
-			Signature |= 0x1;
-		}
-	}
-
-	if (const UFGPowerConnectionComponent* Conn1 =
-			Cast<UFGPowerConnectionComponent>(Switch->GetConnection1()))
-	{
-		if (Conn1->GetNumConnections() > 0)
-		{
-			Signature |= 0x2;
-		}
-	}
-
-	return Signature;
+	return FStructuralSwitchWireEcho::BuildWireSignature(Switch);
 }
 
 void FStructuralPowerSwitchProcessor::DisarmDirectedPair(
@@ -380,45 +357,7 @@ void FStructuralPowerSwitchProcessor::OnCircuitsRebuilt(
 	FStructuralPowerContext& Ctx,
 	AFGBuildableCircuitSwitch* Switch)
 {
-	if (!IsValid(Switch))
-	{
-		return;
-	}
-
-	const FStructuralNodeId SwitchId = Ctx.Graph().MakeNodeId(Switch);
-	FTrackedEndpoint& Tracked = Ctx.Graph().TrackedEndpoints.FindOrAdd(SwitchId);
-	const uint8 WireSignature = BuildWireSignature(Switch);
-	if (Tracked.CachedSwitchWireSignature == WireSignature)
-	{
-		return;
-	}
-
-	if (FStructuralPowerTrace::IsExtendedDebugEnabled())
-	{
-		FStructuralPowerTrace::LogHook(
-			Switch,
-			TEXT("OnCircuitsRebuilt"),
-			TEXT("bridge_strategy"),
-			TEXT("switch_circuits_rebuilt"));
-	}
-
-	const int32 Root = Tracked.ParentId.IsValid()
-		? Ctx.Graph().StructureGraph.FindRoot(Tracked.ParentId)
-		: INDEX_NONE;
-
-	ApplySwitchBridgeStrategy(Ctx, Switch);
-
-	if (NeedsAdvancedWork(Ctx, Switch) && Root != INDEX_NONE)
-	{
-		const bool bSwitchOn = Switch->IsBridgeActive();
-		FStructuralPowerTransferGate::FlipBridgeGate(Ctx, Switch, bSwitchOn);
-		FStructuralPowerTransferGate::RefreshSiteStructuralConsumersOnRoot(
-			Ctx,
-			Root,
-			bSwitchOn);
-	}
-
-	Tracked.CachedSwitchWireSignature = WireSignature;
+	FStructuralSwitchWireEcho::OnCircuitsRebuilt(Ctx, Switch);
 }
 
 void FStructuralPowerSwitchProcessor::RemeshUnmeshedPeersAfterBulkLoad(FStructuralPowerContext& Ctx)
@@ -674,7 +613,10 @@ void FStructuralPowerSwitchProcessor::ApplyWireDeltaTransferSideEffects(
 		FStructuralPowerTransferGate::FlipBridgeGate(Ctx, Switch, false);
 	}
 
-	FStructuralPowerTransferGate::RefreshSiteStructuralConsumersOnRoot(Ctx, Root, bGateOpen);
+	if (!HasAssignedControl(Ctx, Switch))
+	{
+		FStructuralPowerTransferGate::RefreshSiteStructuralConsumersOnRoot(Ctx, Root, bGateOpen);
+	}
 }
 
 void FStructuralPowerSwitchProcessor::OnStateChanged(
@@ -727,7 +669,7 @@ void FStructuralPowerSwitchProcessor::OnStateChanged(
 					/*bLocalPromoteOnly=*/true);
 			}
 
-			if (Root != INDEX_NONE)
+			if (Root != INDEX_NONE && !bKeyedSubnet)
 			{
 				FStructuralPowerTransferGate::RefreshSiteStructuralConsumersOnRoot(
 					Ctx,

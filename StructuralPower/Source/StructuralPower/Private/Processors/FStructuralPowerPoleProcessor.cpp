@@ -15,6 +15,7 @@
 #include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "Connection/FStructuralSiteMembership.h"
 #include "Graph/FStructuralEndpointTypes.h"
+#include "Graph/FStructuralPoleWireUtil.h"
 #include "Graph/FStructuralOutletParentHeuristics.h"
 #include "Graph/FStructuralOutletParentResolver.h"
 #include "Routing/EStructuralChannel.h"
@@ -74,6 +75,21 @@ void FStructuralPowerPoleProcessor::Process(
 	AStructuralPowerGraphSubsystem& Graph = Ctx.Graph();
 	const bool bBulk = Graph.IsBulkLoadDrainActive();
 	const FStructuralNodeId PoleId = Graph.MakeNodeId(Pole);
+
+	if (!bBulk && Ctx.GetAttachContext() != EAttachContext::WireDelta)
+	{
+		if (const FTrackedEndpoint* Existing = Graph.TrackedEndpoints.Find(PoleId))
+		{
+			if (Existing->Kind == EStructuralEndpointKind::Pole
+				&& IsValid(Graph.FindBusConnector(Pole))
+				&& !Existing->ParentId.IsValid()
+				&& !Existing->bAwaitingStructuralSite
+				&& !FStructuralPoleWireUtil::HasVanillaWire(Pole))
+			{
+				return;
+			}
+		}
+	}
 
 	if (!bBulk && Ctx.GetAttachContext() == EAttachContext::WireDelta)
 	{

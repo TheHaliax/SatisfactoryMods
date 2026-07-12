@@ -335,14 +335,6 @@ FStructuralOutletParentResolveResult FStructuralOutletParentResolver::ResolveDet
 		}
 	}
 
-	if (FStructuralWallAnchor FaceAnchor = TryResolveAttachedLightweightParent(Outlet, World);
-		FaceAnchor.IsValid())
-	{
-		Result.Anchor = FaceAnchor;
-		Result.Method = EStructuralOutletParentMethod::LightweightFaceAttach;
-		return Result;
-	}
-
 	if (Params.LightweightIndex)
 	{
 		if (FStructuralWallAnchor IndexAnchor = Params.LightweightIndex->FindParentWallForOutlet(Outlet);
@@ -371,6 +363,20 @@ FStructuralOutletParentResolveResult FStructuralOutletParentResolver::ResolveDet
 		{
 			Result.Anchor = LiveAnchor;
 			Result.Method = EStructuralOutletParentMethod::LiveScan;
+			return Result;
+		}
+	}
+
+	const bool bIndexedSpatialExhausted = Params.LightweightIndex
+		&& Params.BusMemberIndex
+		&& Params.StructureGraph;
+	if (!bIndexedSpatialExhausted)
+	{
+		if (FStructuralWallAnchor FaceAnchor = TryResolveAttachedLightweightParent(Outlet, World);
+			FaceAnchor.IsValid())
+		{
+			Result.Anchor = FaceAnchor;
+			Result.Method = EStructuralOutletParentMethod::LightweightFaceAttach;
 			return Result;
 		}
 	}

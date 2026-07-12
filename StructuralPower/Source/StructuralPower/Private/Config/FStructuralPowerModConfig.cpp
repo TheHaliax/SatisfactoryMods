@@ -49,7 +49,48 @@ static TAutoConsoleVariable<float> CVarStructuralPowerHoverpackVerticalMultiplie
 	TEXT("Structural hoverpack vertical radius multiplier (clamp 1.0-10.0)"),
 	ECVF_Default);
 
-static float ClampHoverpackMultiplier(float Value)
+	static bool IsGroupEnabled(TAutoConsoleVariable<int32>& CVar)
+	{
+		return CVar.GetValueOnGameThread() != 0;
+	}
+
+	static TAutoConsoleVariable<int32> CVarStructuralPowerGroupGeneration(
+		TEXT("StructuralPower.GroupGeneration"),
+		0,
+		TEXT("1 = generators and storage draw structural power on structure"),
+		ECVF_Default);
+
+	static TAutoConsoleVariable<int32> CVarStructuralPowerGroupResources(
+		TEXT("StructuralPower.GroupResources"),
+		0,
+		TEXT("1 = resource extractors draw structural power on structure"),
+		ECVF_Default);
+
+	static TAutoConsoleVariable<int32> CVarStructuralPowerGroupProduction(
+		TEXT("StructuralPower.GroupProduction"),
+		0,
+		TEXT("1 = production buildings draw structural power on structure"),
+		ECVF_Default);
+
+	static TAutoConsoleVariable<int32> CVarStructuralPowerGroupTransport(
+		TEXT("StructuralPower.GroupTransport"),
+		0,
+		TEXT("1 = transport buildings draw structural power on structure"),
+		ECVF_Default);
+
+	static TAutoConsoleVariable<int32> CVarStructuralPowerGroupPipes(
+		TEXT("StructuralPower.GroupPipes"),
+		0,
+		TEXT("1 = pipe pumps draw structural power on structure"),
+		ECVF_Default);
+
+	static TAutoConsoleVariable<int32> CVarStructuralPowerGroupBelts(
+		TEXT("StructuralPower.GroupBelts"),
+		0,
+		TEXT("1 = belt category toggle placeholder"),
+		ECVF_Default);
+
+	static float ClampHoverpackMultiplier(float Value)
 {
 	return FMath::Clamp(Value, HoverpackMultiplierMin, HoverpackMultiplierMax);
 }
@@ -114,6 +155,18 @@ static void ApplyCvarsFromJson(const TSharedPtr<FJsonObject>& Object)
 		ParseBoolField(Object, TEXT("ExtendedDebug"), false) ? 1 : 0);
 	CVarStructuralPowerGroupLighting->Set(
 		ParseBoolField(Object, TEXT("GroupLighting"), false) ? 1 : 0);
+	CVarStructuralPowerGroupGeneration->Set(
+		ParseBoolField(Object, TEXT("GroupGeneration"), false) ? 1 : 0);
+	CVarStructuralPowerGroupResources->Set(
+		ParseBoolField(Object, TEXT("GroupResources"), false) ? 1 : 0);
+	CVarStructuralPowerGroupProduction->Set(
+		ParseBoolField(Object, TEXT("GroupProduction"), false) ? 1 : 0);
+	CVarStructuralPowerGroupTransport->Set(
+		ParseBoolField(Object, TEXT("GroupTransport"), false) ? 1 : 0);
+	CVarStructuralPowerGroupPipes->Set(
+		ParseBoolField(Object, TEXT("GroupPipes"), false) ? 1 : 0);
+	CVarStructuralPowerGroupBelts->Set(
+		ParseBoolField(Object, TEXT("GroupBelts"), false) ? 1 : 0);
 
 	float Horizontal = ParseFloatField(Object, TEXT("HoverpackStructuralHorizontalMultiplier"), -1.0f);
 	float Vertical = ParseFloatField(Object, TEXT("HoverpackStructuralVerticalMultiplier"), -1.0f);
@@ -141,6 +194,24 @@ static TSharedPtr<FJsonObject> BuildJsonFromCvars()
 	Object->SetBoolField(
 		TEXT("GroupLighting"),
 		CVarStructuralPowerGroupLighting.GetValueOnGameThread() != 0);
+	Object->SetBoolField(
+		TEXT("GroupGeneration"),
+		CVarStructuralPowerGroupGeneration.GetValueOnGameThread() != 0);
+	Object->SetBoolField(
+		TEXT("GroupResources"),
+		CVarStructuralPowerGroupResources.GetValueOnGameThread() != 0);
+	Object->SetBoolField(
+		TEXT("GroupProduction"),
+		CVarStructuralPowerGroupProduction.GetValueOnGameThread() != 0);
+	Object->SetBoolField(
+		TEXT("GroupTransport"),
+		CVarStructuralPowerGroupTransport.GetValueOnGameThread() != 0);
+	Object->SetBoolField(
+		TEXT("GroupPipes"),
+		CVarStructuralPowerGroupPipes.GetValueOnGameThread() != 0);
+	Object->SetBoolField(
+		TEXT("GroupBelts"),
+		CVarStructuralPowerGroupBelts.GetValueOnGameThread() != 0);
 	Object->SetNumberField(
 		TEXT("HoverpackStructuralHorizontalMultiplier"),
 		ClampHoverpackMultiplier(CVarStructuralPowerHoverpackHorizontalMultiplier.GetValueOnGameThread()));
@@ -156,6 +227,12 @@ void FStructuralPowerModConfig::RegisterConsoleVariables()
 	CVarStructuralPowerTrace.AsVariable();
 	CVarStructuralPowerExtendedDebug.AsVariable();
 	CVarStructuralPowerGroupLighting.AsVariable();
+	CVarStructuralPowerGroupGeneration.AsVariable();
+	CVarStructuralPowerGroupResources.AsVariable();
+	CVarStructuralPowerGroupProduction.AsVariable();
+	CVarStructuralPowerGroupTransport.AsVariable();
+	CVarStructuralPowerGroupPipes.AsVariable();
+	CVarStructuralPowerGroupBelts.AsVariable();
 	CVarStructuralPowerHoverpackHorizontalMultiplier.AsVariable();
 	CVarStructuralPowerHoverpackVerticalMultiplier.AsVariable();
 }
@@ -275,7 +352,13 @@ bool FStructuralPowerModConfig::TryApplySetCommand(const TArray<FString>& Args, 
 	bool bChanged = false;
 	if (SetBool(CVarStructuralPowerTrace, TEXT("Trace"))
 		|| SetBool(CVarStructuralPowerExtendedDebug, TEXT("ExtendedDebug"))
-		|| SetBool(CVarStructuralPowerGroupLighting, TEXT("GroupLighting")))
+		|| SetBool(CVarStructuralPowerGroupLighting, TEXT("GroupLighting"))
+		|| SetBool(CVarStructuralPowerGroupGeneration, TEXT("GroupGeneration"))
+		|| SetBool(CVarStructuralPowerGroupResources, TEXT("GroupResources"))
+		|| SetBool(CVarStructuralPowerGroupProduction, TEXT("GroupProduction"))
+		|| SetBool(CVarStructuralPowerGroupTransport, TEXT("GroupTransport"))
+		|| SetBool(CVarStructuralPowerGroupPipes, TEXT("GroupPipes"))
+		|| SetBool(CVarStructuralPowerGroupBelts, TEXT("GroupBelts")))
 	{
 		bChanged = true;
 	}
@@ -317,6 +400,36 @@ bool FStructuralPowerModConfig::TryApplySetCommand(const TArray<FString>& Args, 
 bool FStructuralPowerModConfig::IsGroupLightingEnabled()
 {
 	return CVarStructuralPowerGroupLighting.GetValueOnGameThread() != 0;
+}
+
+bool FStructuralPowerModConfig::IsGroupGenerationEnabled()
+{
+	return CVarStructuralPowerGroupGeneration.GetValueOnGameThread() != 0;
+}
+
+bool FStructuralPowerModConfig::IsGroupResourcesEnabled()
+{
+	return CVarStructuralPowerGroupResources.GetValueOnGameThread() != 0;
+}
+
+bool FStructuralPowerModConfig::IsGroupProductionEnabled()
+{
+	return CVarStructuralPowerGroupProduction.GetValueOnGameThread() != 0;
+}
+
+bool FStructuralPowerModConfig::IsGroupTransportEnabled()
+{
+	return CVarStructuralPowerGroupTransport.GetValueOnGameThread() != 0;
+}
+
+bool FStructuralPowerModConfig::IsGroupPipesEnabled()
+{
+	return CVarStructuralPowerGroupPipes.GetValueOnGameThread() != 0;
+}
+
+bool FStructuralPowerModConfig::IsGroupBeltsEnabled()
+{
+	return CVarStructuralPowerGroupBelts.GetValueOnGameThread() != 0;
 }
 
 float FStructuralPowerModConfig::GetHoverpackHorizontalMultiplier()

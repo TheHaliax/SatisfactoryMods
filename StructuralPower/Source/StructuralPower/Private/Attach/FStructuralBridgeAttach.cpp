@@ -87,16 +87,14 @@ FStructuralBridgeAttachOutcome FStructuralBridgeAttach::AttachOnPlace(
 		Tracked.Actor = Host;
 		Tracked.Kind = Request.Kind;
 		Tracked.ParentId = Site.ParentId;
+		Tracked.bAwaitingStructuralSite = true;
 		Graph.RegisterBuildableActor(Host);
 		Graph.LinkBusToVisibleConnectionsLocal(Host, OutletBus);
 
-		if (!bBulk && Request.bUsePoleRootResolver)
-		{
-			Graph.EnqueuePlacement(Host, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
-		}
-
 		return Outcome;
 	}
+
+	Tracked.bAwaitingStructuralSite = false;
 
 	FStructuralSiteMembershipParams Params;
 	Params.bLinkVisibleConnections = true;

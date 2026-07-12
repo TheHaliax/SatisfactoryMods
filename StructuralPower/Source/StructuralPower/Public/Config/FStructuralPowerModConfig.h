@@ -22,6 +22,12 @@ public:
 	static bool TryApplySetCommand(const TArray<FString>& Args, UWorld* World);
 
 	static bool IsGroupLightingEnabled();
+	static bool IsGroupGenerationEnabled();
+	static bool IsGroupResourcesEnabled();
+	static bool IsGroupProductionEnabled();
+	static bool IsGroupTransportEnabled();
+	static bool IsGroupPipesEnabled();
+	static bool IsGroupBeltsEnabled();
 	static float GetHoverpackHorizontalMultiplier();
 	static float GetHoverpackVerticalMultiplier();
 	static bool IsTraceEnabled();

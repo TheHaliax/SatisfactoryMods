@@ -11,6 +11,7 @@
 #include "UStructuralPowerIdConfigWidget.generated.h"
 
 class AFGBuildable;
+class AFGPlayerController;
 class FStructuralPowerIdDisplaySync;
 class FStructuralPowerIdModalHost;
 class FStructuralPowerIdWindowPool;

@@ -17,7 +17,6 @@ public:
 
 	void Bind(AStructuralPowerGraphSubsystem* InSubsystem);
 
-	void ProcessSwitchWireDelta(AFGBuildableCircuitSwitch* Switch);
 	void ProcessSwitchCircuitsRebuilt(AFGBuildableCircuitSwitch* Switch);
 	void ProcessPanelWireDelta(AFGBuildableLightsControlPanel* Panel);
 	void ProcessPoleWireDelta(AFGBuildablePowerPole* Pole);

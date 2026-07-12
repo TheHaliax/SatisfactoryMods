@@ -22,7 +22,10 @@
 #include "Network/UStructuralPowerRCO.h"
 #include "Patching/NativeHookManager.h"
 #include "Equipment/FStructuralEquipmentBridgeRegistry.h"
-#include "Processors/FStructuralPowerProcessorRegistry.h"
+#include "Config/FStructuralGroupToggleRegistry.h"
+#include "Graph/FStructuralEndpointDescriptor.h"
+#include "Processors/FStructuralEndpointProcessors.h"
+#include "Processors/IStructuralEndpointProcessor.h"
 #include "FGHUD.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "Panel/FStructuralPanelControlledSync.h"
@@ -82,38 +85,16 @@ bool UStructuralPowerRootInstanceModule::TryEnqueueBuildable(
 		return false;
 	}
 
-	if (FStructuralEligibilityRules::IsPowerBridgePole(Buildable))
+	if (const IStructuralEndpointProcessor* Processor =
+			FStructuralEndpointCatalog::Get().Classify(Buildable))
 	{
-		FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("enqueue_bridge_pole"), SourceTag);
-		Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
-		return true;
-	}
-
-	if (FStructuralEligibilityRules::IsPowerStorage(Buildable))
-	{
-		FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("enqueue_storage"), SourceTag);
-		Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
-		return true;
-	}
-
-	if (FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable))
-	{
-		FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("enqueue_switch"), SourceTag);
-		Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
-		return true;
-	}
-
-	if (FStructuralEligibilityRules::IsStructuralLightConsumer(Buildable))
-	{
-		FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("enqueue_light"), SourceTag);
-		Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
-		return true;
-	}
-
-	if (Buildable->IsA<AFGBuildableLightsControlPanel>())
-	{
-		FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("enqueue_panel"), SourceTag);
-		Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+		const FStructuralEndpointDescriptor& Descriptor = Processor->GetDescriptor();
+		FStructuralPowerTrace::LogHook(
+			Buildable,
+			HookName,
+			StructuralEndpointKindToString(Descriptor.Kind),
+			SourceTag);
+		Graph->EnqueuePlacement(Buildable, Descriptor.PlacementJob, /*bDefer=*/true);
 		return true;
 	}
 
@@ -544,7 +525,8 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 	UE_LOG(LogStructuralPower, Log, TEXT("StructuralPower: skipping hooks in editor"));
 #else
 	FStructuralEquipmentBridgeRegistry::Get().Initialize();
-	FStructuralPowerProcessorRegistry::Get().Initialize();
+	FStructuralEndpointProcessors::InitializeRegistries();
+	FStructuralGroupToggleRegistry::Get().Initialize();
 	FStructuralPowerIdInput::Register();
 	FStructuralVanillaPowerTrace::RegisterHooks();
 

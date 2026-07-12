@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "Core/EAttachContext.h"
+#include "Core/FStructuralGraphSession.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Core/FStructuralNodeId.h"
 #include "FGSaveInterface.h"
@@ -67,6 +68,9 @@ public:
 
 	AStructuralPowerGraphSubsystem();
 
+	FStructuralGraphSession& GetGraphSession();
+	const FStructuralGraphSession& GetGraphSession() const;
+
 	static AStructuralPowerGraphSubsystem* GetOrCreate(UWorld* World);
 	static AStructuralPowerGraphSubsystem* Find(UWorld* World);
 	static FStructuralNodeId MakeNodeId(const AFGBuildable* Buildable);
@@ -83,7 +87,6 @@ public:
 	void OnBuildableRemoved(AFGBuildable* Buildable);
 	void OnLightweightRemoved(const FStructuralLightweightKey& Key);
 	void ProcessWallOutletAfterWire(AFGBuildablePowerPole* Pole);
-	void ProcessSwitchWireDelta(AFGBuildableCircuitSwitch* Switch);
 	void ProcessSwitchCircuitsRebuilt(AFGBuildableCircuitSwitch* Switch);
 	void ProcessPanelWireDelta(AFGBuildableLightsControlPanel* Panel);
 	bool ShouldSkipPanelCircuitEcho(
@@ -98,7 +101,6 @@ public:
 	void NoteSwitchCircuitEchoProcessed(AFGBuildableCircuitSwitch* Switch);
 	void NoteSwitchToggleHandled(AFGBuildableCircuitSwitch* Switch);
 	void ProcessPoleWireDelta(AFGBuildablePowerPole* Pole);
-	void ProcessPoleEndpointDirect(AFGBuildablePowerPole* Pole);
 	void OnSwitchStateChanged(AFGBuildableCircuitSwitch* Switch);
 	void ReconcileAllLightConsumers();
 	void ReconcileGroupLightingState();
@@ -208,6 +210,10 @@ public:
 	virtual bool NeedTransform_Implementation() override { return false; }
 	virtual bool ShouldSave_Implementation() const override { return true; }
 
+	void ProcessOutlet(AFGBuildable* Buildable);
+
+	friend class FStructuralSwitchWireEcho;
+	friend class FStructuralGraphSession;
 	friend class FStructuralPowerGeneratorProcessor;
 	friend class FStructuralPowerLightProcessor;
 	friend class FStructuralPowerPanelProcessor;
@@ -230,11 +236,12 @@ public:
 	friend class FStructuralBridgeRootIndex;
 	friend class FStructuralGraphIdOps;
 	friend class FStructuralWireDeltaHandler;
+	friend class FStructuralEndpointDispatcher;
 
 private:
 	void ProcessStructure(AFGBuildable* Buildable);
+	void RetryAwaitingStructuralSiteEndpoints();
 	void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
-	void ProcessOutlet(AFGBuildable* Buildable);
 	void ProcessPoleEndpoint(AFGBuildablePowerPole* Pole);
 	void ProcessStorageEndpoint(AFGBuildablePowerStorage* Storage);
 	void ProcessSwitchEndpoint(AFGBuildableCircuitSwitch* Switch);
@@ -369,4 +376,6 @@ private:
 	FStructuralCrossSiteGraph CrossSiteGraph;
 	FStructuralSiteState SiteState;
 	TMap<int32, TWeakObjectPtr<UFGCircuitConnectionComponent>> SourceConnectorByRoot;
+
+	TUniquePtr<FStructuralGraphSession> GraphSession;
 };

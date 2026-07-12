@@ -7,17 +7,21 @@
 #include "Core/EAttachContext.h"
 
 class AStructuralPowerGraphSubsystem;
+class FStructuralGraphSession;
 class UWorld;
 
 struct STRUCTURALPOWER_API FStructuralPowerContext
 {
 	FStructuralPowerContext(
 		AStructuralPowerGraphSubsystem& InGraph,
+		FStructuralGraphSession& InSession,
 		EAttachContext InAttachContext,
 		int32 InSiteRoot = INDEX_NONE);
 
 	AStructuralPowerGraphSubsystem& Graph();
 	const AStructuralPowerGraphSubsystem& Graph() const;
+	FStructuralGraphSession& Session();
+	const FStructuralGraphSession& Session() const;
 	EAttachContext GetAttachContext() const { return AttachContext; }
 	int32 GetSiteRoot() const { return SiteRoot; }
 
@@ -27,6 +31,7 @@ struct STRUCTURALPOWER_API FStructuralPowerContext
 
 private:
 	AStructuralPowerGraphSubsystem* GraphPtr = nullptr;
+	FStructuralGraphSession* SessionPtr = nullptr;
 	EAttachContext AttachContext = EAttachContext::RuntimePlace;
 	int32 SiteRoot = INDEX_NONE;
 };

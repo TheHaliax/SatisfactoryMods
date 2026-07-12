@@ -24,6 +24,13 @@ Major architecture release — **stable retroactive load**, lighting, switches, 
 - **Structural lighting + Id panel** — opt-in `GroupLighting`; **I** key for Source/Control ids; switch subnets (Mode B default)
 - **Save hygiene** — mod bus components stripped before bridge BeginPlay; topology rebuilt from live geometry every load
 
+### Post-3.0.0 development (@ `aea9f1e`, not yet SMR re-ship)
+
+- **Bridge attach unify** — `FStructuralBridgeAttach` shared place/load for poles and power storage (`IntegrateOnPlace`)
+- **Switch parity** — wire-delta and bulk-load paths match runtime placement bridge strategy (`bcb08cb`, `75f6912`)
+- **Pole BeginPlay** — enqueue when `OnBuildEffectFinished` missed runtime pole
+- **Contributor docs** — `development.md` attach map + HALSP pole lines; POLICY §13 source comment hygiene
+
 ## 2.2.0 — 2026-07-05
 Structural lighting, named light groups, and unified device Id config (I key).
 - **Structural lighting (M3):** lights on powered structure draw from the bus — no per-foundation wire daisy-chain. **Opt-in** — default OFF (`!lighting` or console)

@@ -6,8 +6,9 @@
 #include "CoreMinimal.h"
 #include "Graph/FStructuralEndpointTypes.h"
 
+#include "Processors/IStructuralEndpointProcessor.h"
+
 class AFGBuildable;
-class IStructuralPowerProcessor;
 
 class STRUCTURALPOWER_API FStructuralPowerProcessorRegistry
 {
@@ -22,12 +23,7 @@ public:
 
 	const IStructuralPowerProcessor* Find(EStructuralEndpointKind Kind) const;
 
-	IStructuralPowerProcessor* FindMutable(EStructuralEndpointKind Kind);
+	IStructuralEndpointProcessor* FindMutable(EStructuralEndpointKind Kind);
 
-	const IStructuralPowerProcessor* FindForBuildable(const AFGBuildable* Buildable) const;
-
-private:
-	void Register(TUniquePtr<IStructuralPowerProcessor> Processor);
-
-	TMap<EStructuralEndpointKind, TUniquePtr<IStructuralPowerProcessor>> ByKind;
+	const IStructuralEndpointProcessor* FindForBuildable(const AFGBuildable* Buildable) const;
 };

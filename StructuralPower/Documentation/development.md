@@ -67,7 +67,8 @@ Full checklist: [release.md](release.md).
 | Cross-site graph | `FStructuralCrossSiteGraph.cpp` |
 | Id widget helpers | `FStructuralPowerIdShellBuilder.cpp`, `FStructuralPowerIdModalHost.cpp`, … |
 | **Processors** | `FStructuralPowerSwitchProcessor`, `FStructuralPowerPanelProcessor`, `FStructuralPowerLightProcessor`, `FStructuralPowerPoleProcessor`, `FStructuralPowerStorageProcessor`, `FStructuralPowerTransferGate`, `FStructuralPowerBridgeProcessor` |
-| **Bridge attach (pole + storage)** | `Attach/FStructuralBridgeAttach.cpp` — shared `IntegrateOnPlace` place/load path |
+| **Site membership** | `Connection/FStructuralSiteMembership.*` — `IntegrateOnPlace` |
+| **Bridge attach** | `Attach/FStructuralBridgeAttach.*` — pole + storage shared place/load |
 | **Connection points** | `FStructuralPoleConnectionPoint`, `FStructuralSwitchConnectionPoint`, `FStructuralPanelConnectionPoint`, `FStructuralStorageConnectionPoint` |
 | Structural connectivity graph (spatial hash + union-find) | `FStructuralConnectivityGraph.cpp` |
 | Lightweight index | `FStructuralLightweightIndex.cpp` |
@@ -110,7 +111,23 @@ BeginPlay / OnBuildEffectFinished / bulk drain
   → IntegrateOnPlace (link FG visible ports → SP#, peer mesh, promote)
 ```
 
-Wire delta: no `ParentId` membership yet → full `ProcessPoleEndpoint` once; else thin link/mesh in connection point. **Switch** keeps `ApplyStructureMembership` + bridge strategy; **panel** unchanged (`FStructuralPanelAttach`, `GroupLighting` gate).
+Wire delta: no `ParentId` membership yet → full `ProcessPoleEndpoint` once; else thin link/mesh in connection point. **Switch** keeps `ApplyStructureMembership` + bridge strategy (`bcb08cb`/`75f6912` load/wire parity); **panel** unchanged (`FStructuralPanelAttach`, `GroupLighting` gate).
+
+### Attach path map (all kinds @ `aea9f1e`)
+
+| Kind | Place / load | Config gate |
+|------|--------------|-------------|
+| Pole | `FStructuralBridgeAttach::AttachOnPlace` | always on |
+| Storage | same `BridgeAttach` | `GroupGeneration` *(stub)* |
+| Switch | `FStructuralPowerSwitchProcessor::ApplyStructureMembership` | always on |
+| Panel | `FStructuralPanelAttach` | `GroupLighting` |
+| Light | `FStructuralDeviceAttach::TryAttachConsumer` | `GroupLighting` |
+
+Pole + storage share one bridge attach path today; switch/panel/light remain separate attach types. All structure integration uses `FStructuralSiteMembership::IntegrateOnPlace`. Full table: local `development/ARCHITECTURE.md` §7.
+
+### DR-018 membership roles
+
+`EStructuralMembershipRole` + `FStructuralMembershipRole` resolve which Source/Control fields participate in keyed links. Router: `ShouldRouteKeyedJoin` (`publisher.Control == joiner.Source`). Control-id gang index for panel/switch subnets. Generator/machine toggles reuse same router when Wave 1 scaffold lands — see `GROUP-TOGGLES.md` (local).
 
 `bStructuralPowerTransferActive = false` suspends new consumer wiring only — tracked topology stays until explicit tear-down.
 
