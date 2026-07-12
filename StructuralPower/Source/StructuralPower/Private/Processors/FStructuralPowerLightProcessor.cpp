@@ -14,6 +14,7 @@
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Processors/FStructuralPowerTransferGate.h"
 #include "Routing/EStructuralChannel.h"
+#include "Core/FStructuralGraphSession.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerConstants.h"
@@ -44,27 +45,27 @@ void FStructuralPowerLightProcessor::Process(
 		return;
 	}
 
-	const FStructuralChannelKey ChannelKey = Ctx.Graph().ResolveChannelKeyForBuildable(Light);
+	const FStructuralChannelKey ChannelKey = Ctx.Session().ResolveChannelKeyForBuildable(Light);
 	const EAttachContext AttachContext = Ctx.GetAttachContext();
-	const FStructuralWallAnchor ParentAnchor = Ctx.Graph().ResolveOutletAnchor(Light);
+	const FStructuralWallAnchor ParentAnchor = Ctx.Session().ResolveOutletAnchor(Light);
 	FStructuralNodeId ParentId;
-	const int32 Root = Ctx.Graph().ResolveEndpointComponentRoot(Light, ParentAnchor, ParentId);
+	const int32 Root = Ctx.Session().ResolveEndpointComponentRoot(Light, ParentAnchor, ParentId);
 
-	const FStructuralNodeId LightId = Ctx.Graph().MakeNodeId(Light);
-	FTrackedEndpoint& Tracked = Ctx.Graph().TrackedEndpoints.FindOrAdd(LightId);
+	const FStructuralNodeId LightId = Ctx.Session().MakeNodeId(Light);
+	FTrackedEndpoint& Tracked = Ctx.Session().TrackedEndpoints().FindOrAdd(LightId);
 	Tracked.Actor = Light;
 	Tracked.ParentId = ParentId;
 	Tracked.Kind = EStructuralEndpointKind::Light;
-	Ctx.Graph().RegisterBuildableActor(Light);
+	Ctx.Session().RegisterBuildableActor(Light);
 	if (Root != INDEX_NONE)
 	{
 		if (IsBulkLoadAttachContext(AttachContext))
 		{
-			Ctx.Graph().AddEndpointToRootIndex(Root, EStructuralEndpointKind::Light, LightId);
+			Ctx.Session().AddEndpointToRootIndex(Root, EStructuralEndpointKind::Light, LightId);
 		}
 		else
 		{
-			Ctx.Graph().MarkBridgeEndpointRootIndexDirty();
+			Ctx.Session().MarkBridgeEndpointRootIndexDirty();
 		}
 	}
 
@@ -93,12 +94,12 @@ void FStructuralPowerLightProcessor::Process(
 	}
 
 	const bool bPanelFed = Root != INDEX_NONE
-		&& Ctx.Graph().IsPanelDownstreamLight(Root, ChannelKey);
+		&& Ctx.Session().IsPanelDownstreamLight(Root, ChannelKey);
 
 	if (Root == INDEX_NONE
 		|| (!bPanelFed
-			&& !Ctx.Graph().DoesComponentRootCarryPower(Root)
-			&& !Ctx.Graph().DoesSiteStructuralBusCarryPower(Root)))
+			&& !Ctx.Session().DoesComponentRootCarryPower(Root)
+			&& !Ctx.Session().DoesSiteStructuralBusCarryPower(Root)))
 	{
 		FStructuralPowerTrace::LogPlacementSkip(Light, TEXT("light_no_component_feed"));
 		FStructuralPowerTrace::LogLightConsumer(
@@ -113,16 +114,15 @@ void FStructuralPowerLightProcessor::Process(
 		FStructuralDeviceAttach::TearDownConsumerLinks(Plug);
 	}
 
-	const bool bAttached = FStructuralDeviceAttach::TryAttachConsumer(
-		Ctx.Graph(),
+	const bool bAttached = FStructuralDeviceAttach::TryAttachConsumer(Ctx.Session(),
 		Light,
 		Plug,
 		Root,
 		ChannelKey);
 	if (!bAttached)
 	{
-		if (Ctx.Graph().IsDirectSwitchFedLight(Root, ChannelKey)
-			&& Ctx.Graph().IsSwitchFeedOpen(Root, ChannelKey.Source))
+		if (Ctx.Session().IsDirectSwitchFedLight(Root, ChannelKey)
+			&& Ctx.Session().IsSwitchFeedOpen(Root, ChannelKey.Source))
 		{
 			FStructuralPowerTrace::LogPlacementSkip(
 				Light,
@@ -144,12 +144,12 @@ void FStructuralPowerLightProcessor::Process(
 	if (bAttached)
 	{
 		Tracked.bStructuralPowerTransferActive = true;
-		Ctx.Graph().PromoteDirectHiddenLinks(Plug);
+		Ctx.Session().PromoteDirectHiddenLinks(Plug);
 	}
 
 	if (bPanelFed && IsValid(Plug))
 	{
-		Ctx.Graph().PromoteDirectHiddenLinks(Plug);
+		Ctx.Session().PromoteDirectHiddenLinks(Plug);
 	}
 
 	const TCHAR* PathLabel = bPanelFed ? TEXT("panel_downstream") : (bAttached ? TEXT("direct") : TEXT("-"));

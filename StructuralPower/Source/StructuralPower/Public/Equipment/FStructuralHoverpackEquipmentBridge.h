@@ -14,7 +14,7 @@ public:
 	virtual void RegisterHooks() override;
 
 	virtual bool QueryHoverpackStructuralAnchor(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		const FVector& QueryLoc,
 		float MaxHorizontal,
 		float MaxVertical,

@@ -15,6 +15,7 @@ class AFGBuildableLightSource;
 class AFGBuildableLightsControlPanel;
 struct FStructuralPowerContext;
 class AStructuralPowerGraphSubsystem;
+class FStructuralGraphSession;
 class UFGStructuralPowerConnectionComponent;
 
 class STRUCTURALPOWER_API FStructuralPowerSwitchProcessor
@@ -46,7 +47,7 @@ public:
 
 	static uint8 BuildWireSignature(AFGBuildableCircuitSwitch* Switch);
 
-	static void RemeshUnmeshedPeersAfterBulkLoad(FStructuralPowerContext& Ctx);
+	static void RemeshUnmeshedBridgesAfterBulkLoad(FStructuralPowerContext& Ctx);
 
 	static void PropagateWiredFeedChange(
 		FStructuralPowerContext& Ctx,
@@ -84,7 +85,7 @@ private:
 		FTrackedEndpoint& Tracked);
 
 	static bool ResolveSwitchTrackedRoot(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildableCircuitSwitch* Switch,
 		FStructuralNodeId& OutSwitchId,
 		int32& OutRoot,

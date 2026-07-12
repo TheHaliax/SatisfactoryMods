@@ -4,12 +4,10 @@
 #include "Equipment/FStructuralHoverpackEquipmentBridge.h"
 
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
-#include "Config/FStructuralPowerModConfig.h"
+#include "Core/FStructuralGraphSession.h"
 #include "Equipment/FStructuralHoverpackBridge.h"
 #include "FGCircuitConnectionComponent.h"
 #include "FGPowerConnectionComponent.h"
-#include "Save/AStructuralPowerGraphSubsystem.h"
-#include "Session/FStructuralPowerSessionSettings.h"
 
 FName FStructuralHoverpackEquipmentBridge::GetKind() const
 {
@@ -22,7 +20,7 @@ void FStructuralHoverpackEquipmentBridge::RegisterHooks()
 }
 
 bool FStructuralHoverpackEquipmentBridge::QueryHoverpackStructuralAnchor(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	const FVector& QueryLoc,
 	float MaxHorizontal,
 	float MaxVertical,
@@ -36,7 +34,7 @@ bool FStructuralHoverpackEquipmentBridge::QueryHoverpackStructuralAnchor(
 	}
 
 	int32 ComponentRoot = INDEX_NONE;
-	if (!Graph.FindNearestStructureAnchorForEquipment(
+	if (!Session.FindNearestStructureAnchorForEquipment(
 			QueryLoc,
 			MaxHorizontal,
 			MaxVertical,
@@ -48,7 +46,7 @@ bool FStructuralHoverpackEquipmentBridge::QueryHoverpackStructuralAnchor(
 
 	Out.ComponentRoot = ComponentRoot;
 
-	if (UFGCircuitConnectionComponent* Source = Graph.GetComponentSourceConnector(ComponentRoot, nullptr))
+	if (UFGCircuitConnectionComponent* Source = Session.GetComponentSourceConnector(ComponentRoot, nullptr))
 	{
 		if (UFGPowerConnectionComponent* Feed = Cast<UFGPowerConnectionComponent>(Source))
 		{

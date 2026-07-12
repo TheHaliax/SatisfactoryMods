@@ -8,7 +8,7 @@
 class AFGBuildableControlPanelHost;
 class AFGBuildableLightsControlPanel;
 class AFGBuildableLightSource;
-class AStructuralPowerGraphSubsystem;
+class FStructuralGraphSession;
 class UFGPowerConnectionComponent;
 struct FStructuralChannelKey;
 struct FStructuralPanelPorts;
@@ -23,14 +23,14 @@ public:
 		const FStructuralPanelPorts& Ports);
 
 	static bool SupplyAlreadyLinked(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildableLightsControlPanel* Panel,
 		const FStructuralPanelPorts& Ports,
 		int32 ComponentRoot,
 		const FStructuralChannelKey& PanelKey);
 
 	static bool TryLinkSupply(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildableLightsControlPanel* Panel,
 		const FStructuralPanelPorts& Ports,
 		int32 ComponentRoot,
@@ -38,14 +38,14 @@ public:
 		bool bMeshOnlyLinks = false);
 
 	static void RestitchDownstream(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildableLightsControlPanel* Panel,
 		const FStructuralPanelPorts& Ports,
 		int32 ComponentRoot,
 		FName PanelControl);
 
 	static void PromotePanelDownstreamSubnet(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildableLightsControlPanel* Panel,
 		const FStructuralPanelPorts& Ports,
 		UFGPowerConnectionComponent* InputPower);

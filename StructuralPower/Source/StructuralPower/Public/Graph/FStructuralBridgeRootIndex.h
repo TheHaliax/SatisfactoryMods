@@ -8,19 +8,17 @@
 
 class AFGBuildable;
 class AFGBuildablePowerPole;
-class AStructuralPowerGraphSubsystem;
+class FStructuralGraphSession;
 struct FStructuralNodeId;
 struct FStructuralWallAnchor;
 struct FTrackedEndpoint;
 
 class STRUCTURALPOWER_API FStructuralBridgeRootIndex
 {
-	friend class AStructuralPowerGraphSubsystem;
-
 public:
 	FStructuralBridgeRootIndex() = default;
 
-	void Bind(AStructuralPowerGraphSubsystem* InSubsystem);
+	void Bind(FStructuralGraphSession* InSession);
 
 	void MarkBridgeEndpointRootIndexDirty();
 	void RefreshBridgeEndpointRootIndex();
@@ -58,10 +56,10 @@ public:
 
 	int32 GetEndpointComponentRoot(AFGBuildable* Endpoint);
 
-private:
 	bool EnsureParentRegisteredInGraph(
 		const FStructuralWallAnchor& Anchor,
 		FStructuralNodeId& OutParentId);
 
-	AStructuralPowerGraphSubsystem* Subsystem = nullptr;
+private:
+	FStructuralGraphSession* Session = nullptr;
 };

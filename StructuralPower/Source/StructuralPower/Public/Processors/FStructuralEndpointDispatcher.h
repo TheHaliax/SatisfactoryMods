@@ -21,7 +21,9 @@ public:
 		FStructuralGraphSession& Session,
 		IStructuralEndpointProcessor& Processor,
 		AFGBuildable* Host,
-		bool bLocalPromoteOnly = false);
+		bool bLocalPromoteOnly = false,
+		bool bOverrideAttachContext = false,
+		EAttachContext AttachContextOverride = EAttachContext::RuntimePlace);
 
 	static void RunWireDelta(
 		FStructuralGraphSession& Session,
@@ -32,7 +34,10 @@ public:
 	static void RunCircuitsRebuilt(
 		FStructuralGraphSession& Session,
 		IStructuralEndpointProcessor& Processor,
-		AFGBuildable* Host);
+		AFGBuildable* Host,
+		bool bOverrideAttachContext = false,
+		EAttachContext AttachContextOverride = EAttachContext::WireDelta,
+		int32 SiteRoot = INDEX_NONE);
 
 	static void RunToggleChanged(
 		FStructuralGraphSession& Session,
@@ -47,19 +52,27 @@ public:
 	static void DispatchPlacement(
 		FStructuralGraphSession& Session,
 		AFGBuildable* Buildable,
-		bool bLocalPromoteOnly = false);
+		bool bLocalPromoteOnly = false,
+		bool bOverrideAttachContext = false,
+		EAttachContext AttachContextOverride = EAttachContext::RuntimePlace);
 
-	static void DispatchOutlet(
-		FStructuralGraphSession& Session,
-		AFGBuildable* Buildable);
+	static void DispatchOutlet(FStructuralGraphSession& Session, AFGBuildable* Buildable);
+
+	static void DispatchTeardown(FStructuralGraphSession& Session, AFGBuildable* Buildable);
 
 	static void DispatchPoleWireDelta(FStructuralGraphSession& Session, AFGBuildablePowerPole* Pole);
+
 	static void DispatchSwitchCircuitsRebuilt(
 		FStructuralGraphSession& Session,
 		AFGBuildableCircuitSwitch* Switch);
+
 	static void DispatchPanelWireDelta(
 		FStructuralGraphSession& Session,
 		AFGBuildableLightsControlPanel* Panel);
+
+	static void DispatchWallOutletAfterWire(
+		FStructuralGraphSession& Session,
+		AFGBuildablePowerPole* Pole);
 
 	static bool ShouldSkipOutletDuringBulkLoad(
 		const FStructuralGraphSession& Session,

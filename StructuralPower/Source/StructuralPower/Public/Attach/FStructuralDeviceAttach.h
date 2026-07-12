@@ -8,7 +8,7 @@
 
 class AFGBuildable;
 class AFGBuildableLightSource;
-class AStructuralPowerGraphSubsystem;
+class FStructuralGraphSession;
 class UFGPowerConnectionComponent;
 
 class STRUCTURALPOWER_API FStructuralDeviceAttach
@@ -17,7 +17,7 @@ public:
 	static UFGPowerConnectionComponent* FindLightWireConnection(const AFGBuildableLightSource* Light);
 
 	static bool TryAttachConsumer(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildable* Device,
 		UFGPowerConnectionComponent* DevicePlug,
 		int32 ComponentRoot,

@@ -6,13 +6,14 @@
 #include "Buildables/FGBuildable.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "Connection/FStructuralSiteMembership.h"
+#include "Core/FStructuralGraphSession.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "Lightweight/FStructuralLightweightTypes.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
 bool FStructuralBridgeAttach::HasPlacementMembership(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	AFGBuildable* Host,
 	EStructuralEndpointKind ExpectedKind)
 {
@@ -21,8 +22,8 @@ bool FStructuralBridgeAttach::HasPlacementMembership(
 		return false;
 	}
 
-	const FStructuralNodeId EndpointId = Graph.MakeNodeId(Host);
-	const FTrackedEndpoint* Tracked = Graph.TrackedEndpoints.Find(EndpointId);
+	const FStructuralNodeId EndpointId = Session.MakeNodeId(Host);
+	const FTrackedEndpoint* Tracked = Session.TrackedEndpoints().Find(EndpointId);
 	return Tracked
 		&& Tracked->Kind == ExpectedKind
 		&& Tracked->ParentId.IsValid();
@@ -39,29 +40,13 @@ FStructuralBridgeAttachOutcome FStructuralBridgeAttach::AttachOnPlace(
 		return Outcome;
 	}
 
-	AStructuralPowerGraphSubsystem& Graph = Ctx.Graph();
-	const bool bBulk = Graph.IsBulkLoadDrainActive();
-	const FStructuralNodeId EndpointId = Graph.MakeNodeId(Host);
-
-	UFGStructuralPowerConnectionComponent* OutletBus = Graph.GetOrCreateBusConnector(Host);
-	Outcome.OutletBus = OutletBus;
-	if (!OutletBus)
-	{
-		if (!bBulk)
-		{
-			FStructuralPowerTrace::LogPlacementSkip(
-				Host,
-				TEXT("bridge_bus_create_failed"),
-				ELogVerbosity::Warning);
-		}
-		return Outcome;
-	}
-
-	FTrackedEndpoint& Tracked = Graph.TrackedEndpoints.FindOrAdd(EndpointId);
+	FStructuralGraphSession& Session = Ctx.Session();
+	const bool bBulk = Session.IsBulkLoadDrainActive();
+	const FStructuralNodeId EndpointId = Session.MakeNodeId(Host);
+	FTrackedEndpoint& Tracked = Session.TrackedEndpoints().FindOrAdd(EndpointId);
 	FStructuralSiteContext& Site = Outcome.Site;
 
-	if (!FStructuralSiteMembership::ResolveSiteContext(
-			Graph,
+	if (!FStructuralSiteMembership::ResolveSiteContext(Session,
 			Host,
 			Site,
 			Request.bUsePoleRootResolver))
@@ -72,10 +57,10 @@ FStructuralBridgeAttachOutcome FStructuralBridgeAttach::AttachOnPlace(
 		}
 		else
 		{
-			const FStructuralWallAnchor ParentAnchor = Graph.ResolveOutletAnchor(Host);
-			Graph.ResolveEndpointComponentRoot(Host, ParentAnchor, Site.ParentId);
+			const FStructuralWallAnchor ParentAnchor = Session.ResolveOutletAnchor(Host);
+			Session.ResolveEndpointComponentRoot(Host, ParentAnchor, Site.ParentId);
 			Tracked.ParentId = Site.ParentId;
-			Site.SiteRoot = Graph.FindRootForTrackedEndpoint(Tracked);
+			Site.SiteRoot = Session.FindRootForTrackedEndpoint(Tracked);
 			Site.bAnchored = Site.SiteRoot != INDEX_NONE;
 		}
 	}
@@ -88,29 +73,55 @@ FStructuralBridgeAttachOutcome FStructuralBridgeAttach::AttachOnPlace(
 		Tracked.Kind = Request.Kind;
 		Tracked.ParentId = Site.ParentId;
 		Tracked.bAwaitingStructuralSite = true;
-		Graph.RegisterBuildableActor(Host);
-		Graph.LinkBusToVisibleConnectionsLocal(Host, OutletBus);
+		Session.RegisterBuildableActor(Host);
+
+		if (!bBulk)
+		{
+			UFGStructuralPowerConnectionComponent* OutletBus = Session.GetOrCreateBusConnector(Host);
+			Outcome.OutletBus = OutletBus;
+			if (OutletBus)
+			{
+				Session.LinkBusToVisibleConnectionsLocal(Host, OutletBus);
+			}
+		}
 
 		return Outcome;
 	}
 
 	Tracked.bAwaitingStructuralSite = false;
 
+	if (bBulk)
+	{
+		FStructuralSiteMembership::RegisterOnBulkLoad(
+			Session,
+			Host,
+			Request.Kind,
+			Tracked,
+			Site);
+		Outcome.bAttached = true;
+		return Outcome;
+	}
+
+	UFGStructuralPowerConnectionComponent* OutletBus = Session.GetOrCreateBusConnector(Host);
+	Outcome.OutletBus = OutletBus;
+	if (!OutletBus)
+	{
+		FStructuralPowerTrace::LogPlacementSkip(
+			Host,
+			TEXT("bridge_bus_create_failed"),
+			ELogVerbosity::Warning);
+		return Outcome;
+	}
+
 	FStructuralSiteMembershipParams Params;
 	Params.bLinkVisibleConnections = true;
 	Params.bBridgePeersOnly = true;
 	Params.bMeshOnlyLinks = false;
-	Params.bSkipEndpointIndexDirty = !bBulk && Site.SiteRoot != INDEX_NONE;
+	Params.bSkipEndpointIndexDirty = Site.SiteRoot != INDEX_NONE;
 
-	if (bBulk)
+	if (!Session.HasBridgeBusPeerMesh(OutletBus))
 	{
-		Graph.LinkBusToVisibleConnections(Host, OutletBus);
-	}
-
-	if (bBulk || !Graph.HasBridgeBusPeerMesh(OutletBus))
-	{
-		FStructuralSiteMembership::IntegrateOnPlace(
-			Graph,
+		FStructuralSiteMembership::IntegrateOnPlace(Session,
 			Host,
 			OutletBus,
 			EndpointId,
@@ -125,8 +136,8 @@ FStructuralBridgeAttachOutcome FStructuralBridgeAttach::AttachOnPlace(
 		Tracked.ParentId = Site.ParentId;
 		Tracked.Kind = Request.Kind;
 		Tracked.bStructuralPowerTransferActive = Site.bAnchored;
-		Graph.RegisterBuildableActor(Host);
-		Graph.LinkBusToVisibleConnectionsLocal(Host, OutletBus);
+		Session.RegisterBuildableActor(Host);
+		Session.LinkBusToVisibleConnectionsLocal(Host, OutletBus);
 	}
 
 	Outcome.bAttached = true;

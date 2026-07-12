@@ -5,9 +5,12 @@
 
 #include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
+#include "Core/FStructuralGraphSession.h"
+#include "Engine/World.h"
 #include "FGCircuitConnectionComponent.h"
+#include "Graph/FStructuralConnectivityGraph.h"
+#include "Graph/FStructuralSiteState.h"
 #include "Graph/FStructuralSwitchParentResolver.h"
-#include "Save/AStructuralPowerGraphSubsystem.h"
 
 void FStructuralCrossSiteGraph::Clear()
 {
@@ -56,7 +59,7 @@ void FStructuralCrossSiteGraph::GetCoupledSites(int32 Site, TArray<int32>& OutSi
 }
 
 FStructuralSiteFeedSignature FStructuralCrossSiteGraph::ComputeSiteFeedSignature(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	int32 Site)
 {
 	FStructuralSiteFeedSignature Signature;
@@ -65,13 +68,13 @@ FStructuralSiteFeedSignature FStructuralCrossSiteGraph::ComputeSiteFeedSignature
 		return Signature;
 	}
 
-	Signature.bPowered = Graph.DoesComponentRootCarryPower(Site);
+	Signature.bPowered = Session.DoesComponentRootCarryPower(Site);
 	if (!Signature.bPowered)
 	{
 		return Signature;
 	}
 
-	if (UFGCircuitConnectionComponent* Feed = Graph.GetComponentSourceConnector(Site, nullptr))
+	if (UFGCircuitConnectionComponent* Feed = Session.GetComponentSourceConnector(Site, nullptr))
 	{
 		Signature.CircuitId = Feed->GetCircuitID();
 		if (!FStructuralCircuitPromotionUtil::ComponentCarriesPower(Cast<UFGPowerConnectionComponent>(Feed)))
@@ -85,16 +88,16 @@ FStructuralSiteFeedSignature FStructuralCrossSiteGraph::ComputeSiteFeedSignature
 }
 
 void FStructuralCrossSiteGraph::GatherSwitchSiteRoots(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	AFGBuildableCircuitSwitch* Switch,
 	int32 LocalRoot,
 	TArray<int32>& OutSites)
 {
-	CollectWiredSwitchSites(Graph, Switch, LocalRoot, OutSites);
+	CollectWiredSwitchSites(Session, Switch, LocalRoot, OutSites);
 }
 
 void FStructuralCrossSiteGraph::SeedFeedSignature(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	int32 Site)
 {
 	if (Site == INDEX_NONE)
@@ -102,21 +105,21 @@ void FStructuralCrossSiteGraph::SeedFeedSignature(
 		return;
 	}
 
-	Graph.SiteState.SeedFeedSignature(Site, ComputeSiteFeedSignature(Graph, Site));
+	Session.SiteState().SeedFeedSignature(Site, ComputeSiteFeedSignature(Session, Site));
 }
 
 void FStructuralCrossSiteGraph::SeedFeedSignaturesForSites(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	const TSet<int32>& Sites)
 {
 	for (int32 Site : Sites)
 	{
-		SeedFeedSignature(Graph, Site);
+		SeedFeedSignature(Session, Site);
 	}
 }
 
 void FStructuralCrossSiteGraph::CollectWiredSwitchSites(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	AFGBuildableCircuitSwitch* Switch,
 	int32 LocalRoot,
 	TArray<int32>& OutSites)
@@ -138,25 +141,25 @@ void FStructuralCrossSiteGraph::CollectWiredSwitchSites(
 		return;
 	}
 
-	UWorld* World = Graph.GetWorld();
+	UWorld* World = Session.GetWorld();
 	if (!IsValid(World))
 	{
 		OutSites = Roots.Array();
 		return;
 	}
 
-	const FStructuralOutletParentResolveParams ParentParams = Graph.MakeOutletParentResolveParams();
+	const FStructuralOutletParentResolveParams ParentParams = Session.MakeOutletParentResolveParams();
 	FStructuralSwitchParentResolver::ForEachWiredStructureSideAnchor(
 		Switch,
 		World,
-		Graph.LightweightIndex,
+		Session.LightweightIndex(),
 		&ParentParams,
 		[&](const FStructuralWallAnchor& Anchor)
 		{
 			FStructuralNodeId ParentId;
-			if (Graph.EnsureParentRegisteredInGraph(Anchor, ParentId))
+			if (Session.EnsureParentRegisteredInGraph(Anchor, ParentId))
 			{
-				ConsiderRoot(Graph.StructureGraph.FindRoot(ParentId));
+				ConsiderRoot(Session.StructureGraph().FindRoot(ParentId));
 			}
 		});
 
@@ -164,12 +167,12 @@ void FStructuralCrossSiteGraph::CollectWiredSwitchSites(
 }
 
 void FStructuralCrossSiteGraph::RefreshCouplingsFromWiredSwitch(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	AFGBuildableCircuitSwitch* Switch,
 	int32 OriginSite)
 {
 	TArray<int32> WiredSites;
-	CollectWiredSwitchSites(Graph, Switch, OriginSite, WiredSites);
+	CollectWiredSwitchSites(Session, Switch, OriginSite, WiredSites);
 
 	for (int32 Site : WiredSites)
 	{
@@ -181,7 +184,7 @@ void FStructuralCrossSiteGraph::RefreshCouplingsFromWiredSwitch(
 }
 
 void FStructuralCrossSiteGraph::TraceFeedAffected(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	AFGBuildableCircuitSwitch* TriggerSwitch,
 	int32 OriginSite,
 	TArray<int32>& OutAffectedSites)
@@ -207,7 +210,7 @@ void FStructuralCrossSiteGraph::TraceFeedAffected(
 	if (IsValid(TriggerSwitch))
 	{
 		TArray<int32> WiredSites;
-		CollectWiredSwitchSites(Graph, TriggerSwitch, OriginSite, WiredSites);
+		CollectWiredSwitchSites(Session, TriggerSwitch, OriginSite, WiredSites);
 		for (int32 Site : WiredSites)
 		{
 			EnqueueSite(Site);
@@ -224,15 +227,15 @@ void FStructuralCrossSiteGraph::TraceFeedAffected(
 		}
 		Visited.Add(Site);
 
-		const FStructuralSiteFeedSignature NewSignature = ComputeSiteFeedSignature(Graph, Site);
+		const FStructuralSiteFeedSignature NewSignature = ComputeSiteFeedSignature(Session, Site);
 		FStructuralSiteFeedSignature CachedSignature;
-		if (Graph.SiteState.TryGetFeedSignature(Site, CachedSignature)
+		if (Session.SiteState().TryGetFeedSignature(Site, CachedSignature)
 			&& CachedSignature == NewSignature)
 		{
 			continue;
 		}
 
-		Graph.SiteState.SetFeedSignature(Site, NewSignature);
+		Session.SiteState().SetFeedSignature(Site, NewSignature);
 		OutAffectedSites.Add(Site);
 
 		TArray<int32> Neighbors;

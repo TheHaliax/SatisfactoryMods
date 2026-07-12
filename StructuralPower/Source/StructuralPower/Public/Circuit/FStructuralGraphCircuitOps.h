@@ -9,7 +9,7 @@
 class AFGBuildable;
 class AFGBuildableLightsControlPanel;
 class AFGBuildablePowerPole;
-class AStructuralPowerGraphSubsystem;
+class FStructuralGraphSession;
 class UFGCircuitConnectionComponent;
 class UFGPowerConnectionComponent;
 class UFGStructuralPowerConnectionComponent;
@@ -21,7 +21,7 @@ class STRUCTURALPOWER_API FStructuralGraphCircuitOps
 public:
 	FStructuralGraphCircuitOps() = default;
 
-	void Bind(AStructuralPowerGraphSubsystem* InSubsystem);
+	void Bind(FStructuralGraphSession* InSession);
 
 	void BeginCircuitPromotion();
 	void EndCircuitPromotion();
@@ -93,5 +93,5 @@ public:
 		int32 MaxHiddenHops = 512) const;
 
 private:
-	AStructuralPowerGraphSubsystem* Subsystem = nullptr;
+	FStructuralGraphSession* Session = nullptr;
 };

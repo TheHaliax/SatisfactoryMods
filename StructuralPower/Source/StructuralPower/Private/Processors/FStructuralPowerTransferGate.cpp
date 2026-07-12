@@ -21,6 +21,7 @@
 #include "Processors/FStructuralPowerLightProcessor.h"
 #include "Routing/EStructuralChannel.h"
 #include "Routing/FStructuralPowerRouter.h"
+#include "Core/FStructuralGraphSession.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerConstants.h"
@@ -36,8 +37,8 @@ void SetTrackedTransfer(FTrackedEndpoint& Tracked, bool bActive)
 bool RootAllowsTransfer(FStructuralPowerContext& Ctx, int32 Root)
 {
 	return Root != INDEX_NONE
-		&& (Ctx.Graph().DoesComponentRootCarryPower(Root)
-			|| Ctx.Graph().DoesSiteStructuralBusCarryPower(Root));
+		&& (Ctx.Session().DoesComponentRootCarryPower(Root)
+			|| Ctx.Session().DoesSiteStructuralBusCarryPower(Root));
 }
 
 FName ResolveSwitchGateId(const FStructuralChannelKey& ChannelKey)
@@ -119,8 +120,8 @@ void FStructuralPowerTransferGate::FlipBridgeGate(
 		return;
 	}
 
-	const FStructuralNodeId SwitchId = Ctx.Graph().MakeNodeId(Switch);
-	FTrackedEndpoint& Tracked = Ctx.Graph().TrackedEndpoints.FindOrAdd(SwitchId);
+	const FStructuralNodeId SwitchId = Ctx.Session().MakeNodeId(Switch);
+	FTrackedEndpoint& Tracked = Ctx.Session().TrackedEndpoints().FindOrAdd(SwitchId);
 	SetTrackedTransfer(Tracked, bGateOpen);
 
 	UE_LOG(LogStructuralPower, Log,
@@ -150,11 +151,11 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 
 	const bool bAllowTransfer = bGateOpen && RootAllowsTransfer(Ctx, Root);
 
-	Ctx.Graph().RefreshBridgeEndpointRootIndex();
+	Ctx.Session().RefreshBridgeEndpointRootIndex();
 
 	auto ApplyPanel = [&](const FStructuralNodeId& NodeId)
 	{
-		FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(NodeId);
+		FTrackedEndpoint* Tracked = Ctx.Session().TrackedEndpoints().Find(NodeId);
 		if (!Tracked)
 		{
 			return;
@@ -166,7 +167,7 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 			return;
 		}
 
-		if (Ctx.Graph().ResolveSource(Panel, EStructuralChannel::Light) != SwitchControlId)
+		if (Ctx.Session().ResolveSource(Panel, EStructuralChannel::Light) != SwitchControlId)
 		{
 			return;
 		}
@@ -180,7 +181,7 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 				Ctx,
 				Panel,
 				bLocalPromoteOnly);
-			FStructuralPanelControlledSync::ApplyKeyedSubnet(Ctx.Graph(), Panel);
+			FStructuralPanelControlledSync::ApplyKeyedSubnet(Ctx.Session(), Panel);
 		}
 		else if (!bGateOpen || !FStructuralPowerModConfig::IsGroupLightingEnabled())
 		{
@@ -190,7 +191,7 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 
 	auto ApplyLight = [&](const FStructuralNodeId& NodeId)
 	{
-		FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(NodeId);
+		FTrackedEndpoint* Tracked = Ctx.Session().TrackedEndpoints().Find(NodeId);
 		if (!Tracked)
 		{
 			return;
@@ -202,9 +203,9 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 			return;
 		}
 
-		const FStructuralChannelKey LightKey = Ctx.Graph().ResolveChannelKeyForBuildable(Light);
+		const FStructuralChannelKey LightKey = Ctx.Session().ResolveChannelKeyForBuildable(Light);
 		if (LightKey.Source != SwitchControlId
-			|| Ctx.Graph().IsPanelDownstreamLight(Root, LightKey))
+			|| Ctx.Session().IsPanelDownstreamLight(Root, LightKey))
 		{
 			return;
 		}
@@ -228,7 +229,7 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 	};
 
 	if (const TArray<FStructuralNodeId>* PanelIds =
-			Ctx.Graph().EndpointIndex.Get(Root, EStructuralEndpointKind::Panel))
+			Ctx.Session().EndpointIndex().Get(Root, EStructuralEndpointKind::Panel))
 	{
 		const TArray<FStructuralNodeId> Snapshot = *PanelIds;
 		for (const FStructuralNodeId& NodeId : Snapshot)
@@ -238,7 +239,7 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 	}
 
 	if (const TArray<FStructuralNodeId>* LightIds =
-			Ctx.Graph().EndpointIndex.Get(Root, EStructuralEndpointKind::Light))
+			Ctx.Session().EndpointIndex().Get(Root, EStructuralEndpointKind::Light))
 	{
 		const TArray<FStructuralNodeId> Snapshot = *LightIds;
 		for (const FStructuralNodeId& NodeId : Snapshot)
@@ -250,10 +251,10 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 
 void FStructuralPowerTransferGate::SuspendAllKeyedLightingTransfer(FStructuralPowerContext& Ctx)
 {
-	Ctx.Graph().RefreshBridgeEndpointRootIndex();
+	Ctx.Session().RefreshBridgeEndpointRootIndex();
 
 	TSet<int32> Roots;
-	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Ctx.Graph().TrackedEndpoints)
+	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Ctx.Session().TrackedEndpoints())
 	{
 		if (Pair.Value.Kind != EStructuralEndpointKind::Switch)
 		{
@@ -266,13 +267,13 @@ void FStructuralPowerTransferGate::SuspendAllKeyedLightingTransfer(FStructuralPo
 			continue;
 		}
 
-		const FName Control = Ctx.Graph().ResolveControl(Switch, EStructuralChannel::Switch);
+		const FName Control = Ctx.Session().ResolveControl(Switch, EStructuralChannel::Switch);
 		if (!FStructuralPowerRouter::IsAssignedControl(Control))
 		{
 			continue;
 		}
 
-		const int32 Root = Ctx.Graph().StructureGraph.FindRoot(Pair.Value.ParentId);
+		const int32 Root = Ctx.Session().StructureGraph().FindRoot(Pair.Value.ParentId);
 		if (Root == INDEX_NONE)
 		{
 			continue;
@@ -313,10 +314,13 @@ void FStructuralPowerTransferGate::RefreshKeyedTransferOnRoot(
 			AttachContextToString(Ctx.GetAttachContext()));
 	}
 
-	Ctx.Graph().RefreshBridgeEndpointRootIndex();
+	if (Ctx.Session().BridgeEndpointRootIndexDirty())
+	{
+		Ctx.Session().RefreshBridgeEndpointRootIndex();
+	}
 
 	const TArray<FStructuralNodeId>* SwitchIds =
-		Ctx.Graph().EndpointIndex.Get(Root, EStructuralEndpointKind::Switch);
+		Ctx.Session().EndpointIndex().Get(Root, EStructuralEndpointKind::Switch);
 	if (!SwitchIds || SwitchIds->Num() == 0)
 	{
 		return;
@@ -325,7 +329,7 @@ void FStructuralPowerTransferGate::RefreshKeyedTransferOnRoot(
 	const TArray<FStructuralNodeId> SwitchSnapshot = *SwitchIds;
 	for (const FStructuralNodeId& NodeId : SwitchSnapshot)
 	{
-		const FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(NodeId);
+		const FTrackedEndpoint* Tracked = Ctx.Session().TrackedEndpoints().Find(NodeId);
 		if (!Tracked)
 		{
 			continue;
@@ -337,7 +341,7 @@ void FStructuralPowerTransferGate::RefreshKeyedTransferOnRoot(
 			continue;
 		}
 
-		const FName Control = Ctx.Graph().ResolveControl(Switch, EStructuralChannel::Switch);
+		const FName Control = Ctx.Session().ResolveControl(Switch, EStructuralChannel::Switch);
 		if (!FStructuralPowerRouter::IsAssignedControl(Control))
 		{
 			continue;
@@ -364,18 +368,18 @@ void FStructuralPowerTransferGate::RefreshSiteStructuralConsumersOnRoot(
 		return;
 	}
 
-	Ctx.Graph().RefreshBridgeEndpointRootIndex();
+	Ctx.Session().RefreshBridgeEndpointRootIndex();
 
-	const FStructuralComponentKey CompKey = Ctx.Graph().MakeComponentKeyForRoot(Root);
+	const FStructuralComponentKey CompKey = Ctx.Session().MakeComponentKeyForRoot(Root);
 	const FName ComponentDefaultId = CompKey.IsValid()
-		? Ctx.Graph().GetOrCreateComponentDefaultId(CompKey)
+		? Ctx.Session().GetOrCreateComponentDefaultId(CompKey)
 		: NAME_None;
 
 	const bool bAllowTransfer = bGateOpen && RootAllowsTransfer(Ctx, Root);
 
 	auto RefreshFoundationLight = [&](const FStructuralNodeId& NodeId)
 	{
-		FTrackedEndpoint* Tracked = Ctx.Graph().TrackedEndpoints.Find(NodeId);
+		FTrackedEndpoint* Tracked = Ctx.Session().TrackedEndpoints().Find(NodeId);
 		if (!Tracked)
 		{
 			return;
@@ -387,10 +391,10 @@ void FStructuralPowerTransferGate::RefreshSiteStructuralConsumersOnRoot(
 			return;
 		}
 
-		const FStructuralChannelKey LightKey = Ctx.Graph().ResolveChannelKeyForBuildable(Light);
+		const FStructuralChannelKey LightKey = Ctx.Session().ResolveChannelKeyForBuildable(Light);
 		if (LightKey.Source.IsNone()
 			|| LightKey.Source != ComponentDefaultId
-			|| Ctx.Graph().IsPanelDownstreamLight(Root, LightKey))
+			|| Ctx.Session().IsPanelDownstreamLight(Root, LightKey))
 		{
 			return;
 		}
@@ -411,7 +415,7 @@ void FStructuralPowerTransferGate::RefreshSiteStructuralConsumersOnRoot(
 	};
 
 	if (const TArray<FStructuralNodeId>* LightIds =
-			Ctx.Graph().EndpointIndex.Get(Root, EStructuralEndpointKind::Light))
+			Ctx.Session().EndpointIndex().Get(Root, EStructuralEndpointKind::Light))
 	{
 		const TArray<FStructuralNodeId> Snapshot = *LightIds;
 		for (const FStructuralNodeId& NodeId : Snapshot)

@@ -10,6 +10,7 @@
 #include "Core/EAttachContext.h"
 #include "Core/EStructuralPowerRole.h"
 #include "Core/EStructuralPowerScope.h"
+#include "Core/FStructuralGraphSession.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "Connection/FStructuralSiteMembership.h"
@@ -22,7 +23,7 @@
 #include "StructuralPowerLog.h"
 
 void FStructuralPowerPoleProcessor::ResolvePoleStructuralSite(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	AFGBuildablePowerPole* Pole,
 	FStructuralNodeId& OutParentId,
 	int32& OutRoot,
@@ -40,7 +41,7 @@ void FStructuralPowerPoleProcessor::ResolvePoleStructuralSite(
 
 	FStructuralSiteContext Site;
 	if (FStructuralSiteMembership::ResolveSiteContext(
-			Graph,
+			Session,
 			Pole,
 			Site,
 			/*bUsePoleRootResolver=*/true))
@@ -71,16 +72,16 @@ void FStructuralPowerPoleProcessor::Process(
 		return;
 	}
 
-	AStructuralPowerGraphSubsystem& Graph = Ctx.Graph();
-	const bool bBulk = Graph.IsBulkLoadDrainActive();
-	const FStructuralNodeId PoleId = Graph.MakeNodeId(Pole);
+	FStructuralGraphSession& Session = Ctx.Session();
+	const bool bBulk = Session.IsBulkLoadDrainActive();
+	const FStructuralNodeId PoleId = Session.MakeNodeId(Pole);
 
 	if (!bBulk && Ctx.GetAttachContext() != EAttachContext::WireDelta)
 	{
-		if (const FTrackedEndpoint* Existing = Graph.TrackedEndpoints.Find(PoleId))
+		if (const FTrackedEndpoint* Existing = Session.TrackedEndpoints().Find(PoleId))
 		{
 			if (Existing->Kind == EStructuralEndpointKind::Pole
-				&& IsValid(Graph.FindBusConnector(Pole))
+				&& IsValid(Session.FindBusConnector(Pole))
 				&& !Existing->ParentId.IsValid()
 				&& !Existing->bAwaitingStructuralSite
 				&& !FStructuralPoleWireUtil::HasVanillaWire(Pole))
@@ -92,8 +93,7 @@ void FStructuralPowerPoleProcessor::Process(
 
 	if (!bBulk && Ctx.GetAttachContext() == EAttachContext::WireDelta)
 	{
-		if (FStructuralBridgeAttach::HasPlacementMembership(
-				Graph,
+		if (FStructuralBridgeAttach::HasPlacementMembership(Session,
 				Pole,
 				EStructuralEndpointKind::Pole))
 		{
@@ -108,7 +108,7 @@ void FStructuralPowerPoleProcessor::Process(
 	Request.bUsePoleRootResolver = true;
 
 	const FStructuralBridgeAttachOutcome Outcome = FStructuralBridgeAttach::AttachOnPlace(Ctx, Request);
-	if (!Outcome.OutletBus)
+	if (!Outcome.OutletBus && !(bBulk && Outcome.bAttached))
 	{
 		return;
 	}
@@ -118,11 +118,11 @@ void FStructuralPowerPoleProcessor::Process(
 
 	if (bStructurallyAnchored && Site.SiteRoot != INDEX_NONE && Site.ParentId.IsValid())
 	{
-		Graph.AddEndpointToRootIndex(Site.SiteRoot, EStructuralEndpointKind::Pole, PoleId);
+		Session.AddEndpointToRootIndex(Site.SiteRoot, EStructuralEndpointKind::Pole, PoleId);
 	}
 	else if (!bBulk)
 	{
-		Graph.MarkBridgeEndpointRootIndexDirty();
+		Session.MarkBridgeEndpointRootIndexDirty();
 	}
 
 	FStructuralOutletParentResolveResult ParentResolve;
@@ -150,8 +150,11 @@ void FStructuralPowerPoleProcessor::Process(
 			FStructuralOutletParentResolver::FormatParentMethod(ParentResolve.Method),
 			ParentDistCm,
 			PowerPath,
-			Outcome.OutletBus->GetCircuitID(),
-			FStructuralCircuitPromotionUtil::ComponentCarriesPower(Outcome.OutletBus) ? 1 : 0,
+			Outcome.OutletBus ? Outcome.OutletBus->GetCircuitID() : -1,
+			Outcome.OutletBus
+				&& FStructuralCircuitPromotionUtil::ComponentCarriesPower(Outcome.OutletBus)
+					? 1
+					: 0,
 			StructuralChannelToString(EStructuralChannel::Structure),
 			TEXT("-"));
 	}
@@ -186,9 +189,8 @@ void FStructuralPowerPoleProcessor::OnWireDelta(
 		return;
 	}
 
-	AStructuralPowerGraphSubsystem& Graph = Ctx.Graph();
-	if (!FStructuralBridgeAttach::HasPlacementMembership(
-			Graph,
+	FStructuralGraphSession& Session = Ctx.Session();
+	if (!FStructuralBridgeAttach::HasPlacementMembership(Session,
 			Pole,
 			EStructuralEndpointKind::Pole))
 	{
@@ -196,18 +198,17 @@ void FStructuralPowerPoleProcessor::OnWireDelta(
 	}
 
 	UFGStructuralPowerConnectionComponent* OutletBus =
-		Cast<UFGStructuralPowerConnectionComponent>(Graph.GetOrCreateBusConnector(Pole));
+		Cast<UFGStructuralPowerConnectionComponent>(Session.GetOrCreateBusConnector(Pole));
 	if (!OutletBus)
 	{
 		return;
 	}
 
-	const FStructuralNodeId PoleId = Graph.MakeNodeId(Pole);
-	FTrackedEndpoint& Tracked = Graph.TrackedEndpoints.FindOrAdd(PoleId);
+	const FStructuralNodeId PoleId = Session.MakeNodeId(Pole);
+	FTrackedEndpoint& Tracked = Session.TrackedEndpoints().FindOrAdd(PoleId);
 
 	FStructuralSiteContext Site;
-	if (!FStructuralSiteMembership::ResolveSiteContext(
-			Graph,
+	if (!FStructuralSiteMembership::ResolveSiteContext(Session,
 			Pole,
 			Site,
 			/*bUsePoleRootResolver=*/true))
@@ -215,11 +216,11 @@ void FStructuralPowerPoleProcessor::OnWireDelta(
 		Site.bAnchored = false;
 	}
 
-	Graph.LinkBusToVisibleConnectionsLocal(Pole, OutletBus);
+	Session.LinkBusToVisibleConnectionsLocal(Pole, OutletBus);
 
-	if (Site.bAnchored && Site.SiteRoot != INDEX_NONE && !Graph.HasBridgeBusPeerMesh(OutletBus))
+	if (Site.bAnchored && Site.SiteRoot != INDEX_NONE && !Session.HasBridgeBusPeerMesh(OutletBus))
 	{
-		Graph.TryMeshPeerBusOnComponent(
+		Session.TryMeshPeerBusOnComponent(
 			Pole,
 			OutletBus,
 			Site.SiteRoot,
@@ -229,13 +230,13 @@ void FStructuralPowerPoleProcessor::OnWireDelta(
 	}
 	else if (FStructuralCircuitPromotionUtil::ComponentOnCircuit(OutletBus))
 	{
-		Graph.PromoteDirectHiddenLinks(OutletBus);
+		Session.PromoteDirectHiddenLinks(OutletBus);
 	}
 
 	if (Site.bAnchored && Site.SiteRoot != INDEX_NONE)
 	{
 		Tracked.ParentId = Site.ParentId;
-		Graph.AddEndpointToRootIndex(
+		Session.AddEndpointToRootIndex(
 			Site.SiteRoot,
 			EStructuralEndpointKind::Pole,
 			PoleId);

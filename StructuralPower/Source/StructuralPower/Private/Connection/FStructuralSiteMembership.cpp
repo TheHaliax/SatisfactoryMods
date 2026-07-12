@@ -8,12 +8,12 @@
 #include "Buildables/FGBuildablePowerPole.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
+#include "Core/FStructuralGraphSession.h"
 #include "FGCircuitConnectionComponent.h"
 #include "Graph/FStructuralHostAttachAdapter.h"
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Graph/FStructuralOutletParentHeuristics.h"
 #include "Graph/FStructuralOutletParentResolver.h"
-#include "Save/AStructuralPowerGraphSubsystem.h"
 #include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "StructuralPowerLog.h"
 
@@ -47,7 +47,7 @@ static void StripSwitchVanillaPortHiddenLinks(
 } // namespace
 
 bool FStructuralSiteMembership::ResolveSiteContext(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	AFGBuildable* Endpoint,
 	FStructuralSiteContext& OutSite,
 	bool bUsePoleRootResolver)
@@ -58,9 +58,9 @@ bool FStructuralSiteMembership::ResolveSiteContext(
 		return false;
 	}
 
-	const FStructuralOutletParentResolveParams Params = Graph.MakeOutletParentResolveParams();
+	const FStructuralOutletParentResolveParams Params = Session.MakeOutletParentResolveParams();
 	const FStructuralOutletParentResolveResult ParentResolve =
-		FStructuralOutletParentResolver::ResolveDetailed(Endpoint, Graph.GetWorld(), Params);
+		FStructuralOutletParentResolver::ResolveDetailed(Endpoint, Session.GetWorld(), Params);
 
 	OutSite.ParentAnchor = ParentResolve.Anchor;
 	OutSite.ParentMethod = ParentResolve.Method;
@@ -77,7 +77,7 @@ bool FStructuralSiteMembership::ResolveSiteContext(
 		AFGBuildablePowerPole* Pole = Cast<AFGBuildablePowerPole>(Endpoint);
 		if (IsValid(Pole))
 		{
-			OutSite.SiteRoot = Graph.ResolvePoleComponentRoot(
+			OutSite.SiteRoot = Session.ResolvePoleComponentRoot(
 				Pole,
 				OutSite.ParentAnchor,
 				OutSite.ParentId);
@@ -85,7 +85,7 @@ bool FStructuralSiteMembership::ResolveSiteContext(
 	}
 	else
 	{
-		OutSite.SiteRoot = Graph.ResolveEndpointComponentRoot(
+		OutSite.SiteRoot = Session.ResolveEndpointComponentRoot(
 			Endpoint,
 			OutSite.ParentAnchor,
 			OutSite.ParentId);
@@ -94,8 +94,32 @@ bool FStructuralSiteMembership::ResolveSiteContext(
 	return OutSite.SiteRoot != INDEX_NONE;
 }
 
+void FStructuralSiteMembership::RegisterOnBulkLoad(
+	FStructuralGraphSession& Session,
+	AFGBuildable* Host,
+	EStructuralEndpointKind Kind,
+	FTrackedEndpoint& Tracked,
+	const FStructuralSiteContext& Site)
+{
+	if (!IsValid(Host))
+	{
+		return;
+	}
+
+	Tracked.Actor = Host;
+	Tracked.Kind = Kind;
+	Tracked.ParentId = Site.ParentId;
+	Tracked.bAwaitingStructuralSite = false;
+	Session.RegisterBuildableActor(Host);
+
+	if (Kind != EStructuralEndpointKind::Switch)
+	{
+		Tracked.bStructuralPowerTransferActive = Site.bAnchored && Site.SiteRoot != INDEX_NONE;
+	}
+}
+
 void FStructuralSiteMembership::IntegrateOnPlace(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	AFGBuildable* Host,
 	UFGStructuralPowerConnectionComponent* OutletBus,
 	const FStructuralNodeId& EndpointId,
@@ -117,10 +141,10 @@ void FStructuralSiteMembership::IntegrateOnPlace(
 	Tracked.Actor = Host;
 	Tracked.Kind = Kind;
 	Tracked.ParentId = Site.ParentId;
-	Graph.RegisterBuildableActor(Host);
+	Session.RegisterBuildableActor(Host);
 	if (!Params.bSkipEndpointIndexDirty)
 	{
-		Graph.MarkBridgeEndpointRootIndexDirty();
+		Session.MarkBridgeEndpointRootIndexDirty();
 	}
 
 	if (Kind != EStructuralEndpointKind::Switch)
@@ -138,12 +162,13 @@ void FStructuralSiteMembership::IntegrateOnPlace(
 
 	if (Params.bLinkVisibleConnections)
 	{
-		Graph.LinkBusToVisibleConnectionsLocal(Host, OutletBus, Params.bMeshOnlyLinks);
+		Session.LinkBusToVisibleConnectionsLocal(Host, OutletBus, Params.bMeshOnlyLinks);
 	}
 
-	if (Site.bAnchored && Site.SiteRoot != INDEX_NONE && !Graph.HasBridgeBusPeerMesh(OutletBus))
+	if (Site.bAnchored && Site.SiteRoot != INDEX_NONE && !Session.HasBridgeBusPeerMesh(OutletBus)
+		&& !Session.IsBulkLoadDrainActive())
 	{
-		Graph.TryMeshPeerBusOnComponent(
+		Session.TryMeshPeerBusOnComponent(
 			Host,
 			OutletBus,
 			Site.SiteRoot,
@@ -154,7 +179,7 @@ void FStructuralSiteMembership::IntegrateOnPlace(
 
 	if (Site.bAnchored && !Params.bMeshOnlyLinks)
 	{
-		Graph.PromoteOutletBusIfPowered(OutletBus, /*bLocalPromoteOnly=*/true);
+		Session.PromoteOutletBusIfPowered(OutletBus, /*bLocalPromoteOnly=*/true);
 	}
 
 	const FVector AnchorLocation = FStructuralOutletParentHeuristics::GetOutletAnchorLocation(Host);

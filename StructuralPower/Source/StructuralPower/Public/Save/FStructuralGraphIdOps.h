@@ -8,7 +8,7 @@
 #include "Routing/EStructuralChannel.h"
 
 class AFGBuildable;
-class AStructuralPowerGraphSubsystem;
+class FStructuralGraphSession;
 struct FStructuralChannelKey;
 struct FStructuralComponentIdList;
 struct FStructuralComponentKey;
@@ -19,7 +19,7 @@ class STRUCTURALPOWER_API FStructuralGraphIdOps
 public:
 	FStructuralGraphIdOps() = default;
 
-	void Bind(AStructuralPowerGraphSubsystem* InSubsystem);
+	void Bind(FStructuralGraphSession* InSession);
 
 	FStructuralComponentKey MakeComponentKeyForRoot(int32 ComponentRoot) const;
 	FStructuralComponentKey MakeComponentKeyForParent(const FStructuralNodeId& ParentId) const;
@@ -41,5 +41,5 @@ public:
 	bool CollectIdsOnComponent(const FStructuralComponentKey& Key, FStructuralComponentIdList& Out) const;
 
 private:
-	AStructuralPowerGraphSubsystem* Subsystem = nullptr;
+	FStructuralGraphSession* Session = nullptr;
 };

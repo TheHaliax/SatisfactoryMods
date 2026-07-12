@@ -120,7 +120,10 @@ void UStructuralPowerFactoryTickHandler::PostFactoryTick(
 	{
 		if (Graph->GetPendingJobCount() > 0)
 		{
-			Graph->TickDeferredPlacements(StructuralPowerConstants::DeferredPlacementsPerTick);
+			const int32 MaxJobs = Graph->IsBulkLoadDrainActive()
+				? StructuralPowerConstants::BulkDeferredPlacementsMaxJobs
+				: StructuralPowerConstants::DeferredPlacementsPerTick;
+			Graph->TickDeferredPlacements(MaxJobs);
 		}
 		else
 		{

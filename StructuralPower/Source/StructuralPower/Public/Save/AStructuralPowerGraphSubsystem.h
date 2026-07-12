@@ -30,7 +30,11 @@
 #include "Reconcile/FStructuralPowerRestitch.h"
 #include "Circuit/FStructuralGraphCircuitOps.h"
 #include "Graph/FStructuralBridgeRootIndex.h"
-#include "Graph/FStructuralWireDeltaHandler.h"
+#include "Graph/FStructuralGraphBootstrap.h"
+#include "Graph/FStructuralGraphBulkDrain.h"
+#include "Graph/FStructuralGraphCircuitEcho.h"
+#include "Graph/FStructuralGraphRemoval.h"
+#include "Graph/FStructuralGraphStructureIngress.h"
 #include "AStructuralPowerGraphSubsystem.generated.h"
 
 class AFGBuildable;
@@ -44,10 +48,6 @@ class UFGCircuitConnectionComponent;
 class UFGPowerConnectionComponent;
 class UFGStructuralPowerConnectionComponent;
 class UWorld;
-class FStructuralPowerGeneratorProcessor;
-class FStructuralPowerLightProcessor;
-class FStructuralPowerPanelProcessor;
-class FStructuralPowerSwitchProcessor;
 
 struct FStructuralHoverpackAnchorQuery
 {
@@ -215,43 +215,11 @@ public:
 
 	void ProcessOutlet(AFGBuildable* Buildable);
 
-	friend class FStructuralSwitchWireEcho;
 	friend class FStructuralGraphSession;
-	friend class FStructuralPowerGeneratorProcessor;
-	friend class FStructuralPowerLightProcessor;
-	friend class FStructuralPowerPanelProcessor;
-	friend struct FStructuralPanelControlledSync;
-	friend class FStructuralPowerSwitchProcessor;
-	friend class FStructuralPowerPoleProcessor;
-	friend class FStructuralPowerStorageProcessor;
-	friend class FStructuralPowerBridgeProcessor;
-	friend class FStructuralPowerTransferGate;
-	friend class FStructuralCrossSiteGraph;
-	friend class FStructuralSiteMembership;
-	friend class FStructuralBridgeAttach;
-	friend class FStructuralPowerReconcile;
-	friend class FStructuralPowerRestitch;
-	friend class FStructuralGraphCircuitOps;
-	friend class FStructuralBridgeRootIndex;
-	friend class FStructuralGraphIdOps;
-	friend class FStructuralWireDeltaHandler;
-	friend class FStructuralEndpointDispatcher;
 
 private:
 	void ProcessStructure(AFGBuildable* Buildable);
-	void RetryAwaitingStructuralSiteEndpoints();
 	void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
-	void ProcessPoleEndpoint(AFGBuildablePowerPole* Pole);
-	void ProcessStorageEndpoint(AFGBuildablePowerStorage* Storage);
-	void ProcessSwitchEndpoint(AFGBuildableCircuitSwitch* Switch);
-	void ProcessGeneratorEndpoint(AFGBuildableGenerator* Generator);
-	void ProcessLightEndpoint(AFGBuildableLightSource* Light, bool bLocalPromoteOnly = false);
-	void ProcessPanelEndpoint(
-		AFGBuildableLightsControlPanel* Panel,
-		bool bLocalPromoteOnly = false,
-		bool bForceRuntimePlace = false);
-	void TearDownLightStructuralLinks(AFGBuildableLightSource* Light);
-	void TearDownPanelStructuralLinks(AFGBuildableLightsControlPanel* Panel);
 
 	UFGStructuralPowerConnectionComponent* GetOrCreateBusConnector(AFGBuildable* Host);
 	UFGStructuralPowerConnectionComponent* GetOrCreateOutletBusConnector(AFGBuildablePowerPole* Outlet);
@@ -310,7 +278,6 @@ private:
 	bool IsDirectSwitchFedLight(int32 Root, const FStructuralChannelKey& LightKey);
 	bool IsPanelDownstreamLight(int32 Root, const FStructuralChannelKey& LightKey);
 	bool IsSwitchFeedOpen(int32 Root, FName SwitchControlId);
-	void FinishBulkLoadDrain();
 	void MaybeRunPostLoadLightReconcile();
 	void MaybeRunFinalLightingReconcile();
 	void ScheduleFinalLightingReconcile();
@@ -340,9 +307,6 @@ private:
 
 	void RegisterBuildableActor(AFGBuildable* Buildable);
 	void UnregisterBuildableActor(const FStructuralNodeId& NodeId);
-	void RebuildBuildableRegistry(UWorld* World);
-	void RebuildLightweightIndex(UWorld* World);
-	void PurgeSavedOutletBusMesh(UWorld* World);
 	static FStructuralNodeId MakeParentNodeId(const FStructuralWallAnchor& Anchor);
 	FStructuralOutletParentResolveParams MakeOutletParentResolveParams() const;
 
@@ -365,7 +329,11 @@ private:
 	FStructuralPowerRestitch RestitchOps;
 	FStructuralGraphCircuitOps CircuitOps;
 	FStructuralBridgeRootIndex BridgeRootIndex;
-	FStructuralWireDeltaHandler WireDeltaHandler;
+	FStructuralGraphBootstrap BootstrapOps;
+	FStructuralGraphStructureIngress StructureIngressOps;
+	FStructuralGraphBulkDrain BulkDrainOps;
+	FStructuralGraphCircuitEcho CircuitEchoOps;
+	FStructuralGraphRemoval RemovalOps;
 	FStructuralPlacementQueue PlacementQueue;
 	int32 CircuitPromotionDepth = 0;
 	bool bPostLoadRebuilt = false;
@@ -380,4 +348,5 @@ private:
 	TMap<int32, TWeakObjectPtr<UFGCircuitConnectionComponent>> SourceConnectorByRoot;
 
 	TUniquePtr<FStructuralGraphSession> GraphSession;
+	bool bOpsBoundToSession = false;
 };

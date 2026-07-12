@@ -3,6 +3,7 @@
 
 #include "Reconcile/FStructuralPowerRestitch.h"
 
+#include "Core/FStructuralGraphSession.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
 #include "Buildables/FGBuildable.h"
@@ -11,9 +12,9 @@
 #include "Routing/EStructuralChannel.h"
 #include "Routing/FStructuralPowerRouter.h"
 
-void FStructuralPowerRestitch::Bind(AStructuralPowerGraphSubsystem* InSubsystem)
+void FStructuralPowerRestitch::Bind(FStructuralGraphSession* InSession)
 {
-	Subsystem = InSubsystem;
+	Session = InSession;
 }
 
 bool FStructuralPowerRestitch::ShouldEndpointParticipateInRestitch(
@@ -27,28 +28,28 @@ bool FStructuralPowerRestitch::ShouldEndpointParticipateInRestitch(
 
 	if (Kind == EStructuralEndpointKind::Pole)
 	{
-		const FStructuralNodeId NodeId = AStructuralPowerGraphSubsystem::MakeNodeId(Host);
-		const FTrackedEndpoint* Tracked = Subsystem->TrackedEndpoints.Find(NodeId);
+		const FStructuralNodeId NodeId = Session->MakeNodeId(Host);
+		const FTrackedEndpoint* Tracked = Session->TrackedEndpoints().Find(NodeId);
 		return Tracked != nullptr && Tracked->bStructuralPowerTransferActive;
 	}
 
 	if (Kind == EStructuralEndpointKind::Storage)
 	{
-		const FStructuralNodeId NodeId = AStructuralPowerGraphSubsystem::MakeNodeId(Host);
-		const FTrackedEndpoint* Tracked = Subsystem->TrackedEndpoints.Find(NodeId);
+		const FStructuralNodeId NodeId = Session->MakeNodeId(Host);
+		const FTrackedEndpoint* Tracked = Session->TrackedEndpoints().Find(NodeId);
 		return Tracked != nullptr && Tracked->bStructuralPowerTransferActive;
 	}
 
 	if (Kind == EStructuralEndpointKind::Switch)
 	{
-		const FStructuralNodeId NodeId = AStructuralPowerGraphSubsystem::MakeNodeId(Host);
-		const FTrackedEndpoint* Tracked = Subsystem->TrackedEndpoints.Find(NodeId);
+		const FStructuralNodeId NodeId = Session->MakeNodeId(Host);
+		const FTrackedEndpoint* Tracked = Session->TrackedEndpoints().Find(NodeId);
 		if (!Tracked || !Tracked->ParentId.IsValid())
 		{
 			return false;
 		}
 
-		return Subsystem->StructureGraph.FindRoot(Tracked->ParentId) != INDEX_NONE;
+		return Session->StructureGraph().FindRoot(Tracked->ParentId) != INDEX_NONE;
 	}
 
 	return false;
@@ -59,9 +60,9 @@ bool FStructuralPowerRestitch::ShouldMeshEndpoints(
 	AFGBuildable* HostB,
 	int32 ComponentRoot) const
 {
-	const FStructuralChannelKey KeyA = Subsystem->IdOps.ResolveChannelKeyForBuildable(HostA);
-	const FStructuralChannelKey KeyB = Subsystem->IdOps.ResolveChannelKeyForBuildable(HostB);
-	const FStructuralComponentKey CompKey = Subsystem->IdOps.MakeComponentKeyForRoot(ComponentRoot);
+	const FStructuralChannelKey KeyA = Session->Ids().ResolveChannelKeyForBuildable(HostA);
+	const FStructuralChannelKey KeyB = Session->Ids().ResolveChannelKeyForBuildable(HostB);
+	const FStructuralComponentKey CompKey = Session->Ids().MakeComponentKeyForRoot(ComponentRoot);
 
 	if (KeyA.Tag != EStructuralChannel::Switch && KeyB.Tag != EStructuralChannel::Switch)
 	{

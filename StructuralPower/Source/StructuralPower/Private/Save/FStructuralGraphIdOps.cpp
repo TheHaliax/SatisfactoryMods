@@ -3,6 +3,7 @@
 
 #include "Save/FStructuralGraphIdOps.h"
 
+#include "Core/FStructuralGraphSession.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
 #include "Buildables/FGBuildable.h"
@@ -11,34 +12,34 @@
 #include "Buildables/FGBuildableGenerator.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Core/FStructuralPowerContext.h"
+#include "Core/EAttachContext.h"
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Save/FStructuralPlacementQueue.h"
 #include "Graph/FStructuralAttachmentResolver.h"
-#include "Processors/FStructuralPowerProcessorRegistry.h"
-#include "Processors/FStructuralPowerSwitchProcessor.h"
-#include "Processors/IStructuralPowerProcessor.h"
+#include "Processors/FStructuralEndpointDispatcher.h"
+#include "Processors/FStructuralEndpointCatalog.h"
 #include "Routing/FStructuralMembershipRole.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "StructuralPowerConstants.h"
 
-void FStructuralGraphIdOps::Bind(AStructuralPowerGraphSubsystem* InSubsystem)
+void FStructuralGraphIdOps::Bind(FStructuralGraphSession* InSession)
 {
-	Subsystem = InSubsystem;
+	Session = InSession;
 }
 
 FStructuralComponentKey FStructuralGraphIdOps::MakeComponentKeyForRoot(int32 ComponentRoot) const
 {
 	FStructuralComponentKey Key;
-	Key.CanonicalNodeId = Subsystem->StructureGraph.MakeCanonicalNodeIdForComponent(ComponentRoot);
+	Key.CanonicalNodeId = Session->StructureGraph().MakeCanonicalNodeIdForComponent(ComponentRoot);
 	return Key;
 }
 
 FStructuralComponentKey FStructuralGraphIdOps::MakeComponentKeyForParent(
 	const FStructuralNodeId& ParentId) const
 {
-	return MakeComponentKeyForRoot(Subsystem->StructureGraph.FindRoot(ParentId));
+	return MakeComponentKeyForRoot(Session->StructureGraph().FindRoot(ParentId));
 }
 
 FStructuralComponentKey FStructuralGraphIdOps::MakeComponentKeyForBuildable(
@@ -49,19 +50,19 @@ FStructuralComponentKey FStructuralGraphIdOps::MakeComponentKeyForBuildable(
 		return {};
 	}
 
-	const FStructuralNodeId BuildableId = AStructuralPowerGraphSubsystem::MakeNodeId(Buildable);
-	if (const FTrackedEndpoint* Endpoint = Subsystem->TrackedEndpoints.Find(BuildableId))
+	const FStructuralNodeId BuildableId = Session->MakeNodeId(Buildable);
+	if (const FTrackedEndpoint* Endpoint = Session->TrackedEndpoints().Find(BuildableId))
 	{
 		return MakeComponentKeyForParent(Endpoint->ParentId);
 	}
 
 	const FStructuralWallAnchor Anchor = FStructuralAttachmentResolver::ResolveStructuralParent(
 		const_cast<AFGBuildable*>(Buildable),
-		Subsystem->GetWorld(),
-		Subsystem->LightweightIndex);
+		Session->GetWorld(),
+		Session->LightweightIndex());
 	if (Anchor.IsValid())
 	{
-		return MakeComponentKeyForParent(AStructuralPowerGraphSubsystem::MakeParentNodeId(Anchor));
+		return MakeComponentKeyForParent(Session->MakeParentNodeId(Anchor));
 	}
 
 	return {};
@@ -77,8 +78,8 @@ bool FStructuralGraphIdOps::GetEndpointOverrides(
 		return false;
 	}
 
-	const FStructuralNodeId BuildableId = AStructuralPowerGraphSubsystem::MakeNodeId(Buildable);
-	if (const FStructuralEndpointOverrides* Found = Subsystem->IdRegistry.FindPlayerOverride(BuildableId))
+	const FStructuralNodeId BuildableId = Session->MakeNodeId(Buildable);
+	if (const FStructuralEndpointOverrides* Found = Session->IdRegistry().FindPlayerOverride(BuildableId))
 	{
 		Out = *Found;
 		return Out.HasAnyOverride();
@@ -90,7 +91,7 @@ bool FStructuralGraphIdOps::GetEndpointOverrides(
 FName FStructuralGraphIdOps::GetOrCreateComponentDefaultId(
 	const FStructuralComponentKey& ComponentKey)
 {
-	return Subsystem->IdRegistry.GetOrCreateComponentDefaultId(ComponentKey);
+	return Session->IdRegistry().GetOrCreateComponentDefaultId(ComponentKey);
 }
 
 FName FStructuralGraphIdOps::ResolveSource(
@@ -108,12 +109,12 @@ FName FStructuralGraphIdOps::ResolveSource(
 		return NAME_None;
 	}
 
-	const FStructuralNodeId BuildableId = AStructuralPowerGraphSubsystem::MakeNodeId(Buildable);
+	const FStructuralNodeId BuildableId = Session->MakeNodeId(Buildable);
 	if (FStructuralPowerRouter::UsesSourceControlModel(Tag)
 		|| FStructuralMembershipRole::UsesKeyedMembership(Role))
 	{
 		if (const FStructuralEndpointOverrides* Overrides =
-				Subsystem->IdRegistry.FindPlayerOverride(BuildableId);
+				Session->IdRegistry().FindPlayerOverride(BuildableId);
 			Overrides && !Overrides->SourceOverride.IsNone())
 		{
 			return Overrides->SourceOverride;
@@ -129,7 +130,7 @@ FName FStructuralGraphIdOps::ResolveSource(
 	}
 
 	if (const FStructuralEndpointOverrides* Overrides =
-			Subsystem->IdRegistry.FindPlayerOverride(BuildableId);
+			Session->IdRegistry().FindPlayerOverride(BuildableId);
 		Overrides && !Overrides->SourceOverride.IsNone())
 	{
 		return Overrides->SourceOverride;
@@ -177,9 +178,9 @@ FName FStructuralGraphIdOps::ResolveControl(
 		return NAME_None;
 	}
 
-	const FStructuralNodeId BuildableId = AStructuralPowerGraphSubsystem::MakeNodeId(Buildable);
+	const FStructuralNodeId BuildableId = Session->MakeNodeId(Buildable);
 	if (const FStructuralEndpointOverrides* Overrides =
-			Subsystem->IdRegistry.FindPlayerOverride(BuildableId);
+			Session->IdRegistry().FindPlayerOverride(BuildableId);
 		Overrides && !Overrides->ControlOverride.IsNone())
 	{
 		if (Overrides->ControlOverride == FName(TEXT("BYPASS")))
@@ -254,8 +255,8 @@ void FStructuralGraphIdOps::SetEndpointIds(
 		return;
 	}
 
-	const FStructuralNodeId NodeId = AStructuralPowerGraphSubsystem::MakeNodeId(Buildable);
-	Subsystem->IdRegistry.ApplyPlayerOverrideEdits(
+	const FStructuralNodeId NodeId = Session->MakeNodeId(Buildable);
+	Session->IdRegistry().ApplyPlayerOverrideEdits(
 		NodeId,
 		Source,
 		Control,
@@ -270,15 +271,15 @@ void FStructuralGraphIdOps::SetEndpointIds(
 	const bool bSkipDeferredOutlet = (bGroupLighting && (bIsLight || bIsPanel)) || bIsSwitch;
 	if (!bSkipDeferredOutlet)
 	{
-		Subsystem->EnqueuePlacement(
+		Session->EnqueuePlacement(
 			Buildable,
 			EStructuralPlacementJobType::Outlet,
 			/*bDefer=*/true);
 	}
 
-	const FStructuralWallAnchor Anchor = Subsystem->ResolveOutletAnchor(Buildable);
+	const FStructuralWallAnchor Anchor = Session->ResolveOutletAnchor(Buildable);
 	FStructuralNodeId ParentId;
-	const int32 Root = Subsystem->BridgeRootIndex.ResolveEndpointComponentRoot(
+	const int32 Root = Session->BridgeRootIndex().ResolveEndpointComponentRoot(
 		Buildable,
 		Anchor,
 		ParentId);
@@ -292,11 +293,11 @@ void FStructuralGraphIdOps::SetEndpointIds(
 		if (AFGBuildableLightSource* Light = FStructuralPowerBuildableCasts::AsLight(Buildable))
 		{
 			const FStructuralChannelKey LightKey =
-				Subsystem->IdOps.ResolveChannelKeyForBuildable(Light);
-			Subsystem->ProcessLightEndpoint(Light);
-			if (Subsystem->IsPanelDownstreamLight(Root, LightKey))
+				Session->Ids().ResolveChannelKeyForBuildable(Light);
+			FStructuralEndpointDispatcher::DispatchPlacement(*Session, Light);
+			if (Session->IsPanelDownstreamLight(Root, LightKey))
 			{
-				Subsystem->RefreshPanelsForLightSourceOnRoot(Root, LightKey.Source);
+				Session->RefreshPanelsForLightSourceOnRoot(Root, LightKey.Source);
 			}
 		}
 	}
@@ -304,27 +305,31 @@ void FStructuralGraphIdOps::SetEndpointIds(
 	{
 		if (AFGBuildableLightsControlPanel* Panel = FStructuralPowerBuildableCasts::AsPanel(Buildable))
 		{
-			FTrackedEndpoint& Tracked = Subsystem->TrackedEndpoints.FindOrAdd(NodeId);
+			FTrackedEndpoint& Tracked = Session->TrackedEndpoints().FindOrAdd(NodeId);
 			Tracked.bPanelLinksReady = false;
 			Tracked.bDownstreamLinksReady = false;
-			Subsystem->ProcessPanelEndpoint(Panel);
+			FStructuralEndpointDispatcher::DispatchPlacement(
+				*Session,
+				Panel,
+				/*bLocalPromoteOnly=*/false,
+				/*bOverrideAttachContext=*/true,
+				EAttachContext::RuntimePlace);
 		}
 	}
 	else if (bIsSwitch)
 	{
 		if (AFGBuildableCircuitSwitch* Switch = FStructuralPowerBuildableCasts::AsSwitch(Buildable))
 		{
-			FStructuralPowerContext Ctx =
-				Subsystem->MakeProcessorContext(EAttachContext::RuntimePlace, Root);
-			if (IStructuralPowerProcessor* Processor =
-					FStructuralPowerProcessorRegistry::Get().FindMutable(EStructuralEndpointKind::Switch))
-			{
-				Processor->Process(Ctx, Switch);
-			}
+			FStructuralEndpointDispatcher::DispatchPlacement(
+				*Session,
+				Switch,
+				/*bLocalPromoteOnly=*/false,
+				/*bOverrideAttachContext=*/true,
+				EAttachContext::RuntimePlace);
 		}
 	}
 
-	Subsystem->RebuildControlIdGangsForRoot(Root);
+	Session->RebuildControlIdGangsForRoot(Root);
 }
 
 bool FStructuralGraphIdOps::CollectIdsOnComponent(
@@ -336,7 +341,7 @@ bool FStructuralGraphIdOps::CollectIdsOnComponent(
 		return false;
 	}
 
-	const int32 TargetRoot = Subsystem->StructureGraph.FindRoot(Key.CanonicalNodeId);
+	const int32 TargetRoot = Session->StructureGraph().FindRoot(Key.CanonicalNodeId);
 	if (TargetRoot == INDEX_NONE)
 	{
 		return false;
@@ -360,7 +365,7 @@ bool FStructuralGraphIdOps::CollectIdsOnComponent(
 
 		const FStructuralComponentKey BuildableKey = MakeComponentKeyForBuildable(Buildable);
 		if (!BuildableKey.IsValid()
-			|| Subsystem->StructureGraph.FindRoot(BuildableKey.CanonicalNodeId) != TargetRoot)
+			|| Session->StructureGraph().FindRoot(BuildableKey.CanonicalNodeId) != TargetRoot)
 		{
 			return;
 		}
@@ -370,7 +375,7 @@ bool FStructuralGraphIdOps::CollectIdsOnComponent(
 		const bool bIsSwitch = Buildable->IsA<AFGBuildableCircuitSwitch>();
 		const bool bIsGenerator = Buildable->IsA<AFGBuildableGenerator>();
 
-		if (const FStructuralEndpointOverrides* Overrides = Subsystem->IdRegistry.FindPlayerOverride(NodeId))
+		if (const FStructuralEndpointOverrides* Overrides = Session->IdRegistry().FindPlayerOverride(NodeId))
 		{
 			if (!Overrides->SourceOverride.IsNone()
 				&& Overrides->SourceOverride != Out.DefaultSourceId)
@@ -438,21 +443,21 @@ bool FStructuralGraphIdOps::CollectIdsOnComponent(
 		}
 	};
 
-	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Subsystem->TrackedEndpoints)
+	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Session->TrackedEndpoints())
 	{
 		ConsiderBuildable(Pair.Key, Pair.Value.Actor.Get());
 	}
 
 	for (const TPair<FStructuralNodeId, TWeakObjectPtr<AFGBuildable>>& Pair :
-		Subsystem->RegisteredBuildables)
+		Session->RegisteredBuildables())
 	{
 		ConsiderBuildable(Pair.Key, Pair.Value.Get());
 	}
 
-	Subsystem->IdRegistry.ForEachPlayerOverride(
+	Session->IdRegistry().ForEachPlayerOverride(
 		[&](const FStructuralNodeId& NodeId, const FStructuralEndpointOverrides&)
 	{
-		if (const TWeakObjectPtr<AFGBuildable>* Buildable = Subsystem->RegisteredBuildables.Find(NodeId))
+		if (const TWeakObjectPtr<AFGBuildable>* Buildable = Session->RegisteredBuildables().Find(NodeId))
 		{
 			ConsiderBuildable(NodeId, Buildable->Get());
 		}
@@ -462,14 +467,14 @@ bool FStructuralGraphIdOps::CollectIdsOnComponent(
 	Out.NamedSwitchControlIds = NamedSwitchControls.Array();
 	Out.NamedLightGroupIds = NamedLightGroups.Array();
 
-	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Subsystem->TrackedEndpoints)
+	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Session->TrackedEndpoints())
 	{
 		if (Pair.Value.Kind != EStructuralEndpointKind::Light)
 		{
 			continue;
 		}
 
-		if (Subsystem->StructureGraph.FindRoot(Pair.Value.ParentId) != TargetRoot)
+		if (Session->StructureGraph().FindRoot(Pair.Value.ParentId) != TargetRoot)
 		{
 			continue;
 		}

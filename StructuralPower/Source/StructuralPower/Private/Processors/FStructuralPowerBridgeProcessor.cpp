@@ -11,6 +11,7 @@
 #include "Core/EStructuralPowerScope.h"
 #include "Graph/FStructuralCrossSiteGraph.h"
 #include "Graph/FStructuralEndpointTypes.h"
+#include "Core/FStructuralGraphSession.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
 #include "Processors/FStructuralPowerSwitchProcessor.h"
@@ -27,11 +28,11 @@ void FStructuralPowerBridgeProcessor::PropagateCrossSiteFeedChange(
 		return;
 	}
 
-	Ctx.Graph().CrossSiteGraph.RefreshCouplingsFromWiredSwitch(Ctx.Graph(), Switch, LocalRoot);
+	Ctx.Session().CrossSite().RefreshCouplingsFromWiredSwitch(Ctx.Session(), Switch, LocalRoot);
 
 	TArray<int32> AffectedRoots;
-	Ctx.Graph().CrossSiteGraph.TraceFeedAffected(
-		Ctx.Graph(),
+	Ctx.Session().CrossSite().TraceFeedAffected(
+		Ctx.Session(),
 		Switch,
 		LocalRoot,
 		AffectedRoots);

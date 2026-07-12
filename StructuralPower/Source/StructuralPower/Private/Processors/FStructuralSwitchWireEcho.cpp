@@ -72,7 +72,7 @@ void FStructuralSwitchWireEcho::OnCircuitsRebuilt(
 		? Ctx.Session().StructureGraph().FindRoot(Tracked.ParentId)
 		: INDEX_NONE;
 
-	FStructuralSwitchBridgeStrategy::Apply(Ctx, Switch);
+	FStructuralSwitchBridgeStrategy::ApplyWireEcho(Ctx, Switch);
 
 	if (FStructuralPowerSwitchProcessor::NeedsAdvancedWork(Ctx, Switch) && Root != INDEX_NONE)
 	{

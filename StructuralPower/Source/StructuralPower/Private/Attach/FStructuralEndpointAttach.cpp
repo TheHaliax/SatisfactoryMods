@@ -12,8 +12,6 @@
 #include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Processors/FStructuralPowerLightProcessor.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
-#include "Processors/FStructuralPowerLightProcessor.h"
-#include "Processors/FStructuralPowerPanelProcessor.h"
 #include "Processors/FStructuralSwitchBridgeStrategy.h"
 #include "Processors/FStructuralSwitchMembership.h"
 

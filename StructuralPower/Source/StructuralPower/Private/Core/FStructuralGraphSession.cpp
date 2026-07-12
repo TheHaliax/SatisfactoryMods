@@ -3,8 +3,15 @@
 
 #include "Core/FStructuralGraphSession.h"
 
-#include "Core/FStructuralPowerContext.h"
-#include "Save/AStructuralPowerGraphSubsystem.h"
+#include "Processors/FStructuralEndpointDispatcher.h"
+#include "Save/FStructuralEndpointIdRegistry.h"
+#include "Graph/FStructuralGraphBootstrap.h"
+#include "Graph/FStructuralGraphBulkDrain.h"
+#include "Graph/FStructuralGraphCircuitEcho.h"
+#include "Graph/FStructuralGraphRemoval.h"
+#include "Graph/FStructuralGraphStructureIngress.h"
+#include "Graph/FStructuralBusMemberSpatialIndex.h"
+#include "Subsystems/UStructuralPowerFactoryTickHandler.h"
 
 FStructuralGraphSession::FStructuralGraphSession(AStructuralPowerGraphSubsystem& InOwner)
 	: OwnerPtr(&InOwner)
@@ -83,9 +90,29 @@ FStructuralBridgeRootIndex& FStructuralGraphSession::BridgeRootIndex()
 	return Owner().BridgeRootIndex;
 }
 
-FStructuralWireDeltaHandler& FStructuralGraphSession::WireDelta()
+FStructuralGraphBootstrap& FStructuralGraphSession::Bootstrap()
 {
-	return Owner().WireDeltaHandler;
+	return Owner().BootstrapOps;
+}
+
+FStructuralGraphStructureIngress& FStructuralGraphSession::StructureIngress()
+{
+	return Owner().StructureIngressOps;
+}
+
+FStructuralGraphBulkDrain& FStructuralGraphSession::BulkDrain()
+{
+	return Owner().BulkDrainOps;
+}
+
+FStructuralGraphCircuitEcho& FStructuralGraphSession::CircuitEcho()
+{
+	return Owner().CircuitEchoOps;
+}
+
+FStructuralGraphRemoval& FStructuralGraphSession::Removal()
+{
+	return Owner().RemovalOps;
 }
 
 FStructuralPlacementQueue& FStructuralGraphSession::Placement()
@@ -106,6 +133,11 @@ FStructuralSiteState& FStructuralGraphSession::SiteState()
 FStructuralControlIdGangIndex& FStructuralGraphSession::ControlIdGangIndex()
 {
 	return Owner().ControlIdGangIndex;
+}
+
+FStructuralBusMemberSpatialIndex& FStructuralGraphSession::BusMemberSpatialIndex()
+{
+	return Owner().BusMemberSpatialIndex;
 }
 
 int32& FStructuralGraphSession::CircuitPromotionDepth()
@@ -168,7 +200,6 @@ FStructuralPowerContext FStructuralGraphSession::MakeProcessorContext(
 	const int32 SiteRoot) const
 {
 	return FStructuralPowerContext(
-		const_cast<AStructuralPowerGraphSubsystem&>(Owner()),
 		*const_cast<FStructuralGraphSession*>(this),
 		AttachContext,
 		SiteRoot);
@@ -194,7 +225,22 @@ void FStructuralGraphSession::ProcessOutlet(AFGBuildable* Buildable)
 
 void FStructuralGraphSession::OnBuildableRemoved(AFGBuildable* Buildable)
 {
-	Owner().OnBuildableRemoved(Buildable);
+	Removal().OnBuildableRemoved(Buildable);
+}
+
+void FStructuralGraphSession::UnregisterBuildableActor(const FStructuralNodeId& NodeId)
+{
+	Owner().UnregisterBuildableActor(NodeId);
+}
+
+bool FStructuralGraphSession::HasActiveDeferredWork() const
+{
+	return Owner().HasActiveDeferredWork();
+}
+
+void FStructuralGraphSession::NotifyDeferredWorkRegistered()
+{
+	Owner().NotifyDeferredWorkRegistered();
 }
 
 FStructuralNodeId FStructuralGraphSession::MakeNodeId(const AFGBuildable* Buildable) const
@@ -294,7 +340,7 @@ bool FStructuralGraphSession::EnsureParentRegisteredInGraph(
 	const FStructuralWallAnchor& Anchor,
 	FStructuralNodeId& OutParentId)
 {
-	return Owner().EnsureParentRegisteredInGraph(Anchor, OutParentId);
+	return BridgeRootIndex().EnsureParentRegisteredInGraph(Anchor, OutParentId);
 }
 
 FStructuralNodeId FStructuralGraphSession::MakeParentNodeId(const FStructuralWallAnchor& Anchor) const
@@ -398,6 +444,204 @@ bool FStructuralGraphSession::ShouldSkipPanelCircuitEcho(
 void FStructuralGraphSession::EnsurePanelListener(AFGBuildableLightsControlPanel* Panel)
 {
 	Owner().EnsurePanelListener(Panel);
+}
+
+void FStructuralGraphSession::NotePanelToggleHandled(AFGBuildableLightsControlPanel* Panel)
+{
+	Owner().NotePanelToggleHandled(Panel);
+}
+
+bool FStructuralGraphSession::IsBuildablePlacementPending(AFGBuildable* Buildable) const
+{
+	return Owner().IsBuildablePlacementPending(Buildable);
+}
+
+UFGPowerConnectionComponent* FStructuralGraphSession::ResolveSubnetFeedConnector(
+	const int32 ComponentRoot,
+	const FStructuralChannelKey& DeviceKey)
+{
+	return Owner().ResolveSubnetFeedConnector(ComponentRoot, DeviceKey);
+}
+
+bool FStructuralGraphSession::IsPanelSupplyLinked(
+	UFGPowerConnectionComponent* InputPower,
+	UFGPowerConnectionComponent* Feed) const
+{
+	return Owner().IsPanelSupplyLinked(InputPower, Feed);
+}
+
+void FStructuralGraphSession::PromotePanelSupplyConnection(
+	UFGPowerConnectionComponent* InputPower,
+	UFGPowerConnectionComponent* Feed,
+	const bool bLocalPromoteOnly)
+{
+	Owner().PromotePanelSupplyConnection(InputPower, Feed, bLocalPromoteOnly);
+}
+
+void FStructuralGraphSession::PromoteStructuralMeshFrom(UFGPowerConnectionComponent* Seed)
+{
+	Owner().PromoteStructuralMeshFrom(Seed);
+}
+
+bool FStructuralGraphSession::LinkHiddenPair(
+	UFGPowerConnectionComponent* A,
+	UFGPowerConnectionComponent* B,
+	const bool bPromoteCircuit)
+{
+	return Owner().LinkHiddenPair(A, B, bPromoteCircuit);
+}
+
+void FStructuralGraphSession::LinkBusToVisibleConnections(
+	AFGBuildable* Host,
+	UFGStructuralPowerConnectionComponent* Bus)
+{
+	Owner().LinkBusToVisibleConnections(Host, Bus);
+}
+
+bool FStructuralGraphSession::HasBridgeBusPeerMesh(
+	UFGStructuralPowerConnectionComponent* Bus) const
+{
+	return Owner().HasBridgeBusPeerMesh(Bus);
+}
+
+bool FStructuralGraphSession::TryMeshPeerBusOnComponent(
+	AFGBuildable* Host,
+	UFGStructuralPowerConnectionComponent* OutletBus,
+	const int32 Root,
+	const FStructuralNodeId& SelfId,
+	const bool bBridgePeersOnly,
+	const bool bMeshOnlyLinks)
+{
+	return Owner().TryMeshPeerBusOnComponent(
+		Host,
+		OutletBus,
+		Root,
+		SelfId,
+		bBridgePeersOnly,
+		bMeshOnlyLinks);
+}
+
+int32 FStructuralGraphSession::ResolvePoleComponentRoot(
+	AFGBuildablePowerPole* Pole,
+	const FStructuralWallAnchor& Anchor,
+	FStructuralNodeId& OutParentId)
+{
+	return Owner().ResolvePoleComponentRoot(Pole, Anchor, OutParentId);
+}
+
+void FStructuralGraphSession::EnumerateTrackedLightsOnRoot(
+	const int32 Root,
+	TFunctionRef<void(AFGBuildableLightSource*)> Visitor)
+{
+	Owner().EnumerateTrackedLightsOnRoot(Root, Visitor);
+}
+
+int32 FStructuralGraphSession::GetEndpointComponentRoot(AFGBuildable* Endpoint)
+{
+	return Owner().GetEndpointComponentRoot(Endpoint);
+}
+
+void FStructuralGraphSession::DispatchOutlet(AFGBuildable* Buildable)
+{
+	FStructuralEndpointDispatcher::DispatchOutlet(*this, Buildable);
+}
+
+void FStructuralGraphSession::ProcessStructure(AFGBuildable* Buildable)
+{
+	StructureIngress().ProcessStructure(Buildable);
+}
+
+void FStructuralGraphSession::ProcessLightweightStructure(const FStructuralLightweightKey& Key)
+{
+	StructureIngress().ProcessLightweightStructure(Key);
+}
+
+void FStructuralGraphSession::FinishBulkLoadDrain()
+{
+	BulkDrain().FinishBulkLoadDrain();
+}
+
+void FStructuralGraphSession::MaybeReleaseFactoryTick()
+{
+	Owner().MaybeReleaseFactoryTick();
+}
+
+void FStructuralGraphSession::ScheduleFinalLightingReconcile()
+{
+	Owner().ScheduleFinalLightingReconcile();
+}
+
+int32 FStructuralGraphSession::GetPendingJobCount() const
+{
+	return Owner().GetPendingJobCount();
+}
+
+void FStructuralGraphSession::RebuildControlIdGangsForRoot(const int32 ComponentRoot)
+{
+	Owner().RebuildControlIdGangsForRoot(ComponentRoot);
+}
+
+void FStructuralGraphSession::RefreshPanelsForLightSourceOnRoot(
+	const int32 Root,
+	const FName LightSource)
+{
+	Owner().RefreshPanelsForLightSourceOnRoot(Root, LightSource);
+}
+
+FStructuralEndpointIdRegistry& FStructuralGraphSession::IdRegistry()
+{
+	return Owner().IdRegistry;
+}
+
+TMap<int32, TWeakObjectPtr<UFGCircuitConnectionComponent>>& FStructuralGraphSession::SourceConnectorByRoot()
+{
+	return Owner().SourceConnectorByRoot;
+}
+
+TMap<FStructuralNodeId, TWeakObjectPtr<AFGBuildable>>& FStructuralGraphSession::RegisteredBuildables()
+{
+	return Owner().RegisteredBuildables;
+}
+
+void FStructuralGraphSession::DispatchPlacement(
+	AFGBuildable* Buildable,
+	const bool bLocalPromoteOnly,
+	const bool bOverrideAttachContext,
+	const EAttachContext AttachContextOverride)
+{
+	FStructuralEndpointDispatcher::DispatchPlacement(
+		*this,
+		Buildable,
+		bLocalPromoteOnly,
+		bOverrideAttachContext,
+		AttachContextOverride);
+}
+
+void FStructuralGraphSession::DispatchTeardown(AFGBuildable* Buildable)
+{
+	FStructuralEndpointDispatcher::DispatchTeardown(*this, Buildable);
+}
+
+UFGCircuitConnectionComponent* FStructuralGraphSession::GetComponentSourceConnector(
+	const int32 ComponentRoot,
+	const AFGBuildable* ExcludeHost)
+{
+	return Owner().GetComponentSourceConnector(ComponentRoot, ExcludeHost);
+}
+
+bool FStructuralGraphSession::FindNearestStructureAnchorForEquipment(
+	const FVector& QueryLoc,
+	const float MaxHorizontal,
+	const float MaxVertical,
+	FVector& OutAnchor,
+	int32& OutComponentRoot) const
+{
+	return Owner().FindNearestStructureAnchorForEquipment(
+		QueryLoc,
+		MaxHorizontal,
+		MaxVertical,
+		OutAnchor,
+		OutComponentRoot);
 }
 
 bool FStructuralGraphSession::QueryHoverpackStructuralAnchor(

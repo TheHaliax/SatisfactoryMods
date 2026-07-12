@@ -19,6 +19,7 @@
 #include "Routing/EStructuralChannel.h"
 #include "Core/EStructuralPowerRole.h"
 #include "Core/EStructuralPowerScope.h"
+#include "Core/FStructuralGraphSession.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Graph/FStructuralEndpointTypes.h"
@@ -57,7 +58,7 @@ void FStructuralPowerPanelProcessor::Process(
 		return;
 	}
 
-	FStructuralCircuitPromotionScope PromotionScope(&Ctx.Graph());
+	FStructuralCircuitPromotionScope PromotionScope(&Ctx.Session().Owner());
 
 	FStructuralPanelPorts Ports;
 	if (!FStructuralPanelPortResolver::Resolve(Panel, Ports))
@@ -66,14 +67,14 @@ void FStructuralPowerPanelProcessor::Process(
 		return;
 	}
 
-	const FStructuralChannelKey ChannelKey = Ctx.Graph().ResolveChannelKeyForBuildable(Panel);
+	const FStructuralChannelKey ChannelKey = Ctx.Session().ResolveChannelKeyForBuildable(Panel);
 	const EAttachContext AttachContext = Ctx.GetAttachContext();
-	const FStructuralWallAnchor ParentAnchor = Ctx.Graph().ResolveOutletAnchor(Panel);
+	const FStructuralWallAnchor ParentAnchor = Ctx.Session().ResolveOutletAnchor(Panel);
 	FStructuralNodeId ParentId;
-	const int32 Root = Ctx.Graph().ResolveEndpointComponentRoot(Panel, ParentAnchor, ParentId);
+	const int32 Root = Ctx.Session().ResolveEndpointComponentRoot(Panel, ParentAnchor, ParentId);
 
-	const FStructuralNodeId PanelId = Ctx.Graph().MakeNodeId(Panel);
-	FTrackedEndpoint& Tracked = Ctx.Graph().TrackedEndpoints.FindOrAdd(PanelId);
+	const FStructuralNodeId PanelId = Ctx.Session().MakeNodeId(Panel);
+	FTrackedEndpoint& Tracked = Ctx.Session().TrackedEndpoints().FindOrAdd(PanelId);
 	const bool bRoutingUnchanged = Tracked.bPanelLinksReady
 		&& Tracked.CachedPanelRoot == Root
 		&& Tracked.CachedPanelKey == ChannelKey;
@@ -81,17 +82,17 @@ void FStructuralPowerPanelProcessor::Process(
 	Tracked.Actor = Panel;
 	Tracked.ParentId = ParentId;
 	Tracked.Kind = EStructuralEndpointKind::Panel;
-	Ctx.Graph().RegisterBuildableActor(Panel);
-	Ctx.Graph().EnsurePanelListener(Panel);
+	Ctx.Session().RegisterBuildableActor(Panel);
+	Ctx.Session().EnsurePanelListener(Panel);
 	if (Root != INDEX_NONE)
 	{
 		if (IsBulkLoadAttachContext(AttachContext))
 		{
-			Ctx.Graph().AddEndpointToRootIndex(Root, EStructuralEndpointKind::Panel, PanelId);
+			Ctx.Session().AddEndpointToRootIndex(Root, EStructuralEndpointKind::Panel, PanelId);
 		}
 		else
 		{
-			Ctx.Graph().MarkBridgeEndpointRootIndexDirty();
+			Ctx.Session().MarkBridgeEndpointRootIndexDirty();
 		}
 	}
 
@@ -123,7 +124,7 @@ void FStructuralPowerPanelProcessor::Process(
 	const FName FeedSwitchId = ChannelKey.Source;
 	if (Root != INDEX_NONE
 		&& !FeedSwitchId.IsNone()
-		&& Ctx.Graph().IsSwitchFeedOpen(Root, FeedSwitchId))
+		&& Ctx.Session().IsSwitchFeedOpen(Root, FeedSwitchId))
 	{
 		FStructuralPanelAttach::TearDownLinks(Panel, Ports);
 
@@ -138,7 +139,7 @@ void FStructuralPowerPanelProcessor::Process(
 	{
 		if (Root != INDEX_NONE
 			&& !FeedSwitchId.IsNone()
-			&& Ctx.Graph().IsSwitchFeedOpen(Root, FeedSwitchId))
+			&& Ctx.Session().IsSwitchFeedOpen(Root, FeedSwitchId))
 		{
 			FStructuralPanelAttach::TearDownLinks(Panel, Ports);
 			Tracked.bPanelLinksReady = false;
@@ -148,8 +149,7 @@ void FStructuralPowerPanelProcessor::Process(
 			return;
 		}
 
-		const bool bSupplyLinked = FStructuralPanelAttach::SupplyAlreadyLinked(
-			Ctx.Graph(),
+		const bool bSupplyLinked = FStructuralPanelAttach::SupplyAlreadyLinked(Ctx.Session(),
 			Panel,
 			Ports,
 			Root,
@@ -164,15 +164,14 @@ void FStructuralPowerPanelProcessor::Process(
 			LogPanelState(true, TEXT("routing_unchanged"));
 
 			const FName EffectiveControl =
-				FStructuralPanelControlledSync::ResolveEffectiveLightControl(Ctx.Graph(), Panel);
+				FStructuralPanelControlledSync::ResolveEffectiveLightControl(Ctx.Session(), Panel);
 			const bool bDownstreamUnchanged = Tracked.bDownstreamLinksReady
 				&& Tracked.CachedDownstreamControl == EffectiveControl;
 			if (Root != INDEX_NONE && !EffectiveControl.IsNone())
 			{
 				if (!bDownstreamUnchanged)
 				{
-					FStructuralPanelAttach::RestitchDownstream(
-						Ctx.Graph(),
+					FStructuralPanelAttach::RestitchDownstream(Ctx.Session(),
 						Panel,
 						Ports,
 						Root,
@@ -182,7 +181,7 @@ void FStructuralPowerPanelProcessor::Process(
 				}
 				else
 				{
-					FStructuralPanelControlledSync::ApplyKeyedSubnet(Ctx.Graph(), Panel);
+					FStructuralPanelControlledSync::ApplyKeyedSubnet(Ctx.Session(), Panel);
 				}
 			}
 
@@ -205,28 +204,26 @@ void FStructuralPowerPanelProcessor::Process(
 	bool bSupplyReady = false;
 	if (Root != INDEX_NONE)
 	{
-		const bool bFeedReady = Ctx.Graph().DoesComponentRootCarryPower(Root)
-			|| Ctx.Graph().DoesSiteStructuralBusCarryPower(Root)
+		const bool bFeedReady = Ctx.Session().DoesComponentRootCarryPower(Root)
+			|| Ctx.Session().DoesSiteStructuralBusCarryPower(Root)
 			|| (!ChannelKey.Source.IsNone()
 				&& [&]() -> bool
 				{
 					UFGPowerConnectionComponent* Feed =
-						Ctx.Graph().ResolveSubnetFeedConnector(Root, ChannelKey);
+						Ctx.Session().ResolveSubnetFeedConnector(Root, ChannelKey);
 					return IsValid(Feed)
 						&& FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(Feed);
 				}());
 
 		if (bFeedReady)
 		{
-			if (FStructuralPanelAttach::SupplyAlreadyLinked(
-					Ctx.Graph(), Panel, Ports, Root, ChannelKey))
+			if (FStructuralPanelAttach::SupplyAlreadyLinked(Ctx.Session(), Panel, Ports, Root, ChannelKey))
 			{
 				bSupplyReady = true;
 			}
 			else
 			{
-				bSupplyReady = FStructuralPanelAttach::TryLinkSupply(
-					Ctx.Graph(),
+				bSupplyReady = FStructuralPanelAttach::TryLinkSupply(Ctx.Session(),
 					Panel,
 					Ports,
 					Root,
@@ -239,23 +236,22 @@ void FStructuralPowerPanelProcessor::Process(
 	if (bSupplyReady && IsValid(InputPower) && !bMeshOnlySupply)
 	{
 		UFGPowerConnectionComponent* Feed =
-			Ctx.Graph().ResolveSubnetFeedConnector(Root, ChannelKey);
+			Ctx.Session().ResolveSubnetFeedConnector(Root, ChannelKey);
 		if (IsValid(Feed))
 		{
-			Ctx.Graph().PromotePanelSupplyConnection(InputPower, Feed, bLocalPromoteOnly);
+			Ctx.Session().PromotePanelSupplyConnection(InputPower, Feed, bLocalPromoteOnly);
 		}
 	}
 
 	const FName EffectiveControl =
-		FStructuralPanelControlledSync::ResolveEffectiveLightControl(Ctx.Graph(), Panel);
+		FStructuralPanelControlledSync::ResolveEffectiveLightControl(Ctx.Session(), Panel);
 	if (Root != INDEX_NONE && !EffectiveControl.IsNone())
 	{
 		const bool bDownstreamUnchanged = Tracked.bDownstreamLinksReady
 			&& Tracked.CachedDownstreamControl == EffectiveControl;
 		if (!bDownstreamUnchanged)
 		{
-			FStructuralPanelAttach::RestitchDownstream(
-				Ctx.Graph(),
+			FStructuralPanelAttach::RestitchDownstream(Ctx.Session(),
 				Panel,
 				Ports,
 				Root,
@@ -263,7 +259,7 @@ void FStructuralPowerPanelProcessor::Process(
 		}
 		else
 		{
-			FStructuralPanelControlledSync::ApplyKeyedSubnet(Ctx.Graph(), Panel);
+			FStructuralPanelControlledSync::ApplyKeyedSubnet(Ctx.Session(), Panel);
 		}
 
 		Tracked.bDownstreamLinksReady = true;
@@ -277,8 +273,7 @@ void FStructuralPowerPanelProcessor::Process(
 
 	if (!bLocalPromoteOnly && bSupplyReady && IsValid(InputPower))
 	{
-		FStructuralPanelAttach::PromotePanelDownstreamSubnet(
-			Ctx.Graph(),
+		FStructuralPanelAttach::PromotePanelDownstreamSubnet(Ctx.Session(),
 			Panel,
 			Ports,
 			InputPower);
@@ -310,11 +305,11 @@ void FStructuralPowerPanelProcessor::OnWireDelta(
 		return;
 	}
 
-	AStructuralPowerGraphSubsystem& Graph = Ctx.Graph();
+	FStructuralGraphSession& Session = Ctx.Session();
 	const EAttachContext AttachContext = Ctx.GetAttachContext();
 
 	if (AttachContext != EAttachContext::Toggle
-		&& Graph.ShouldSkipPanelCircuitEcho(Panel))
+		&& Session.ShouldSkipPanelCircuitEcho(Panel))
 	{
 		return;
 	}
@@ -322,11 +317,11 @@ void FStructuralPowerPanelProcessor::OnWireDelta(
 	if (AttachContext == EAttachContext::Toggle)
 	{
 		const TCHAR* SkipReason = nullptr;
-		if (Graph.ShouldSkipPanelCircuitEcho(Panel, &SkipReason)
+		if (Session.ShouldSkipPanelCircuitEcho(Panel, &SkipReason)
 			&& SkipReason
 			&& FCString::Strcmp(SkipReason, TEXT("skip_feed_open")) == 0)
 		{
-			Graph.NotePanelToggleHandled(Panel);
+			Session.NotePanelToggleHandled(Panel);
 			return;
 		}
 	}
@@ -337,20 +332,20 @@ void FStructuralPowerPanelProcessor::OnWireDelta(
 		return;
 	}
 
-	const FStructuralWallAnchor ParentAnchor = Graph.ResolveOutletAnchor(Panel);
+	const FStructuralWallAnchor ParentAnchor = Session.ResolveOutletAnchor(Panel);
 	FStructuralNodeId ParentId;
-	const int32 Root = Graph.ResolveEndpointComponentRoot(Panel, ParentAnchor, ParentId);
+	const int32 Root = Session.ResolveEndpointComponentRoot(Panel, ParentAnchor, ParentId);
 
-	const FStructuralNodeId PanelId = Graph.MakeNodeId(Panel);
-	FTrackedEndpoint& Tracked = Graph.TrackedEndpoints.FindOrAdd(PanelId);
+	const FStructuralNodeId PanelId = Session.MakeNodeId(Panel);
+	FTrackedEndpoint& Tracked = Session.TrackedEndpoints().FindOrAdd(PanelId);
 	Tracked.Actor = Panel;
 	Tracked.ParentId = ParentId;
 	Tracked.Kind = EStructuralEndpointKind::Panel;
-	Graph.RegisterBuildableActor(Panel);
-	Graph.EnsurePanelListener(Panel);
+	Session.RegisterBuildableActor(Panel);
+	Session.EnsurePanelListener(Panel);
 	if (Root != INDEX_NONE)
 	{
-		Graph.MarkBridgeEndpointRootIndexDirty();
+		Session.MarkBridgeEndpointRootIndexDirty();
 	}
 
 	const bool bLocalPromoteOnly =
@@ -362,9 +357,8 @@ void FStructuralPowerPanelProcessor::OnWireDelta(
 	if (AttachContext == EAttachContext::WireDelta && Tracked.bPanelLinksReady
 		&& Tracked.CachedPanelRoot == Root)
 	{
-		const FStructuralChannelKey ChannelKey = Graph.ResolveChannelKeyForBuildable(Panel);
-		if (FStructuralPanelAttach::SupplyAlreadyLinked(
-				Graph,
+		const FStructuralChannelKey ChannelKey = Session.ResolveChannelKeyForBuildable(Panel);
+		if (FStructuralPanelAttach::SupplyAlreadyLinked(Session,
 				Panel,
 				Ports,
 				Root,
@@ -374,14 +368,14 @@ void FStructuralPowerPanelProcessor::OnWireDelta(
 				FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
 			if (IsValid(InputPower))
 			{
-				Graph.PromoteDirectHiddenLinks(InputPower);
+				Session.PromoteDirectHiddenLinks(InputPower);
 			}
 
 			const FName EffectiveControl =
-				FStructuralPanelControlledSync::ResolveEffectiveLightControl(Graph, Panel);
+				FStructuralPanelControlledSync::ResolveEffectiveLightControl(Session, Panel);
 			if (!EffectiveControl.IsNone())
 			{
-				FStructuralPanelControlledSync::ApplyKeyedSubnet(Graph, Panel);
+				FStructuralPanelControlledSync::ApplyKeyedSubnet(Session, Panel);
 			}
 
 			UE_LOG(LogStructuralPower, Log,
@@ -422,7 +416,7 @@ void FStructuralPowerPanelProcessor::OnWireDelta(
 
 	if (AttachContext == EAttachContext::Toggle)
 	{
-		Graph.NotePanelToggleHandled(Panel);
+		Session.NotePanelToggleHandled(Panel);
 	}
 }
 

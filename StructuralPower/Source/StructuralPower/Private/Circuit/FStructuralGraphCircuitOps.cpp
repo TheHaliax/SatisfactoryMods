@@ -3,6 +3,7 @@
 
 #include "Circuit/FStructuralGraphCircuitOps.h"
 
+#include "Core/FStructuralGraphSession.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
 #include "Buildables/FGBuildable.h"
@@ -63,27 +64,27 @@ static bool IsBridgeEndpointOutletBus(const UFGStructuralPowerConnectionComponen
 }
 } // namespace
 
-void FStructuralGraphCircuitOps::Bind(AStructuralPowerGraphSubsystem* InSubsystem)
+void FStructuralGraphCircuitOps::Bind(FStructuralGraphSession* InSession)
 {
-	Subsystem = InSubsystem;
+	Session = InSession;
 }
 
 void FStructuralGraphCircuitOps::BeginCircuitPromotion()
 {
 	// ConnectComponents fires circuit-changed mid-promotion — defer switch refresh until depth hits 0.
-	++Subsystem->CircuitPromotionDepth;
+	++Session->CircuitPromotionDepth();
 }
 
 void FStructuralGraphCircuitOps::EndCircuitPromotion()
 {
-	check(Subsystem->CircuitPromotionDepth > 0);
-	--Subsystem->CircuitPromotionDepth;
+	check(Session->CircuitPromotionDepth() > 0);
+	--Session->CircuitPromotionDepth();
 }
 
 namespace
 {
 bool LinkHiddenPairImpl(
-	AStructuralPowerGraphSubsystem* Subsystem,
+	FStructuralGraphSession* Session,
 	UFGPowerConnectionComponent* A,
 	UFGPowerConnectionComponent* B,
 	bool bPromoteCircuit,
@@ -152,7 +153,7 @@ bool LinkHiddenPairImpl(
 	// circuits." No explicit ConnectComponents here (avoids double merge).
 	(void)bPromoteCircuit;
 	(void)PromoteVerbosity;
-	(void)Subsystem;
+	(void)Session;
 
 	return bAdded;
 }
@@ -164,7 +165,7 @@ bool FStructuralGraphCircuitOps::LinkHiddenPair(
 	bool bPromoteCircuit)
 {
 	return LinkHiddenPairImpl(
-		Subsystem,
+		Session,
 		A,
 		B,
 		bPromoteCircuit,
@@ -177,7 +178,7 @@ bool FStructuralGraphCircuitOps::LinkHiddenPairLocal(
 	bool bPromoteCircuit)
 {
 	return LinkHiddenPairImpl(
-		Subsystem,
+		Session,
 		A,
 		B,
 		bPromoteCircuit,
@@ -197,7 +198,7 @@ void FStructuralGraphCircuitOps::PromoteDirectHiddenLinks(UFGPowerConnectionComp
 		return;
 	}
 
-	FStructuralCircuitPromotionScope PromotionScope(Subsystem);
+	FStructuralCircuitPromotionScope PromotionScope(&Session->Owner());
 
 	TSet<UFGPowerConnectionComponent*> Visited;
 	Visited.Add(Seed);
@@ -362,18 +363,18 @@ bool FStructuralGraphCircuitOps::TryMeshPeerBusOnComponent(
 		return false;
 	}
 
-	Subsystem->BridgeRootIndex.RefreshBridgeEndpointRootIndex();
+	Session->BridgeRootIndex().RefreshBridgeEndpointRootIndex();
 
 	const bool bPromoteCircuit = !bMeshOnlyLinks;
 	bool bLinked = false;
-	Subsystem->EndpointIndex.ForEachBridgeOnRoot(Root, [&](const FStructuralNodeId& PeerId)
+	Session->EndpointIndex().ForEachBridgeOnRoot(Root, [&](const FStructuralNodeId& PeerId)
 	{
 		if (bLinked || PeerId == SelfId)
 		{
 			return;
 		}
 
-		const FTrackedEndpoint* PeerTracked = Subsystem->TrackedEndpoints.Find(PeerId);
+		const FTrackedEndpoint* PeerTracked = Session->TrackedEndpoints().Find(PeerId);
 		if (!PeerTracked)
 		{
 			return;
@@ -394,19 +395,39 @@ bool FStructuralGraphCircuitOps::TryMeshPeerBusOnComponent(
 				return;
 			}
 		}
-		else if (!Subsystem->RestitchOps.ShouldMeshEndpoints(Host, SiblingHost, Root))
+		else if (!Session->Restitch().ShouldMeshEndpoints(Host, SiblingHost, Root))
 		{
 			return;
 		}
 
-		if (!Subsystem->RestitchOps.ShouldEndpointParticipateInRestitch(SiblingHost, PeerTracked->Kind))
+		if (!Session->Restitch().ShouldEndpointParticipateInRestitch(SiblingHost, PeerTracked->Kind))
 		{
 			return;
 		}
 
-		if (UFGStructuralPowerConnectionComponent* SiblingBus = AStructuralPowerGraphSubsystem::FindBusConnector(SiblingHost))
+		if (UFGStructuralPowerConnectionComponent* SiblingBus =
+				AStructuralPowerGraphSubsystem::FindBusConnector(SiblingHost))
 		{
-			bLinked = LinkHiddenPairLocal(OutletBus, SiblingBus, bPromoteCircuit);
+			// Star-mesh: first eligible peer only. Do not keep scanning when LinkHiddenPair
+			// returns false (already linked or same vanilla circuit) — legacy megasites
+			// can have thousands of bridge endpoints on one root.
+			if (OutletBus->HasHiddenConnection(SiblingBus))
+			{
+				bLinked = true;
+				return;
+			}
+
+			const int32 CircuitA = OutletBus->GetCircuitID();
+			const int32 CircuitB = SiblingBus->GetCircuitID();
+			if (CircuitA != INDEX_NONE && CircuitA == CircuitB)
+			{
+				bLinked = true;
+				return;
+			}
+
+			LinkHiddenPairLocal(OutletBus, SiblingBus, bPromoteCircuit);
+			bLinked = true;
+			return;
 		}
 	});
 
@@ -490,7 +511,7 @@ void FStructuralGraphCircuitOps::LinkBusToVisibleConnections(
 	AFGBuildable* Host,
 	UFGStructuralPowerConnectionComponent* Bus)
 {
-	if (Subsystem->bBulkLoadDrainActive)
+	if (Session->BulkLoadDrainActive())
 	{
 		if (!IsValid(Host) || !IsValid(Bus))
 		{
@@ -645,10 +666,10 @@ UFGCircuitConnectionComponent* FStructuralGraphCircuitOps::GetComponentSourceCon
 		return nullptr;
 	}
 
-	Subsystem->BridgeRootIndex.RefreshBridgeEndpointRootIndex();
+	Session->BridgeRootIndex().RefreshBridgeEndpointRootIndex();
 
 	if (const TWeakObjectPtr<UFGCircuitConnectionComponent>* CachedEntry =
-			Subsystem->SourceConnectorByRoot.Find(ComponentRoot))
+			Session->SourceConnectorByRoot().Find(ComponentRoot))
 	{
 		UFGCircuitConnectionComponent* Cached = CachedEntry->Get();
 		const AActor* CachedOwner = IsValid(Cached) ? Cached->GetOwner() : nullptr;
@@ -661,15 +682,15 @@ UFGCircuitConnectionComponent* FStructuralGraphCircuitOps::GetComponentSourceCon
 		{
 			return Cached;
 		}
-		Subsystem->SourceConnectorByRoot.Remove(ComponentRoot);
+		Session->SourceConnectorByRoot().Remove(ComponentRoot);
 	}
 
 	UFGPowerConnectionComponent* PoweredVisible = nullptr;
 	UFGStructuralPowerConnectionComponent* PoweredBus = nullptr;
 
-	Subsystem->EndpointIndex.ForEachOnRoot(ComponentRoot, [&](const FStructuralNodeId& NodeId)
+	Session->EndpointIndex().ForEachOnRoot(ComponentRoot, [&](const FStructuralNodeId& NodeId)
 	{
-		const FTrackedEndpoint* Tracked = Subsystem->TrackedEndpoints.Find(NodeId);
+		const FTrackedEndpoint* Tracked = Session->TrackedEndpoints().Find(NodeId);
 		if (!Tracked)
 		{
 			return;
@@ -704,24 +725,24 @@ UFGCircuitConnectionComponent* FStructuralGraphCircuitOps::GetComponentSourceCon
 
 	if (PoweredVisible)
 	{
-		Subsystem->SourceConnectorByRoot.Add(ComponentRoot, PoweredVisible);
+		Session->SourceConnectorByRoot().Add(ComponentRoot, PoweredVisible);
 		return PoweredVisible;
 	}
 
 	if (PoweredBus)
 	{
-		Subsystem->SourceConnectorByRoot.Add(ComponentRoot, PoweredBus);
+		Session->SourceConnectorByRoot().Add(ComponentRoot, PoweredBus);
 		return PoweredBus;
 	}
 
-	Subsystem->EndpointIndex.ForEachOnRoot(ComponentRoot, [&](const FStructuralNodeId& NodeId)
+	Session->EndpointIndex().ForEachOnRoot(ComponentRoot, [&](const FStructuralNodeId& NodeId)
 	{
-		if (Subsystem->SourceConnectorByRoot.Contains(ComponentRoot))
+		if (Session->SourceConnectorByRoot().Contains(ComponentRoot))
 		{
 			return;
 		}
 
-		const FTrackedEndpoint* Tracked = Subsystem->TrackedEndpoints.Find(NodeId);
+		const FTrackedEndpoint* Tracked = Session->TrackedEndpoints().Find(NodeId);
 		if (!Tracked)
 		{
 			return;
@@ -738,13 +759,13 @@ UFGCircuitConnectionComponent* FStructuralGraphCircuitOps::GetComponentSourceCon
 		{
 			if (UFGStructuralPowerConnectionComponent* Reachable = FindPoweredHiddenReachable(Bus))
 			{
-				Subsystem->SourceConnectorByRoot.Add(ComponentRoot, Reachable);
+				Session->SourceConnectorByRoot().Add(ComponentRoot, Reachable);
 			}
 		}
 	});
 
 	if (const TWeakObjectPtr<UFGCircuitConnectionComponent>* CachedEntry =
-			Subsystem->SourceConnectorByRoot.Find(ComponentRoot))
+			Session->SourceConnectorByRoot().Find(ComponentRoot))
 	{
 		return CachedEntry->Get();
 	}
@@ -789,13 +810,13 @@ UFGPowerConnectionComponent* FStructuralGraphCircuitOps::ResolveSubnetFeedConnec
 		return nullptr;
 	}
 
-	const FStructuralComponentKey CompKey = Subsystem->IdOps.MakeComponentKeyForRoot(ComponentRoot);
+	const FStructuralComponentKey CompKey = Session->Ids().MakeComponentKeyForRoot(ComponentRoot);
 	if (!CompKey.IsValid())
 	{
 		return nullptr;
 	}
 
-	const FName DefaultId = Subsystem->IdOps.GetOrCreateComponentDefaultId(CompKey);
+	const FName DefaultId = Session->Ids().GetOrCreateComponentDefaultId(CompKey);
 
 	auto ResolveDefaultFeed = [&]() -> UFGPowerConnectionComponent*
 	{
@@ -809,7 +830,7 @@ UFGPowerConnectionComponent* FStructuralGraphCircuitOps::ResolveSubnetFeedConnec
 		return ResolveDefaultFeed();
 	}
 
-	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Subsystem->TrackedEndpoints)
+	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Session->TrackedEndpoints())
 	{
 		if (Pair.Value.Kind != EStructuralEndpointKind::Switch)
 		{
@@ -819,12 +840,12 @@ UFGPowerConnectionComponent* FStructuralGraphCircuitOps::ResolveSubnetFeedConnec
 		AFGBuildableCircuitSwitch* Switch =
 			Cast<AFGBuildableCircuitSwitch>(Pair.Value.Actor.Get());
 		if (!IsValid(Switch)
-			|| Subsystem->StructureGraph.FindRoot(Pair.Value.ParentId) != ComponentRoot)
+			|| Session->StructureGraph().FindRoot(Pair.Value.ParentId) != ComponentRoot)
 		{
 			continue;
 		}
 
-		const FName SwitchControl = Subsystem->IdOps.ResolveControl(Switch, EStructuralChannel::Switch);
+		const FName SwitchControl = Session->Ids().ResolveControl(Switch, EStructuralChannel::Switch);
 		if (!FStructuralPowerRouter::ShouldRouteSwitchGate(
 				SwitchControl,
 				DeviceKey.Source,

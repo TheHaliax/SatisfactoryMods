@@ -3,6 +3,7 @@
 
 #include "Graph/FStructuralBridgeRootIndex.h"
 
+#include "Core/FStructuralGraphSession.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
 #include "Buildables/FGBuildable.h"
@@ -13,28 +14,28 @@
 #include "Rules/FStructuralEligibilityRules.h"
 #include "StructuralPowerLog.h"
 
-void FStructuralBridgeRootIndex::Bind(AStructuralPowerGraphSubsystem* InSubsystem)
+void FStructuralBridgeRootIndex::Bind(FStructuralGraphSession* InSession)
 {
-	Subsystem = InSubsystem;
+	Session = InSession;
 }
 
 void FStructuralBridgeRootIndex::MarkBridgeEndpointRootIndexDirty()
 {
-	Subsystem->bBridgeEndpointRootIndexDirty = true;
-	Subsystem->SourceConnectorByRoot.Empty();
+	Session->BridgeEndpointRootIndexDirty() = true;
+	Session->SourceConnectorByRoot().Empty();
 }
 
 void FStructuralBridgeRootIndex::RefreshBridgeEndpointRootIndex()
 {
-	if (!Subsystem->bBridgeEndpointRootIndexDirty)
+	if (!Session->BridgeEndpointRootIndexDirty())
 	{
 		return;
 	}
 
 	HALSP_TRACE_SCOPE(TEXT("mod"), TEXT("graph.RefreshBridgeEndpointRootIndex"));
 
-	Subsystem->EndpointIndex.RebuildFrom(Subsystem->TrackedEndpoints, Subsystem->StructureGraph);
-	Subsystem->bBridgeEndpointRootIndexDirty = false;
+	Session->EndpointIndex().RebuildFrom(Session->TrackedEndpoints(), Session->StructureGraph());
+	Session->BridgeEndpointRootIndexDirty() = false;
 }
 
 void FStructuralBridgeRootIndex::AddEndpointToRootIndex(
@@ -47,12 +48,12 @@ void FStructuralBridgeRootIndex::AddEndpointToRootIndex(
 		return;
 	}
 
-	if (Subsystem->bBridgeEndpointRootIndexDirty)
+	if (Session->BridgeEndpointRootIndexDirty())
 	{
 		return;
 	}
 
-	Subsystem->EndpointIndex.Add(Root, Kind, EndpointId);
+	Session->EndpointIndex().Add(Root, Kind, EndpointId);
 }
 
 int32 FStructuralBridgeRootIndex::FindRootForTrackedEndpoint(
@@ -63,7 +64,7 @@ int32 FStructuralBridgeRootIndex::FindRootForTrackedEndpoint(
 		return INDEX_NONE;
 	}
 
-	return Subsystem->StructureGraph.FindRoot(Tracked.ParentId);
+	return Session->StructureGraph().FindRoot(Tracked.ParentId);
 }
 
 int32 FStructuralBridgeRootIndex::ResolveBridgeRootFromAnchor(
@@ -98,8 +99,8 @@ int32 FStructuralBridgeRootIndex::ResolveBridgeComponentRootBulk(
 
 	if (Anchor.IsValid())
 	{
-		const FStructuralNodeId ParentId = AStructuralPowerGraphSubsystem::MakeParentNodeId(Anchor);
-		const int32 Root = Subsystem->StructureGraph.FindRoot(ParentId);
+		const FStructuralNodeId ParentId = Session->MakeParentNodeId(Anchor);
+		const int32 Root = Session->StructureGraph().FindRoot(ParentId);
 		if (Root != INDEX_NONE)
 		{
 			OutParentId = ParentId;
@@ -127,8 +128,8 @@ bool FStructuralBridgeRootIndex::EnsureParentRegisteredInGraph(
 		return false;
 	}
 
-	const FStructuralNodeId ParentId = AStructuralPowerGraphSubsystem::MakeParentNodeId(Anchor);
-	if (Subsystem->StructureGraph.FindRoot(ParentId) != INDEX_NONE)
+	const FStructuralNodeId ParentId = Session->MakeParentNodeId(Anchor);
+	if (Session->StructureGraph().FindRoot(ParentId) != INDEX_NONE)
 	{
 		OutParentId = ParentId;
 		return true;
@@ -136,18 +137,18 @@ bool FStructuralBridgeRootIndex::EnsureParentRegisteredInGraph(
 
 	if (IsValid(Anchor.Actor) && FStructuralEligibilityRules::IsBusMember(Anchor.Actor))
 	{
-		Subsystem->ProcessStructure(Anchor.Actor);
+		Session->ProcessStructure(Anchor.Actor);
 	}
 	else if (Anchor.Lightweight.IsValid())
 	{
-		Subsystem->ProcessLightweightStructure(Anchor.Lightweight);
+		Session->ProcessLightweightStructure(Anchor.Lightweight);
 	}
 	else
 	{
 		return false;
 	}
 
-	if (Subsystem->StructureGraph.FindRoot(ParentId) != INDEX_NONE)
+	if (Session->StructureGraph().FindRoot(ParentId) != INDEX_NONE)
 	{
 		OutParentId = ParentId;
 		UE_LOG(LogStructuralPower, Verbose,
@@ -168,14 +169,14 @@ int32 FStructuralBridgeRootIndex::ResolveEndpointComponentRoot(
 {
 	if (EnsureParentRegisteredInGraph(Anchor, OutParentId))
 	{
-		return Subsystem->StructureGraph.FindRoot(OutParentId);
+		return Session->StructureGraph().FindRoot(OutParentId);
 	}
 
 	return FStructuralAttachmentResolver::ResolveComponentRootForBuildable(
 		Endpoint,
-		Subsystem->StructureGraph,
-		Subsystem->LightweightIndex,
-		Subsystem->GetWorld(),
+		Session->StructureGraph(),
+		Session->LightweightIndex(),
+		Session->GetWorld(),
 		OutParentId);
 }
 
@@ -193,7 +194,7 @@ int32 FStructuralBridgeRootIndex::ResolveBridgeHostComponentRoot(
 	}
 
 	FStructuralNodeId ParentId;
-	const FStructuralWallAnchor Anchor = Subsystem->ResolveOutletAnchor(Host);
+	const FStructuralWallAnchor Anchor = Session->ResolveOutletAnchor(Host);
 	const int32 Root = ResolveEndpointComponentRoot(Host, Anchor, ParentId);
 	if (OutParentId)
 	{
@@ -202,7 +203,7 @@ int32 FStructuralBridgeRootIndex::ResolveBridgeHostComponentRoot(
 
 	if (ParentId.IsValid())
 	{
-		if (FTrackedEndpoint* Tracked = Subsystem->TrackedEndpoints.Find(AStructuralPowerGraphSubsystem::MakeNodeId(Host)))
+		if (FTrackedEndpoint* Tracked = Session->TrackedEndpoints().Find(Session->MakeNodeId(Host)))
 		{
 			Tracked->ParentId = ParentId;
 		}
@@ -218,7 +219,7 @@ int32 FStructuralBridgeRootIndex::GetEndpointComponentRoot(AFGBuildable* Endpoin
 		return INDEX_NONE;
 	}
 
-	const FStructuralWallAnchor Anchor = Subsystem->ResolveOutletAnchor(Endpoint);
+	const FStructuralWallAnchor Anchor = Session->ResolveOutletAnchor(Endpoint);
 	FStructuralNodeId ParentId;
 	return ResolveEndpointComponentRoot(Endpoint, Anchor, ParentId);
 }

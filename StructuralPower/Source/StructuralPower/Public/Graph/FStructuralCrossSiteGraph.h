@@ -7,7 +7,7 @@
 #include "Graph/FStructuralSiteFeedSignature.h"
 
 class AFGBuildableCircuitSwitch;
-class AStructuralPowerGraphSubsystem;
+class FStructuralGraphSession;
 
 class STRUCTURALPOWER_API FStructuralCrossSiteGraph
 {
@@ -15,25 +15,25 @@ public:
 	void Clear();
 
 	void RefreshCouplingsFromWiredSwitch(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildableCircuitSwitch* Switch,
 		int32 OriginSite);
 
 	void TraceFeedAffected(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildableCircuitSwitch* TriggerSwitch,
 		int32 OriginSite,
 		TArray<int32>& OutAffectedSites);
 
 	void GatherSwitchSiteRoots(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildableCircuitSwitch* Switch,
 		int32 LocalRoot,
 		TArray<int32>& OutSites);
 
-	void SeedFeedSignature(AStructuralPowerGraphSubsystem& Graph, int32 Site);
+	void SeedFeedSignature(FStructuralGraphSession& Session, int32 Site);
 	void SeedFeedSignaturesForSites(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		const TSet<int32>& Sites);
 
 	bool AreSitesCoupled(int32 SiteA, int32 SiteB) const;
@@ -42,13 +42,13 @@ public:
 private:
 	void AddCoupling(int32 SiteA, int32 SiteB);
 	void CollectWiredSwitchSites(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildableCircuitSwitch* Switch,
 		int32 LocalRoot,
 		TArray<int32>& OutSites);
 
 	static FStructuralSiteFeedSignature ComputeSiteFeedSignature(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		int32 Site);
 
 	TMap<int32, TSet<int32>> SiteAdjacency;

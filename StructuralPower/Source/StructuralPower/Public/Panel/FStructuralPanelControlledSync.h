@@ -6,23 +6,23 @@
 #include "CoreMinimal.h"
 
 class AFGBuildableLightsControlPanel;
-class AStructuralPowerGraphSubsystem;
+class FStructuralGraphSession;
 
 struct FStructuralPanelControlledSync
 {
 	static void ApplyKeyedSubnet(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildableLightsControlPanel* Panel);
 
 	static void MirrorSharedControlState(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildableLightsControlPanel* Panel);
 
 	static void ReleaseIntegratedSubnet(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildableLightsControlPanel* Panel);
 
 	static FName ResolveEffectiveLightControl(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildableLightsControlPanel* Panel);
 };

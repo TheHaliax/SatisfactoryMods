@@ -17,6 +17,7 @@
 #include "Panel/FStructuralPanelPortResolver.h"
 #include "Config/FStructuralPowerModConfig.h"
 #include "Routing/FStructuralPowerRouter.h"
+#include "Core/FStructuralGraphSession.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
@@ -61,16 +62,16 @@ void FStructuralPanelAttach::TearDownDownstreamLinks(
 }
 
 static UFGPowerConnectionComponent* ResolvePanelFeedConnector(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	AFGBuildable* Panel,
 	int32 ComponentRoot,
 	const FStructuralChannelKey& PanelKey)
 {
-	return Graph.ResolveSubnetFeedConnector(ComponentRoot, PanelKey);
+	return Session.ResolveSubnetFeedConnector(ComponentRoot, PanelKey);
 }
 
 bool FStructuralPanelAttach::SupplyAlreadyLinked(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	AFGBuildableLightsControlPanel* Panel,
 	const FStructuralPanelPorts& Ports,
 	int32 ComponentRoot,
@@ -85,12 +86,12 @@ bool FStructuralPanelAttach::SupplyAlreadyLinked(
 	}
 
 	UFGPowerConnectionComponent* Feed =
-		ResolvePanelFeedConnector(Graph, Panel, ComponentRoot, PanelKey);
-	return Graph.IsPanelSupplyLinked(InputPower, Feed);
+		ResolvePanelFeedConnector(Session, Panel, ComponentRoot, PanelKey);
+	return Session.IsPanelSupplyLinked(InputPower, Feed);
 }
 
 bool FStructuralPanelAttach::TryLinkSupply(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	AFGBuildableLightsControlPanel* Panel,
 	const FStructuralPanelPorts& Ports,
 	int32 ComponentRoot,
@@ -105,14 +106,14 @@ bool FStructuralPanelAttach::TryLinkSupply(
 		return false;
 	}
 
-	const FStructuralComponentKey CompKey = Graph.MakeComponentKeyForRoot(ComponentRoot);
+	const FStructuralComponentKey CompKey = Session.MakeComponentKeyForRoot(ComponentRoot);
 	if (!CompKey.IsValid())
 	{
 		return false;
 	}
 
 	UFGPowerConnectionComponent* Feed =
-		ResolvePanelFeedConnector(Graph, Panel, ComponentRoot, PanelKey);
+		ResolvePanelFeedConnector(Session, Panel, ComponentRoot, PanelKey);
 	if (!IsValid(Feed))
 	{
 		return false;
@@ -128,7 +129,7 @@ bool FStructuralPanelAttach::TryLinkSupply(
 		return true;
 	}
 
-	const bool bLinked = Graph.LinkHiddenPair(InputPower, Feed, /*bPromoteCircuit=*/!bMeshOnlyLinks);
+	const bool bLinked = Session.LinkHiddenPair(InputPower, Feed, /*bPromoteCircuit=*/!bMeshOnlyLinks);
 	if (FStructuralPowerTrace::IsEnabled())
 	{
 		UE_LOG(LogStructuralPower, Log,
@@ -145,7 +146,7 @@ bool FStructuralPanelAttach::TryLinkSupply(
 }
 
 void FStructuralPanelAttach::RestitchDownstream(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	AFGBuildableLightsControlPanel* Panel,
 	const FStructuralPanelPorts& Ports,
 	int32 ComponentRoot,
@@ -159,13 +160,13 @@ void FStructuralPanelAttach::RestitchDownstream(
 	}
 
 	const FName EffectiveControl =
-		FStructuralPanelControlledSync::ResolveEffectiveLightControl(Graph, Panel);
+		FStructuralPanelControlledSync::ResolveEffectiveLightControl(Session, Panel);
 	if (EffectiveControl.IsNone())
 	{
 		return;
 	}
 
-	UFGStructuralPowerConnectionComponent* ControlBus = Graph.GetOrCreatePanelControlBus(Panel);
+	UFGStructuralPowerConnectionComponent* ControlBus = Session.GetOrCreatePanelControlBus(Panel);
 	if (!IsValid(ControlBus))
 	{
 		return;
@@ -174,19 +175,19 @@ void FStructuralPanelAttach::RestitchDownstream(
 	FStructuralDeviceAttach::TearDownConsumerLinks(ControlBus);
 	FStructuralDeviceAttach::TearDownConsumerLinks(Downstream);
 
-	if (!Graph.LinkHiddenPair(ControlBus, Downstream))
+	if (!Session.LinkHiddenPair(ControlBus, Downstream))
 	{
 		return;
 	}
 
-	Graph.EnumerateTrackedLightsOnRoot(ComponentRoot, [&](AFGBuildableLightSource* Light)
+	Session.EnumerateTrackedLightsOnRoot(ComponentRoot, [&](AFGBuildableLightSource* Light)
 	{
 		if (!IsValid(Light))
 		{
 			return;
 		}
 
-		const FName LightSource = Graph.ResolveSource(Light, EStructuralChannel::Light);
+		const FName LightSource = Session.ResolveSource(Light, EStructuralChannel::Light);
 		if (LightSource != EffectiveControl)
 		{
 			return;
@@ -203,7 +204,7 @@ void FStructuralPanelAttach::RestitchDownstream(
 			return;
 		}
 
-		if (Graph.LinkHiddenPair(ControlBus, Plug))
+		if (Session.LinkHiddenPair(ControlBus, Plug))
 		{
 			if (FStructuralPowerTrace::IsEnabled())
 			{
@@ -224,11 +225,11 @@ void FStructuralPanelAttach::RestitchDownstream(
 	});
 
 	(void)PanelControl;
-	FStructuralPanelControlledSync::ApplyKeyedSubnet(Graph, Panel);
+	FStructuralPanelControlledSync::ApplyKeyedSubnet(Session, Panel);
 }
 
 void FStructuralPanelAttach::PromotePanelDownstreamSubnet(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	AFGBuildableLightsControlPanel* Panel,
 	const FStructuralPanelPorts& Ports,
 	UFGPowerConnectionComponent* InputPower)
@@ -239,12 +240,12 @@ void FStructuralPanelAttach::PromotePanelDownstreamSubnet(
 		return;
 	}
 
-	Graph.PromoteStructuralMeshFrom(InputPower);
+	Session.PromoteStructuralMeshFrom(InputPower);
 
-	UFGStructuralPowerConnectionComponent* ControlBus = Graph.GetOrCreatePanelControlBus(Panel);
+	UFGStructuralPowerConnectionComponent* ControlBus = Session.GetOrCreatePanelControlBus(Panel);
 	if (IsValid(ControlBus) && FStructuralCircuitPromotionUtil::ComponentOnCircuit(ControlBus))
 	{
-		Graph.PromoteStructuralMeshFrom(ControlBus);
+		Session.PromoteStructuralMeshFrom(ControlBus);
 	}
 	(void)Ports;
 }

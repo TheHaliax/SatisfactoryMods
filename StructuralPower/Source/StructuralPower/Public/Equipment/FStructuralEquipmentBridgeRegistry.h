@@ -6,7 +6,7 @@
 #include "CoreMinimal.h"
 #include "Equipment/IStructuralPowerEquipmentBridge.h"
 
-class AStructuralPowerGraphSubsystem;
+class FStructuralGraphSession;
 struct FStructuralHoverpackAnchorQuery;
 
 class STRUCTURALPOWER_API FStructuralEquipmentBridgeRegistry
@@ -21,7 +21,7 @@ public:
 	void Initialize();
 
 	bool QueryHoverpackStructuralAnchor(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		const FVector& QueryLoc,
 		float MaxHorizontal,
 		float MaxVertical,

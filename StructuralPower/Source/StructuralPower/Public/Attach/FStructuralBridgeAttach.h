@@ -8,7 +8,7 @@
 #include "Graph/FStructuralSiteContext.h"
 
 class AFGBuildable;
-class AStructuralPowerGraphSubsystem;
+class FStructuralGraphSession;
 class UFGStructuralPowerConnectionComponent;
 struct FStructuralPowerContext;
 
@@ -31,7 +31,7 @@ class STRUCTURALPOWER_API FStructuralBridgeAttach
 {
 public:
 	static bool HasPlacementMembership(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildable* Host,
 		EStructuralEndpointKind ExpectedKind);
 

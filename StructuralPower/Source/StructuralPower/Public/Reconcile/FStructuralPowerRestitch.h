@@ -7,14 +7,14 @@
 #include "Graph/FStructuralEndpointTypes.h"
 
 class AFGBuildable;
-class AStructuralPowerGraphSubsystem;
+class FStructuralGraphSession;
 
 class STRUCTURALPOWER_API FStructuralPowerRestitch
 {
 public:
 	FStructuralPowerRestitch() = default;
 
-	void Bind(AStructuralPowerGraphSubsystem* InSubsystem);
+	void Bind(FStructuralGraphSession* InSession);
 
 	bool ShouldEndpointParticipateInRestitch(AFGBuildable* Host, EStructuralEndpointKind Kind);
 
@@ -24,5 +24,5 @@ public:
 		int32 ComponentRoot) const;
 
 private:
-	AStructuralPowerGraphSubsystem* Subsystem = nullptr;
+	FStructuralGraphSession* Session = nullptr;
 };

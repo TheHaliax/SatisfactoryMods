@@ -9,7 +9,7 @@
 
 class AFGBuildable;
 class AFGBuildablePowerPole;
-class AStructuralPowerGraphSubsystem;
+class FStructuralGraphSession;
 class UFGStructuralPowerConnectionComponent;
 
 struct FStructuralSiteMembershipParams
@@ -25,13 +25,20 @@ class STRUCTURALPOWER_API FStructuralSiteMembership
 {
 public:
 	static bool ResolveSiteContext(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildable* Endpoint,
 		FStructuralSiteContext& OutSite,
 		bool bUsePoleRootResolver = false);
 
+	static void RegisterOnBulkLoad(
+		FStructuralGraphSession& Session,
+		AFGBuildable* Host,
+		EStructuralEndpointKind Kind,
+		FTrackedEndpoint& Tracked,
+		const FStructuralSiteContext& Site);
+
 	static void IntegrateOnPlace(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildable* Host,
 		UFGStructuralPowerConnectionComponent* OutletBus,
 		const FStructuralNodeId& EndpointId,

@@ -13,12 +13,12 @@
 #include "Config/FStructuralPowerModConfig.h"
 #include "Core/FStructuralGraphSession.h"
 #include "Graph/FStructuralPowerBuildableCasts.h"
+#include "Attach/FStructuralEndpointAttach.h"
 #include "Processors/FStructuralEndpointCatalog.h"
 #include "Processors/FStructuralPowerGeneratorProcessor.h"
 #include "Processors/FStructuralPowerLightProcessor.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
 #include "Processors/FStructuralPowerPoleProcessor.h"
-#include "Processors/FStructuralPowerProcessorRegistry.h"
 #include "Processors/FStructuralPowerStorageProcessor.h"
 #include "Processors/FStructuralPowerSwitchProcessor.h"
 #include "Rules/FStructuralEligibilityRules.h"
@@ -258,10 +258,11 @@ public:
 		AFGBuildable* Buildable,
 		const bool bLocalPromoteOnly) override
 	{
-		if (AFGBuildableLightSource* Light = FStructuralPowerBuildableCasts::AsLight(Buildable))
-		{
-			FStructuralPowerLightProcessor::Process(Ctx, Light, bLocalPromoteOnly);
-		}
+		FStructuralEndpointAttach::RunStrategy(
+			Ctx,
+			Buildable,
+			GetDescriptor().AttachStrategy,
+			bLocalPromoteOnly);
 	}
 
 	void TearDown(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
@@ -304,10 +305,11 @@ public:
 		AFGBuildable* Buildable,
 		const bool bLocalPromoteOnly) override
 	{
-		if (AFGBuildableLightsControlPanel* Panel = FStructuralPowerBuildableCasts::AsPanel(Buildable))
-		{
-			FStructuralPowerPanelProcessor::Process(Ctx, Panel, bLocalPromoteOnly);
-		}
+		FStructuralEndpointAttach::RunStrategy(
+			Ctx,
+			Buildable,
+			GetDescriptor().AttachStrategy,
+			bLocalPromoteOnly);
 	}
 
 	void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
@@ -426,5 +428,4 @@ IStructuralEndpointProcessor& FStructuralEndpointProcessors::Generator()
 void FStructuralEndpointProcessors::InitializeRegistries()
 {
 	FStructuralEndpointCatalog::Get().Initialize();
-	FStructuralPowerProcessorRegistry::Get().Initialize();
 }

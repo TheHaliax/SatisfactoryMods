@@ -110,6 +110,21 @@ bool UStructuralPowerRootInstanceModule::TryEnqueueBuildable(
 	return false;
 }
 
+static bool ShouldUseBulkBeginPlayLog(UWorld* World)
+{
+	if (!IsValid(World))
+	{
+		return false;
+	}
+
+	if (const AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::Find(World))
+	{
+		return Graph->IsBulkLoadDrainActive();
+	}
+
+	return false;
+}
+
 static void HandlePoleBeginPlay(AFGBuildablePowerPole* Pole)
 {
 	if (!IsValid(Pole) || !Pole->HasAuthority())
@@ -123,9 +138,18 @@ static void HandlePoleBeginPlay(AFGBuildablePowerPole* Pole)
 		return;
 	}
 
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] pole BeginPlay %s — enqueue outlet"),
-		*Pole->GetName());
+	if (ShouldUseBulkBeginPlayLog(World))
+	{
+		UE_LOG(LogStructuralPower, Verbose,
+			TEXT("[HALSP] pole BeginPlay %s — enqueue outlet"),
+			*Pole->GetName());
+	}
+	else
+	{
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[HALSP] pole BeginPlay %s — enqueue outlet"),
+			*Pole->GetName());
+	}
 
 	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
 		[WorldWeak = TWeakObjectPtr<UWorld>(World),
@@ -161,9 +185,18 @@ static void HandleSwitchBeginPlay(AFGBuildableCircuitSwitch* Switch)
 		return;
 	}
 
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] switch BeginPlay %s — enqueue outlet"),
-		*Switch->GetName());
+	if (ShouldUseBulkBeginPlayLog(World))
+	{
+		UE_LOG(LogStructuralPower, Verbose,
+			TEXT("[HALSP] switch BeginPlay %s — enqueue outlet"),
+			*Switch->GetName());
+	}
+	else
+	{
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[HALSP] switch BeginPlay %s — enqueue outlet"),
+			*Switch->GetName());
+	}
 
 	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
 		[WorldWeak = TWeakObjectPtr<UWorld>(World),

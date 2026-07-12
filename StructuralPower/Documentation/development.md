@@ -61,6 +61,8 @@ Full checklist: [release.md](release.md).
 | Hoverpack bridge | `FStructuralHoverpackBridge.cpp` |
 | Switch listener / RCO | `UStructuralPowerSwitchListener.cpp`, `UStructuralPowerRCO.cpp` |
 | Poles, circuit & subsystem | `AStructuralPowerGraphSubsystem.cpp` |
+| Graph session + lifecycle ops | `FStructuralGraphSession.*`, `FStructuralGraph{Bootstrap,BulkDrain,StructureIngress,Removal,CircuitEcho}.*` |
+| Endpoint pipeline | `FStructuralEndpointCatalog.*`, `FStructuralEndpointDispatcher.*` |
 | Reconcile / restitch | `FStructuralPowerReconcile.cpp`, `FStructuralPowerRestitch.cpp` |
 | Circuit graph ops | `FStructuralGraphCircuitOps.cpp` |
 | Site echo state | `FStructuralSiteState.cpp` |
@@ -69,7 +71,7 @@ Full checklist: [release.md](release.md).
 | **Processors** | `FStructuralPowerSwitchProcessor`, `FStructuralPowerPanelProcessor`, `FStructuralPowerLightProcessor`, `FStructuralPowerPoleProcessor`, `FStructuralPowerStorageProcessor`, `FStructuralPowerTransferGate`, `FStructuralPowerBridgeProcessor` |
 | **Site membership** | `Connection/FStructuralSiteMembership.*` — `IntegrateOnPlace` |
 | **Bridge attach** | `Attach/FStructuralBridgeAttach.*` — pole + storage shared place/load |
-| **Connection points** | `FStructuralPoleConnectionPoint`, `FStructuralSwitchConnectionPoint`, `FStructuralPanelConnectionPoint`, `FStructuralStorageConnectionPoint` |
+| **Attach facade** | `Attach/FStructuralEndpointAttach.*` — Bridge / ToggleBridge / Consumer / Router strategies |
 | Structural connectivity graph (spatial hash + union-find) | `FStructuralConnectivityGraph.cpp` |
 | Lightweight index | `FStructuralLightweightIndex.cpp` |
 | Eligibility rules | `FStructuralEligibilityRules.cpp` |

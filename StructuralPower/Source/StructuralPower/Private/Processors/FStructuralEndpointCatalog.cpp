@@ -4,6 +4,8 @@
 #include "Processors/FStructuralEndpointCatalog.h"
 
 #include "Processors/FStructuralEndpointProcessors.h"
+#include "Processors/IStructuralEndpointProcessor.h"
+#include "Graph/FStructuralEndpointDescriptor.h"
 
 FStructuralEndpointCatalog& FStructuralEndpointCatalog::Get()
 {

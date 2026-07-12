@@ -3,6 +3,7 @@
 
 #include "Processors/FStructuralEndpointDispatcher.h"
 
+#include "Attach/FStructuralBridgeAttach.h"
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
@@ -12,16 +13,49 @@
 #include "Core/FStructuralGraphSession.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
-#include "Graph/FStructuralWireDeltaHandler.h"
+#include "Diagnostics/FStructuralPowerTraceScope.h"
+#include "Graph/FStructuralEndpointTypes.h"
+#include "Graph/FStructuralPoleWireUtil.h"
+#include "Panel/FStructuralPanelPortResolver.h"
 #include "Processors/FStructuralEndpointCatalog.h"
 #include "Processors/IStructuralEndpointProcessor.h"
-#include "Save/AStructuralPowerGraphSubsystem.h"
+
+namespace
+{
+IStructuralEndpointProcessor* FindMutableProcessor(const AFGBuildable* Buildable)
+{
+	const IStructuralEndpointProcessor* Processor =
+		FStructuralEndpointCatalog::Get().Classify(Buildable);
+	if (!Processor)
+	{
+		return nullptr;
+	}
+
+	return FStructuralEndpointCatalog::Get().FindMutable(Processor->GetBuildableKind());
+}
+
+FStructuralPowerContext MakePlacementContext(
+	FStructuralGraphSession& Session,
+	const bool bOverrideAttachContext,
+	const EAttachContext AttachContextOverride,
+	const int32 SiteRoot = INDEX_NONE)
+{
+	if (bOverrideAttachContext)
+	{
+		return Session.MakeProcessorContext(AttachContextOverride, SiteRoot);
+	}
+
+	return Session.GetProcessorContext();
+}
+} // namespace
 
 void FStructuralEndpointDispatcher::RunPlacement(
 	FStructuralGraphSession& Session,
 	IStructuralEndpointProcessor& Processor,
 	AFGBuildable* Host,
-	const bool bLocalPromoteOnly)
+	const bool bLocalPromoteOnly,
+	const bool bOverrideAttachContext,
+	const EAttachContext AttachContextOverride)
 {
 	if (!IsValid(Host))
 	{
@@ -34,7 +68,8 @@ void FStructuralEndpointDispatcher::RunPlacement(
 		return;
 	}
 
-	FStructuralPowerContext Ctx = Session.GetProcessorContext();
+	FStructuralPowerContext Ctx =
+		MakePlacementContext(Session, bOverrideAttachContext, AttachContextOverride);
 	Processor.ProcessPlacement(Ctx, Host, bLocalPromoteOnly);
 }
 
@@ -56,14 +91,18 @@ void FStructuralEndpointDispatcher::RunWireDelta(
 void FStructuralEndpointDispatcher::RunCircuitsRebuilt(
 	FStructuralGraphSession& Session,
 	IStructuralEndpointProcessor& Processor,
-	AFGBuildable* Host)
+	AFGBuildable* Host,
+	const bool bOverrideAttachContext,
+	const EAttachContext AttachContextOverride,
+	const int32 SiteRoot)
 {
 	if (!IsValid(Host))
 	{
 		return;
 	}
 
-	FStructuralPowerContext Ctx = Session.GetProcessorContext();
+	FStructuralPowerContext Ctx =
+		MakePlacementContext(Session, bOverrideAttachContext, AttachContextOverride, SiteRoot);
 	Processor.OnCircuitsRebuilt(Ctx, Host);
 }
 
@@ -118,24 +157,19 @@ bool FStructuralEndpointDispatcher::ShouldSkipOutletDuringBulkLoad(
 void FStructuralEndpointDispatcher::DispatchPlacement(
 	FStructuralGraphSession& Session,
 	AFGBuildable* Buildable,
-	const bool bLocalPromoteOnly)
+	const bool bLocalPromoteOnly,
+	const bool bOverrideAttachContext,
+	const EAttachContext AttachContextOverride)
 {
-	if (!IsValid(Buildable))
+	if (IStructuralEndpointProcessor* Processor = FindMutableProcessor(Buildable))
 	{
-		return;
-	}
-
-	const IStructuralEndpointProcessor* Processor =
-		FStructuralEndpointCatalog::Get().Classify(Buildable);
-	if (!Processor)
-	{
-		return;
-	}
-
-	if (IStructuralEndpointProcessor* MutableProcessor =
-			FStructuralEndpointCatalog::Get().FindMutable(Processor->GetBuildableKind()))
-	{
-		RunPlacement(Session, *MutableProcessor, Buildable, bLocalPromoteOnly);
+		RunPlacement(
+			Session,
+			*Processor,
+			Buildable,
+			bLocalPromoteOnly,
+			bOverrideAttachContext,
+			AttachContextOverride);
 	}
 }
 
@@ -153,38 +187,183 @@ void FStructuralEndpointDispatcher::DispatchOutlet(
 		return;
 	}
 
-	const IStructuralEndpointProcessor* Processor =
-		FStructuralEndpointCatalog::Get().Classify(Buildable);
-	if (!Processor)
+	if (!FindMutableProcessor(Buildable))
 	{
 		FStructuralPowerTrace::LogPlacementSkip(Buildable, TEXT("not_bridge_endpoint"));
 		return;
 	}
 
-	if (IStructuralEndpointProcessor* MutableProcessor =
-			FStructuralEndpointCatalog::Get().FindMutable(Processor->GetBuildableKind()))
-	{
-		RunPlacement(Session, *MutableProcessor, Buildable, /*bLocalPromoteOnly=*/false);
-	}
+	DispatchPlacement(Session, Buildable, /*bLocalPromoteOnly=*/false);
 }
 
-void FStructuralEndpointDispatcher::DispatchPoleWireDelta(
+void FStructuralEndpointDispatcher::DispatchTeardown(
 	FStructuralGraphSession& Session,
-	AFGBuildablePowerPole* Pole)
+	AFGBuildable* Buildable)
 {
-	Session.WireDelta().ProcessPoleWireDelta(Pole);
+	if (IStructuralEndpointProcessor* Processor = FindMutableProcessor(Buildable))
+	{
+		RunTeardown(Session, *Processor, Buildable);
+	}
 }
 
 void FStructuralEndpointDispatcher::DispatchSwitchCircuitsRebuilt(
 	FStructuralGraphSession& Session,
 	AFGBuildableCircuitSwitch* Switch)
 {
-	Session.WireDelta().ProcessSwitchCircuitsRebuilt(Switch);
+	HALSP_TRACE_SCOPE_DETAIL(
+		TEXT("mod"),
+		TEXT("circuitsRebuilt.switch"),
+		IsValid(Switch) ? Switch->GetName() : TEXT("null"));
+
+	if (!IsValid(Switch) || !Switch->HasAuthority())
+	{
+		return;
+	}
+
+	if (Session.ShouldDeferCircuitDrivenRefresh())
+	{
+		return;
+	}
+
+	if (Session.ShouldSkipSwitchCircuitEcho(Switch))
+	{
+		return;
+	}
+
+	const FStructuralNodeId SwitchId = Session.MakeNodeId(Switch);
+	const FTrackedEndpoint* Tracked = Session.TrackedEndpoints().Find(SwitchId);
+	if (!Tracked || !Tracked->ParentId.IsValid())
+	{
+		return;
+	}
+
+	const int32 Root = Session.StructureGraph().FindRoot(Tracked->ParentId);
+	if (IStructuralEndpointProcessor* Processor =
+			FStructuralEndpointCatalog::Get().FindMutable(EStructuralEndpointKind::Switch))
+	{
+		RunCircuitsRebuilt(
+			Session,
+			*Processor,
+			Switch,
+			/*bOverrideAttachContext=*/true,
+			EAttachContext::WireDelta,
+			Root);
+	}
+
+	Session.NoteSwitchCircuitEchoProcessed(Switch);
 }
 
 void FStructuralEndpointDispatcher::DispatchPanelWireDelta(
 	FStructuralGraphSession& Session,
 	AFGBuildableLightsControlPanel* Panel)
 {
-	Session.WireDelta().ProcessPanelWireDelta(Panel);
+	HALSP_TRACE_SCOPE_DETAIL(
+		TEXT("mod"),
+		TEXT("wireDelta.panel"),
+		IsValid(Panel) ? Panel->GetName() : TEXT("null"));
+
+	if (!IsValid(Panel) || !Panel->HasAuthority())
+	{
+		return;
+	}
+
+	if (!FStructuralPowerModConfig::IsGroupLightingEnabled()
+		|| Session.ShouldDeferCircuitDrivenRefresh())
+	{
+		return;
+	}
+
+	if (Session.ShouldSkipPanelCircuitEcho(Panel))
+	{
+		return;
+	}
+
+	FStructuralPanelPorts Ports;
+	const bool bPortsResolved = FStructuralPanelPortResolver::Resolve(Panel, Ports);
+	const FStructuralNodeId PanelId = Session.MakeNodeId(Panel);
+	const FTrackedEndpoint* Existing = Session.TrackedEndpoints().Find(PanelId);
+	if (!bPortsResolved
+		&& (!Existing
+			|| Existing->Kind != EStructuralEndpointKind::Panel
+			|| !Existing->ParentId.IsValid()))
+	{
+		return;
+	}
+
+	FStructuralPowerTrace::LogHook(
+		Panel,
+		TEXT("OnCircuitsRebuilt"),
+		TEXT("wire_refresh"),
+		TEXT("panel_wire_delta"));
+
+	if (Existing
+		&& Existing->Kind == EStructuralEndpointKind::Panel
+		&& Existing->ParentId.IsValid())
+	{
+		if (IStructuralEndpointProcessor* Processor =
+				FStructuralEndpointCatalog::Get().FindMutable(EStructuralEndpointKind::Panel))
+		{
+			RunWireDelta(Session, *Processor, Panel);
+		}
+		return;
+	}
+
+	DispatchPlacement(Session, Panel, /*bLocalPromoteOnly=*/true);
+}
+
+void FStructuralEndpointDispatcher::DispatchPoleWireDelta(
+	FStructuralGraphSession& Session,
+	AFGBuildablePowerPole* Pole)
+{
+	if (!IsValid(Pole) || !Pole->HasAuthority())
+	{
+		return;
+	}
+
+	if (Session.ShouldDeferCircuitDrivenRefresh())
+	{
+		Session.EnqueuePlacement(Pole, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+		return;
+	}
+
+	if (!FStructuralBridgeAttach::HasPlacementMembership(
+			Session,
+			Pole,
+			EStructuralEndpointKind::Pole))
+	{
+		const FStructuralNodeId PoleId = Session.MakeNodeId(Pole);
+		const FTrackedEndpoint* Tracked = Session.TrackedEndpoints().Find(PoleId);
+		if (Tracked
+			&& Tracked->Kind == EStructuralEndpointKind::Pole
+			&& !FStructuralPoleWireUtil::HasVanillaWire(Pole))
+		{
+			return;
+		}
+
+		DispatchPlacement(Session, Pole);
+		return;
+	}
+
+	if (IStructuralEndpointProcessor* Processor =
+			FStructuralEndpointCatalog::Get().FindMutable(EStructuralEndpointKind::Pole))
+	{
+		RunWireDelta(Session, *Processor, Pole);
+	}
+}
+
+void FStructuralEndpointDispatcher::DispatchWallOutletAfterWire(
+	FStructuralGraphSession& Session,
+	AFGBuildablePowerPole* Pole)
+{
+	if (!IsValid(Pole) || !Pole->HasAuthority())
+	{
+		return;
+	}
+
+	FStructuralPowerTrace::LogHook(
+		Pole,
+		TEXT("OnPowerConnectionChanged"),
+		TEXT("wire_refresh"),
+		TEXT("pole_wire_delta"));
+	DispatchPoleWireDelta(Session, Pole);
 }

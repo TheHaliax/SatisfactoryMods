@@ -8,17 +8,15 @@
 
 class AFGBuildableLightSource;
 class AFGBuildableLightsControlPanel;
-class AStructuralPowerGraphSubsystem;
+class FStructuralGraphSession;
 struct FStructuralChannelKey;
 
 class STRUCTURALPOWER_API FStructuralPowerReconcile
 {
-	friend class AStructuralPowerGraphSubsystem;
-
 public:
 	FStructuralPowerReconcile() = default;
 
-	void Bind(AStructuralPowerGraphSubsystem* InSubsystem);
+	void Bind(FStructuralGraphSession* InSession);
 
 	void MaybeRunPostLoadLightReconcile();
 	void MaybeRunFinalLightingReconcile();
@@ -36,14 +34,15 @@ public:
 	bool IsPanelDownstreamLight(int32 Root, const FStructuralChannelKey& LightKey);
 	bool IsSwitchFeedOpen(int32 Root, FName SwitchControlId);
 
-private:
 	void CollectKnownPanelEndpoints(TArray<AFGBuildableLightsControlPanel*>& OutPanels);
 	void ApplyKeyedSubnetAllPanels();
+
+private:
 	void RefreshKeyedTransferAfterLoad();
 	void RefreshNamedControlPanelsAfterLoad();
 	bool LightingReconcileNeedsRetry();
 	bool PanelNeedsLightingReconcileRetry(AFGBuildableLightsControlPanel* Panel) const;
 	void SuspendAllIntegratedLighting();
 
-	AStructuralPowerGraphSubsystem* Subsystem = nullptr;
+	FStructuralGraphSession* Session = nullptr;
 };

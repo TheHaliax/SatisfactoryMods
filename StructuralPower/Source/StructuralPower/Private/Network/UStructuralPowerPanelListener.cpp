@@ -64,7 +64,7 @@ void UStructuralPowerPanelListener::HandleControlledBuildablesChanged()
 
 	if (FStructuralPowerModConfig::IsGroupLightingEnabled())
 	{
-		FStructuralPanelControlledSync::ApplyKeyedSubnet(*Graph, Panel);
+		FStructuralPanelControlledSync::ApplyKeyedSubnet(Graph->GetGraphSession(), Panel);
 		return;
 	}
 
@@ -85,5 +85,5 @@ void UStructuralPowerPanelListener::HandleLightControlPanelStateChanged(bool /*b
 		return;
 	}
 
-	FStructuralPanelControlledSync::MirrorSharedControlState(*Graph, Panel);
+	FStructuralPanelControlledSync::MirrorSharedControlState(Graph->GetGraphSession(), Panel);
 }

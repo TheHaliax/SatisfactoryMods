@@ -3,6 +3,7 @@
 
 #include "Equipment/FStructuralEquipmentBridgeRegistry.h"
 
+#include "Core/FStructuralGraphSession.h"
 #include "Equipment/FStructuralHoverpackEquipmentBridge.h"
 
 FStructuralEquipmentBridgeRegistry& FStructuralEquipmentBridgeRegistry::Get()
@@ -30,7 +31,7 @@ void FStructuralEquipmentBridgeRegistry::Initialize()
 }
 
 bool FStructuralEquipmentBridgeRegistry::QueryHoverpackStructuralAnchor(
-	AStructuralPowerGraphSubsystem& Graph,
+	FStructuralGraphSession& Session,
 	const FVector& QueryLoc,
 	float MaxHorizontal,
 	float MaxVertical,
@@ -40,7 +41,7 @@ bool FStructuralEquipmentBridgeRegistry::QueryHoverpackStructuralAnchor(
 	{
 		if (Bridge
 			&& Bridge->QueryHoverpackStructuralAnchor(
-				Graph,
+				Session,
 				QueryLoc,
 				MaxHorizontal,
 				MaxVertical,

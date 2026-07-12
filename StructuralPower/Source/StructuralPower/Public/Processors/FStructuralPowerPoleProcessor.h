@@ -6,7 +6,7 @@
 #include "CoreMinimal.h"
 
 class AFGBuildablePowerPole;
-class AStructuralPowerGraphSubsystem;
+class FStructuralGraphSession;
 struct FStructuralNodeId;
 struct FStructuralOutletParentResolveResult;
 struct FStructuralPowerContext;
@@ -20,7 +20,7 @@ public:
 
 private:
 	static void ResolvePoleStructuralSite(
-		AStructuralPowerGraphSubsystem& Graph,
+		FStructuralGraphSession& Session,
 		AFGBuildablePowerPole* Pole,
 		FStructuralNodeId& OutParentId,
 		int32& OutRoot,
