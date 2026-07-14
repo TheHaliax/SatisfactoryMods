@@ -20,7 +20,6 @@ enum class EStructuralChannel : uint8
 	Switch
 };
 
-/** Save-stable key for a union-find structure component (smallest member node id). */
 USTRUCT(BlueprintType)
 struct STRUCTURALPOWER_API FStructuralComponentKey
 {
@@ -42,7 +41,59 @@ struct STRUCTURALPOWER_API FStructuralComponentKey
 	}
 };
 
-/** Resolved routing key — Tag + Effective Id used by the bus router (DR-008). */
+USTRUCT(BlueprintType)
+struct STRUCTURALPOWER_API FStructuralEndpointOverrides
+{
+	GENERATED_BODY()
+
+	UPROPERTY(SaveGame)
+	FName SourceOverride = NAME_None;
+
+	UPROPERTY(SaveGame)
+	FName ControlOverride = NAME_None;
+
+	UPROPERTY(SaveGame)
+	bool bGlobalControl = false;
+
+	bool HasAnyOverride() const
+	{
+		return !SourceOverride.IsNone() || !ControlOverride.IsNone() || bGlobalControl;
+	}
+};
+
+USTRUCT(BlueprintType)
+struct STRUCTURALPOWER_API FStructuralComponentIdList
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FName DefaultSourceId = NAME_None;
+
+	UPROPERTY()
+	TArray<FName> NamedSourceIds;
+
+	UPROPERTY()
+	TArray<FName> NamedControlIds;
+
+	UPROPERTY()
+	TArray<FName> NamedSwitchControlIds;
+
+	UPROPERTY()
+	TArray<FName> NamedLightGroupIds;
+
+	UPROPERTY()
+	FName ResolvedSource = NAME_None;
+
+	UPROPERTY()
+	FName ResolvedControl = NAME_None;
+
+	UPROPERTY()
+	FName SourceOverride = NAME_None;
+
+	UPROPERTY()
+	FName ControlOverride = NAME_None;
+};
+
 USTRUCT(BlueprintType)
 struct STRUCTURALPOWER_API FStructuralChannelKey
 {
@@ -54,9 +105,18 @@ struct STRUCTURALPOWER_API FStructuralChannelKey
 	UPROPERTY()
 	FName EffectiveId = NAME_None;
 
+	UPROPERTY()
+	FName Source = NAME_None;
+
+	UPROPERTY()
+	FName Control = NAME_None;
+
 	bool operator==(const FStructuralChannelKey& Other) const
 	{
-		return Tag == Other.Tag && EffectiveId == Other.EffectiveId;
+		return Tag == Other.Tag
+			&& EffectiveId == Other.EffectiveId
+			&& Source == Other.Source
+			&& Control == Other.Control;
 	}
 };
 

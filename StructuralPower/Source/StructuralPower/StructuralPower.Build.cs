@@ -16,17 +16,12 @@ public class StructuralPower : ModuleRules
 			"PhysicsCore",
 			"InputCore",
 			"GeometryCollectionEngine",
-			"AnimGraphRuntime",
 			"AssetRegistry",
-			"NavigationSystem",
-			"AIModule",
-			"GameplayTasks",
 			"SlateCore",
 			"Slate",
+			"ApplicationCore",
 			"UMG",
 			"RenderCore",
-			"CinematicCamera",
-			"Foliage",
 			"NetCore",
 			"GameplayTags",
 			"Json",
@@ -36,10 +31,5 @@ public class StructuralPower : ModuleRules
 			"FactoryGame",
 			"SML",
 		});
-
-		if (Target.Type == TargetRules.TargetType.Editor)
-		{
-			PublicDependencyModuleNames.Add("AnimGraph");
-		}
 	}
 }

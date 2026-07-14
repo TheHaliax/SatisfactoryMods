@@ -17,6 +17,7 @@
 #include "Buildables/FGBuildableFactoryBuilding.h"
 #include "Buildables/FGBuildableFoundation.h"
 #include "Buildables/FGBuildablePowerPole.h"
+#include "Buildables/FGBuildablePowerStorage.h"
 #include "Buildables/FGBuildableRamp.h"
 #include "Buildables/FGBuildableStair.h"
 #include "Buildables/FGBuildableWalkway.h"
@@ -55,21 +56,46 @@ bool FStructuralEligibilityRules::IsBusMember(const AFGBuildable* Buildable)
 		|| Buildable->IsA<AFGBuildablePillar>();
 }
 
-bool FStructuralEligibilityRules::IsWallOutlet(const AFGBuildable* Buildable)
+bool FStructuralEligibilityRules::IsPowerBridgeSwitch(const AFGBuildable* Buildable)
 {
-	const AFGBuildablePowerPole* Pole = Cast<AFGBuildablePowerPole>(Buildable);
-	if (!Pole)
+	return IsValid(Buildable) && Buildable->IsA<AFGBuildableCircuitSwitch>();
+}
+
+bool FStructuralEligibilityRules::IsStructuralLightConsumer(const AFGBuildable* Buildable)
+{
+	return IsValid(Buildable)
+		&& Buildable->IsA<AFGBuildableLightSource>()
+		&& !Buildable->IsA<AFGBuildableLightsControlPanel>();
+}
+
+bool FStructuralEligibilityRules::IsStructuralGenerator(const AFGBuildable* Buildable)
+{
+	return IsValid(Buildable) && Buildable->IsA<AFGBuildableGenerator>();
+}
+
+bool FStructuralEligibilityRules::IsIdConfigTarget(const AFGBuildable* Buildable)
+{
+	if (!IsValid(Buildable))
 	{
 		return false;
 	}
 
-	const EPowerPoleType PoleType = Pole->GetPowerPoleType();
-	return PoleType == EPowerPoleType::PPT_WALL || PoleType == EPowerPoleType::PPT_WALL_DOUBLE;
-}
+	if (IsStructuralLightConsumer(Buildable))
+	{
+		return true;
+	}
 
-bool FStructuralEligibilityRules::IsPowerBridgeSwitch(const AFGBuildable* Buildable)
-{
-	return IsValid(Buildable) && Buildable->IsA<AFGBuildableCircuitSwitch>();
+	if (IsPowerBridgeSwitch(Buildable))
+	{
+		return true;
+	}
+
+	if (Buildable->IsA<AFGBuildableLightsControlPanel>())
+	{
+		return true;
+	}
+
+	return IsStructuralGenerator(Buildable);
 }
 
 bool FStructuralEligibilityRules::IsPowerBridgePole(const AFGBuildable* Buildable)
@@ -90,6 +116,11 @@ bool FStructuralEligibilityRules::IsPowerBridgePole(const AFGBuildable* Buildabl
 	default:
 		return false;
 	}
+}
+
+bool FStructuralEligibilityRules::IsPowerStorage(const AFGBuildable* Buildable)
+{
+	return IsValid(Buildable) && Buildable->IsA<AFGBuildablePowerStorage>();
 }
 
 bool FStructuralEligibilityRules::IsValidOutletParent(const AFGBuildable* Parent)

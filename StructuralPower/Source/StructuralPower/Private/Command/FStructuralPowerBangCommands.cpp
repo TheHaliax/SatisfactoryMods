@@ -8,6 +8,7 @@
 #include "FGGameState.h"
 #include "FGPlayerController.h"
 #include "Network/UStructuralPowerRCO.h"
+#include "Save/AStructuralPowerGraphSubsystem.h"
 #include "TimerManager.h"
 
 namespace
@@ -47,8 +48,6 @@ static void SendSystemChat(
 	MessageStruct.MessageSenderColor = Color;
 	MessageStruct.MessageSender = FText::FromString(ChatSenderName);
 
-	// Server command replies: authority calls Client_SendChatMessage (dedicated/listen).
-	// Load banner + solo: local received buffer on client or standalone.
 	const bool bUseLocalChatBuffer = World->GetNetMode() == NM_Standalone
 		|| (World->GetNetMode() == NM_Client && PlayerController->IsLocalController());
 
@@ -77,7 +76,7 @@ static bool IsStructuralPowerCommand(const FString& CommandLine)
 	const FString& Verb = Tokens[0];
 	return Verb.Equals(TEXT("HoverH"), ESearchCase::IgnoreCase)
 		|| Verb.Equals(TEXT("HoverV"), ESearchCase::IgnoreCase)
-		|| Verb.Equals(TEXT("tracetoggle"), ESearchCase::IgnoreCase)
+		|| Verb.Equals(TEXT("lighting"), ESearchCase::IgnoreCase)
 		|| Verb.Equals(TEXT("pwrhelp"), ESearchCase::IgnoreCase);
 }
 
@@ -90,7 +89,6 @@ static bool ShouldAnnounceLoadToPlayer(AFGPlayerController* PlayerController, UW
 
 	const ENetMode NetMode = World->GetNetMode();
 
-	// Dedicated/listen: BegunPlay runs on the joining client — announce locally there.
 	if (NetMode == NM_Client)
 	{
 		return PlayerController->IsLocalController();
@@ -154,18 +152,18 @@ static void ScheduleLoadAnnouncement(AFGPlayerController* PlayerController)
 		false);
 }
 
-static bool TryToggleTrace(UWorld* World, FString& OutMessage)
+static bool TryToggleGroupLighting(UWorld* World, FString& OutMessage)
 {
-	const bool bOn = !FStructuralPowerModConfig::IsTraceEnabled();
-	const TArray<FString> Args = {TEXT("Trace"), bOn ? TEXT("1") : TEXT("0")};
+	const bool bOn = !FStructuralPowerModConfig::IsGroupLightingEnabled();
+	const TArray<FString> Args = {TEXT("GroupLighting"), bOn ? TEXT("1") : TEXT("0")};
 	if (!FStructuralPowerModConfig::TryApplySetCommand(Args, World))
 	{
 		return false;
 	}
 
 	OutMessage = bOn
-		? TEXT("PWR trace logging enabled.")
-		: TEXT("PWR trace logging disabled.");
+		? TEXT("Structural lighting enabled — unwired lights on powered foundations may draw.")
+		: TEXT("Structural lighting disabled — lights need vanilla wires.");
 	return true;
 }
 
@@ -197,7 +195,7 @@ static void SendHelp(AFGPlayerController* PlayerController)
 		FLinearColor::Yellow);
 	SendSystemChat(
 		PlayerController,
-		TEXT("!tracetoggle  — debug: flip verbose [PWR] logging in FactoryGame.log"),
+		TEXT("!lighting  — toggle structural lighting (M3; default off)"),
 		FLinearColor::Yellow);
 }
 }
@@ -322,9 +320,9 @@ void FStructuralPowerBangCommands::Execute(AFGPlayerController* PlayerController
 		return;
 	}
 
-	if (Verb.Equals(TEXT("tracetoggle"), ESearchCase::IgnoreCase))
+	if (Verb.Equals(TEXT("lighting"), ESearchCase::IgnoreCase))
 	{
-		if (TryToggleTrace(World, Feedback))
+		if (TryToggleGroupLighting(World, Feedback))
 		{
 			SendSystemChat(PlayerController, Feedback);
 		}

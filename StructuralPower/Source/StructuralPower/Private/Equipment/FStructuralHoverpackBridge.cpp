@@ -302,7 +302,6 @@ void FStructuralHoverpackBridge::RegisterHooks()
 				return;
 			}
 
-			// Mod replaces vanilla nearest-visible-connector search entirely.
 			ResolveTether(Pack);
 			Scope.Cancel();
 		});
@@ -453,9 +452,7 @@ FStructuralHoverpackSession& FStructuralHoverpackBridge::GetOrCreateSession(AFGH
 
 bool FStructuralHoverpackBridge::IsStructuralPathEnabled(const AFGHoverPack* Pack)
 {
-	return IsValid(Pack)
-		&& FStructuralPowerSessionSettings::IsPropagationEnabled()
-		&& FStructuralPowerModConfig::IsHoverpackStructuralEnabled();
+	return IsValid(Pack);
 }
 
 float FStructuralHoverpackBridge::GetBaseSearchRadius(const AFGHoverPack* Pack)
@@ -513,7 +510,7 @@ void FStructuralHoverpackBridge::LogTransition(
 	const FCylindricalTetherMetrics Metrics = SessionTetherMetrics(Pack, Session);
 	(void)Distance;
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] hoverpack %s %s src=%d root=%d h=%.0f v=%.0f lim=%.0f maxH=%.0f maxV=%.0f feed=%s circuit=%d hasPower=%d"),
+		TEXT("[HALSP] hoverpack %s %s src=%d root=%d h=%.0f v=%.0f lim=%.0f maxH=%.0f maxV=%.0f feed=%s circuit=%d hasPower=%d"),
 		*Pack->GetName(),
 		Event,
 		static_cast<int32>(Session.Source),
@@ -1215,7 +1212,6 @@ void FStructuralHoverpackBridge::MaintainSession(AFGHoverPack* Pack, float Delta
 	const FCylindricalTetherMetrics Metrics = SessionTetherMetrics(Pack, Session);
 	if (!IsWithinCylindricalTetherRange(Metrics, Session.MaxHorizontal, Session.MaxVertical))
 	{
-		// Let vanilla own hover mode once we leave the cylindrical envelope.
 		DisconnectPower(Pack);
 		PublishStructuralTetherToOwningClient(Pack, Session, /*bClear=*/true);
 		Session.DisconnectionTimer += DeltaTime;
@@ -1309,17 +1305,17 @@ bool FStructuralHoverpackBridge::ResolvePublishedTether(
 	}
 	else
 	{
-		if (IsLocallyOwnedHoverpack(Pack)
-			&& TryGetClientTetherMirror(OutAnchor, OutMaxHorizontal, OutMaxVertical))
+		// Dedicated client: pack connection component never gets anchor — mirror from RCO.
+		const bool bHasClientMirror =
+			IsLocallyOwnedHoverpack(Pack)
+			&& TryGetClientTetherMirror(OutAnchor, OutMaxHorizontal, OutMaxVertical);
+		if (!bHasClientMirror)
 		{
-			// Dedicated client HUD — anchor pushed via RCO.
-		}
-		else if (!ReadConnectionLocation(Pack, OutAnchor) || OutAnchor.IsNearlyZero())
-		{
-			return false;
-		}
-		else
-		{
+			if (!ReadConnectionLocation(Pack, OutAnchor) || OutAnchor.IsNearlyZero())
+			{
+				return false;
+			}
+
 			const FStructuralHoverpackAxisLimits Limits = GetSessionAxisLimits(
 				EStructuralHoverpackTetherSource::StructuralGeometry,
 				GetBaseSearchRadius(Pack));

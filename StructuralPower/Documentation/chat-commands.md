@@ -6,21 +6,25 @@ Commands are swallowed from public chat (other mods' `!` commands are unaffected
 
 On join, the server prints: **Hal: Structural Power loaded.**
 
+The same four commands are also registered with **SML** (`AChatCommandSubsystem::RegisterCommand`) so **Chat Mk 2** expandable help and `/help` can list them alongside other mods.
+
 ## Available commands
 
 `[]` — required argument.
 
-- `!HoverH [1-10]` — set hoverpack **horizontal** reach multiplier (clamped 1.0–10.0; saved to `Configs/StructuralPower.cfg`)
-- `!HoverV [1-10]` — set hoverpack **vertical** reach multiplier (clamped 1.0–10.0; saved to mod config)
-- `!tracetoggle` — debug: toggle verbose `[PWR]` trace logging in `FactoryGame.log`
+- `!lighting` — toggle **structural lighting** (default off; saved to `Configs/StructuralPower.cfg`)
+- `!HoverH [1-10]` — set hoverpack **horizontal** reach multiplier (clamped 1.0–10.0; saved to cfg)
+- `!HoverV [1-10]` — set hoverpack **vertical** reach multiplier (clamped 1.0–10.0; saved to cfg)
 - `!pwrhelp` — list commands (same list as this section)
+
+Trace and extended debug are **console-only** (`StructuralPower.Trace`, `StructuralPower.ExtendedDebug`) — not exposed in chat.
 
 ## Examples
 
 ```
+!lighting
 !HoverH 2
-!HoverV 1.5
-!tracetoggle
+!HoverV 1.2
 !pwrhelp
 ```
 
@@ -28,15 +32,14 @@ On join, the server prints: **Hal: Structural Power loaded.**
 
 Feedback uses the **Hal:** sender with short readable lines, for example:
 
+- `Structural lighting enabled.`
 - `Hoverpack horizontal reach multiplier set to 2.0.`
-- `PWR trace logging enabled.`
 
 ## Related settings
 
 | Surface | Use |
 |---------|-----|
-| Pause → Mods → Structural Power | Hover multipliers (main panel); propagation, switches, hoverpack tether, trace ( **Debug** section, collapsed by default) |
-| `Configs/StructuralPower.cfg` | SML-persisted JSON on server |
-| Console `StructuralPower.Set <key> <value>` | Same keys as mod config — see [console-commands.md](console-commands.md) |
+| `Configs/StructuralPower.cfg` | JSON on server/host — written by chat or console |
+| Console `StructuralPower.Set <key> <value>` | Same keys — see [console-commands.md](console-commands.md) |
 
-Per-building **Ids** for switch subnets stay in the **world save** (not `.cfg`) — assigned via buildable tag / RCO, not chat.
+Per-device **Source/Control** ids for lights, switches, and panels stay in the **world save** (not `.cfg`) — assigned via **I** key Id panel or building tag on switches.

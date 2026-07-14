@@ -4,7 +4,6 @@
 #include "Graph/FStructuralAttachmentResolver.h"
 
 #include "Buildables/FGBuildable.h"
-#include "Graph/FStructuralAdjacencyHeuristics.h"
 #include "Graph/FStructuralConnectivityGraph.h"
 #include "Graph/FStructuralOutletParentResolver.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
@@ -14,7 +13,17 @@ FStructuralWallAnchor FStructuralAttachmentResolver::ResolveStructuralParent(
 	UWorld* World,
 	const FStructuralLightweightIndex& LightweightIndex)
 {
-	return FStructuralOutletParentResolver::Resolve(Buildable, World, LightweightIndex);
+	FStructuralOutletParentResolveParams Params;
+	Params.LightweightIndex = &LightweightIndex;
+	return FStructuralOutletParentResolver::Resolve(Buildable, World, Params);
+}
+
+FStructuralWallAnchor FStructuralAttachmentResolver::ResolveStructuralParent(
+	AFGBuildable* Buildable,
+	UWorld* World,
+	const FStructuralOutletParentResolveParams& Params)
+{
+	return FStructuralOutletParentResolver::Resolve(Buildable, World, Params);
 }
 
 FStructuralComponentResolveResult FStructuralAttachmentResolver::ResolveStructuralComponent(
@@ -70,6 +79,5 @@ int32 FStructuralAttachmentResolver::ResolveComponentRootForBuildable(
 		}
 	}
 
-	const FBox Bounds = FStructuralAdjacencyHeuristics::GetActorAdjacencyBounds(Buildable);
-	return Graph.FindRootForBounds(Bounds, Buildable->GetClass(), &OutParentId);
+	return INDEX_NONE;
 }

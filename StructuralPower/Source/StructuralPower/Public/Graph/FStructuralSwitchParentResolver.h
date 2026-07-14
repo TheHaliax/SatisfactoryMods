@@ -4,23 +4,17 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Lightweight/FStructuralLightweightTypes.h"
-
-class AFGBuildableCircuitSwitch;
-class FStructuralConnectivityGraph;
-class FStructuralLightweightIndex;
-class UWorld;
+#include "Graph/FStructuralOutletParentResolver.h"
+#include "Lightweight/FStructuralLightweightIndex.h"
 
 struct FStructuralSwitchParentResolveResult
 {
 	FStructuralWallAnchor Anchor;
-	/** 0/1 when resolved from a wired port; INDEX_NONE for mount/scan. */
 	int32 WirePortIndex = INDEX_NONE;
 
 	bool IsValid() const { return Anchor.IsValid(); }
 };
 
-/** Switch mount + wire-port parent resolution (DR-001 outlet bus; ports stay grid-only). */
 class STRUCTURALPOWER_API FStructuralSwitchParentResolver
 {
 public:
@@ -28,5 +22,22 @@ public:
 		AFGBuildableCircuitSwitch* Switch,
 		UWorld* World,
 		const FStructuralConnectivityGraph& Graph,
-		const FStructuralLightweightIndex& LightweightIndex);
+		const FStructuralLightweightIndex& LightweightIndex,
+		bool bPreferWirePort = false,
+		const FStructuralOutletParentResolveParams* ParentResolveParams = nullptr);
+
+	static bool IsWiredToStructureSide(
+		AFGBuildableCircuitSwitch* Switch,
+		int32* OutWirePortIndex = nullptr);
+
+	static int32 CountWiredVanillaPorts(AFGBuildableCircuitSwitch* Switch);
+
+	static bool HasAnyVanillaWire(AFGBuildableCircuitSwitch* Switch);
+
+	static void ForEachWiredStructureSideAnchor(
+		AFGBuildableCircuitSwitch* Switch,
+		UWorld* World,
+		const FStructuralLightweightIndex& LightweightIndex,
+		const FStructuralOutletParentResolveParams* ParentResolveParams,
+		TFunctionRef<void(const FStructuralWallAnchor& Anchor)> Visitor);
 };

@@ -4,6 +4,58 @@
 #include "Routing/FStructuralPowerRouter.h"
 
 #include "Buildables/FGBuildableCircuitSwitch.h"
+#include "Config/FStructuralPowerModConfig.h"
+#include "StructuralPowerConstants.h"
+
+bool FStructuralPowerRouter::UsesSourceControlModel(EStructuralChannel Tag)
+{
+	return Tag == EStructuralChannel::Light
+		|| Tag == EStructuralChannel::Switch
+		|| Tag == EStructuralChannel::Generator;
+}
+
+bool FStructuralPowerRouter::IsStructuralGeneratorRoutingEnabled()
+{
+	return FStructuralPowerModConfig::IsGroupGenerationEnabled();
+}
+
+bool FStructuralPowerRouter::IsGeneratorChannel(const EStructuralChannel Tag)
+{
+	return Tag == EStructuralChannel::Generator;
+}
+
+bool FStructuralPowerRouter::UsesLegacyEffectiveIdModel(const EStructuralChannel Tag)
+{
+	if (Tag == EStructuralChannel::Structure || UsesSourceControlModel(Tag))
+	{
+		return false;
+	}
+
+	if (IsGeneratorChannel(Tag))
+	{
+		return IsStructuralGeneratorRoutingEnabled();
+	}
+
+	return Tag == EStructuralChannel::Extractor
+		|| Tag == EStructuralChannel::Manufacturer
+		|| Tag == EStructuralChannel::Transport
+		|| Tag == EStructuralChannel::Misc;
+}
+
+bool FStructuralPowerRouter::IsReservedSentinel(FName Id)
+{
+	return Id == StructuralPowerConstants::ControlUnconfigured;
+}
+
+bool FStructuralPowerRouter::IsPlayerChosenIdValid(FName Id)
+{
+	return !Id.IsNone() && !IsReservedSentinel(Id);
+}
+
+bool FStructuralPowerRouter::IsAssignedControl(FName Control)
+{
+	return IsPlayerChosenIdValid(Control);
+}
 
 bool FStructuralPowerRouter::ShouldRouteChannelLink(
 	const FStructuralChannelKey& A,
@@ -21,57 +73,78 @@ bool FStructuralPowerRouter::ShouldRouteChannelLink(
 		return false;
 	}
 
+	if (UsesSourceControlModel(A.Tag))
+	{
+		return !A.Source.IsNone() && A.Source == B.Source;
+	}
+
+	if (UsesLegacyEffectiveIdModel(A.Tag))
+	{
+		return !A.EffectiveId.IsNone() && A.EffectiveId == B.EffectiveId;
+	}
+
 	return !A.EffectiveId.IsNone() && A.EffectiveId == B.EffectiveId;
 }
 
-bool FStructuralPowerRouter::ShouldRouteSwitchGate(
-	FName SwitchEffectiveId,
-	FName DeviceEffectiveId,
+bool FStructuralPowerRouter::ShouldRouteKeyedJoin(
+	FName PublisherControl,
+	FName JoinerSource,
 	const FStructuralComponentKey& ComponentA,
 	const FStructuralComponentKey& ComponentB)
 {
-	return ComponentA.IsValid()
-		&& ComponentA == ComponentB
-		&& !SwitchEffectiveId.IsNone()
-		&& SwitchEffectiveId == DeviceEffectiveId;
+	if (!ComponentA.IsValid()
+		|| ComponentA != ComponentB
+		|| !IsAssignedControl(PublisherControl)
+		|| JoinerSource.IsNone())
+	{
+		return false;
+	}
+
+	return PublisherControl == JoinerSource;
 }
 
-FName FStructuralPowerRouter::ResolveSwitchEffectiveId(const AFGBuildableCircuitSwitch* Switch)
+bool FStructuralPowerRouter::ShouldRouteSwitchGate(
+	FName SwitchControl,
+	FName DeviceSource,
+	const FStructuralComponentKey& ComponentA,
+	const FStructuralComponentKey& ComponentB)
 {
-	if (!IsValid(Switch))
+	return ShouldRouteKeyedJoin(SwitchControl, DeviceSource, ComponentA, ComponentB);
+}
+
+FName FStructuralPowerRouter::ResolveSwitchControlFromTag(const AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(Switch) || !Switch->HasBuildingTag_Implementation())
 	{
 		return NAME_None;
 	}
 
-	if (Switch->HasBuildingTag_Implementation())
-	{
-		const FString Tag = Switch->GetBuildingTag_Implementation();
-		if (!Tag.IsEmpty())
-		{
-			return FName(*Tag);
-		}
-	}
-
-	return NAME_None;
-}
-
-FName FStructuralPowerRouter::MakeDefaultIdName(const FStructuralNodeId& CanonicalNodeId)
-{
-	if (!CanonicalNodeId.IsValid())
+	const FString Tag = Switch->GetBuildingTag_Implementation();
+	if (Tag.IsEmpty())
 	{
 		return NAME_None;
 	}
 
-	if (CanonicalNodeId.IsLightweight())
+	return FName(*Tag);
+}
+
+FName FStructuralPowerRouter::MakeStructureDefaultIdName(const int32 StructureIndex)
+{
+	if (StructureIndex < 1)
 	{
-		return FName(*FString::Printf(
-			TEXT("SP_%s_LW%d"),
-			*CanonicalNodeId.BuildableClass.GetAssetName(),
-			CanonicalNodeId.LightweightIndex));
+		return NAME_None;
 	}
 
-	return FName(*FString::Printf(
-		TEXT("SP_%s_%s"),
-		*CanonicalNodeId.BuildableClass.GetAssetName(),
-		*CanonicalNodeId.ActorName.ToString()));
+	return FName(*FString::Printf(TEXT("Structure %d"), StructureIndex));
+}
+
+bool FStructuralPowerRouter::IsLegacyStructureDefaultId(const FName Id)
+{
+	if (Id.IsNone())
+	{
+		return false;
+	}
+
+	const FString AsString = Id.ToString();
+	return AsString.StartsWith(TEXT("SP_"), ESearchCase::CaseSensitive);
 }

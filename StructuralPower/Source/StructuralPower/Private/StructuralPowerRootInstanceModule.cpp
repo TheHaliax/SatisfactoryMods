@@ -4,23 +4,41 @@
 #include "StructuralPowerRootInstanceModule.h"
 
 #include "Buildables/FGBuildable.h"
+#include "Buildables/FGBuildableCircuitBridge.h"
+#include "Buildables/FGBuildableControlPanelHost.h"
 #include "Buildables/FGBuildableCircuitSwitch.h"
+#include "Buildables/FGBuildableLightSource.h"
+#include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Buildables/FGBuildablePowerPole.h"
+#include "Command/StructuralPowerSmlChatCommands.h"
 #include "Config/FStructuralPowerModConfig.h"
-#include "Config/UStructuralPowerModConfiguration.h"
+#include "Core/FStructuralPowerWorldGate.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
+#include "Diagnostics/FStructuralVanillaPowerTrace.h"
 #include "FGLightweightBuildableSubsystem.h"
 #include "FGBuildableSubsystem.h"
 #include "Hologram/FGBlueprintHologram.h"
+#include "Input/FStructuralPowerIdInput.h"
 #include "Lightweight/FStructuralLightweightTypes.h"
 #include "Network/UStructuralPowerRCO.h"
 #include "Patching/NativeHookManager.h"
-#include "Equipment/FStructuralHoverpackBridge.h"
+#include "Equipment/FStructuralEquipmentBridgeRegistry.h"
+#include "Config/FStructuralGroupToggleRegistry.h"
+#include "Graph/FStructuralEndpointDescriptor.h"
+#include "Processors/FStructuralEndpointProcessors.h"
+#include "Processors/IStructuralEndpointProcessor.h"
+#include "FGHUD.h"
 #include "Rules/FStructuralEligibilityRules.h"
+#include "Panel/FStructuralPanelControlledSync.h"
+#include "Routing/EStructuralChannel.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
+#include "StructuralPowerConstants.h"
 #include "Subsystems/UStructuralPowerFactoryTickHandler.h"
 #include "StructuralPowerLog.h"
 #include "TimerManager.h"
+#include "UI/FGGameUI.h"
+#include "UI/FGInteractWidget.h"
+#include "UI/FStructuralPowerIdPresenterFactory.h"
 
 FDelegateHandle UStructuralPowerRootInstanceModule::PostLoadMapHandle;
 
@@ -28,7 +46,6 @@ UStructuralPowerRootInstanceModule::UStructuralPowerRootInstanceModule()
 {
 	bRootModule = true;
 	RemoteCallObjects.Add(UStructuralPowerRCO::StaticClass());
-	ModConfigurations.Add(UStructuralPowerModConfiguration::StaticClass());
 }
 
 void UStructuralPowerRootInstanceModule::UnregisterGlobalDelegates()
@@ -69,18 +86,16 @@ bool UStructuralPowerRootInstanceModule::TryEnqueueBuildable(
 		return false;
 	}
 
-	if (FStructuralEligibilityRules::IsPowerBridgePole(Buildable))
+	if (const IStructuralEndpointProcessor* Processor =
+			FStructuralEndpointCatalog::Get().Classify(Buildable))
 	{
-		FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("enqueue_bridge_pole"), SourceTag);
-		Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
-		return true;
-	}
-
-	if (FStructuralPowerModConfig::IsGatePowerSwitchesEnabled()
-		&& FStructuralEligibilityRules::IsPowerBridgeSwitch(Buildable))
-	{
-		FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("enqueue_switch"), SourceTag);
-		Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+		const FStructuralEndpointDescriptor& Descriptor = Processor->GetDescriptor();
+		FStructuralPowerTrace::LogHook(
+			Buildable,
+			HookName,
+			StructuralEndpointKindToString(Descriptor.Kind),
+			SourceTag);
+		Graph->EnqueuePlacement(Buildable, Descriptor.PlacementJob, /*bDefer=*/true);
 		return true;
 	}
 
@@ -95,14 +110,73 @@ bool UStructuralPowerRootInstanceModule::TryEnqueueBuildable(
 	return false;
 }
 
-static void HandleSwitchBeginPlay(AFGBuildableCircuitSwitch* Switch)
+static bool ShouldUseBulkBeginPlayLog(UWorld* World)
 {
-	if (!IsValid(Switch) || !Switch->HasAuthority())
+	// BeginPlay fires before PostLoad rebuild / bulk drain flag — Log spam = hitch.
+	if (!IsValid(World))
+	{
+		return true;
+	}
+
+	const AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::Find(World);
+	if (!Graph)
+	{
+		return true;
+	}
+
+	return !Graph->IsPostLoadRebuilt() || Graph->IsBulkLoadDrainActive();
+}
+
+static void HandlePoleBeginPlay(AFGBuildablePowerPole* Pole)
+{
+	if (!IsValid(Pole) || !Pole->HasAuthority())
 	{
 		return;
 	}
 
-	if (!FStructuralPowerModConfig::IsGatePowerSwitchesEnabled())
+	UWorld* World = Pole->GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	if (ShouldUseBulkBeginPlayLog(World))
+	{
+		UE_LOG(LogStructuralPower, Verbose,
+			TEXT("[HALSP] pole BeginPlay %s — enqueue outlet"),
+			*Pole->GetName());
+	}
+	else
+	{
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[HALSP] pole BeginPlay %s — enqueue outlet"),
+			*Pole->GetName());
+	}
+
+	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
+		[WorldWeak = TWeakObjectPtr<UWorld>(World),
+			PoleWeak = TWeakObjectPtr<AFGBuildablePowerPole>(Pole)]()
+		{
+			if (AFGBuildablePowerPole* PolePtr = PoleWeak.Get())
+			{
+				if (UWorld* WorldPtr = WorldWeak.Get())
+				{
+					if (AStructuralPowerGraphSubsystem* Graph =
+						AStructuralPowerGraphSubsystem::GetOrCreate(WorldPtr))
+					{
+						Graph->EnqueuePlacement(
+							PolePtr,
+							EStructuralPlacementJobType::Outlet,
+							/*bDefer=*/true);
+					}
+				}
+			}
+		}));
+}
+
+static void HandleSwitchBeginPlay(AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(Switch) || !Switch->HasAuthority())
 	{
 		return;
 	}
@@ -113,9 +187,18 @@ static void HandleSwitchBeginPlay(AFGBuildableCircuitSwitch* Switch)
 		return;
 	}
 
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] switch BeginPlay %s — enqueue outlet"),
-		*Switch->GetName());
+	if (ShouldUseBulkBeginPlayLog(World))
+	{
+		UE_LOG(LogStructuralPower, Verbose,
+			TEXT("[HALSP] switch BeginPlay %s — enqueue outlet"),
+			*Switch->GetName());
+	}
+	else
+	{
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[HALSP] switch BeginPlay %s — enqueue outlet"),
+			*Switch->GetName());
+	}
 
 	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
 		[WorldWeak = TWeakObjectPtr<UWorld>(World),
@@ -136,6 +219,135 @@ static void HandleSwitchBeginPlay(AFGBuildableCircuitSwitch* Switch)
 				}
 			}
 		}));
+}
+
+static void EnqueuePanelOutletWhenReady(
+	TWeakObjectPtr<UWorld> WorldWeak,
+	TWeakObjectPtr<AFGBuildableLightsControlPanel> PanelWeak)
+{
+	AFGBuildableLightsControlPanel* PanelPtr = PanelWeak.Get();
+	UWorld* WorldPtr = WorldWeak.Get();
+	if (!IsValid(PanelPtr) || !IsValid(WorldPtr))
+	{
+		return;
+	}
+
+	AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::GetOrCreate(WorldPtr);
+	if (!Graph)
+	{
+		return;
+	}
+
+	if (Graph->ShouldDeferCircuitDrivenRefresh())
+	{
+		WorldPtr->GetTimerManager().SetTimerForNextTick(
+			FTimerDelegate::CreateStatic(&EnqueuePanelOutletWhenReady, WorldWeak, PanelWeak));
+		return;
+	}
+
+	Graph->EnqueuePlacement(
+		PanelPtr,
+		EStructuralPlacementJobType::Outlet,
+		/*bDefer=*/true);
+}
+
+static void HandlePanelBeginPlay(AFGBuildableLightsControlPanel* Panel)
+{
+	if (!IsValid(Panel) || !Panel->HasAuthority())
+	{
+		return;
+	}
+
+	UWorld* World = Panel->GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	if (ShouldUseBulkBeginPlayLog(World))
+	{
+		UE_LOG(LogStructuralPower, Verbose,
+			TEXT("[HALSP] panel BeginPlay %s — enqueue outlet"),
+			*Panel->GetName());
+	}
+	else
+	{
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[HALSP] panel BeginPlay %s — enqueue outlet"),
+			*Panel->GetName());
+	}
+
+	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateStatic(
+		&EnqueuePanelOutletWhenReady,
+		TWeakObjectPtr<UWorld>(World),
+		TWeakObjectPtr<AFGBuildableLightsControlPanel>(Panel)));
+}
+
+static void HandleLightBeginPlay(AFGBuildableLightSource* Light)
+{
+	if (!IsValid(Light) || !Light->HasAuthority())
+	{
+		return;
+	}
+
+	UWorld* World = Light->GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	if (ShouldUseBulkBeginPlayLog(World))
+	{
+		UE_LOG(LogStructuralPower, Verbose,
+			TEXT("[HALSP] light BeginPlay %s — enqueue outlet"),
+			*Light->GetName());
+	}
+	else
+	{
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[HALSP] light BeginPlay %s — enqueue outlet"),
+			*Light->GetName());
+	}
+
+	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
+		[WorldWeak = TWeakObjectPtr<UWorld>(World),
+			LightWeak = TWeakObjectPtr<AFGBuildableLightSource>(Light)]()
+		{
+			if (AFGBuildableLightSource* LightPtr = LightWeak.Get())
+			{
+				if (UWorld* WorldPtr = WorldWeak.Get())
+				{
+					if (AStructuralPowerGraphSubsystem* Graph =
+						AStructuralPowerGraphSubsystem::GetOrCreate(WorldPtr))
+					{
+						Graph->EnqueuePlacement(
+							LightPtr,
+							EStructuralPlacementJobType::Outlet,
+							/*bDefer=*/true);
+					}
+				}
+			}
+		}));
+}
+
+static void HandleLightBuildEffectFinished(AFGBuildableLightSource* Light)
+{
+	if (!IsValid(Light) || !Light->HasAuthority())
+	{
+		return;
+	}
+
+	UWorld* World = Light->GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::GetOrCreate(World))
+	{
+		FStructuralPowerTrace::LogHook(Light, TEXT("OnBuildEffectFinished"), TEXT("enqueue_light"), TEXT("defer"));
+		Graph->EnqueuePlacement(Light, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+	}
 }
 
 void UStructuralPowerRootInstanceModule::HandleBuildableBuilt(AFGBuildable* Buildable)
@@ -159,8 +371,49 @@ void UStructuralPowerRootInstanceModule::HandleBuildablesConstructed(const TArra
 
 	if (Enqueued > 0)
 	{
-		UE_LOG(LogStructuralPower, Log, TEXT("[PWR] BlueprintConstruct deferred %d buildable(s)"), Enqueued);
+		UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] BlueprintConstruct deferred %d buildable(s)"), Enqueued);
 	}
+}
+
+static void HandleSwitchCircuitsRebuilt(AFGBuildableCircuitBridge* Bridge)
+{
+	AFGBuildableCircuitSwitch* Switch = Cast<AFGBuildableCircuitSwitch>(Bridge);
+	if (!IsValid(Switch) || !Switch->HasAuthority())
+	{
+		return;
+	}
+
+	UWorld* World = Switch->GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
+		[WorldWeak = TWeakObjectPtr<UWorld>(World),
+			SwitchWeak = TWeakObjectPtr<AFGBuildableCircuitSwitch>(Switch)]()
+		{
+			if (AFGBuildableCircuitSwitch* SwitchPtr = SwitchWeak.Get())
+			{
+				if (UWorld* WorldPtr = WorldWeak.Get())
+				{
+					if (AStructuralPowerGraphSubsystem* Graph =
+						AStructuralPowerGraphSubsystem::GetOrCreate(WorldPtr))
+					{
+						if (Graph->ShouldDeferCircuitDrivenRefresh())
+						{
+							WorldPtr->GetTimerManager().SetTimerForNextTick(
+								FTimerDelegate::CreateStatic(
+									&HandleSwitchCircuitsRebuilt,
+									static_cast<AFGBuildableCircuitBridge*>(SwitchPtr)));
+							return;
+						}
+
+						Graph->ProcessSwitchCircuitsRebuilt(SwitchPtr);
+					}
+				}
+			}
+		}));
 }
 
 void UStructuralPowerRootInstanceModule::HandlePowerConnectionChanged(
@@ -239,7 +492,7 @@ void UStructuralPowerRootInstanceModule::HandleLightweightMemberAdded(
 
 	const FStructuralLightweightKey Key{BuildableClass, InstanceIndex};
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[PWR] LW hook AddFromBuildableInstanceData %s[%d]"),
+		TEXT("[HALSP] LW hook AddFromBuildableInstanceData %s[%d]"),
 		*BuildableClass->GetName(),
 		InstanceIndex);
 
@@ -277,22 +530,29 @@ void UStructuralPowerRootInstanceModule::HandleLightweightMemberRemoved(
 
 void UStructuralPowerRootInstanceModule::HandlePostLoadMap(UWorld* World)
 {
-	if (!IsValid(World) || !World->IsGameWorld())
+	if (!FStructuralPowerWorldGate::IsGameplayWorld(World))
 	{
 		return;
 	}
+
+	FStructuralPowerIdPresenterFactory::ResetForMapTravel();
 
 	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
 		[WorldWeak = TWeakObjectPtr<UWorld>(World)]()
 		{
 			if (UWorld* WorldPtr = WorldWeak.Get())
 			{
-				AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::GetOrCreate(WorldPtr);
-				UStructuralPowerFactoryTickHandler::RegisterForWorld(WorldPtr);
-				if (Graph)
+				if (!FStructuralPowerWorldGate::IsGameplayWorld(WorldPtr))
+				{
+					return;
+				}
+
+				if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::GetOrCreate(WorldPtr))
 				{
 					Graph->OnWorldReady(WorldPtr);
 				}
+
+				FStructuralPowerSmlChatCommands::RegisterWithWorld(WorldPtr);
 			}
 		}));
 }
@@ -301,7 +561,15 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 {
 	if (Phase == ELifecyclePhase::POST_INITIALIZATION)
 	{
-		FStructuralPowerModConfig::SyncRuntimeFromConfigManager(GetGameInstance());
+		FStructuralPowerModConfig::LoadRuntimeConfig();
+#if !WITH_EDITOR
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("StructuralPower v3.0.0 — vanilla-first reconcile (I-key Id panel)"
+				" (groupLighting=%s trace=%s extendedDebug=%s)"),
+			FStructuralPowerModConfig::IsGroupLightingEnabled() ? TEXT("on") : TEXT("off"),
+			FStructuralPowerModConfig::IsTraceEnabled() ? TEXT("on") : TEXT("off"),
+			FStructuralPowerModConfig::IsExtendedDebugEnabled() ? TEXT("on") : TEXT("off"));
+#endif
 	}
 
 	if (Phase != ELifecyclePhase::INITIALIZATION)
@@ -313,13 +581,83 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 #if WITH_EDITOR
 	UE_LOG(LogStructuralPower, Log, TEXT("StructuralPower: skipping hooks in editor"));
 #else
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("StructuralPower v2.1 — switches (Mode %s) + hoverpack structural"),
-		FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled()
-			? TEXT("B keyed subnet")
-			: TEXT("A whole-component"));
+	FStructuralEquipmentBridgeRegistry::Get().Initialize();
+	FStructuralEndpointProcessors::InitializeRegistries();
+	FStructuralGroupToggleRegistry::Get().Initialize();
+	FStructuralPowerIdInput::Register();
+	FStructuralVanillaPowerTrace::RegisterHooks();
 
-	FStructuralHoverpackBridge::RegisterHooks();
+	SUBSCRIBE_METHOD_AFTER(
+		UFGGameUI::RemoveInteractWidget,
+		[](UFGGameUI* GameUI, UFGInteractWidget* /*Widget*/)
+		{
+			if (!IsValid(GameUI))
+			{
+				return;
+			}
+
+			if (AFGPlayerController* PC = Cast<AFGPlayerController>(GameUI->GetOwningPlayer()))
+			{
+				FStructuralPowerIdInput::RecoverAfterVanillaUiClosed(PC);
+			}
+		});
+
+	SUBSCRIBE_METHOD_AFTER(
+		AFGHUD::OpenInteractUI,
+		[](AFGHUD* Hud, TSubclassOf<UFGInteractWidget> /*WidgetClass*/, UObject* /*InteractObject*/)
+		{
+			FStructuralPowerIdPresenterFactory::CloseActive();
+			if (IsValid(Hud))
+			{
+				if (AFGPlayerController* PC = Cast<AFGPlayerController>(Hud->GetOwningPlayerController()))
+				{
+					FStructuralPowerIdPresenterFactory::ReleaseForVanillaInteract(PC);
+				}
+			}
+		});
+
+	SUBSCRIBE_METHOD_VIRTUAL(
+		AFGBuildableControlPanelHost::BeginPlay,
+		GetMutableDefault<AFGBuildableControlPanelHost>(),
+		[](auto& /*Scope*/, AFGBuildableControlPanelHost* Host)
+		{
+			if (!IsValid(Host) || !Host->HasAuthority())
+			{
+				return;
+			}
+
+			if (Host->IsA<AFGBuildableLightsControlPanel>())
+			{
+				AStructuralPowerGraphSubsystem::StripPersistedEndpointModComponents(Host);
+			}
+		});
+
+	SUBSCRIBE_METHOD_VIRTUAL_AFTER(
+		AFGBuildableControlPanelHost::BeginPlay,
+		GetMutableDefault<AFGBuildableControlPanelHost>(),
+		[](AFGBuildableControlPanelHost* Host)
+		{
+			if (AFGBuildableLightsControlPanel* Panel = Cast<AFGBuildableLightsControlPanel>(Host))
+			{
+				HandlePanelBeginPlay(Panel);
+			}
+		});
+
+	SUBSCRIBE_METHOD_VIRTUAL_AFTER(
+		AFGBuildableLightSource::BeginPlay,
+		GetMutableDefault<AFGBuildableLightSource>(),
+		[](AFGBuildableLightSource* Light)
+		{
+			HandleLightBeginPlay(Light);
+		});
+
+	SUBSCRIBE_METHOD_VIRTUAL_AFTER(
+		AFGBuildableLightSource::OnBuildEffectFinished,
+		GetMutableDefault<AFGBuildableLightSource>(),
+		[](AFGBuildableLightSource* Light)
+		{
+			HandleLightBuildEffectFinished(Light);
+		});
 
 	SUBSCRIBE_METHOD_VIRTUAL(
 		AFGBuildableCircuitSwitch::BeginPlay,
@@ -332,6 +670,14 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 			}
 
 			AStructuralPowerGraphSubsystem::StripPersistedEndpointModComponents(Switch);
+		});
+
+	SUBSCRIBE_METHOD_VIRTUAL_AFTER(
+		AFGBuildablePowerPole::BeginPlay,
+		GetMutableDefault<AFGBuildablePowerPole>(),
+		[](AFGBuildablePowerPole* Pole)
+		{
+			HandlePoleBeginPlay(Pole);
 		});
 
 	SUBSCRIBE_METHOD_VIRTUAL_AFTER(
@@ -363,6 +709,14 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 		[](AFGBuildableSubsystem* /*Subsystem*/, AFGBuildable* Buildable)
 		{
 			HandleBuildableRemoved(Buildable);
+		});
+
+	SUBSCRIBE_METHOD_VIRTUAL_AFTER(
+		AFGBuildableCircuitBridge::OnCircuitsRebuilt,
+		GetMutableDefault<AFGBuildableCircuitBridge>(),
+		[](AFGBuildableCircuitBridge* Bridge)
+		{
+			HandleSwitchCircuitsRebuilt(Bridge);
 		});
 
 	SUBSCRIBE_METHOD_VIRTUAL_AFTER(

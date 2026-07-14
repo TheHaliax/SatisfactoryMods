@@ -5,11 +5,11 @@
 
 #include "CoreMinimal.h"
 #include "FGRemoteCallObject.h"
+#include "Routing/EStructuralChannel.h"
 #include "UStructuralPowerRCO.generated.h"
 
 class AFGBuildable;
 
-/** DR-009 — client UI → authority Id override on graph subsystem save registry. */
 UCLASS()
 class STRUCTURALPOWER_API UStructuralPowerRCO : public UFGRemoteCallObject
 {
@@ -19,7 +19,20 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	UFUNCTION(Server, Reliable)
-	void Server_SetPlayerOverrideId(AFGBuildable* Buildable, FName PlayerOverrideId);
+	void Server_SetEndpointIds(
+		AFGBuildable* Buildable,
+		FName Source,
+		FName Control,
+		bool bClearSource,
+		bool bClearControl,
+		bool bGlobalControl = false,
+		bool bTouchGlobalControl = false);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestComponentIdList(AFGBuildable* ContextBuildable);
+
+	UFUNCTION(Client, Reliable)
+	void Client_ReceiveComponentIdList(const FStructuralComponentIdList& List);
 
 	UFUNCTION(Server, Reliable)
 	void Server_RunBangCommand(const FString& CommandLine);

@@ -6,26 +6,13 @@
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildablePowerPole.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
+#include "Core/FStructuralPowerWorldGate.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "FGBuildableSubsystem.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "Session/FStructuralPowerSessionSettings.h"
 #include "StructuralPowerLog.h"
-
-namespace
-{
-bool ShouldSkipAutomaticAudit(const UWorld* World)
-{
-	if (!IsValid(World))
-	{
-		return true;
-	}
-
-	const FString MapName = World->GetMapName();
-	return MapName.Contains(TEXT("Menu"), ESearchCase::IgnoreCase);
-}
-}
 
 void FStructuralPowerDiagnostics::AuditWorld(UWorld* World, bool bAllowMenuWorld)
 {
@@ -34,7 +21,7 @@ void FStructuralPowerDiagnostics::AuditWorld(UWorld* World, bool bAllowMenuWorld
 		return;
 	}
 
-	if (!bAllowMenuWorld && ShouldSkipAutomaticAudit(World))
+	if (!bAllowMenuWorld && FStructuralPowerWorldGate::IsMenuWorld(World))
 	{
 		return;
 	}

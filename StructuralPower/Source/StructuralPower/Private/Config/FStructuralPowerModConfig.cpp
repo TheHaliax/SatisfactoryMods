@@ -1,17 +1,12 @@
 // SPDX-FileCopyrightText: 2026 Haliax
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "Config/UStructuralPowerModConfiguration.h"
-
 #include "Config/FStructuralPowerModConfig.h"
 
 #include "Configuration/ConfigManager.h"
-#include "Configuration/ConfigProperty.h"
-#include "Configuration/Properties/ConfigPropertyBool.h"
-#include "Configuration/Properties/ConfigPropertyFloat.h"
-#include "Configuration/Properties/ConfigPropertySection.h"
-#include "Engine/GameInstance.h"
+#include "Save/AStructuralPowerGraphSubsystem.h"
 #include "HAL/IConsoleManager.h"
+#include "Misc/App.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Serialization/JsonReader.h"
@@ -24,49 +19,78 @@ namespace
 static constexpr float HoverpackMultiplierMin = 1.0f;
 static constexpr float HoverpackMultiplierMax = 10.0f;
 
-static TAutoConsoleVariable<int32> CVarStructuralPowerEnablePropagation(
-	TEXT("StructuralPower.EnablePropagation"),
-	1,
-	TEXT("1 = enable structural power propagation; 0 = disable"),
-	ECVF_Default);
-
 static TAutoConsoleVariable<int32> CVarStructuralPowerTrace(
 	TEXT("StructuralPower.Trace"),
 	0,
-	TEXT("1 = enable [PWR] trace logging"),
+	TEXT("1 = enable [HALSP] trace logging (debug)"),
 	ECVF_Default);
 
-static TAutoConsoleVariable<int32> CVarStructuralPowerGatePowerSwitches(
-	TEXT("StructuralPower.GatePowerSwitches"),
-	1,
-	TEXT("1 = structural power switch gating (v2.1); 0 = off"),
+static TAutoConsoleVariable<int32> CVarStructuralPowerExtendedDebug(
+	TEXT("StructuralPower.ExtendedDebug"),
+	0,
+	TEXT("1 = vanilla power/circuit hooks + fat [HALSP] logs (debug)"),
 	ECVF_Default);
 
-static TAutoConsoleVariable<int32> CVarStructuralPowerSwitchManualGroups(
-	TEXT("StructuralPower.PowerSwitchManualGroups"),
-	1,
-	TEXT("1 = switch Mode B keyed subnets (default); 0 = Mode A whole-component gate"),
-	ECVF_Default);
-
-static TAutoConsoleVariable<int32> CVarStructuralPowerEnableHoverpackStructural(
-	TEXT("StructuralPower.EnableHoverpackStructural"),
-	1,
-	TEXT("1 = hoverpack structural geometry tether (v2.1); 0 = vanilla only"),
+static TAutoConsoleVariable<int32> CVarStructuralPowerGroupLighting(
+	TEXT("StructuralPower.GroupLighting"),
+	0,
+	TEXT("1 = lights draw structural power on powered foundations; 0 = wire required"),
 	ECVF_Default);
 
 static TAutoConsoleVariable<float> CVarStructuralPowerHoverpackHorizontalMultiplier(
 	TEXT("StructuralPower.HoverpackStructuralHorizontalMultiplier"),
-	1.5f,
+	1.2f,
 	TEXT("Structural hoverpack horizontal radius multiplier (clamp 1.0-10.0)"),
 	ECVF_Default);
 
 static TAutoConsoleVariable<float> CVarStructuralPowerHoverpackVerticalMultiplier(
 	TEXT("StructuralPower.HoverpackStructuralVerticalMultiplier"),
-	1.5f,
+	1.2f,
 	TEXT("Structural hoverpack vertical radius multiplier (clamp 1.0-10.0)"),
 	ECVF_Default);
 
-static float ClampHoverpackMultiplier(float Value)
+	static bool IsGroupEnabled(TAutoConsoleVariable<int32>& CVar)
+	{
+		return CVar.GetValueOnGameThread() != 0;
+	}
+
+	static TAutoConsoleVariable<int32> CVarStructuralPowerGroupGeneration(
+		TEXT("StructuralPower.GroupGeneration"),
+		0,
+		TEXT("1 = generators and storage draw structural power on structure"),
+		ECVF_Default);
+
+	static TAutoConsoleVariable<int32> CVarStructuralPowerGroupResources(
+		TEXT("StructuralPower.GroupResources"),
+		0,
+		TEXT("1 = resource extractors draw structural power on structure"),
+		ECVF_Default);
+
+	static TAutoConsoleVariable<int32> CVarStructuralPowerGroupProduction(
+		TEXT("StructuralPower.GroupProduction"),
+		0,
+		TEXT("1 = production buildings draw structural power on structure"),
+		ECVF_Default);
+
+	static TAutoConsoleVariable<int32> CVarStructuralPowerGroupTransport(
+		TEXT("StructuralPower.GroupTransport"),
+		0,
+		TEXT("1 = transport buildings draw structural power on structure"),
+		ECVF_Default);
+
+	static TAutoConsoleVariable<int32> CVarStructuralPowerGroupPipes(
+		TEXT("StructuralPower.GroupPipes"),
+		0,
+		TEXT("1 = pipe pumps draw structural power on structure"),
+		ECVF_Default);
+
+	static TAutoConsoleVariable<int32> CVarStructuralPowerGroupBelts(
+		TEXT("StructuralPower.GroupBelts"),
+		0,
+		TEXT("1 = belt category toggle placeholder"),
+		ECVF_Default);
+
+	static float ClampHoverpackMultiplier(float Value)
 {
 	return FMath::Clamp(Value, HoverpackMultiplierMin, HoverpackMultiplierMax);
 }
@@ -119,26 +143,34 @@ static float ParseFloatField(const TSharedPtr<FJsonObject>& Object, const FStrin
 	return DefaultValue;
 }
 
-static void ApplyCvarsFromLegacyJson(const TSharedPtr<FJsonObject>& Object)
+static void ApplyCvarsFromJson(const TSharedPtr<FJsonObject>& Object)
 {
 	if (!Object.IsValid())
 	{
 		return;
 	}
 
-	CVarStructuralPowerEnablePropagation->Set(
-		ParseBoolField(Object, TEXT("EnablePropagation"), true) ? 1 : 0);
 	CVarStructuralPowerTrace->Set(ParseBoolField(Object, TEXT("Trace"), false) ? 1 : 0);
-	CVarStructuralPowerGatePowerSwitches->Set(
-		ParseBoolField(Object, TEXT("GatePowerSwitches"), true) ? 1 : 0);
-	CVarStructuralPowerSwitchManualGroups->Set(
-		ParseBoolField(Object, TEXT("PowerSwitchManualGroups"), true) ? 1 : 0);
-	CVarStructuralPowerEnableHoverpackStructural->Set(
-		ParseBoolField(Object, TEXT("EnableHoverpackStructural"), true) ? 1 : 0);
+	CVarStructuralPowerExtendedDebug->Set(
+		ParseBoolField(Object, TEXT("ExtendedDebug"), false) ? 1 : 0);
+	CVarStructuralPowerGroupLighting->Set(
+		ParseBoolField(Object, TEXT("GroupLighting"), false) ? 1 : 0);
+	CVarStructuralPowerGroupGeneration->Set(
+		ParseBoolField(Object, TEXT("GroupGeneration"), false) ? 1 : 0);
+	CVarStructuralPowerGroupResources->Set(
+		ParseBoolField(Object, TEXT("GroupResources"), false) ? 1 : 0);
+	CVarStructuralPowerGroupProduction->Set(
+		ParseBoolField(Object, TEXT("GroupProduction"), false) ? 1 : 0);
+	CVarStructuralPowerGroupTransport->Set(
+		ParseBoolField(Object, TEXT("GroupTransport"), false) ? 1 : 0);
+	CVarStructuralPowerGroupPipes->Set(
+		ParseBoolField(Object, TEXT("GroupPipes"), false) ? 1 : 0);
+	CVarStructuralPowerGroupBelts->Set(
+		ParseBoolField(Object, TEXT("GroupBelts"), false) ? 1 : 0);
 
 	float Horizontal = ParseFloatField(Object, TEXT("HoverpackStructuralHorizontalMultiplier"), -1.0f);
 	float Vertical = ParseFloatField(Object, TEXT("HoverpackStructuralVerticalMultiplier"), -1.0f);
-	const float Legacy = ParseFloatField(Object, TEXT("HoverpackStructuralRadiusMultiplier"), 1.5f);
+	const float Legacy = ParseFloatField(Object, TEXT("HoverpackStructuralRadiusMultiplier"), 1.2f);
 	if (Horizontal < 0.0f)
 	{
 		Horizontal = Legacy;
@@ -152,18 +184,34 @@ static void ApplyCvarsFromLegacyJson(const TSharedPtr<FJsonObject>& Object)
 	CVarStructuralPowerHoverpackVerticalMultiplier->Set(ClampHoverpackMultiplier(Vertical));
 }
 
-static TSharedPtr<FJsonObject> BuildLegacyJsonFromCvars()
+static TSharedPtr<FJsonObject> BuildJsonFromCvars()
 {
 	TSharedPtr<FJsonObject> Object = MakeShared<FJsonObject>();
-	Object->SetBoolField(TEXT("EnablePropagation"), CVarStructuralPowerEnablePropagation.GetValueOnGameThread() != 0);
 	Object->SetBoolField(TEXT("Trace"), CVarStructuralPowerTrace.GetValueOnGameThread() != 0);
-	Object->SetBoolField(TEXT("GatePowerSwitches"), CVarStructuralPowerGatePowerSwitches.GetValueOnGameThread() != 0);
 	Object->SetBoolField(
-		TEXT("PowerSwitchManualGroups"),
-		CVarStructuralPowerSwitchManualGroups.GetValueOnGameThread() != 0);
+		TEXT("ExtendedDebug"),
+		CVarStructuralPowerExtendedDebug.GetValueOnGameThread() != 0);
 	Object->SetBoolField(
-		TEXT("EnableHoverpackStructural"),
-		CVarStructuralPowerEnableHoverpackStructural.GetValueOnGameThread() != 0);
+		TEXT("GroupLighting"),
+		CVarStructuralPowerGroupLighting.GetValueOnGameThread() != 0);
+	Object->SetBoolField(
+		TEXT("GroupGeneration"),
+		CVarStructuralPowerGroupGeneration.GetValueOnGameThread() != 0);
+	Object->SetBoolField(
+		TEXT("GroupResources"),
+		CVarStructuralPowerGroupResources.GetValueOnGameThread() != 0);
+	Object->SetBoolField(
+		TEXT("GroupProduction"),
+		CVarStructuralPowerGroupProduction.GetValueOnGameThread() != 0);
+	Object->SetBoolField(
+		TEXT("GroupTransport"),
+		CVarStructuralPowerGroupTransport.GetValueOnGameThread() != 0);
+	Object->SetBoolField(
+		TEXT("GroupPipes"),
+		CVarStructuralPowerGroupPipes.GetValueOnGameThread() != 0);
+	Object->SetBoolField(
+		TEXT("GroupBelts"),
+		CVarStructuralPowerGroupBelts.GetValueOnGameThread() != 0);
 	Object->SetNumberField(
 		TEXT("HoverpackStructuralHorizontalMultiplier"),
 		ClampHoverpackMultiplier(CVarStructuralPowerHoverpackHorizontalMultiplier.GetValueOnGameThread()));
@@ -172,236 +220,19 @@ static TSharedPtr<FJsonObject> BuildLegacyJsonFromCvars()
 		ClampHoverpackMultiplier(CVarStructuralPowerHoverpackVerticalMultiplier.GetValueOnGameThread()));
 	return Object;
 }
-
-static UConfigPropertyBool* FindBoolPropertyInSection(UConfigPropertySection* Section, const FString& Key)
-{
-	if (!IsValid(Section))
-	{
-		return nullptr;
-	}
-
-	if (TObjectPtr<UConfigProperty>* Found = Section->SectionProperties.Find(Key))
-	{
-		return Cast<UConfigPropertyBool>(*Found);
-	}
-
-	return nullptr;
-}
-
-static UConfigPropertyFloat* FindFloatPropertyInSection(UConfigPropertySection* Section, const FString& Key)
-{
-	if (!IsValid(Section))
-	{
-		return nullptr;
-	}
-
-	if (TObjectPtr<UConfigProperty>* Found = Section->SectionProperties.Find(Key))
-	{
-		return Cast<UConfigPropertyFloat>(*Found);
-	}
-
-	return nullptr;
-}
-
-static UConfigPropertyBool* FindBoolProperty(UConfigPropertySection* Root, const FString& Key)
-{
-	if (!IsValid(Root))
-	{
-		return nullptr;
-	}
-
-	if (UConfigPropertyBool* Direct = FindBoolPropertyInSection(Root, Key))
-	{
-		return Direct;
-	}
-
-	for (const TPair<FString, TObjectPtr<UConfigProperty>>& Pair : Root->SectionProperties)
-	{
-		if (UConfigPropertySection* Nested = Cast<UConfigPropertySection>(Pair.Value))
-		{
-			if (UConfigPropertyBool* Found = FindBoolPropertyInSection(Nested, Key))
-			{
-				return Found;
-			}
-		}
-	}
-
-	return nullptr;
-}
-
-static UConfigPropertyFloat* FindFloatProperty(UConfigPropertySection* Root, const FString& Key)
-{
-	if (!IsValid(Root))
-	{
-		return nullptr;
-	}
-
-	if (UConfigPropertyFloat* Direct = FindFloatPropertyInSection(Root, Key))
-	{
-		return Direct;
-	}
-
-	for (const TPair<FString, TObjectPtr<UConfigProperty>>& Pair : Root->SectionProperties)
-	{
-		if (UConfigPropertySection* Nested = Cast<UConfigPropertySection>(Pair.Value))
-		{
-			if (UConfigPropertyFloat* Found = FindFloatPropertyInSection(Nested, Key))
-			{
-				return Found;
-			}
-		}
-	}
-
-	return nullptr;
-}
-
-static UConfigPropertySection* FindNestedSection(UConfigPropertySection* Root, const FString& Key)
-{
-	if (!IsValid(Root))
-	{
-		return nullptr;
-	}
-
-	if (TObjectPtr<UConfigProperty>* Found = Root->SectionProperties.Find(Key))
-	{
-		return Cast<UConfigPropertySection>(*Found);
-	}
-
-	return nullptr;
-}
-
-static void MigrateFlatSmlConfigToNestedDebug(UConfigPropertySection* Root, UGameInstance* GameInstance)
-{
-	if (!IsValid(Root))
-	{
-		return;
-	}
-
-	UConfigPropertySection* Debug = FindNestedSection(Root, TEXT("Debug"));
-	if (!Debug)
-	{
-		return;
-	}
-
-	const FString Path = FStructuralPowerModConfig::GetConfigFilePath();
-	FString JsonText;
-	if (!FFileHelper::LoadFileToString(JsonText, *Path))
-	{
-		return;
-	}
-
-	TSharedPtr<FJsonObject> Object;
-	const TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonText);
-	if (!FJsonSerializer::Deserialize(Reader, Object) || !Object.IsValid())
-	{
-		return;
-	}
-
-	if (!Object->HasField(TEXT("SML_ModVersion_DoNotChange")))
-	{
-		return;
-	}
-
-	bool bMigrated = false;
-	const TCHAR* DebugBoolKeys[] = {
-		TEXT("Trace"),
-		TEXT("EnablePropagation"),
-		TEXT("GatePowerSwitches"),
-		TEXT("PowerSwitchManualGroups"),
-		TEXT("EnableHoverpackStructural"),
-	};
-
-	const bool bFlatDebugKeys = !Object->HasField(TEXT("Debug"));
-	for (const TCHAR* Key : DebugBoolKeys)
-	{
-		if (!Object->HasField(Key))
-		{
-			continue;
-		}
-
-		if (!bFlatDebugKeys)
-		{
-			const TSharedPtr<FJsonObject>* DebugObject = nullptr;
-			if (Object->TryGetObjectField(TEXT("Debug"), DebugObject) && DebugObject && DebugObject->IsValid())
-			{
-				if ((*DebugObject)->HasField(Key))
-				{
-					continue;
-				}
-			}
-		}
-
-		if (UConfigPropertyBool* Prop = FindBoolPropertyInSection(Debug, Key))
-		{
-			Prop->Value = ParseBoolField(Object, Key, Prop->DefaultValue);
-			bMigrated = true;
-		}
-	}
-
-	if (!bMigrated || !IsValid(GameInstance))
-	{
-		return;
-	}
-
-	if (UConfigManager* ConfigManager = GameInstance->GetSubsystem<UConfigManager>())
-	{
-		ConfigManager->MarkConfigurationDirty(FConfigId{FStructuralPowerModConfig::ModReference, TEXT("")});
-		UE_LOG(LogStructuralPower, Log, TEXT("Migrated flat SML config keys into Debug section"));
-	}
-}
-
-static void BindPropertyChangeHandlers(
-	UConfigPropertySection* Section,
-	UStructuralPowerConfigLiveSync* Sync)
-{
-	if (!IsValid(Section) || !IsValid(Sync))
-	{
-		return;
-	}
-
-	for (const TPair<FString, TObjectPtr<UConfigProperty>>& Pair : Section->SectionProperties)
-	{
-		UConfigProperty* Property = Pair.Value;
-		if (!IsValid(Property))
-		{
-			continue;
-		}
-
-		if (UConfigPropertySection* Nested = Cast<UConfigPropertySection>(Property))
-		{
-			BindPropertyChangeHandlers(Nested, Sync);
-			continue;
-		}
-
-		Property->OnPropertyValueChanged.AddDynamic(Sync, &UStructuralPowerConfigLiveSync::HandlePropertyChanged);
-	}
-}
-
-static UConfigPropertySection* GetLiveConfigRoot(UGameInstance* GameInstance)
-{
-	if (!IsValid(GameInstance))
-	{
-		return nullptr;
-	}
-
-	UConfigManager* ConfigManager = GameInstance->GetSubsystem<UConfigManager>();
-	if (!ConfigManager)
-	{
-		return nullptr;
-	}
-
-	const FConfigId ConfigId{FStructuralPowerModConfig::ModReference, TEXT("")};
-	return ConfigManager->GetConfigurationRootSection(ConfigId);
-}
-}
+} // namespace
 
 void FStructuralPowerModConfig::RegisterConsoleVariables()
 {
-	CVarStructuralPowerEnablePropagation.AsVariable();
 	CVarStructuralPowerTrace.AsVariable();
-	CVarStructuralPowerGatePowerSwitches.AsVariable();
-	CVarStructuralPowerSwitchManualGroups.AsVariable();
-	CVarStructuralPowerEnableHoverpackStructural.AsVariable();
+	CVarStructuralPowerExtendedDebug.AsVariable();
+	CVarStructuralPowerGroupLighting.AsVariable();
+	CVarStructuralPowerGroupGeneration.AsVariable();
+	CVarStructuralPowerGroupResources.AsVariable();
+	CVarStructuralPowerGroupProduction.AsVariable();
+	CVarStructuralPowerGroupTransport.AsVariable();
+	CVarStructuralPowerGroupPipes.AsVariable();
+	CVarStructuralPowerGroupBelts.AsVariable();
 	CVarStructuralPowerHoverpackHorizontalMultiplier.AsVariable();
 	CVarStructuralPowerHoverpackVerticalMultiplier.AsVariable();
 }
@@ -412,7 +243,7 @@ FString FStructuralPowerModConfig::GetConfigFilePath()
 		+ FString::Printf(TEXT("%s.cfg"), ModReference);
 }
 
-void FStructuralPowerModConfig::LoadLegacyFromDisk()
+void FStructuralPowerModConfig::LoadRuntimeConfig()
 {
 	const FString Path = GetConfigFilePath();
 	FString JsonText;
@@ -425,20 +256,25 @@ void FStructuralPowerModConfig::LoadLegacyFromDisk()
 	const TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonText);
 	if (!FJsonSerializer::Deserialize(Reader, Object) || !Object.IsValid())
 	{
-		UE_LOG(LogStructuralPower, Warning, TEXT("Failed to parse legacy config %s"), *Path);
+		UE_LOG(LogStructuralPower, Warning, TEXT("Failed to parse config %s"), *Path);
 		return;
 	}
 
-	ApplyCvarsFromLegacyJson(Object);
-	UE_LOG(LogStructuralPower, Log, TEXT("Loaded legacy CVars from %s (pre-SML migrate)"), *Path);
+	ApplyCvarsFromJson(Object);
+	UE_LOG(LogStructuralPower, Log, TEXT("Loaded StructuralPower config from %s"), *Path);
 }
 
 void FStructuralPowerModConfig::SaveLegacyToDisk()
 {
+	if (IsEngineExitRequested())
+	{
+		return;
+	}
+
 	const FString Path = GetConfigFilePath();
 	IFileManager::Get().MakeDirectory(*FPaths::GetPath(Path), true);
 
-	const TSharedPtr<FJsonObject> Object = BuildLegacyJsonFromCvars();
+	const TSharedPtr<FJsonObject> Object = BuildJsonFromCvars();
 	FString JsonText;
 	const TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&JsonText);
 	if (!FJsonSerializer::Serialize(Object.ToSharedRef(), Writer))
@@ -449,159 +285,32 @@ void FStructuralPowerModConfig::SaveLegacyToDisk()
 	FFileHelper::SaveStringToFile(JsonText, *Path);
 }
 
-void FStructuralPowerModConfig::ApplyFromConfigRoot(UConfigPropertySection* Root)
+bool FStructuralPowerModConfig::CanMutateLiveConfig(UWorld* World)
 {
-	if (!IsValid(Root))
+	if (IsEngineExitRequested() || !IsValid(World))
 	{
-		return;
+		return false;
 	}
 
-	if (UConfigPropertyBool* Prop = FindBoolProperty(Root, TEXT("EnablePropagation")))
+	if (World->bIsTearingDown)
 	{
-		CVarStructuralPowerEnablePropagation->Set(Prop->Value ? 1 : 0);
+		return false;
 	}
-	if (UConfigPropertyBool* Prop = FindBoolProperty(Root, TEXT("Trace")))
-	{
-		CVarStructuralPowerTrace->Set(Prop->Value ? 1 : 0);
-	}
-	if (UConfigPropertyBool* Prop = FindBoolProperty(Root, TEXT("GatePowerSwitches")))
-	{
-		CVarStructuralPowerGatePowerSwitches->Set(Prop->Value ? 1 : 0);
-	}
-	if (UConfigPropertyBool* Prop = FindBoolProperty(Root, TEXT("PowerSwitchManualGroups")))
-	{
-		CVarStructuralPowerSwitchManualGroups->Set(Prop->Value ? 1 : 0);
-	}
-	if (UConfigPropertyBool* Prop = FindBoolProperty(Root, TEXT("EnableHoverpackStructural")))
-	{
-		CVarStructuralPowerEnableHoverpackStructural->Set(Prop->Value ? 1 : 0);
-	}
-	if (UConfigPropertyFloat* Prop = FindFloatProperty(Root, TEXT("HoverpackStructuralHorizontalMultiplier")))
-	{
-		CVarStructuralPowerHoverpackHorizontalMultiplier->Set(ClampHoverpackMultiplier(Prop->Value));
-	}
-	if (UConfigPropertyFloat* Prop = FindFloatProperty(Root, TEXT("HoverpackStructuralVerticalMultiplier")))
-	{
-		CVarStructuralPowerHoverpackVerticalMultiplier->Set(ClampHoverpackMultiplier(Prop->Value));
-	}
+
+	return World->GetNetMode() != NM_Client;
 }
 
-static void NotifyConfigPropertyChanged(UConfigProperty* Property)
+void FStructuralPowerModConfig::RequestGroupLightingReconcile(UWorld* World)
 {
-	if (!IsValid(Property))
+	if (!CanMutateLiveConfig(World))
 	{
 		return;
 	}
 
-	Property->MarkDirty();
-}
-
-void FStructuralPowerModConfig::PushToConfigRoot(UConfigPropertySection* Root)
-{
-	if (!IsValid(Root))
+	if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::Find(World))
 	{
-		return;
+		Graph->ReconcileGroupLightingState();
 	}
-
-	if (UConfigPropertyBool* Prop = FindBoolProperty(Root, TEXT("EnablePropagation")))
-	{
-		Prop->Value = CVarStructuralPowerEnablePropagation.GetValueOnGameThread() != 0;
-		NotifyConfigPropertyChanged(Prop);
-	}
-	if (UConfigPropertyBool* Prop = FindBoolProperty(Root, TEXT("Trace")))
-	{
-		Prop->Value = CVarStructuralPowerTrace.GetValueOnGameThread() != 0;
-		NotifyConfigPropertyChanged(Prop);
-	}
-	if (UConfigPropertyBool* Prop = FindBoolProperty(Root, TEXT("GatePowerSwitches")))
-	{
-		Prop->Value = CVarStructuralPowerGatePowerSwitches.GetValueOnGameThread() != 0;
-		NotifyConfigPropertyChanged(Prop);
-	}
-	if (UConfigPropertyBool* Prop = FindBoolProperty(Root, TEXT("PowerSwitchManualGroups")))
-	{
-		Prop->Value = CVarStructuralPowerSwitchManualGroups.GetValueOnGameThread() != 0;
-		NotifyConfigPropertyChanged(Prop);
-	}
-	if (UConfigPropertyBool* Prop = FindBoolProperty(Root, TEXT("EnableHoverpackStructural")))
-	{
-		Prop->Value = CVarStructuralPowerEnableHoverpackStructural.GetValueOnGameThread() != 0;
-		NotifyConfigPropertyChanged(Prop);
-	}
-	if (UConfigPropertyFloat* Prop = FindFloatProperty(Root, TEXT("HoverpackStructuralHorizontalMultiplier")))
-	{
-		Prop->Value = ClampHoverpackMultiplier(
-			CVarStructuralPowerHoverpackHorizontalMultiplier.GetValueOnGameThread());
-		NotifyConfigPropertyChanged(Prop);
-	}
-	if (UConfigPropertyFloat* Prop = FindFloatProperty(Root, TEXT("HoverpackStructuralVerticalMultiplier")))
-	{
-		Prop->Value = ClampHoverpackMultiplier(
-			CVarStructuralPowerHoverpackVerticalMultiplier.GetValueOnGameThread());
-		NotifyConfigPropertyChanged(Prop);
-	}
-}
-
-void FStructuralPowerModConfig::SyncRuntimeFromConfigManager(UGameInstance* GameInstance)
-{
-	UConfigPropertySection* Root = GetLiveConfigRoot(GameInstance);
-	if (!IsValid(Root))
-	{
-		LoadLegacyFromDisk();
-		return;
-	}
-
-	const FString Path = GetConfigFilePath();
-	FString JsonText;
-	if (FFileHelper::LoadFileToString(JsonText, *Path))
-	{
-		TSharedPtr<FJsonObject> Object;
-		const TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonText);
-		if (FJsonSerializer::Deserialize(Reader, Object) && Object.IsValid()
-			&& !Object->HasField(TEXT("SML_ModVersion_DoNotChange"))
-			&& Object->HasField(TEXT("EnablePropagation")))
-		{
-			ApplyCvarsFromLegacyJson(Object);
-			PushToConfigRoot(Root);
-			if (UConfigManager* ConfigManager = GameInstance->GetSubsystem<UConfigManager>())
-			{
-				ConfigManager->MarkConfigurationDirty(FConfigId{ModReference, TEXT("")});
-			}
-			UE_LOG(LogStructuralPower, Log, TEXT("Migrated legacy config into SML schema at %s"), *Path);
-		}
-	}
-
-	StructuralPowerUpgradeConfigPropertiesForSmlWidgets(Root);
-	MigrateFlatSmlConfigToNestedDebug(Root, GameInstance);
-	ApplyFromConfigRoot(Root);
-	BindLiveConfigHandlers(GameInstance);
-	UE_LOG(LogStructuralPower, Log, TEXT("Synced runtime CVars from SML mod configuration"));
-}
-
-void FStructuralPowerModConfig::BindLiveConfigHandlers(UGameInstance* GameInstance)
-{
-	if (!IsValid(GameInstance))
-	{
-		return;
-	}
-
-	static TSet<TWeakObjectPtr<UGameInstance>> BoundInstances;
-	if (BoundInstances.Contains(GameInstance))
-	{
-		return;
-	}
-
-	UConfigPropertySection* Root = GetLiveConfigRoot(GameInstance);
-	if (!IsValid(Root))
-	{
-		return;
-	}
-
-	BoundInstances.Add(GameInstance);
-
-	UStructuralPowerConfigLiveSync* Sync = NewObject<UStructuralPowerConfigLiveSync>(GameInstance);
-	Sync->BoundGameInstance = GameInstance;
-	BindPropertyChangeHandlers(Root, Sync);
 }
 
 bool FStructuralPowerModConfig::TryApplySetCommand(const TArray<FString>& Args, UWorld* World)
@@ -615,6 +324,11 @@ bool FStructuralPowerModConfig::TryApplySetCommand(const TArray<FString>& Args, 
 	if (IsValid(World) && World->GetNetMode() == NM_Client)
 	{
 		UE_LOG(LogStructuralPower, Warning, TEXT("StructuralPower.Set ignored on client — authority only"));
+		return false;
+	}
+
+	if (IsEngineExitRequested())
+	{
 		return false;
 	}
 
@@ -636,11 +350,15 @@ bool FStructuralPowerModConfig::TryApplySetCommand(const TArray<FString>& Args, 
 	};
 
 	bool bChanged = false;
-	if (SetBool(CVarStructuralPowerEnablePropagation, TEXT("EnablePropagation"))
-		|| SetBool(CVarStructuralPowerTrace, TEXT("Trace"))
-		|| SetBool(CVarStructuralPowerGatePowerSwitches, TEXT("GatePowerSwitches"))
-		|| SetBool(CVarStructuralPowerSwitchManualGroups, TEXT("PowerSwitchManualGroups"))
-		|| SetBool(CVarStructuralPowerEnableHoverpackStructural, TEXT("EnableHoverpackStructural")))
+	if (SetBool(CVarStructuralPowerTrace, TEXT("Trace"))
+		|| SetBool(CVarStructuralPowerExtendedDebug, TEXT("ExtendedDebug"))
+		|| SetBool(CVarStructuralPowerGroupLighting, TEXT("GroupLighting"))
+		|| SetBool(CVarStructuralPowerGroupGeneration, TEXT("GroupGeneration"))
+		|| SetBool(CVarStructuralPowerGroupResources, TEXT("GroupResources"))
+		|| SetBool(CVarStructuralPowerGroupProduction, TEXT("GroupProduction"))
+		|| SetBool(CVarStructuralPowerGroupTransport, TEXT("GroupTransport"))
+		|| SetBool(CVarStructuralPowerGroupPipes, TEXT("GroupPipes"))
+		|| SetBool(CVarStructuralPowerGroupBelts, TEXT("GroupBelts")))
 	{
 		bChanged = true;
 	}
@@ -669,47 +387,49 @@ bool FStructuralPowerModConfig::TryApplySetCommand(const TArray<FString>& Args, 
 		return false;
 	}
 
-	if (UGameInstance* GameInstance = IsValid(World) ? World->GetGameInstance() : nullptr)
+	SaveLegacyToDisk();
+
+	if (Key.Equals(TEXT("GroupLighting"), ESearchCase::IgnoreCase))
 	{
-		if (UConfigPropertySection* Root = GetLiveConfigRoot(GameInstance))
-		{
-			PushToConfigRoot(Root);
-			if (UConfigManager* ConfigManager = GameInstance->GetSubsystem<UConfigManager>())
-			{
-				ConfigManager->MarkConfigurationDirty(FConfigId{ModReference, TEXT("")});
-			}
-		}
-		else
-		{
-			SaveLegacyToDisk();
-		}
-	}
-	else
-	{
-		SaveLegacyToDisk();
+		RequestGroupLightingReconcile(World);
 	}
 
 	return bChanged;
 }
 
-bool FStructuralPowerModConfig::IsPropagationEnabled()
+bool FStructuralPowerModConfig::IsGroupLightingEnabled()
 {
-	return CVarStructuralPowerEnablePropagation.GetValueOnGameThread() != 0;
+	return CVarStructuralPowerGroupLighting.GetValueOnGameThread() != 0;
 }
 
-bool FStructuralPowerModConfig::IsGatePowerSwitchesEnabled()
+bool FStructuralPowerModConfig::IsGroupGenerationEnabled()
 {
-	return CVarStructuralPowerGatePowerSwitches.GetValueOnGameThread() != 0;
+	return CVarStructuralPowerGroupGeneration.GetValueOnGameThread() != 0;
 }
 
-bool FStructuralPowerModConfig::IsPowerSwitchManualGroupsEnabled()
+bool FStructuralPowerModConfig::IsGroupResourcesEnabled()
 {
-	return CVarStructuralPowerSwitchManualGroups.GetValueOnGameThread() != 0;
+	return CVarStructuralPowerGroupResources.GetValueOnGameThread() != 0;
 }
 
-bool FStructuralPowerModConfig::IsHoverpackStructuralEnabled()
+bool FStructuralPowerModConfig::IsGroupProductionEnabled()
 {
-	return CVarStructuralPowerEnableHoverpackStructural.GetValueOnGameThread() != 0;
+	return CVarStructuralPowerGroupProduction.GetValueOnGameThread() != 0;
+}
+
+bool FStructuralPowerModConfig::IsGroupTransportEnabled()
+{
+	return CVarStructuralPowerGroupTransport.GetValueOnGameThread() != 0;
+}
+
+bool FStructuralPowerModConfig::IsGroupPipesEnabled()
+{
+	return CVarStructuralPowerGroupPipes.GetValueOnGameThread() != 0;
+}
+
+bool FStructuralPowerModConfig::IsGroupBeltsEnabled()
+{
+	return CVarStructuralPowerGroupBelts.GetValueOnGameThread() != 0;
 }
 
 float FStructuralPowerModConfig::GetHoverpackHorizontalMultiplier()
@@ -725,4 +445,9 @@ float FStructuralPowerModConfig::GetHoverpackVerticalMultiplier()
 bool FStructuralPowerModConfig::IsTraceEnabled()
 {
 	return CVarStructuralPowerTrace.GetValueOnGameThread() != 0;
+}
+
+bool FStructuralPowerModConfig::IsExtendedDebugEnabled()
+{
+	return CVarStructuralPowerExtendedDebug.GetValueOnGameThread() != 0;
 }

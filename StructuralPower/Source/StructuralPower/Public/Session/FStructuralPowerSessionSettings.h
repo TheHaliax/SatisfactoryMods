@@ -5,7 +5,6 @@
 
 #include "CoreMinimal.h"
 
-/** Session toggle via console until Content session-setting asset exists. */
 class STRUCTURALPOWER_API FStructuralPowerSessionSettings
 {
 public:

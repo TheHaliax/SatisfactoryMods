@@ -6,7 +6,11 @@
 #include "Buildables/FGBuildable.h"
 #include "FGBuildableSubsystem.h"
 #include "FGLightweightBuildableSubsystem.h"
+#include "Graph/FStructuralAdjacencyHeuristics.h"
+#include "Graph/FStructuralBusMemberSpatialIndex.h"
+#include "Graph/FStructuralConnectivityGraph.h"
 #include "Graph/FStructuralOutletParentHeuristics.h"
+#include "Graph/FStructuralHostAttachAdapter.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "StructuralPowerConstants.h"
@@ -136,8 +140,8 @@ static FStructuralWallAnchor TryResolveAttachedLightweightParent(AFGBuildable* O
 	if (Best.IsValid())
 	{
 		const float DistCm = FMath::Sqrt(FVector::DistSquared(Best.WorldLocation, AnchorLocation));
-		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] outlet %s parent resolved via lw_face_attach lw=%s[%d] distCm=%.1f"),
+		UE_LOG(LogStructuralPower, Verbose,
+			TEXT("[HALSP] outlet %s parent resolved via lw_face_attach lw=%s[%d] distCm=%.1f"),
 			*Outlet->GetName(),
 			*Best.Lightweight.BuildableClass->GetName(),
 			Best.Lightweight.Index,
@@ -147,22 +151,28 @@ static FStructuralWallAnchor TryResolveAttachedLightweightParent(AFGBuildable* O
 	return Best;
 }
 
-static FStructuralWallAnchor FindParentFromLiveBusMembers(AFGBuildable* Outlet, UWorld* World)
+static FStructuralWallAnchor FindParentFromLiveBusMembers(
+	AFGBuildable* Outlet,
+	const FStructuralBusMemberSpatialIndex* BusMemberIndex)
 {
-	if (!IsValid(Outlet) || !IsValid(World))
+	if (!IsValid(Outlet))
 	{
 		return {};
 	}
 
-	const FVector AnchorLocation = FStructuralOutletParentHeuristics::GetOutletAnchorLocation(Outlet);
-
-	FStructuralWallAnchor BestPreferred;
-	float BestPreferredScore = TNumericLimits<float>::Max();
-	FStructuralWallAnchor BestAny;
-	float BestAnyScore = TNumericLimits<float>::Max();
-
-	if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World))
+	if (BusMemberIndex)
 	{
+		return BusMemberIndex->FindParentForOutlet(Outlet);
+	}
+
+	if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(Outlet->GetWorld()))
+	{
+		const FVector AnchorLocation = FStructuralOutletParentHeuristics::GetOutletAnchorLocation(Outlet);
+		FStructuralWallAnchor BestPreferred;
+		float BestPreferredScore = TNumericLimits<float>::Max();
+		FStructuralWallAnchor BestAny;
+		float BestAnyScore = TNumericLimits<float>::Max();
+
 		for (AFGBuildable* Candidate : BuildableSubsystem->GetAllBuildablesRef())
 		{
 			if (!IsValid(Candidate) || Candidate == Outlet)
@@ -194,72 +204,83 @@ static FStructuralWallAnchor FindParentFromLiveBusMembers(AFGBuildable* Outlet, 
 				BestAny,
 				BestAnyScore);
 		}
+
+		const FStructuralWallAnchor Result = BestPreferred.IsValid() ? BestPreferred : BestAny;
+		if (Result.IsValid())
+		{
+			UE_LOG(LogStructuralPower, Log,
+				TEXT("[HALSP] outlet %s parent resolved via live_scan actor=%s lw=%s[%d]"),
+				*Outlet->GetName(),
+				IsValid(Result.Actor) ? *Result.Actor->GetName() : TEXT("null"),
+				Result.Lightweight.IsValid() ? *Result.Lightweight.BuildableClass->GetName() : TEXT("null"),
+				Result.Lightweight.IsValid() ? Result.Lightweight.Index : INDEX_NONE);
+		}
+
+		return Result;
 	}
 
-	if (AFGLightweightBuildableSubsystem* LightweightSubsystem = AFGLightweightBuildableSubsystem::Get(World))
+	return {};
+}
+
+static FStructuralWallAnchor TryResolveFromStructureGraph(
+	AFGBuildable* Outlet,
+	const FStructuralConnectivityGraph* Graph,
+	const FStructuralOutletParentResolveParams& Params)
+{
+	if (!IsValid(Outlet) || !Graph)
 	{
-		for (const TPair<TSubclassOf<AFGBuildable>, TArray<FRuntimeBuildableInstanceData>>& ClassPair :
-			LightweightSubsystem->GetAllLightweightBuildableInstances())
+		return {};
+	}
+
+	const FBox Bounds = FStructuralAdjacencyHeuristics::GetActorAdjacencyBounds(Outlet);
+	FStructuralNodeId BestNodeId;
+	if (Graph->FindRootForBounds(Bounds, Outlet->GetClass(), &BestNodeId) == INDEX_NONE)
+	{
+		return {};
+	}
+
+	FStructuralWallAnchor Anchor;
+	const FVector AnchorLocation = FStructuralOutletParentHeuristics::GetOutletAnchorLocation(Outlet);
+
+	if (BestNodeId.ActorName != NAME_None && Params.ResolveActorFromNodeId)
+	{
+		if (AFGBuildable* ParentActor = Params.ResolveActorFromNodeId(BestNodeId))
 		{
-			if (!ClassPair.Key)
-			{
-				continue;
-			}
+			Anchor.Actor = ParentActor;
+			Anchor.WorldLocation = ParentActor->GetActorLocation();
+			return Anchor;
+		}
+	}
 
-			const AFGBuildable* CDO = ClassPair.Key->GetDefaultObject<AFGBuildable>();
-			if (!FStructuralEligibilityRules::IsBusMember(CDO))
+	if (BestNodeId.IsLightweight())
+	{
+		TSubclassOf<AFGBuildable> BuildableClass = BestNodeId.BuildableClass.TryLoadClass<AFGBuildable>();
+		Anchor.Lightweight = {BuildableClass, BestNodeId.LightweightIndex};
+		if (Anchor.Lightweight.IsValid())
+		{
+			AFGLightweightBuildableSubsystem* LightweightSubsystem =
+				AFGLightweightBuildableSubsystem::Get(Outlet->GetWorld());
+			if (IsValid(LightweightSubsystem))
 			{
-				continue;
-			}
-
-			for (int32 Index = 0; Index < ClassPair.Value.Num(); ++Index)
-			{
-				const FRuntimeBuildableInstanceData& RuntimeData = ClassPair.Value[Index];
-				if (!RuntimeData.IsValidOnLoad())
+				const TArray<FRuntimeBuildableInstanceData>* Instances =
+					LightweightSubsystem->GetAllLightweightBuildableInstances().Find(
+						Anchor.Lightweight.BuildableClass);
+				if (Instances && Instances->IsValidIndex(Anchor.Lightweight.Index))
 				{
-					continue;
+					const FRuntimeBuildableInstanceData& RuntimeData = (*Instances)[Anchor.Lightweight.Index];
+					FBox NodeBounds = RuntimeData.BoundingBox.IsValid
+						? RuntimeData.BoundingBox.TransformBy(RuntimeData.Transform)
+						: FBox(RuntimeData.Transform.GetLocation(), RuntimeData.Transform.GetLocation());
+					if (NodeBounds.IsValid)
+					{
+						Anchor.WorldLocation = NodeBounds.GetClosestPointTo(AnchorLocation);
+					}
 				}
-
-				FBox Bounds = RuntimeData.BoundingBox.IsValid
-					? RuntimeData.BoundingBox.TransformBy(RuntimeData.Transform)
-					: FBox(RuntimeData.Transform.GetLocation(), RuntimeData.Transform.GetLocation());
-
-				if (!Bounds.IsValid)
-				{
-					const float Extent = StructuralPowerConstants::DefaultFoundationExtentCm;
-					const FVector HalfExtents(Extent, Extent, Extent);
-					Bounds = FBox(RuntimeData.Transform.GetLocation() - HalfExtents, RuntimeData.Transform.GetLocation() + HalfExtents);
-				}
-
-				FStructuralWallAnchor Anchor;
-				Anchor.Lightweight = {ClassPair.Key, Index};
-				Anchor.WorldLocation = Bounds.GetClosestPointTo(AnchorLocation);
-
-				ConsiderCandidate(
-					Bounds,
-					ClassPair.Key,
-					Outlet,
-					Anchor,
-					BestPreferred,
-					BestPreferredScore,
-					BestAny,
-					BestAnyScore);
 			}
 		}
 	}
 
-	const FStructuralWallAnchor Result = BestPreferred.IsValid() ? BestPreferred : BestAny;
-	if (Result.IsValid())
-	{
-		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] outlet %s parent resolved via live_scan actor=%s lw=%s[%d]"),
-			*Outlet->GetName(),
-			IsValid(Result.Actor) ? *Result.Actor->GetName() : TEXT("null"),
-			Result.Lightweight.IsValid() ? *Result.Lightweight.BuildableClass->GetName() : TEXT("null"),
-			Result.Lightweight.IsValid() ? Result.Lightweight.Index : INDEX_NONE);
-	}
-
-	return Result;
+	return Anchor.IsValid() ? Anchor : FStructuralWallAnchor{};
 }
 
 static void LogResolvedParent(
@@ -271,29 +292,10 @@ static void LogResolvedParent(
 		return;
 	}
 
-	const TCHAR* MethodName = TEXT("unknown");
-	switch (Result.Method)
-	{
-	case EStructuralOutletParentMethod::ActorParent:
-		MethodName = TEXT("actor_parent");
-		break;
-	case EStructuralOutletParentMethod::LightweightFaceAttach:
-		MethodName = TEXT("lw_face_attach");
-		break;
-	case EStructuralOutletParentMethod::LightweightIndex:
-		MethodName = TEXT("lw_index");
-		break;
-	case EStructuralOutletParentMethod::LiveScan:
-		MethodName = TEXT("live_scan");
-		break;
-	default:
-		break;
-	}
-
 	UE_LOG(LogStructuralPower, Verbose,
-		TEXT("[PWR] outlet %s parent via %s actor=%s lw=%s[%d]"),
+		TEXT("[HALSP] outlet %s parent via %s actor=%s lw=%s[%d]"),
 		*Outlet->GetName(),
-		MethodName,
+		FStructuralOutletParentResolver::FormatParentMethod(Result.Method),
 		IsValid(Result.Anchor.Actor) ? *Result.Anchor.Actor->GetName() : TEXT("null"),
 		Result.Anchor.Lightweight.IsValid() ? *Result.Anchor.Lightweight.BuildableClass->GetName() : TEXT("null"),
 		Result.Anchor.Lightweight.IsValid() ? Result.Anchor.Lightweight.Index : INDEX_NONE);
@@ -304,6 +306,16 @@ FStructuralOutletParentResolveResult FStructuralOutletParentResolver::ResolveDet
 	AFGBuildable* Outlet,
 	UWorld* World,
 	const FStructuralLightweightIndex& LightweightIndex)
+{
+	FStructuralOutletParentResolveParams Params;
+	Params.LightweightIndex = &LightweightIndex;
+	return ResolveDetailed(Outlet, World, Params);
+}
+
+FStructuralOutletParentResolveResult FStructuralOutletParentResolver::ResolveDetailed(
+	AFGBuildable* Outlet,
+	UWorld* World,
+	const FStructuralOutletParentResolveParams& Params)
 {
 	FStructuralOutletParentResolveResult Result;
 
@@ -323,32 +335,122 @@ FStructuralOutletParentResolveResult FStructuralOutletParentResolver::ResolveDet
 		}
 	}
 
-	if (FStructuralWallAnchor FaceAnchor = TryResolveAttachedLightweightParent(Outlet, World);
-		FaceAnchor.IsValid())
+	if (Params.LightweightIndex)
 	{
-		Result.Anchor = FaceAnchor;
-		Result.Method = EStructuralOutletParentMethod::LightweightFaceAttach;
-		return Result;
+		if (FStructuralWallAnchor IndexAnchor = Params.LightweightIndex->FindParentWallForOutlet(Outlet);
+			IndexAnchor.IsValid())
+		{
+			Result.Anchor = IndexAnchor;
+			Result.Method = EStructuralOutletParentMethod::LightweightIndex;
+			LogResolvedParent(Outlet, Result);
+			return Result;
+		}
 	}
 
-	if (FStructuralWallAnchor IndexAnchor = LightweightIndex.FindParentWallForOutlet(Outlet);
-		IndexAnchor.IsValid())
+	if (FStructuralWallAnchor GraphAnchor = TryResolveFromStructureGraph(Outlet, Params.StructureGraph, Params);
+		GraphAnchor.IsValid())
 	{
-		Result.Anchor = IndexAnchor;
-		Result.Method = EStructuralOutletParentMethod::LightweightIndex;
+		Result.Anchor = GraphAnchor;
+		Result.Method = EStructuralOutletParentMethod::StructureGraph;
 		LogResolvedParent(Outlet, Result);
 		return Result;
 	}
 
-	if (FStructuralWallAnchor LiveAnchor = FindParentFromLiveBusMembers(Outlet, World);
-		LiveAnchor.IsValid())
+	if (Params.bAllowLiveScan)
 	{
-		Result.Anchor = LiveAnchor;
-		Result.Method = EStructuralOutletParentMethod::LiveScan;
-		return Result;
+		if (FStructuralWallAnchor LiveAnchor = FindParentFromLiveBusMembers(Outlet, Params.BusMemberIndex);
+			LiveAnchor.IsValid())
+		{
+			Result.Anchor = LiveAnchor;
+			Result.Method = EStructuralOutletParentMethod::LiveScan;
+			return Result;
+		}
+	}
+
+	const bool bIndexedSpatialExhausted = Params.LightweightIndex
+		&& Params.BusMemberIndex
+		&& Params.StructureGraph;
+	if (!bIndexedSpatialExhausted)
+	{
+		if (FStructuralWallAnchor FaceAnchor = TryResolveAttachedLightweightParent(Outlet, World);
+			FaceAnchor.IsValid())
+		{
+			Result.Anchor = FaceAnchor;
+			Result.Method = EStructuralOutletParentMethod::LightweightFaceAttach;
+			return Result;
+		}
 	}
 
 	return Result;
+}
+
+FBox FStructuralOutletParentResolver::BoundsForStructuralAnchor(
+	const FStructuralWallAnchor& Anchor,
+	UWorld* World)
+{
+	if (IsValid(Anchor.Actor))
+	{
+		FVector Origin;
+		FVector Extent;
+		Anchor.Actor->GetActorBounds(false, Origin, Extent);
+		return FBox(Origin - Extent, Origin + Extent);
+	}
+
+	if (Anchor.Lightweight.IsValid() && IsValid(World))
+	{
+		if (AFGLightweightBuildableSubsystem* LightweightSubsystem =
+				AFGLightweightBuildableSubsystem::Get(World))
+		{
+			const TArray<FRuntimeBuildableInstanceData>* Instances =
+				LightweightSubsystem->GetAllLightweightBuildableInstances().Find(
+					Anchor.Lightweight.BuildableClass);
+			if (Instances && Instances->IsValidIndex(Anchor.Lightweight.Index))
+			{
+				const FRuntimeBuildableInstanceData& RuntimeData =
+					(*Instances)[Anchor.Lightweight.Index];
+				if (RuntimeData.BoundingBox.IsValid)
+				{
+					return RuntimeData.BoundingBox.TransformBy(RuntimeData.Transform);
+				}
+			}
+		}
+	}
+
+	if (!Anchor.WorldLocation.IsZero())
+	{
+		const float Extent = StructuralPowerConstants::DefaultFoundationExtentCm;
+		const FVector HalfExtents(Extent, Extent, Extent);
+		return FBox(Anchor.WorldLocation - HalfExtents, Anchor.WorldLocation + HalfExtents);
+	}
+
+	return FBox();
+}
+
+bool FStructuralOutletParentResolver::IsStructurallyAnchored(
+	const FStructuralOutletParentResolveResult& Result,
+	AFGBuildable* Outlet)
+{
+	return FStructuralHostAttachAdapter::ConfirmSiteAttach(Result, Outlet);
+}
+
+const TCHAR* FStructuralOutletParentResolver::FormatParentMethod(
+	const EStructuralOutletParentMethod Method)
+{
+	switch (Method)
+	{
+	case EStructuralOutletParentMethod::ActorParent:
+		return TEXT("actor_parent");
+	case EStructuralOutletParentMethod::LightweightFaceAttach:
+		return TEXT("lw_face_attach");
+	case EStructuralOutletParentMethod::LightweightIndex:
+		return TEXT("lw_index");
+	case EStructuralOutletParentMethod::StructureGraph:
+		return TEXT("structure_graph");
+	case EStructuralOutletParentMethod::LiveScan:
+		return TEXT("live_scan");
+	default:
+		return TEXT("none");
+	}
 }
 
 FStructuralWallAnchor FStructuralOutletParentResolver::Resolve(
@@ -357,4 +459,12 @@ FStructuralWallAnchor FStructuralOutletParentResolver::Resolve(
 	const FStructuralLightweightIndex& LightweightIndex)
 {
 	return ResolveDetailed(Outlet, World, LightweightIndex).Anchor;
+}
+
+FStructuralWallAnchor FStructuralOutletParentResolver::Resolve(
+	AFGBuildable* Outlet,
+	UWorld* World,
+	const FStructuralOutletParentResolveParams& Params)
+{
+	return ResolveDetailed(Outlet, World, Params).Anchor;
 }

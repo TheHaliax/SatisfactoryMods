@@ -5,22 +5,44 @@
 
 #include "CoreMinimal.h"
 #include "Core/FStructuralNodeId.h"
+#include "Routing/EStructuralChannel.h"
 
 class AFGBuildable;
-class AFGBuildablePowerPole;
 
 enum class EStructuralEndpointKind : uint8
 {
 	Pole,
-	Switch
+	Switch,
+	Light,
+	Panel,
+	Storage,
+	Generator
 };
+
+STRUCTURALPOWER_API const TCHAR* StructuralEndpointKindToString(EStructuralEndpointKind Kind);
 
 struct FTrackedEndpoint
 {
 	TWeakObjectPtr<AFGBuildable> Actor;
-	FStructuralNodeId ParentId;
+	FStructuralNodeId MountParentId;
 	EStructuralEndpointKind Kind = EStructuralEndpointKind::Pole;
 
-	AFGBuildablePowerPole* GetPole() const;
+	FStructuralChannelKey CachedPanelKey;
+	int32 CachedPanelRoot = INDEX_NONE;
+	bool bPanelLinksReady = false;
+
+	FName CachedDownstreamControl = NAME_None;
+	bool bDownstreamLinksReady = false;
+
+	uint8 CachedSwitchWireSignature = 0xFF;
+
+	bool bStructuralPowerTransferActive = false;
+	bool bAwaitingStructuralSite = false;
+
 	class AFGBuildableCircuitSwitch* GetSwitch() const;
+	class AFGBuildablePowerPole* GetPole() const;
+	class AFGBuildableLightSource* GetLight() const;
+	class AFGBuildableLightsControlPanel* GetPanel() const;
+	class AFGBuildablePowerStorage* GetStorage() const;
+	class AFGBuildableGenerator* GetGenerator() const;
 };

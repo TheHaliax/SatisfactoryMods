@@ -10,7 +10,6 @@
 class AFGBuildable;
 class UWorld;
 
-/** Spatial index of mod-tracked lightweight structures, queried to resolve outlet parents. */
 class STRUCTURALPOWER_API FStructuralLightweightIndex
 {
 public:
@@ -21,7 +20,6 @@ public:
 
 	FStructuralWallAnchor FindParentWallForOutlet(AFGBuildable* Outlet) const;
 
-	/** Canonical structural-adjacency predicate; the connectivity graph groups nodes with it. */
 	static bool AreBoundsStructurallyConnected(
 		const FBox& A,
 		const FBox& B,

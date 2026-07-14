@@ -10,30 +10,23 @@ namespace FStructuralOutletParentHeuristics
 {
 bool IsPreferredWallClass(const AFGBuildable* Buildable);
 bool IsPreferredFoundationClass(const AFGBuildable* Buildable);
+bool IsFactoryBuildingClass(const AFGBuildable* Buildable);
+FBox ExpandFactoryBuildingBounds(const FBox& Bounds);
+bool IsEndpointOnFactoryBuildingTop(
+	const FVector& AnchorLocation,
+	const FBox& Bounds);
 bool IsWallOutlet(const AFGBuildable* Outlet);
-/** Wall-face mount (actor up mostly horizontal) — same profile as wall poles. */
-bool IsWallMountedSwitch(const AFGBuildable* Outlet);
 bool PrefersFoundationAnchor(const AFGBuildable* Outlet);
-/** Bottom of pole bounds for ground/tower outlets; actor location for wall outlets. */
 FVector GetOutletAnchorLocation(const AFGBuildable* Outlet);
-/** XY footprint on foundation top band — ground poles standing on clipped/LW floors. */
+bool IsOutletNearBounds(const FBox& Bounds, TSubclassOf<AFGBuildable> BuildableClass, const AFGBuildable* Outlet);
 bool IsGroundPoleOnFoundationFootprint(
 	const FVector& AnchorLocation,
 	const FBox& Bounds,
 	TSubclassOf<AFGBuildable> BuildableClass);
-/** Pole foot Z within foundation top band (XY ignored). */
-bool IsGroundPoleInFoundationVerticalBand(
-	const FVector& AnchorLocation,
-	const FBox& Bounds,
-	TSubclassOf<AFGBuildable> BuildableClass);
-/** Footprint preferred; else within MaxOutletParentDistCm + vertical band + horizontal cap. */
-bool IsGroundPoleParentCandidate(
-	const FVector& AnchorLocation,
-	const FBox& Bounds,
-	TSubclassOf<AFGBuildable> BuildableClass);
-FBox ExpandBoundsForClass(const FBox& Bounds, TSubclassOf<AFGBuildable> BuildableClass);
-bool IsOutletNearBounds(const FBox& Bounds, TSubclassOf<AFGBuildable> BuildableClass, const AFGBuildable* Outlet);
-/** Lower score wins. Wall outlets penalize foundation/corner-over-floor picks. */
+bool IsConfirmedStructuralAttach(
+	const AFGBuildable* Outlet,
+	const FBox& ParentBounds,
+	TSubclassOf<AFGBuildable> ParentClass);
 float ScoreParentCandidate(
 	const FVector& AnchorLocation,
 	const FBox& Bounds,

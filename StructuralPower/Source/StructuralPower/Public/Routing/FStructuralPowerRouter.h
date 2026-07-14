@@ -9,23 +9,44 @@
 class AFGBuildable;
 class AFGBuildableCircuitSwitch;
 
-/** DR-008 predicates — inert until category toggles enable keyed hidden links. */
 class STRUCTURALPOWER_API FStructuralPowerRouter
 {
 public:
+	static bool UsesSourceControlModel(EStructuralChannel Tag);
+
+	static bool IsStructuralGeneratorRoutingEnabled();
+
+	static bool IsGeneratorChannel(EStructuralChannel Tag);
+
+	static bool UsesLegacyEffectiveIdModel(EStructuralChannel Tag);
+
+	static bool IsReservedSentinel(FName Id);
+
+	static bool IsPlayerChosenIdValid(FName Id);
+
+	static bool IsAssignedControl(FName Control);
+
 	static bool ShouldRouteChannelLink(
 		const FStructuralChannelKey& A,
 		const FStructuralChannelKey& B,
 		const FStructuralComponentKey& ComponentA,
 		const FStructuralComponentKey& ComponentB);
 
-	static bool ShouldRouteSwitchGate(
-		FName SwitchEffectiveId,
-		FName DeviceEffectiveId,
+	static bool ShouldRouteKeyedJoin(
+		FName PublisherControl,
+		FName JoinerSource,
 		const FStructuralComponentKey& ComponentA,
 		const FStructuralComponentKey& ComponentB);
 
-	static FName ResolveSwitchEffectiveId(const AFGBuildableCircuitSwitch* Switch);
+	static bool ShouldRouteSwitchGate(
+		FName SwitchControl,
+		FName DeviceSource,
+		const FStructuralComponentKey& ComponentA,
+		const FStructuralComponentKey& ComponentB);
 
-	static FName MakeDefaultIdName(const FStructuralNodeId& CanonicalNodeId);
+	static FName ResolveSwitchControlFromTag(const AFGBuildableCircuitSwitch* Switch);
+
+	static FName MakeStructureDefaultIdName(int32 StructureIndex);
+
+	static bool IsLegacyStructureDefaultId(FName Id);
 };

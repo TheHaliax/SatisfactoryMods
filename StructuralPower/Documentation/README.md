@@ -1,23 +1,22 @@
 # StructuralPower Documentation
 
-Player and developer docs for **StructuralPower v2.1.0**.
+Player and contributor docs for **StructuralPower** (version in [CHANGELOG](../CHANGELOG.md) and `.uplugin`).
 
-## Mod overview
+## Overview
 
 - [Mod README](../README.md) — what ships today, chat commands, roadmap, requirements, multiplayer
-- [Roadmap](../README.md#roadmap) — v2.2–v2.6 planned features
+- [Player guide](player-guide.md) — structural bus, lighting, Id panel, switches, hoverpack
+- [Changelog](../CHANGELOG.md) — release history and upgrade notes
 
 ## Guides
 
-- [Player guide](player-guide.md) — what the mod does, retroactive load, switches, hoverpack, save behavior
-- [Chat commands](chat-commands.md) — `!HoverH`, `!HoverV`, `!tracetoggle`, `!pwrhelp`
-- [Console commands](console-commands.md) — `StructuralPower.Set`, trace, propagation, diagnostics
+- [Chat commands](chat-commands.md) — `!lighting`, `!HoverH`, `!HoverV`, `!pwrhelp`
+- [Console commands](console-commands.md) — `StructuralPower.Set`, trace, diagnostics
 - [Multiplayer](multiplayer.md) — client/server requirements and dedicated hosting
-- [Troubleshooting](troubleshooting.md) — log messages, common questions, support checklist
-- [Development](development.md) — repo layout, linking mods, Alpakit release build
-- [Release (SMR)](release.md) — upload zip, `.smod` distribution, server deploy version IDs
+- [Troubleshooting](troubleshooting.md) — common issues and log greps
+- [Development](development.md) — source layout, build, attach map, trace prefixes
+- [Release (SMR)](release.md) — Alpakit release zip, deploy checklist
 
-## Quick links
+## Source
 
-- Monorepo: [../../README.md](../../README.md)
-- Source: [github.com/TheHaliax/SatisfactoryMods](https://github.com/TheHaliax/SatisfactoryMods)
+GPL-3.0-or-later — [github.com/TheHaliax/SatisfactoryMods](https://github.com/TheHaliax/SatisfactoryMods)

@@ -9,7 +9,6 @@ class AFGHoverPack;
 class AFGBuildableRailroadTrack;
 class UFGPowerConnectionComponent;
 
-/** How the hoverpack tether was resolved (single authority when mod owns connectivity). */
 enum class EStructuralHoverpackTetherSource : uint8
 {
 	None,
@@ -17,7 +16,6 @@ enum class EStructuralHoverpackTetherSource : uint8
 	StructuralGeometry,
 };
 
-/** Authoritative per-pack tether — drives replication fields + UI query hooks. */
 struct FStructuralHoverpackSession
 {
 	EStructuralHoverpackTetherSource Source = EStructuralHoverpackTetherSource::None;
@@ -31,7 +29,6 @@ struct FStructuralHoverpackSession
 	float ResolveMissTimer = 0.0f;
 	float SearchTimer = 0.0f;
 	double SuppressReconnectUntil = 0.0;
-	/** Last structural tether pushed to owning client for HUD getters. */
 	bool bClientTetherPublished = false;
 	FVector ClientPublishedAnchor = FVector::ZeroVector;
 	float ClientPublishedMaxHorizontal = 0.0f;
@@ -57,19 +54,18 @@ class STRUCTURALPOWER_API FStructuralHoverpackBridge
 public:
 	static void RegisterHooks();
 
+	static void ApplyClientTetherMirror(const FVector& Anchor, float MaxHorizontal, float MaxVertical);
+	static void ClearClientTetherMirror();
+
+private:
 	static bool OwnsConnectivity(const AFGHoverPack* Pack);
 	static const FStructuralHoverpackSession* FindSession(const AFGHoverPack* Pack);
 	static float GetVanillaFieldRadius(const FStructuralHoverpackSession& Session);
-
-	/** Client HUD mirror for dedicated MP (anchor not in vanilla rep layout). */
-	static void ApplyClientTetherMirror(const FVector& Anchor, float MaxHorizontal, float MaxVertical);
-	static void ClearClientTetherMirror();
 	static bool TryGetClientTetherMirror(
 		FVector& OutAnchor,
 		float& OutMaxHorizontal,
 		float& OutMaxVertical);
 
-private:
 	static void BeforeTick(AFGHoverPack* Pack, float DeltaTime);
 	static void AfterTick(AFGHoverPack* Pack, float DeltaTime);
 	static void OnUnEquip(AFGHoverPack* Pack);

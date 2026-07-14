@@ -8,6 +8,7 @@
 #include "Buildables/FGBuildableWire.h"
 #include "FGCircuitConnectionComponent.h"
 #include "Graph/FStructuralAttachmentResolver.h"
+#include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "StructuralPowerLog.h"
 
@@ -54,7 +55,8 @@ static bool IsGridSideNeighbor(const AFGBuildable* Neighbor)
 static FStructuralWallAnchor AnchorFromStructureNeighbor(
 	AFGBuildable* Neighbor,
 	UWorld* World,
-	const FStructuralLightweightIndex& LightweightIndex)
+	const FStructuralLightweightIndex& LightweightIndex,
+	const FStructuralOutletParentResolveParams* ParentResolveParams)
 {
 	if (!IsValid(Neighbor))
 	{
@@ -72,6 +74,14 @@ static FStructuralWallAnchor AnchorFromStructureNeighbor(
 	if (FStructuralEligibilityRules::IsPowerBridgePole(Neighbor)
 		|| FStructuralEligibilityRules::IsPowerBridgeSwitch(Neighbor))
 	{
+		if (ParentResolveParams)
+		{
+			return FStructuralAttachmentResolver::ResolveStructuralParent(
+				Neighbor,
+				World,
+				*ParentResolveParams);
+		}
+
 		return FStructuralAttachmentResolver::ResolveStructuralParent(
 			Neighbor,
 			World,
@@ -84,7 +94,8 @@ static FStructuralWallAnchor AnchorFromStructureNeighbor(
 static FStructuralSwitchParentResolveResult TryResolveFromWiredPorts(
 	AFGBuildableCircuitSwitch* Switch,
 	UWorld* World,
-	const FStructuralLightweightIndex& LightweightIndex)
+	const FStructuralLightweightIndex& LightweightIndex,
+	const FStructuralOutletParentResolveParams* ParentResolveParams)
 {
 	FStructuralSwitchParentResolveResult Result;
 
@@ -107,7 +118,8 @@ static FStructuralSwitchParentResolveResult TryResolveFromWiredPorts(
 		const FStructuralWallAnchor Anchor = AnchorFromStructureNeighbor(
 			Neighbor,
 			World,
-			LightweightIndex);
+			LightweightIndex,
+			ParentResolveParams);
 		if (!Anchor.IsValid())
 		{
 			continue;
@@ -122,12 +134,129 @@ static FStructuralSwitchParentResolveResult TryResolveFromWiredPorts(
 }
 }
 
+void FStructuralSwitchParentResolver::ForEachWiredStructureSideAnchor(
+	AFGBuildableCircuitSwitch* Switch,
+	UWorld* World,
+	const FStructuralLightweightIndex& LightweightIndex,
+	const FStructuralOutletParentResolveParams* ParentResolveParams,
+	TFunctionRef<void(const FStructuralWallAnchor& Anchor)> Visitor)
+{
+	if (!IsValid(Switch) || !IsValid(World))
+	{
+		return;
+	}
+
+	for (int32 PortIndex = 0; PortIndex < 2; ++PortIndex)
+	{
+		UFGCircuitConnectionComponent* Port = PortIndex == 0
+			? Switch->GetConnection0()
+			: Switch->GetConnection1();
+		if (!IsValid(Port) || Port->GetNumConnections() <= 0)
+		{
+			continue;
+		}
+
+		AFGBuildable* Neighbor = GetVisibleNeighborBuildable(Port);
+		if (!IsValid(Neighbor) || IsGridSideNeighbor(Neighbor))
+		{
+			continue;
+		}
+
+		const FStructuralWallAnchor Anchor = AnchorFromStructureNeighbor(
+			Neighbor,
+			World,
+			LightweightIndex,
+			ParentResolveParams);
+		if (Anchor.IsValid())
+		{
+			Visitor(Anchor);
+		}
+	}
+}
+
+int32 FStructuralSwitchParentResolver::CountWiredVanillaPorts(
+	AFGBuildableCircuitSwitch* Switch)
+{
+	if (!IsValid(Switch))
+	{
+		return 0;
+	}
+
+	int32 WiredVanilla = 0;
+	for (int32 PortIndex = 0; PortIndex < 2; ++PortIndex)
+	{
+		UFGCircuitConnectionComponent* Port = PortIndex == 0
+			? Switch->GetConnection0()
+			: Switch->GetConnection1();
+		if (IsValid(Port) && IsValid(GetVisibleNeighborBuildable(Port)))
+		{
+			++WiredVanilla;
+		}
+	}
+
+	return WiredVanilla;
+}
+
+bool FStructuralSwitchParentResolver::HasAnyVanillaWire(
+	AFGBuildableCircuitSwitch* Switch)
+{
+	return CountWiredVanillaPorts(Switch) > 0;
+}
+
+bool FStructuralSwitchParentResolver::IsWiredToStructureSide(
+	AFGBuildableCircuitSwitch* Switch,
+	int32* OutWirePortIndex)
+{
+	if (OutWirePortIndex)
+	{
+		*OutWirePortIndex = INDEX_NONE;
+	}
+
+	if (!IsValid(Switch))
+	{
+		return false;
+	}
+
+	for (int32 PortIndex = 0; PortIndex < 2; ++PortIndex)
+	{
+		UFGCircuitConnectionComponent* Port = PortIndex == 0
+			? Switch->GetConnection0()
+			: Switch->GetConnection1();
+		if (!IsValid(Port) || Port->GetNumConnections() <= 0)
+		{
+			continue;
+		}
+
+		AFGBuildable* Neighbor = GetVisibleNeighborBuildable(Port);
+		if (!IsValid(Neighbor) || IsGridSideNeighbor(Neighbor))
+		{
+			continue;
+		}
+
+		if (OutWirePortIndex)
+		{
+			*OutWirePortIndex = PortIndex;
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
 FStructuralSwitchParentResolveResult FStructuralSwitchParentResolver::Resolve(
 	AFGBuildableCircuitSwitch* Switch,
 	UWorld* World,
 	const FStructuralConnectivityGraph& Graph,
-	const FStructuralLightweightIndex& LightweightIndex)
+	const FStructuralLightweightIndex& LightweightIndex,
+	bool bPreferWirePort,
+	const FStructuralOutletParentResolveParams* ParentResolveParams)
 {
+	HALSP_TRACE_SCOPE_DETAIL(
+		TEXT("mod"),
+		TEXT("switch.Resolve"),
+		IsValid(Switch) ? Switch->GetName() : TEXT("null"));
+
 	FStructuralSwitchParentResolveResult Result;
 	if (!IsValid(Switch) || !IsValid(World))
 	{
@@ -136,30 +265,61 @@ FStructuralSwitchParentResolveResult FStructuralSwitchParentResolver::Resolve(
 
 	(void)Graph;
 
-	Result.Anchor = FStructuralAttachmentResolver::ResolveStructuralParent(
-		Switch,
-		World,
-		LightweightIndex);
+	if (bPreferWirePort)
+	{
+		Result = TryResolveFromWiredPorts(Switch, World, LightweightIndex, ParentResolveParams);
+		if (Result.IsValid())
+		{
+			UE_LOG(LogStructuralPower, Log,
+				TEXT("[HALSP] switch %s parent resolved via wire_port_%c neighbor=%s"),
+				*Switch->GetName(),
+				Result.WirePortIndex == 0 ? TEXT('A') : TEXT('B'),
+				IsValid(Result.Anchor.Actor)
+					? *Result.Anchor.Actor->GetName()
+					: (Result.Anchor.Lightweight.IsValid()
+						? *Result.Anchor.Lightweight.BuildableClass->GetName()
+						: TEXT("?")));
+			return Result;
+		}
+	}
+
+	if (ParentResolveParams)
+	{
+		Result.Anchor = FStructuralAttachmentResolver::ResolveStructuralParent(
+			Switch,
+			World,
+			*ParentResolveParams);
+	}
+	else
+	{
+		Result.Anchor = FStructuralAttachmentResolver::ResolveStructuralParent(
+			Switch,
+			World,
+			LightweightIndex);
+	}
 	if (Result.IsValid())
 	{
 		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] switch %s parent resolved via mount"),
+			TEXT("[HALSP] switch %s parent resolved via mount"),
 			*Switch->GetName());
 		return Result;
 	}
 
-	Result = TryResolveFromWiredPorts(Switch, World, LightweightIndex);
-	if (Result.IsValid())
+	if (!bPreferWirePort)
 	{
-		UE_LOG(LogStructuralPower, Log,
-			TEXT("[PWR] switch %s parent resolved via wire_port_%c neighbor=%s"),
-			*Switch->GetName(),
-			Result.WirePortIndex == 0 ? TEXT('A') : TEXT('B'),
-			IsValid(Result.Anchor.Actor)
-				? *Result.Anchor.Actor->GetName()
-				: (Result.Anchor.Lightweight.IsValid()
-					? *Result.Anchor.Lightweight.BuildableClass->GetName()
-					: TEXT("?")));
+		Result = TryResolveFromWiredPorts(Switch, World, LightweightIndex, ParentResolveParams);
+		if (Result.IsValid())
+		{
+			UE_LOG(LogStructuralPower, Log,
+				TEXT("[HALSP] switch %s parent resolved via wire_port_%c neighbor=%s"),
+				*Switch->GetName(),
+				Result.WirePortIndex == 0 ? TEXT('A') : TEXT('B'),
+				IsValid(Result.Anchor.Actor)
+					? *Result.Anchor.Actor->GetName()
+					: (Result.Anchor.Lightweight.IsValid()
+						? *Result.Anchor.Lightweight.BuildableClass->GetName()
+						: TEXT("?")));
+		}
 	}
 
 	return Result;
