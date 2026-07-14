@@ -387,34 +387,6 @@ bool FStructuralGraphSession::IsSwitchFeedOpen(const int32 Root, const FName Swi
 	return Owner().IsSwitchFeedOpen(Root, SwitchControlId);
 }
 
-void FStructuralGraphSession::PromoteDirectHiddenLinks(UFGPowerConnectionComponent* Seed)
-{
-	Owner().PromoteDirectHiddenLinks(Seed);
-}
-
-void FStructuralGraphSession::PromoteOutletBusIfPowered(
-	UFGStructuralPowerConnectionComponent* OutletBus,
-	const bool bLocalPromoteOnly)
-{
-	Owner().PromoteOutletBusIfPowered(OutletBus, bLocalPromoteOnly);
-}
-
-bool FStructuralGraphSession::LinkHiddenPairLocal(
-	UFGPowerConnectionComponent* A,
-	UFGPowerConnectionComponent* B,
-	const bool bPromoteCircuit)
-{
-	return Owner().LinkHiddenPairLocal(A, B, bPromoteCircuit);
-}
-
-void FStructuralGraphSession::LinkBusToVisibleConnectionsLocal(
-	AFGBuildable* Host,
-	UFGStructuralPowerConnectionComponent* Bus,
-	const bool bMeshOnlyLinks)
-{
-	Owner().LinkBusToVisibleConnectionsLocal(Host, Bus, bMeshOnlyLinks);
-}
-
 void FStructuralGraphSession::MarkEchoDirtyForSwitchToggle(
 	AFGBuildableCircuitSwitch* Switch,
 	const int32 LocalRoot)
@@ -461,71 +433,6 @@ bool FStructuralGraphSession::IsBuildablePlacementPending(AFGBuildable* Buildabl
 	return Owner().IsBuildablePlacementPending(Buildable);
 }
 
-UFGPowerConnectionComponent* FStructuralGraphSession::ResolveSubnetFeedConnector(
-	const int32 ComponentRoot,
-	const FStructuralChannelKey& DeviceKey)
-{
-	return Owner().ResolveSubnetFeedConnector(ComponentRoot, DeviceKey);
-}
-
-bool FStructuralGraphSession::IsPanelSupplyLinked(
-	UFGPowerConnectionComponent* InputPower,
-	UFGPowerConnectionComponent* Feed) const
-{
-	return Owner().IsPanelSupplyLinked(InputPower, Feed);
-}
-
-void FStructuralGraphSession::PromotePanelSupplyConnection(
-	UFGPowerConnectionComponent* InputPower,
-	UFGPowerConnectionComponent* Feed,
-	const bool bLocalPromoteOnly)
-{
-	Owner().PromotePanelSupplyConnection(InputPower, Feed, bLocalPromoteOnly);
-}
-
-void FStructuralGraphSession::PromoteStructuralMeshFrom(UFGPowerConnectionComponent* Seed)
-{
-	Owner().PromoteStructuralMeshFrom(Seed);
-}
-
-bool FStructuralGraphSession::LinkHiddenPair(
-	UFGPowerConnectionComponent* A,
-	UFGPowerConnectionComponent* B,
-	const bool bPromoteCircuit)
-{
-	return Owner().LinkHiddenPair(A, B, bPromoteCircuit);
-}
-
-void FStructuralGraphSession::LinkBusToVisibleConnections(
-	AFGBuildable* Host,
-	UFGStructuralPowerConnectionComponent* Bus)
-{
-	Owner().LinkBusToVisibleConnections(Host, Bus);
-}
-
-bool FStructuralGraphSession::HasBridgeBusPeerMesh(
-	UFGStructuralPowerConnectionComponent* Bus) const
-{
-	return Owner().HasBridgeBusPeerMesh(Bus);
-}
-
-bool FStructuralGraphSession::TryMeshPeerBusOnComponent(
-	AFGBuildable* Host,
-	UFGStructuralPowerConnectionComponent* OutletBus,
-	const int32 Root,
-	const FStructuralNodeId& SelfId,
-	const bool bBridgePeersOnly,
-	const bool bMeshOnlyLinks)
-{
-	return Owner().TryMeshPeerBusOnComponent(
-		Host,
-		OutletBus,
-		Root,
-		SelfId,
-		bBridgePeersOnly,
-		bMeshOnlyLinks);
-}
-
 int32 FStructuralGraphSession::ResolvePoleComponentRoot(
 	AFGBuildablePowerPole* Pole,
 	const FStructuralWallAnchor& Anchor,
@@ -559,11 +466,6 @@ void FStructuralGraphSession::ProcessStructure(AFGBuildable* Buildable)
 void FStructuralGraphSession::ProcessLightweightStructure(const FStructuralLightweightKey& Key)
 {
 	StructureIngress().ProcessLightweightStructure(Key);
-}
-
-void FStructuralGraphSession::FinishBulkLoadDrain()
-{
-	BulkDrain().FinishBulkLoadDrain();
 }
 
 void FStructuralGraphSession::MaybeReleaseFactoryTick()
@@ -625,13 +527,6 @@ void FStructuralGraphSession::DispatchPlacement(
 void FStructuralGraphSession::DispatchTeardown(AFGBuildable* Buildable)
 {
 	FStructuralEndpointDispatcher::DispatchTeardown(*this, Buildable);
-}
-
-UFGCircuitConnectionComponent* FStructuralGraphSession::GetComponentSourceConnector(
-	const int32 ComponentRoot,
-	const AFGBuildable* ExcludeHost)
-{
-	return Owner().GetComponentSourceConnector(ComponentRoot, ExcludeHost);
 }
 
 bool FStructuralGraphSession::FindNearestStructureAnchorForEquipment(

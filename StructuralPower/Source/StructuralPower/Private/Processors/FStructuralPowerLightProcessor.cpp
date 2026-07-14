@@ -15,6 +15,7 @@
 #include "Processors/FStructuralPowerTransferGate.h"
 #include "Routing/EStructuralChannel.h"
 #include "Core/FStructuralGraphSession.h"
+#include "Circuit/FStructuralGraphCircuitOps.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerConstants.h"
@@ -144,12 +145,12 @@ void FStructuralPowerLightProcessor::Process(
 	if (bAttached)
 	{
 		Tracked.bStructuralPowerTransferActive = true;
-		Ctx.Session().PromoteDirectHiddenLinks(Plug);
+		Ctx.Session().Circuit().PromoteDirectHiddenLinks(Plug);
 	}
 
 	if (bPanelFed && IsValid(Plug))
 	{
-		Ctx.Session().PromoteDirectHiddenLinks(Plug);
+		Ctx.Session().Circuit().PromoteDirectHiddenLinks(Plug);
 	}
 
 	const TCHAR* PathLabel = bPanelFed ? TEXT("panel_downstream") : (bAttached ? TEXT("direct") : TEXT("-"));

@@ -4,10 +4,12 @@
 #include "Processors/FStructuralPowerStorageProcessor.h"
 
 #include "Attach/FStructuralBridgeAttach.h"
+#include "Attach/FStructuralEndpointAttach.h"
 #include "Buildables/FGBuildablePowerStorage.h"
+#include "Core/EStructuralAttachStrategy.h"
+#include "Graph/FStructuralSiteContext.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
-#include "Connection/FStructuralSiteMembership.h"
 #include "Core/EStructuralPowerRole.h"
 #include "Core/EStructuralPowerScope.h"
 #include "Core/FStructuralGraphSession.h"
@@ -90,17 +92,6 @@ void FStructuralPowerStorageProcessor::Process(
 	const bool bBulk = Session.IsBulkLoadDrainActive();
 	const FStructuralNodeId StorageId = Session.MakeNodeId(Storage);
 
-	if (!bBulk)
-	{
-		if (FStructuralBridgeAttach::HasPlacementMembership(Session,
-				Storage,
-				EStructuralEndpointKind::Storage))
-		{
-			OnWireDelta(Ctx, Storage);
-			return;
-		}
-	}
-
 	FStructuralBridgeAttachRequest Request;
 	Request.Host = Storage;
 	Request.Kind = EStructuralEndpointKind::Storage;
@@ -121,11 +112,7 @@ void FStructuralPowerStorageProcessor::Process(
 
 	const FStructuralSiteContext& Site = Outcome.Site;
 
-	if (bBulk && Site.SiteRoot != INDEX_NONE && Site.MountParentId.IsValid())
-	{
-		Session.AddEndpointToRootIndex(Site.SiteRoot, EStructuralEndpointKind::Storage, StorageId);
-	}
-	else if (!bBulk)
+	if (!bBulk && !(Site.SiteRoot != INDEX_NONE && Site.MountParentId.IsValid()))
 	{
 		Session.MarkBridgeEndpointRootIndexDirty();
 	}
@@ -159,9 +146,13 @@ void FStructuralPowerStorageProcessor::Process(
 			StructuralPowerRoleToString(EStructuralPowerRole::Host),
 			Site.SiteRoot,
 			Site.bAnchored ? 1 : 0,
-			Outcome.OutletBus->GetCircuitID(),
-			FStructuralCircuitPromotionUtil::ComponentCarriesPower(Outcome.OutletBus) ? 1 : 0);
+			Outcome.OutletBus ? Outcome.OutletBus->GetCircuitID() : -1,
+			Outcome.OutletBus
+				&& FStructuralCircuitPromotionUtil::ComponentCarriesPower(Outcome.OutletBus)
+					? 1
+					: 0);
 	}
+	(void)StorageId;
 }
 
 void FStructuralPowerStorageProcessor::OnWireDelta(
@@ -173,44 +164,8 @@ void FStructuralPowerStorageProcessor::OnWireDelta(
 		return;
 	}
 
-	FStructuralGraphSession& Session = Ctx.Session();
-	UFGStructuralPowerConnectionComponent* OutletBus =
-		Cast<UFGStructuralPowerConnectionComponent>(Session.GetOrCreateBusConnector(Storage));
-	if (!OutletBus)
-	{
-		return;
-	}
-
-	const FStructuralNodeId StorageId = Session.MakeNodeId(Storage);
-	FTrackedEndpoint& Tracked = Session.TrackedEndpoints().FindOrAdd(StorageId);
-
-	FStructuralSiteContext Site;
-	if (!FStructuralSiteMembership::ResolveSiteContext(Session, Storage, Site))
-	{
-		if (Tracked.MountParentId.IsValid())
-		{
-			Site.MountParentId = Tracked.MountParentId;
-			Site.SiteRoot = Session.FindRootForTrackedEndpoint(Tracked);
-			Site.bAnchored = Site.SiteRoot != INDEX_NONE;
-		}
-	}
-
-	FStructuralSiteMembershipParams Params;
-	Params.bLinkVisibleConnections = true;
-	Params.bBridgePeersOnly = true;
-	FStructuralSiteMembership::IntegrateOnPlace(Session,
+	FStructuralEndpointAttach::RunStrategy(
+		Ctx,
 		Storage,
-		OutletBus,
-		StorageId,
-		EStructuralEndpointKind::Storage,
-		Tracked,
-		Site,
-		Params);
-
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] storage wire delta %s root=%d busCircuit=%d powered=%d"),
-		*Storage->GetName(),
-		Site.SiteRoot,
-		OutletBus->GetCircuitID(),
-		FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0);
+		EStructuralAttachStrategy::Bridge);
 }

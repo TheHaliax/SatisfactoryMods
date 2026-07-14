@@ -595,14 +595,14 @@ void AStructuralPowerGraphSubsystem::TickDeferredPlacements(int32 MaxJobs)
 		},
 		[this]()
 		{
-			MaybeRunPostLoadLightReconcile();
+			GetGraphSession().Bootstrap().TickLoadPhases();
 			MaybeReleaseFactoryTick();
 		});
 }
 
 void AStructuralPowerGraphSubsystem::TickIdleDeferredWork()
 {
-	MaybeRunPostLoadLightReconcile();
+	GetGraphSession().Bootstrap().TickLoadPhases();
 	MaybeRunFinalLightingReconcile();
 	MaybeReleaseFactoryTick();
 }

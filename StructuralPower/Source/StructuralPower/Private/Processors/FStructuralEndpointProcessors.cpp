@@ -94,10 +94,7 @@ public:
 
 	void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
 	{
-		if (AFGBuildablePowerPole* Pole = FStructuralPowerBuildableCasts::AsPole(Buildable))
-		{
-			FStructuralPowerPoleProcessor::OnWireDelta(Ctx, Pole);
-		}
+		ProcessPlacement(Ctx, Buildable, /*bLocalPromoteOnly=*/false);
 	}
 };
 
@@ -140,10 +137,7 @@ public:
 
 	void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
 	{
-		if (AFGBuildablePowerStorage* Storage = FStructuralPowerBuildableCasts::AsStorage(Buildable))
-		{
-			FStructuralPowerStorageProcessor::OnWireDelta(Ctx, Storage);
-		}
+		ProcessPlacement(Ctx, Buildable, /*bLocalPromoteOnly=*/false);
 	}
 
 	void TearDown(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
@@ -195,10 +189,7 @@ public:
 
 	void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
 	{
-		if (AFGBuildableCircuitSwitch* Switch = FStructuralPowerBuildableCasts::AsSwitch(Buildable))
-		{
-			FStructuralPowerSwitchProcessor::OnWireDelta(Ctx, Switch);
-		}
+		ProcessPlacement(Ctx, Buildable, /*bLocalPromoteOnly=*/false);
 	}
 
 	void OnCircuitsRebuilt(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
@@ -314,10 +305,7 @@ public:
 
 	void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
 	{
-		if (AFGBuildableLightsControlPanel* Panel = FStructuralPowerBuildableCasts::AsPanel(Buildable))
-		{
-			FStructuralPowerPanelProcessor::OnWireDelta(Ctx, Panel);
-		}
+		ProcessPlacement(Ctx, Buildable, /*bLocalPromoteOnly=*/true);
 	}
 
 	void TearDown(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override

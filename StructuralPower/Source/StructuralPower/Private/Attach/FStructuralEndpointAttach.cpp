@@ -8,10 +8,14 @@
 #include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
+#include "Buildables/FGBuildablePowerPole.h"
+#include "Buildables/FGBuildablePowerStorage.h"
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Processors/FStructuralPowerLightProcessor.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
+#include "Processors/FStructuralPowerPoleProcessor.h"
+#include "Processors/FStructuralPowerStorageProcessor.h"
 #include "Processors/FStructuralPowerSwitchProcessor.h"
 
 FStructuralBridgeAttachOutcome FStructuralEndpointAttach::AttachOnPlace(
@@ -67,19 +71,17 @@ bool FStructuralEndpointAttach::RunStrategy(
 	{
 	case EStructuralAttachStrategy::Bridge:
 	{
-		FStructuralBridgeAttachRequest Request;
-		Request.Host = Host;
-		if (FStructuralPowerBuildableCasts::AsPole(Host))
+		if (AFGBuildablePowerPole* Pole = FStructuralPowerBuildableCasts::AsPole(Host))
 		{
-			Request.Kind = EStructuralEndpointKind::Pole;
-			Request.bUsePoleRootResolver = true;
+			FStructuralPowerPoleProcessor::Process(Ctx, Pole);
+			return true;
 		}
-		else
+		if (AFGBuildablePowerStorage* Storage = FStructuralPowerBuildableCasts::AsStorage(Host))
 		{
-			Request.Kind = EStructuralEndpointKind::Storage;
+			FStructuralPowerStorageProcessor::Process(Ctx, Storage);
+			return true;
 		}
-		const FStructuralBridgeAttachOutcome Outcome = AttachOnPlace(Ctx, Request);
-		return Outcome.bAttached || Outcome.OutletBus != nullptr;
+		return false;
 	}
 	case EStructuralAttachStrategy::ToggleBridge:
 		return AttachToggleBridge(Ctx, Host);

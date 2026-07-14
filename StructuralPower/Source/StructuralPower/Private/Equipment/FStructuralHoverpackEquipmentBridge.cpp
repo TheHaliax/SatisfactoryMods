@@ -5,6 +5,7 @@
 
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Core/FStructuralGraphSession.h"
+#include "Circuit/FStructuralGraphCircuitOps.h"
 #include "Equipment/FStructuralHoverpackBridge.h"
 #include "FGCircuitConnectionComponent.h"
 #include "FGPowerConnectionComponent.h"
@@ -46,7 +47,7 @@ bool FStructuralHoverpackEquipmentBridge::QueryHoverpackStructuralAnchor(
 
 	Out.ComponentRoot = ComponentRoot;
 
-	if (UFGCircuitConnectionComponent* Source = Session.GetComponentSourceConnector(ComponentRoot, nullptr))
+	if (UFGCircuitConnectionComponent* Source = Session.Circuit().GetComponentSourceConnector(ComponentRoot, nullptr))
 	{
 		if (UFGPowerConnectionComponent* Feed = Cast<UFGPowerConnectionComponent>(Source))
 		{

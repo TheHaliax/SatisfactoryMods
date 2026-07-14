@@ -300,11 +300,12 @@ void FStructuralEndpointDispatcher::DispatchPanelWireDelta(
 		&& Existing->Kind == EStructuralEndpointKind::Panel
 		&& Existing->MountParentId.IsValid())
 	{
-		if (IStructuralEndpointProcessor* Processor =
-				FStructuralEndpointCatalog::Get().FindMutable(EStructuralEndpointKind::Panel))
-		{
-			RunWireDelta(Session, *Processor, Panel);
-		}
+		DispatchPlacement(
+			Session,
+			Panel,
+			/*bLocalPromoteOnly=*/true,
+			/*bOverrideAttachContext=*/true,
+			EAttachContext::WireDelta);
 		return;
 	}
 
@@ -344,11 +345,12 @@ void FStructuralEndpointDispatcher::DispatchPoleWireDelta(
 		return;
 	}
 
-	if (IStructuralEndpointProcessor* Processor =
-			FStructuralEndpointCatalog::Get().FindMutable(EStructuralEndpointKind::Pole))
-	{
-		RunWireDelta(Session, *Processor, Pole);
-	}
+	DispatchPlacement(
+		Session,
+		Pole,
+		/*bLocalPromoteOnly=*/false,
+		/*bOverrideAttachContext=*/true,
+		EAttachContext::WireDelta);
 }
 
 void FStructuralEndpointDispatcher::DispatchWallOutletAfterWire(

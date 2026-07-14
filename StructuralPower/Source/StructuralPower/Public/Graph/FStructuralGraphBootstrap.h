@@ -15,6 +15,8 @@ public:
 	void Bind(class FStructuralGraphSession* InSession);
 
 	void OnWorldReady(UWorld* World);
+	/** Sole load-phase driver: remesh drain then post-load light workers. */
+	void TickLoadPhases();
 	void PurgeSavedOutletBusMesh(UWorld* World);
 	void RebuildBuildableRegistry(UWorld* World);
 	void RebuildLightweightIndex(UWorld* World);

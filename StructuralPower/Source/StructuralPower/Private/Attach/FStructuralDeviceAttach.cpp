@@ -12,6 +12,7 @@
 #include "FGPowerInfoComponent.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Core/FStructuralGraphSession.h"
+#include "Circuit/FStructuralGraphCircuitOps.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
 UFGPowerConnectionComponent* FStructuralDeviceAttach::FindLightWireConnection(
@@ -69,13 +70,13 @@ bool FStructuralDeviceAttach::TryAttachConsumer(
 	}
 
 	UFGPowerConnectionComponent* SourcePower =
-		Session.ResolveSubnetFeedConnector(ComponentRoot, DeviceKey);
+		Session.Circuit().ResolveSubnetFeedConnector(ComponentRoot, DeviceKey);
 	if (!IsValid(SourcePower))
 	{
 		return false;
 	}
 
-	return Session.LinkHiddenPair(DevicePlug, SourcePower);
+	return Session.Circuit().LinkHiddenPair(DevicePlug, SourcePower);
 }
 
 void FStructuralDeviceAttach::TearDownConsumerLinks(UFGPowerConnectionComponent* DevicePlug)

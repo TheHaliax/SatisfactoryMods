@@ -147,17 +147,6 @@ public:
 	bool IsPanelDownstreamLight(int32 Root, const FStructuralChannelKey& LightKey);
 	bool IsSwitchFeedOpen(int32 Root, FName SwitchControlId);
 
-	void PromoteDirectHiddenLinks(UFGPowerConnectionComponent* Seed);
-	void PromoteOutletBusIfPowered(UFGStructuralPowerConnectionComponent* OutletBus, bool bLocalPromoteOnly);
-	bool LinkHiddenPairLocal(
-		UFGPowerConnectionComponent* A,
-		UFGPowerConnectionComponent* B,
-		bool bPromoteCircuit = true);
-	void LinkBusToVisibleConnectionsLocal(
-		AFGBuildable* Host,
-		UFGStructuralPowerConnectionComponent* Bus,
-		bool bMeshOnlyLinks = false);
-
 	void MarkEchoDirtyForSwitchToggle(AFGBuildableCircuitSwitch* Switch, int32 LocalRoot);
 	void NoteSwitchToggleHandled(AFGBuildableCircuitSwitch* Switch);
 	void NoteSwitchCircuitEchoProcessed(AFGBuildableCircuitSwitch* Switch);
@@ -168,32 +157,6 @@ public:
 	void NotePanelToggleHandled(AFGBuildableLightsControlPanel* Panel);
 	bool IsBuildablePlacementPending(AFGBuildable* Buildable) const;
 
-	UFGPowerConnectionComponent* ResolveSubnetFeedConnector(
-		int32 ComponentRoot,
-		const FStructuralChannelKey& DeviceKey);
-	bool IsPanelSupplyLinked(
-		UFGPowerConnectionComponent* InputPower,
-		UFGPowerConnectionComponent* Feed) const;
-	void PromotePanelSupplyConnection(
-		UFGPowerConnectionComponent* InputPower,
-		UFGPowerConnectionComponent* Feed,
-		bool bLocalPromoteOnly = false);
-	void PromoteStructuralMeshFrom(UFGPowerConnectionComponent* Seed);
-	bool LinkHiddenPair(
-		UFGPowerConnectionComponent* A,
-		UFGPowerConnectionComponent* B,
-		bool bPromoteCircuit = true);
-	void LinkBusToVisibleConnections(
-		AFGBuildable* Host,
-		UFGStructuralPowerConnectionComponent* Bus);
-	bool HasBridgeBusPeerMesh(UFGStructuralPowerConnectionComponent* Bus) const;
-	bool TryMeshPeerBusOnComponent(
-		AFGBuildable* Host,
-		UFGStructuralPowerConnectionComponent* OutletBus,
-		int32 Root,
-		const FStructuralNodeId& SelfId,
-		bool bBridgePeersOnly,
-		bool bMeshOnlyLinks = false);
 	int32 ResolvePoleComponentRoot(
 		AFGBuildablePowerPole* Pole,
 		const FStructuralWallAnchor& Anchor,
@@ -206,7 +169,6 @@ public:
 	void DispatchOutlet(AFGBuildable* Buildable);
 	void ProcessStructure(AFGBuildable* Buildable);
 	void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
-	void FinishBulkLoadDrain();
 	void MaybeReleaseFactoryTick();
 	void ScheduleFinalLightingReconcile();
 	int32 GetPendingJobCount() const;
@@ -236,10 +198,6 @@ public:
 		float MaxVertical,
 		FVector& OutAnchor,
 		int32& OutComponentRoot) const;
-
-	UFGCircuitConnectionComponent* GetComponentSourceConnector(
-		int32 ComponentRoot,
-		const AFGBuildable* ExcludeHost = nullptr);
 
 private:
 	AStructuralPowerGraphSubsystem* OwnerPtr = nullptr;

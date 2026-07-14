@@ -287,7 +287,6 @@ private:
 	bool IsDirectSwitchFedLight(int32 Root, const FStructuralChannelKey& LightKey);
 	bool IsPanelDownstreamLight(int32 Root, const FStructuralChannelKey& LightKey);
 	bool IsSwitchFeedOpen(int32 Root, FName SwitchControlId);
-	void MaybeRunPostLoadLightReconcile();
 	void MaybeRunFinalLightingReconcile();
 	void ScheduleFinalLightingReconcile();
 	void ReconcileAllPanelEndpoints();

@@ -5,6 +5,8 @@
 
 #include "Core/FStructuralGraphSession.h"
 #include "Core/FStructuralPowerWorldGate.h"
+#include "Graph/FStructuralGraphBulkDrain.h"
+#include "Reconcile/FStructuralPowerReconcile.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
 #include "Components/UFGStructuralPowerConnectionComponent.h"
@@ -130,6 +132,40 @@ void FStructuralGraphBootstrap::OnWorldReady(UWorld* World)
 	{
 		Session->NotifyDeferredWorkRegistered();
 	}
+}
+
+void FStructuralGraphBootstrap::TickLoadPhases()
+{
+	if (!Session)
+	{
+		return;
+	}
+
+	if (Session->GetPendingJobCount() > 0)
+	{
+		return;
+	}
+
+	if (Session->BulkLoadDrainActive())
+	{
+		Session->BulkDrain().FinishBulkLoadDrain();
+		if (Session->HasPendingBulkRemesh())
+		{
+			return;
+		}
+	}
+
+	if (!Session->PendingPostLoadLightReconcile())
+	{
+		Session->BulkLoadDrainActive() = false;
+		Session->MaybeReleaseFactoryTick();
+		return;
+	}
+
+	Session->BulkLoadDrainActive() = false;
+	Session->Reconcile().RunPostLoadLightWorkers();
+	Session->PendingPostLoadLightReconcile() = false;
+	Session->MaybeReleaseFactoryTick();
 }
 
 void FStructuralGraphBootstrap::PurgeSavedOutletBusMesh(UWorld* World)

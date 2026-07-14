@@ -18,6 +18,7 @@
 #include "Config/FStructuralPowerModConfig.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Core/FStructuralGraphSession.h"
+#include "Circuit/FStructuralGraphCircuitOps.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
@@ -67,7 +68,7 @@ static UFGPowerConnectionComponent* ResolvePanelFeedConnector(
 	int32 ComponentRoot,
 	const FStructuralChannelKey& PanelKey)
 {
-	return Session.ResolveSubnetFeedConnector(ComponentRoot, PanelKey);
+	return Session.Circuit().ResolveSubnetFeedConnector(ComponentRoot, PanelKey);
 }
 
 bool FStructuralPanelAttach::SupplyAlreadyLinked(
@@ -87,7 +88,7 @@ bool FStructuralPanelAttach::SupplyAlreadyLinked(
 
 	UFGPowerConnectionComponent* Feed =
 		ResolvePanelFeedConnector(Session, Panel, ComponentRoot, PanelKey);
-	return Session.IsPanelSupplyLinked(InputPower, Feed);
+	return Session.Circuit().IsPanelSupplyLinked(InputPower, Feed);
 }
 
 bool FStructuralPanelAttach::TryLinkSupply(
@@ -129,7 +130,7 @@ bool FStructuralPanelAttach::TryLinkSupply(
 		return true;
 	}
 
-	const bool bLinked = Session.LinkHiddenPair(InputPower, Feed, /*bPromoteCircuit=*/!bMeshOnlyLinks);
+	const bool bLinked = Session.Circuit().LinkHiddenPair(InputPower, Feed, /*bPromoteCircuit=*/!bMeshOnlyLinks);
 	if (FStructuralPowerTrace::IsEnabled())
 	{
 		UE_LOG(LogStructuralPower, Log,
@@ -175,7 +176,7 @@ void FStructuralPanelAttach::RestitchDownstream(
 	FStructuralDeviceAttach::TearDownConsumerLinks(ControlBus);
 	FStructuralDeviceAttach::TearDownConsumerLinks(Downstream);
 
-	if (!Session.LinkHiddenPair(ControlBus, Downstream))
+	if (!Session.Circuit().LinkHiddenPair(ControlBus, Downstream))
 	{
 		return;
 	}
@@ -204,7 +205,7 @@ void FStructuralPanelAttach::RestitchDownstream(
 			return;
 		}
 
-		if (Session.LinkHiddenPair(ControlBus, Plug))
+		if (Session.Circuit().LinkHiddenPair(ControlBus, Plug))
 		{
 			if (FStructuralPowerTrace::IsEnabled())
 			{
@@ -240,12 +241,12 @@ void FStructuralPanelAttach::PromotePanelDownstreamSubnet(
 		return;
 	}
 
-	Session.PromoteStructuralMeshFrom(InputPower);
+	Session.Circuit().PromoteStructuralMeshFrom(InputPower);
 
 	UFGStructuralPowerConnectionComponent* ControlBus = Session.GetOrCreatePanelControlBus(Panel);
 	if (IsValid(ControlBus) && FStructuralCircuitPromotionUtil::ComponentOnCircuit(ControlBus))
 	{
-		Session.PromoteStructuralMeshFrom(ControlBus);
+		Session.Circuit().PromoteStructuralMeshFrom(ControlBus);
 	}
 	(void)Ports;
 }

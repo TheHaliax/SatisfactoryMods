@@ -3,6 +3,7 @@
 
 #include "Graph/FStructuralGraphBulkDrain.h"
 
+#include "Circuit/FStructuralGraphCircuitOps.h"
 #include "Core/EAttachContext.h"
 #include "Core/FStructuralGraphSession.h"
 #include "Core/FStructuralPowerContext.h"
@@ -160,7 +161,7 @@ bool FStructuralGraphBulkDrain::TickRemeshBudget()
 
 		if (Tracked->Kind != EStructuralEndpointKind::Switch)
 		{
-			Session->LinkBusToVisibleConnectionsLocal(Host, Bus, /*bMeshOnlyLinks=*/false);
+			Session->Circuit().LinkBusToVisibleConnectionsLocal(Host, Bus, /*bMeshOnlyLinks=*/false);
 		}
 
 		if (const FStructuralNodeId* HubId = RemeshHubByRoot.Find(Root))
@@ -174,7 +175,7 @@ bool FStructuralGraphBulkDrain::TickRemeshBudget()
 				{
 					if (!Bus->HasHiddenConnection(HubBus))
 					{
-						Session->LinkHiddenPairLocal(Bus, HubBus, /*bPromoteCircuit=*/true);
+						Session->Circuit().LinkHiddenPairLocal(Bus, HubBus, /*bPromoteCircuit=*/true);
 					}
 				}
 			}
@@ -186,7 +187,7 @@ bool FStructuralGraphBulkDrain::TickRemeshBudget()
 
 		if (Tracked->Kind != EStructuralEndpointKind::Switch)
 		{
-			Session->PromoteOutletBusIfPowered(Bus, /*bLocalPromoteOnly=*/false);
+			Session->Circuit().PromoteOutletBusIfPowered(Bus, /*bLocalPromoteOnly=*/false);
 		}
 	}
 

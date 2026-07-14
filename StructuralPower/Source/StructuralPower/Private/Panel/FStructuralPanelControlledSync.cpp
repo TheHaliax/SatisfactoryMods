@@ -16,6 +16,7 @@
 #include "Routing/EStructuralChannel.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Core/FStructuralGraphSession.h"
+#include "Circuit/FStructuralGraphCircuitOps.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
@@ -100,7 +101,7 @@ bool PanelHasStructuralHiddenPath(
 		return false;
 	}
 
-	UFGPowerConnectionComponent* Feed = Session.ResolveSubnetFeedConnector(Root, ChannelKey);
+	UFGPowerConnectionComponent* Feed = Session.Circuit().ResolveSubnetFeedConnector(Root, ChannelKey);
 	if (IsValid(Feed) && InputPower->HasHiddenConnection(Feed))
 	{
 		return true;

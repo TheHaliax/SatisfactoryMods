@@ -361,11 +361,6 @@ int32 AStructuralPowerGraphSubsystem::ResolveBridgeHostComponentRoot(
 	return BridgeRootIndex.ResolveBridgeHostComponentRoot(Host, OutParentId);
 }
 
-void AStructuralPowerGraphSubsystem::MaybeRunPostLoadLightReconcile()
-{
-	ReconcileOps.MaybeRunPostLoadLightReconcile();
-}
-
 void AStructuralPowerGraphSubsystem::MaybeRunFinalLightingReconcile()
 {
 	ReconcileOps.MaybeRunFinalLightingReconcile();

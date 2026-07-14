@@ -4,10 +4,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Core/EAttachContext.h"
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Graph/FStructuralSiteContext.h"
 
 class AFGBuildable;
+class AFGBuildableCircuitSwitch;
 class AFGBuildablePowerPole;
 class FStructuralGraphSession;
 class UFGStructuralPowerConnectionComponent;
@@ -19,6 +21,22 @@ struct FStructuralSiteMembershipParams
 	bool bStripSwitchVanillaPortLinks = false;
 	bool bMeshOnlyLinks = false;
 	bool bSkipEndpointIndexDirty = false;
+};
+
+struct FStructuralSwitchMembershipParams
+{
+	bool bAdvancedWork = false;
+	bool bKeyedSubnet = false;
+	bool bSwitchOn = false;
+	EAttachContext AttachContext = EAttachContext::RuntimePlace;
+};
+
+struct FStructuralSwitchMembershipResult
+{
+	FStructuralSiteContext Site;
+	UFGStructuralPowerConnectionComponent* OutletBus = nullptr;
+	bool bDone = false;
+	bool bApplyBridgeStrategy = false;
 };
 
 class STRUCTURALPOWER_API FStructuralSiteMembership
@@ -46,6 +64,12 @@ public:
 		FTrackedEndpoint& Tracked,
 		const FStructuralSiteContext& Site,
 		const FStructuralSiteMembershipParams& Params = FStructuralSiteMembershipParams());
+
+	/** Switch site bus/mesh template — kind bridge strategy stays outside. */
+	static FStructuralSwitchMembershipResult IntegrateSwitchOnPlace(
+		FStructuralGraphSession& Session,
+		AFGBuildableCircuitSwitch* Switch,
+		const FStructuralSwitchMembershipParams& Params);
 
 	static bool ReaffirmMountParent(
 		FStructuralGraphSession& Session,

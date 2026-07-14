@@ -39,44 +39,18 @@ void FStructuralPowerReconcile::Bind(FStructuralGraphSession* InSession)
 	Session = InSession;
 }
 
-void FStructuralPowerReconcile::MaybeRunPostLoadLightReconcile()
+void FStructuralPowerReconcile::RunPostLoadLightWorkers()
 {
-	if (Session->GetPendingJobCount() > 0)
+	if (!Session || !FStructuralPowerModConfig::IsGroupLightingEnabled())
 	{
 		return;
 	}
 
-	if (Session->BulkLoadDrainActive())
-	{
-		Session->FinishBulkLoadDrain();
-		// Remesh spreads across factory ticks — do not clear drain mid-queue.
-		if (Session->HasPendingBulkRemesh())
-		{
-			return;
-		}
-	}
-
-	if (!Session->PendingPostLoadLightReconcile())
-	{
-		Session->BulkLoadDrainActive() = false;
-		Session->MaybeReleaseFactoryTick();
-		return;
-	}
-
-	Session->BulkLoadDrainActive() = false;
-
-	if (FStructuralPowerModConfig::IsGroupLightingEnabled())
-	{
-		ReconcileAllPanelEndpoints();
-		RefreshKeyedTransferAfterLoad();
-		RefreshNamedControlPanelsAfterLoad();
-		Session->FinalLightingReconcilePass() = 0;
-		// FG circuits often settle one tick later — defer consumer attach.
-		Session->ScheduleFinalLightingReconcile();
-	}
-
-	Session->PendingPostLoadLightReconcile() = false;
-	Session->MaybeReleaseFactoryTick();
+	ReconcileAllPanelEndpoints();
+	RefreshKeyedTransferAfterLoad();
+	RefreshNamedControlPanelsAfterLoad();
+	Session->FinalLightingReconcilePass() = 0;
+	Session->ScheduleFinalLightingReconcile();
 }
 
 void FStructuralPowerReconcile::MaybeRunFinalLightingReconcile()

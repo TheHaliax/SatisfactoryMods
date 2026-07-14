@@ -8,6 +8,7 @@
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "Core/FStructuralGraphSession.h"
+#include "Circuit/FStructuralGraphCircuitOps.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "FGCircuitConnectionComponent.h"
@@ -126,18 +127,18 @@ void FStructuralSwitchBridgeStrategy::ApplyMembership(
 	if (bConfigured || bWired)
 	{
 		const bool bMeshOnlyLinks = WirePortCount >= 2;
-		Session.LinkBusToVisibleConnectionsLocal(Switch, SourceBus, bMeshOnlyLinks);
+		Session.Circuit().LinkBusToVisibleConnectionsLocal(Switch, SourceBus, bMeshOnlyLinks);
 		SyncDirectedBridgePair(Ctx, Switch);
 
 		if (bWired && WirePortCount < 2)
 		{
-			Session.PromoteOutletBusIfPowered(SourceBus, /*bLocalPromoteOnly=*/true);
+			Session.Circuit().PromoteOutletBusIfPowered(SourceBus, /*bLocalPromoteOnly=*/true);
 		}
 
 		return;
 	}
 
-	Session.LinkBusToVisibleConnectionsLocal(Switch, SourceBus, /*bMeshOnlyLinks=*/true);
+	Session.Circuit().LinkBusToVisibleConnectionsLocal(Switch, SourceBus, /*bMeshOnlyLinks=*/true);
 	StrategyCloseBypassZeroWireOnLegs(SourceBus, Switch);
 }
 
@@ -176,7 +177,7 @@ void FStructuralSwitchBridgeStrategy::ApplyToggle(
 		return;
 	}
 
-	Session.LinkBusToVisibleConnectionsLocal(Switch, SourceBus, /*bMeshOnlyLinks=*/true);
+	Session.Circuit().LinkBusToVisibleConnectionsLocal(Switch, SourceBus, /*bMeshOnlyLinks=*/true);
 	StrategyCloseBypassZeroWireOnLegs(SourceBus, Switch);
 }
 
@@ -206,17 +207,17 @@ void FStructuralSwitchBridgeStrategy::ApplyWireEcho(
 		return;
 	}
 
-	if (!Session.HasBridgeBusPeerMesh(OutletBus))
+	if (!Session.Circuit().HasBridgeBusPeerMesh(OutletBus))
 	{
 		FStructuralPowerSwitchProcessor::ApplyStructureMembership(Ctx, Switch);
 		return;
 	}
 
-	Session.LinkBusToVisibleConnectionsLocal(Switch, OutletBus, /*bMeshOnlyLinks=*/true);
+	Session.Circuit().LinkBusToVisibleConnectionsLocal(Switch, OutletBus, /*bMeshOnlyLinks=*/true);
 
 	if (FStructuralCircuitPromotionUtil::ComponentOnCircuit(OutletBus))
 	{
-		Session.PromoteDirectHiddenLinks(OutletBus);
+		Session.Circuit().PromoteDirectHiddenLinks(OutletBus);
 	}
 
 	if (Switch->IsBridgeActive())

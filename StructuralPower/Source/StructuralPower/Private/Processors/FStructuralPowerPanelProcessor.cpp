@@ -20,6 +20,7 @@
 #include "Core/EStructuralPowerRole.h"
 #include "Core/EStructuralPowerScope.h"
 #include "Core/FStructuralGraphSession.h"
+#include "Circuit/FStructuralGraphCircuitOps.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Graph/FStructuralEndpointTypes.h"
@@ -210,7 +211,7 @@ void FStructuralPowerPanelProcessor::Process(
 				&& [&]() -> bool
 				{
 					UFGPowerConnectionComponent* Feed =
-						Ctx.Session().ResolveSubnetFeedConnector(Root, ChannelKey);
+						Ctx.Session().Circuit().ResolveSubnetFeedConnector(Root, ChannelKey);
 					return IsValid(Feed)
 						&& FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(Feed);
 				}());
@@ -236,10 +237,10 @@ void FStructuralPowerPanelProcessor::Process(
 	if (bSupplyReady && IsValid(InputPower) && !bMeshOnlySupply)
 	{
 		UFGPowerConnectionComponent* Feed =
-			Ctx.Session().ResolveSubnetFeedConnector(Root, ChannelKey);
+			Ctx.Session().Circuit().ResolveSubnetFeedConnector(Root, ChannelKey);
 		if (IsValid(Feed))
 		{
-			Ctx.Session().PromotePanelSupplyConnection(InputPower, Feed, bLocalPromoteOnly);
+			Ctx.Session().Circuit().PromotePanelSupplyConnection(InputPower, Feed, bLocalPromoteOnly);
 		}
 	}
 
@@ -368,7 +369,7 @@ void FStructuralPowerPanelProcessor::OnWireDelta(
 				FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
 			if (IsValid(InputPower))
 			{
-				Session.PromoteDirectHiddenLinks(InputPower);
+				Session.Circuit().PromoteDirectHiddenLinks(InputPower);
 			}
 
 			const FName EffectiveControl =

@@ -18,7 +18,8 @@ public:
 
 	void Bind(FStructuralGraphSession* InSession);
 
-	void MaybeRunPostLoadLightReconcile();
+	/** Panel/transfer arm after remesh — no phase decisions. */
+	void RunPostLoadLightWorkers();
 	void MaybeRunFinalLightingReconcile();
 	void ReconcileAllPanelEndpoints();
 	void ReconcileAllLightConsumers();

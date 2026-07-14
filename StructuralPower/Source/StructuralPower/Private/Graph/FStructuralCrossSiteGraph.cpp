@@ -6,6 +6,7 @@
 #include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Core/FStructuralGraphSession.h"
+#include "Circuit/FStructuralGraphCircuitOps.h"
 #include "Engine/World.h"
 #include "FGCircuitConnectionComponent.h"
 #include "Graph/FStructuralConnectivityGraph.h"
@@ -74,7 +75,7 @@ FStructuralSiteFeedSignature FStructuralCrossSiteGraph::ComputeSiteFeedSignature
 		return Signature;
 	}
 
-	if (UFGCircuitConnectionComponent* Feed = Session.GetComponentSourceConnector(Site, nullptr))
+	if (UFGCircuitConnectionComponent* Feed = Session.Circuit().GetComponentSourceConnector(Site, nullptr))
 	{
 		Signature.CircuitId = Feed->GetCircuitID();
 		if (!FStructuralCircuitPromotionUtil::ComponentCarriesPower(Cast<UFGPowerConnectionComponent>(Feed)))

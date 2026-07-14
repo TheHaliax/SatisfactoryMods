@@ -31,6 +31,7 @@
 #include "Routing/EStructuralChannel.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Core/FStructuralGraphSession.h"
+#include "Circuit/FStructuralGraphCircuitOps.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
@@ -348,7 +349,7 @@ void FStructuralPowerSwitchProcessor::RemeshUnmeshedBridgesAfterBulkLoad(FStruct
 
 		if (Kind != EStructuralEndpointKind::Switch)
 		{
-			Session.LinkBusToVisibleConnectionsLocal(Host, OutletBus, /*bMeshOnlyLinks=*/false);
+			Session.Circuit().LinkBusToVisibleConnectionsLocal(Host, OutletBus, /*bMeshOnlyLinks=*/false);
 		}
 
 		if (const FStructuralNodeId* HubId = HubByRoot.Find(Root))
@@ -362,7 +363,7 @@ void FStructuralPowerSwitchProcessor::RemeshUnmeshedBridgesAfterBulkLoad(FStruct
 				{
 					if (!OutletBus->HasHiddenConnection(HubBus))
 					{
-						Session.LinkHiddenPairLocal(OutletBus, HubBus, /*bPromoteCircuit=*/true);
+						Session.Circuit().LinkHiddenPairLocal(OutletBus, HubBus, /*bPromoteCircuit=*/true);
 					}
 				}
 			}
@@ -374,7 +375,7 @@ void FStructuralPowerSwitchProcessor::RemeshUnmeshedBridgesAfterBulkLoad(FStruct
 
 		if (Kind != EStructuralEndpointKind::Switch)
 		{
-			Session.PromoteOutletBusIfPowered(OutletBus, /*bLocalPromoteOnly=*/false);
+			Session.Circuit().PromoteOutletBusIfPowered(OutletBus, /*bLocalPromoteOnly=*/false);
 		}
 	}
 }
@@ -675,164 +676,44 @@ void FStructuralPowerSwitchProcessor::ApplyStructureMembership(
 	}
 
 	FStructuralGraphSession& Session = Ctx.Session();
-	const bool bBulk = Session.IsBulkLoadDrainActive();
-	const EAttachContext AttachContext = Ctx.GetAttachContext();
-	const bool bFactRefresh = AttachContext == EAttachContext::WireDelta;
-	const FStructuralNodeId SwitchId = Session.MakeNodeId(Switch);
-
-	FTrackedEndpoint& Tracked = Session.TrackedEndpoints().FindOrAdd(SwitchId);
-	FStructuralSiteContext Site;
-	if (!FStructuralSiteMembership::ResolveSiteContext(Session, Switch, Site))
-	{
-		const FStructuralOutletParentResolveParams ParentParams = Session.MakeOutletParentResolveParams();
-		const FStructuralSwitchParentResolveResult ParentResolve =
-			FStructuralSwitchParentResolver::Resolve(
-				Switch,
-				Session.GetWorld(),
-				Session.StructureGraph(),
-				Session.LightweightIndex(),
-				/*bPreferWirePort=*/false,
-				&ParentParams);
-		Site.ParentAnchor = ParentResolve.Anchor;
-		Session.ResolveEndpointComponentRoot(Switch, Site.ParentAnchor, Site.MountParentId);
-		Tracked.MountParentId = Site.MountParentId;
-		Site.SiteRoot = Session.FindRootForTrackedEndpoint(Tracked);
-		Site.bAnchored = Site.SiteRoot != INDEX_NONE;
-	}
-
-	const int32 Root = Site.SiteRoot;
-
-	Tracked.Actor = Switch;
-	Tracked.Kind = EStructuralEndpointKind::Switch;
-	if (Site.MountParentId.IsValid())
-	{
-		Tracked.MountParentId = Site.MountParentId;
-	}
-
 	const bool bSwitchOn = Switch->IsBridgeActive();
 	const bool bKeyedSubnet = HasAssignedControl(Ctx, Switch);
-	const bool bWired = FStructuralSwitchParentResolver::HasAnyVanillaWire(Switch);
 	const bool bAdvancedWork = NeedsAdvancedWork(Ctx, Switch);
-
-	if (bBulk)
-	{
-		if (bAdvancedWork)
-		{
-			FStructuralPowerTransferGate::FlipBridgeGate(Ctx, Switch, bSwitchOn);
-		}
-
-		if (Site.bAnchored && Root != INDEX_NONE)
-		{
-			FStructuralSiteMembership::RegisterOnBulkLoad(
-				Session,
-				Switch,
-				EStructuralEndpointKind::Switch,
-				Tracked,
-				Site);
-			if (Site.MountParentId.IsValid())
-			{
-				Session.AddEndpointToRootIndex(Root, EStructuralEndpointKind::Switch, SwitchId);
-			}
-		}
-		else
-		{
-			Tracked.bAwaitingStructuralSite = true;
-			Session.RegisterBuildableActor(Switch);
-		}
-
-		Tracked.CachedSwitchWireSignature = BuildWireSignature(Switch);
-		return;
-	}
-
-	UFGStructuralPowerConnectionComponent* OutletBus = Session.GetOrCreateBusConnector(Switch);
-	if (!OutletBus)
-	{
-		FStructuralPowerTrace::LogPlacementSkip(
-			Switch,
-			TEXT("switch_bus_create_failed"),
-			ELogVerbosity::Warning);
-		return;
-	}
-
-	const bool bInertPlace = !bWired && !bKeyedSubnet;
-	const bool bBypassOnStructure = bInertPlace && bSwitchOn;
 
 	if (bAdvancedWork)
 	{
 		FStructuralPowerTransferGate::FlipBridgeGate(Ctx, Switch, bSwitchOn);
 	}
 
-	FStructuralSiteMembershipParams Params;
-	Params.bStripSwitchVanillaPortLinks = bAdvancedWork || bFactRefresh;
-	Params.bBridgePeersOnly = true;
-	Params.bLinkVisibleConnections = bWired || bKeyedSubnet || bBypassOnStructure;
-	Params.bMeshOnlyLinks = bInertPlace;
-	Params.bSkipEndpointIndexDirty = !bBulk && Root != INDEX_NONE;
-	if (Site.bAnchored && Root != INDEX_NONE
-		&& (bBulk || bFactRefresh || !Session.HasBridgeBusPeerMesh(OutletBus)))
-	{
-		FStructuralSiteMembership::IntegrateOnPlace(Session,
-			Switch,
-			OutletBus,
-			SwitchId,
-			EStructuralEndpointKind::Switch,
-			Tracked,
-			Site,
-			Params);
-	}
-	else if (Site.bAnchored && Root != INDEX_NONE)
-	{
-		Tracked.Actor = Switch;
-		Tracked.MountParentId = Site.MountParentId;
-		Tracked.Kind = EStructuralEndpointKind::Switch;
-		Session.RegisterBuildableActor(Switch);
-		if (Params.bLinkVisibleConnections)
-		{
-			Session.LinkBusToVisibleConnectionsLocal(
-				Switch,
-				OutletBus,
-				Params.bMeshOnlyLinks);
-		}
-	}
-	else if (!Site.bAnchored || Root == INDEX_NONE)
-	{
-		Tracked.Actor = Switch;
-		Tracked.MountParentId = Site.MountParentId;
-		Tracked.Kind = EStructuralEndpointKind::Switch;
-		Tracked.bAwaitingStructuralSite = true;
-		Session.RegisterBuildableActor(Switch);
+	FStructuralSwitchMembershipParams MembershipParams;
+	MembershipParams.bAdvancedWork = bAdvancedWork;
+	MembershipParams.bKeyedSubnet = bKeyedSubnet;
+	MembershipParams.bSwitchOn = bSwitchOn;
+	MembershipParams.AttachContext = Ctx.GetAttachContext();
 
-		if (!bBulk
-			&& AttachContext != EAttachContext::WireDelta
-			&& AttachContext != EAttachContext::Toggle
-			&& !Session.IsBuildablePlacementPending(Switch))
+	const FStructuralSwitchMembershipResult Membership =
+		FStructuralSiteMembership::IntegrateSwitchOnPlace(Session, Switch, MembershipParams);
+
+	if (Membership.bDone)
+	{
+		const FStructuralNodeId SwitchId = Session.MakeNodeId(Switch);
+		if (FTrackedEndpoint* Tracked = Session.TrackedEndpoints().Find(SwitchId))
 		{
-			FStructuralPowerTrace::LogPlacementSkip(Switch, TEXT("switch_site_not_ready"));
-			Session.EnqueuePlacement(Switch, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+			Tracked->CachedSwitchWireSignature = BuildWireSignature(Switch);
 		}
 		return;
 	}
 
-	if (Site.bAnchored && Root != INDEX_NONE && Site.MountParentId.IsValid())
-	{
-		Session.AddEndpointToRootIndex(Root, EStructuralEndpointKind::Switch, SwitchId);
-	}
-	else if (!bBulk)
-	{
-		Session.MarkBridgeEndpointRootIndexDirty();
-	}
-
-	const bool bMeshed = Session.HasBridgeBusPeerMesh(OutletBus);
-	const bool bSkipMembershipStrategy =
-		AttachContext == EAttachContext::Toggle
-		|| (AttachContext == EAttachContext::WireDelta && bMeshed);
-
-	if (!bSkipMembershipStrategy)
+	if (Membership.bApplyBridgeStrategy)
 	{
 		FStructuralSwitchBridgeStrategy::ApplyMembership(Ctx, Switch);
 	}
 
-	Tracked.CachedSwitchWireSignature = BuildWireSignature(Switch);
+	const FStructuralNodeId SwitchId = Session.MakeNodeId(Switch);
+	if (FTrackedEndpoint* Tracked = Session.TrackedEndpoints().Find(SwitchId))
+	{
+		Tracked->CachedSwitchWireSignature = BuildWireSignature(Switch);
+	}
 }
 
 void FStructuralPowerSwitchProcessor::Process(
