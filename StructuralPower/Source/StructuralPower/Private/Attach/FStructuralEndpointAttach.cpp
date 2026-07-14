@@ -6,12 +6,14 @@
 #include "Attach/FStructuralBridgeAttach.h"
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildableCircuitSwitch.h"
+#include "Buildables/FGBuildableGenerator.h"
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Buildables/FGBuildablePowerPole.h"
 #include "Buildables/FGBuildablePowerStorage.h"
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Graph/FStructuralPowerBuildableCasts.h"
+#include "Processors/FStructuralPowerGeneratorProcessor.h"
 #include "Processors/FStructuralPowerLightProcessor.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
 #include "Processors/FStructuralPowerPoleProcessor.h"
@@ -35,6 +37,14 @@ bool FStructuralEndpointAttach::AttachConsumer(
 		FStructuralPowerLightProcessor::Process(Ctx, Light, bLocalPromoteOnly);
 		return true;
 	}
+
+	// Wave-1 generators stay on Consumer leaf (stub Process) — Bridge-off until machine attach ships.
+	if (AFGBuildableGenerator* Generator = Cast<AFGBuildableGenerator>(Host))
+	{
+		FStructuralPowerGeneratorProcessor::Process(Ctx, Generator);
+		return true;
+	}
+
 	return false;
 }
 

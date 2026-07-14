@@ -4,6 +4,8 @@
 #include "Graph/FStructuralGraphRemoval.h"
 
 #include "Core/FStructuralGraphSession.h"
+#include "Graph/FStructuralBridgeRootIndex.h"
+#include "Save/FStructuralGraphIdOps.h"
 
 #include "Buildables/FGBuildable.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
@@ -66,7 +68,7 @@ void FStructuralGraphRemoval::OnBuildableRemoved(AFGBuildable* Buildable)
 
 		(void)OldRoot;
 		Session->TrackedEndpoints().Remove(NodeId);
-		Session->MarkBridgeEndpointRootIndexDirty();
+		Session->BridgeRootIndex().MarkBridgeEndpointRootIndexDirty();
 	}
 	else if (Session->StructureGraph().IsTracked(NodeId))
 	{
@@ -78,7 +80,7 @@ void FStructuralGraphRemoval::OnBuildableRemoved(AFGBuildable* Buildable)
 
 	if (GangRoot != INDEX_NONE)
 	{
-		Session->RebuildControlIdGangsForRoot(GangRoot);
+		Session->Ids().RebuildControlIdGangsForRoot(GangRoot);
 	}
 }
 

@@ -9,15 +9,11 @@
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Lightweight/FStructuralLightweightTypes.h"
 
-class AFGBuildable;
 class AFGBuildableCircuitSwitch;
-class AFGBuildableLightSource;
-class AFGBuildableLightsControlPanel;
 struct FStructuralPowerContext;
-class AStructuralPowerGraphSubsystem;
 class FStructuralGraphSession;
-class UFGStructuralPowerConnectionComponent;
 
+/** Thin ToggleBridge shell — kind policy lives on Attach strategies + TransferGate. */
 class STRUCTURALPOWER_API FStructuralPowerSwitchProcessor
 {
 public:
@@ -31,45 +27,11 @@ public:
 
 	static void TearDown(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 
-	static void DisarmDirectedPair(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
-
-	static void SyncDirectedBridgePair(
-		FStructuralPowerContext& Ctx,
-		AFGBuildableCircuitSwitch* Switch);
-
-	static void ApplySwitchBridgeStrategy(
-		FStructuralPowerContext& Ctx,
-		AFGBuildableCircuitSwitch* Switch);
-
 	static void OnCircuitsRebuilt(
 		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch);
 
-	static uint8 BuildWireSignature(AFGBuildableCircuitSwitch* Switch);
-
-	static void RemeshUnmeshedBridgesAfterBulkLoad(FStructuralPowerContext& Ctx);
-
-	static void PropagateWiredFeedChange(
-		FStructuralPowerContext& Ctx,
-		AFGBuildableCircuitSwitch* Switch,
-		int32 LocalRoot);
-
-	static void ApplyWireDeltaTransferSideEffects(
-		FStructuralPowerContext& Ctx,
-		AFGBuildableCircuitSwitch* Switch,
-		int32 Root);
-
 	static void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
-
-	static bool HasAssignedControl(
-		const FStructuralPowerContext& Ctx,
-		const AFGBuildableCircuitSwitch* Switch);
-
-	static bool NeedsAdvancedWork(
-		const FStructuralPowerContext& Ctx,
-		const AFGBuildableCircuitSwitch* Switch);
-
-	static bool ShouldInjectStructuralPath(const AFGBuildableCircuitSwitch* Switch);
 
 	static void EnsureListener(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 
@@ -83,11 +45,4 @@ private:
 		FStructuralPowerContext& Ctx,
 		AFGBuildableCircuitSwitch* Switch,
 		FTrackedEndpoint& Tracked);
-
-	static bool ResolveSwitchTrackedRoot(
-		FStructuralGraphSession& Session,
-		AFGBuildableCircuitSwitch* Switch,
-		FStructuralNodeId& OutSwitchId,
-		int32& OutRoot,
-		bool& OutStructurallyAnchored);
 };

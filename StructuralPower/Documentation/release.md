@@ -35,7 +35,7 @@ Mod page: [ficsit.app/mod/StructuralPower](https://ficsit.app/mod/StructuralPowe
    ```
    StarterProject/Saved/ArchivedPlugins/StructuralPower/StructuralPower.zip
    ```
-6. **ficsit.app** → StructuralPower → **New Version** → upload `StructuralPower.zip`, changelog (from `CHANGELOG.md` **3.0.0** section — include v2.1 welcome-back block), compatibility **Works** (tested 495413 stable SP). Upload refreshed **mod icon** from `Resources/Icon512.png` if the SMR form asks. Merge `development` → `main` before announce so GitHub README/icon align. Gameplay screenshot in `StructuralPower/README.md` uses `refs/heads/main/.../Screenshots/...` — updates on `main` only.
+6. **ficsit.app** → StructuralPower → **New Version** → upload `StructuralPower.zip`, changelog from `CHANGELOG.md` **3.0.0** (product welcome-back prose lives in `README.md`, not the changelog), compatibility **Works** (tested 495413 stable SP). Upload refreshed **mod icon** from `Resources/Icon512.png` if the SMR form asks. Merge `development` → `main` before announce so GitHub README/icon align. Gameplay screenshot in `StructuralPower/README.md` uses `refs/heads/main/.../Screenshots/...` — updates on `main` only.
 7. **Deploy test servers** — follow [Internal test deploy](#internal-test-deploy-haliax) above (our zips). Optional SMR parity: copy version ID after approval if you want laptop script to `fetch_smr` StructuralPower instead of `STRUCTURAL_POWER_ZIP`:
    ```powershell
    curl -sL "https://api.ficsit.app/v1/mod/5W9LAp72Xzuwjn/versions"

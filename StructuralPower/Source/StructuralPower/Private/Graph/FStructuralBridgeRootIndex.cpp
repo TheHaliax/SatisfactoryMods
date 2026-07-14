@@ -8,9 +8,11 @@
 
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildablePowerPole.h"
-#include "Graph/FStructuralAttachmentResolver.h"
 #include "Diagnostics/FStructuralPowerTraceScope.h"
+#include "Graph/FStructuralAttachmentResolver.h"
 #include "Graph/FStructuralEndpointTypes.h"
+#include "Graph/FStructuralOutletParentResolver.h"
+#include "Lightweight/FStructuralLightweightIndex.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "StructuralPowerLog.h"
 
@@ -99,7 +101,7 @@ int32 FStructuralBridgeRootIndex::ResolveBridgeComponentRootBulk(
 
 	if (Anchor.IsValid())
 	{
-		const FStructuralNodeId ParentId = Session->MakeParentNodeId(Anchor);
+		const FStructuralNodeId ParentId = MakeParentNodeId(Anchor);
 		const int32 Root = Session->StructureGraph().FindRoot(ParentId);
 		if (Root != INDEX_NONE)
 		{
@@ -128,7 +130,7 @@ bool FStructuralBridgeRootIndex::EnsureParentRegisteredInGraph(
 		return false;
 	}
 
-	const FStructuralNodeId ParentId = Session->MakeParentNodeId(Anchor);
+	const FStructuralNodeId ParentId = MakeParentNodeId(Anchor);
 	if (Session->StructureGraph().FindRoot(ParentId) != INDEX_NONE)
 	{
 		OutParentId = ParentId;
@@ -194,7 +196,7 @@ int32 FStructuralBridgeRootIndex::ResolveBridgeHostComponentRoot(
 	}
 
 	FStructuralNodeId ParentId;
-	const FStructuralWallAnchor Anchor = Session->ResolveOutletAnchor(Host);
+	const FStructuralWallAnchor Anchor = ResolveOutletAnchor(Host);
 	const int32 Root = ResolveEndpointComponentRoot(Host, Anchor, ParentId);
 	if (OutParentId)
 	{
@@ -219,7 +221,48 @@ int32 FStructuralBridgeRootIndex::GetEndpointComponentRoot(AFGBuildable* Endpoin
 		return INDEX_NONE;
 	}
 
-	const FStructuralWallAnchor Anchor = Session->ResolveOutletAnchor(Endpoint);
+	const FStructuralWallAnchor Anchor = ResolveOutletAnchor(Endpoint);
 	FStructuralNodeId ParentId;
 	return ResolveEndpointComponentRoot(Endpoint, Anchor, ParentId);
+}
+
+FStructuralOutletParentResolveParams FStructuralBridgeRootIndex::MakeOutletParentResolveParams() const
+{
+	FStructuralOutletParentResolveParams Params;
+	Params.LightweightIndex = &Session->LightweightIndex();
+	Params.BusMemberIndex = &Session->BusMemberSpatialIndex();
+	Params.StructureGraph = &Session->StructureGraph();
+	Params.bAllowLiveScan = !Session->IsBulkLoadDrainActive();
+	Params.ResolveActorFromNodeId = [this](const FStructuralNodeId& NodeId) -> AFGBuildable*
+	{
+		if (const TWeakObjectPtr<AFGBuildable>* Entry = Session->RegisteredBuildables().Find(NodeId))
+		{
+			return Entry->Get();
+		}
+		return nullptr;
+	};
+	return Params;
+}
+
+FStructuralWallAnchor FStructuralBridgeRootIndex::ResolveOutletAnchor(AFGBuildable* Outlet) const
+{
+	return FStructuralAttachmentResolver::ResolveStructuralParent(
+		Outlet,
+		Session->GetWorld(),
+		MakeOutletParentResolveParams());
+}
+
+FStructuralNodeId FStructuralBridgeRootIndex::MakeParentNodeId(const FStructuralWallAnchor& Anchor) const
+{
+	if (IsValid(Anchor.Actor))
+	{
+		return Session->MakeNodeId(Anchor.Actor);
+	}
+
+	if (Anchor.Lightweight.IsValid())
+	{
+		return FStructuralLightweightIndex::MakeNodeId(Anchor.Lightweight);
+	}
+
+	return FStructuralNodeId();
 }

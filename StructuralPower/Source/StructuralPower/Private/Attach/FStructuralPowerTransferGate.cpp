@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Haliax
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "Processors/FStructuralPowerTransferGate.h"
+#include "Attach/FStructuralPowerTransferGate.h"
 
 #include "Attach/FStructuralDeviceAttach.h"
 #include "Attach/FStructuralPanelAttach.h"
+#include "Attach/FStructuralSwitchPredicates.h"
 #include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
@@ -37,8 +38,8 @@ void SetTrackedTransfer(FTrackedEndpoint& Tracked, bool bActive)
 bool RootAllowsTransfer(FStructuralPowerContext& Ctx, int32 Root)
 {
 	return Root != INDEX_NONE
-		&& (Ctx.Session().DoesComponentRootCarryPower(Root)
-			|| Ctx.Session().DoesSiteStructuralBusCarryPower(Root));
+		&& (Ctx.Session().Circuit().DoesComponentRootCarryPower(Root)
+			|| Ctx.Session().Circuit().DoesSiteStructuralBusCarryPower(Root));
 }
 
 FName ResolveSwitchGateId(const FStructuralChannelKey& ChannelKey)
@@ -151,7 +152,7 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 
 	const bool bAllowTransfer = bGateOpen && RootAllowsTransfer(Ctx, Root);
 
-	Ctx.Session().RefreshBridgeEndpointRootIndex();
+	Ctx.Session().BridgeRootIndex().RefreshBridgeEndpointRootIndex();
 
 	auto ApplyPanel = [&](const FStructuralNodeId& NodeId)
 	{
@@ -167,7 +168,7 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 			return;
 		}
 
-		if (Ctx.Session().ResolveSource(Panel, EStructuralChannel::Light) != SwitchControlId)
+		if (Ctx.Session().Ids().ResolveSource(Panel, EStructuralChannel::Light) != SwitchControlId)
 		{
 			return;
 		}
@@ -203,9 +204,9 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 			return;
 		}
 
-		const FStructuralChannelKey LightKey = Ctx.Session().ResolveChannelKeyForBuildable(Light);
+		const FStructuralChannelKey LightKey = Ctx.Session().Ids().ResolveChannelKeyForBuildable(Light);
 		if (LightKey.Source != SwitchControlId
-			|| Ctx.Session().IsPanelDownstreamLight(Root, LightKey))
+			|| Ctx.Session().Reconcile().IsPanelDownstreamLight(Root, LightKey))
 		{
 			return;
 		}
@@ -251,7 +252,7 @@ void FStructuralPowerTransferGate::ApplyKeyedTransferOnRoot(
 
 void FStructuralPowerTransferGate::SuspendAllKeyedLightingTransfer(FStructuralPowerContext& Ctx)
 {
-	Ctx.Session().RefreshBridgeEndpointRootIndex();
+	Ctx.Session().BridgeRootIndex().RefreshBridgeEndpointRootIndex();
 
 	TSet<int32> Roots;
 	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Ctx.Session().TrackedEndpoints())
@@ -267,7 +268,7 @@ void FStructuralPowerTransferGate::SuspendAllKeyedLightingTransfer(FStructuralPo
 			continue;
 		}
 
-		const FName Control = Ctx.Session().ResolveControl(Switch, EStructuralChannel::Switch);
+		const FName Control = Ctx.Session().Ids().ResolveControl(Switch, EStructuralChannel::Switch);
 		if (!FStructuralPowerRouter::IsAssignedControl(Control))
 		{
 			continue;
@@ -316,7 +317,7 @@ void FStructuralPowerTransferGate::RefreshKeyedTransferOnRoot(
 
 	if (Ctx.Session().BridgeEndpointRootIndexDirty())
 	{
-		Ctx.Session().RefreshBridgeEndpointRootIndex();
+		Ctx.Session().BridgeRootIndex().RefreshBridgeEndpointRootIndex();
 	}
 
 	const TArray<FStructuralNodeId>* SwitchIds =
@@ -341,7 +342,7 @@ void FStructuralPowerTransferGate::RefreshKeyedTransferOnRoot(
 			continue;
 		}
 
-		const FName Control = Ctx.Session().ResolveControl(Switch, EStructuralChannel::Switch);
+		const FName Control = Ctx.Session().Ids().ResolveControl(Switch, EStructuralChannel::Switch);
 		if (!FStructuralPowerRouter::IsAssignedControl(Control))
 		{
 			continue;
@@ -368,11 +369,11 @@ void FStructuralPowerTransferGate::RefreshSiteStructuralConsumersOnRoot(
 		return;
 	}
 
-	Ctx.Session().RefreshBridgeEndpointRootIndex();
+	Ctx.Session().BridgeRootIndex().RefreshBridgeEndpointRootIndex();
 
-	const FStructuralComponentKey CompKey = Ctx.Session().MakeComponentKeyForRoot(Root);
+	const FStructuralComponentKey CompKey = Ctx.Session().Ids().MakeComponentKeyForRoot(Root);
 	const FName ComponentDefaultId = CompKey.IsValid()
-		? Ctx.Session().GetOrCreateComponentDefaultId(CompKey)
+		? Ctx.Session().Ids().GetOrCreateComponentDefaultId(CompKey)
 		: NAME_None;
 
 	const bool bAllowTransfer = bGateOpen && RootAllowsTransfer(Ctx, Root);
@@ -391,10 +392,10 @@ void FStructuralPowerTransferGate::RefreshSiteStructuralConsumersOnRoot(
 			return;
 		}
 
-		const FStructuralChannelKey LightKey = Ctx.Session().ResolveChannelKeyForBuildable(Light);
+		const FStructuralChannelKey LightKey = Ctx.Session().Ids().ResolveChannelKeyForBuildable(Light);
 		if (LightKey.Source.IsNone()
 			|| LightKey.Source != ComponentDefaultId
-			|| Ctx.Session().IsPanelDownstreamLight(Root, LightKey))
+			|| Ctx.Session().Reconcile().IsPanelDownstreamLight(Root, LightKey))
 		{
 			return;
 		}
@@ -422,5 +423,85 @@ void FStructuralPowerTransferGate::RefreshSiteStructuralConsumersOnRoot(
 		{
 			RefreshFoundationLight(NodeId);
 		}
+	}
+}
+
+void FStructuralPowerTransferGate::PropagateWiredFeedChange(
+	FStructuralPowerContext& Ctx,
+	AFGBuildableCircuitSwitch* Switch,
+	int32 LocalRoot)
+{
+	FStructuralPowerBridgeProcessor::PropagateCrossSiteFeedChange(Ctx, Switch, LocalRoot);
+}
+
+void FStructuralPowerTransferGate::ApplyWireDeltaTransferSideEffects(
+	FStructuralPowerContext& Ctx,
+	AFGBuildableCircuitSwitch* Switch,
+	int32 Root)
+{
+	if (!IsValid(Switch) || Root == INDEX_NONE)
+	{
+		return;
+	}
+
+	const bool bAdvancedWork = FStructuralSwitchPredicates::NeedsAdvancedWork(Ctx, Switch);
+	const bool bSwitchOn = Switch->IsBridgeActive();
+	const bool bGateOpen = bAdvancedWork && bSwitchOn;
+
+	if (bAdvancedWork)
+	{
+		FlipBridgeGate(Ctx, Switch, bSwitchOn);
+
+		if (FStructuralSwitchPredicates::HasAssignedControl(Ctx, Switch))
+		{
+			const FStructuralChannelKey SwitchKey =
+				Ctx.Session().Ids().ResolveChannelKeyForBuildable(Switch);
+			ApplyKeyedTransferOnRoot(
+				Ctx,
+				Root,
+				SwitchKey.Control,
+				bSwitchOn,
+				/*bLocalPromoteOnly=*/true);
+		}
+	}
+	else
+	{
+		FlipBridgeGate(Ctx, Switch, false);
+	}
+
+	if (!FStructuralSwitchPredicates::HasAssignedControl(Ctx, Switch))
+	{
+		RefreshSiteStructuralConsumersOnRoot(Ctx, Root, bGateOpen);
+	}
+}
+
+void FStructuralPowerTransferGate::ApplyToggleTransferSideEffects(
+	FStructuralPowerContext& Ctx,
+	AFGBuildableCircuitSwitch* Switch,
+	int32 Root,
+	bool bKeyedSubnet,
+	FName SwitchControlId,
+	bool bSwitchOn)
+{
+	if (!IsValid(Switch) || !FStructuralSwitchPredicates::NeedsAdvancedWork(Ctx, Switch))
+	{
+		return;
+	}
+
+	FlipBridgeGate(Ctx, Switch, bSwitchOn);
+
+	if (Root != INDEX_NONE && bKeyedSubnet)
+	{
+		ApplyKeyedTransferOnRoot(
+			Ctx,
+			Root,
+			SwitchControlId,
+			bSwitchOn,
+			/*bLocalPromoteOnly=*/true);
+	}
+
+	if (Root != INDEX_NONE && !bKeyedSubnet)
+	{
+		RefreshSiteStructuralConsumersOnRoot(Ctx, Root, bSwitchOn);
 	}
 }

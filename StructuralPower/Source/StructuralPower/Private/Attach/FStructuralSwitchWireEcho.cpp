@@ -1,16 +1,16 @@
 // SPDX-FileCopyrightText: 2026 Haliax
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "Processors/FStructuralSwitchWireEcho.h"
+#include "Attach/FStructuralSwitchWireEcho.h"
 
 #include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "FGPowerConnectionComponent.h"
 #include "Graph/FStructuralEndpointTypes.h"
-#include "Processors/FStructuralPowerSwitchProcessor.h"
-#include "Processors/FStructuralPowerTransferGate.h"
-#include "Processors/FStructuralSwitchBridgeStrategy.h"
+#include "Attach/FStructuralPowerTransferGate.h"
+#include "Attach/FStructuralSwitchBridgeStrategy.h"
+#include "Attach/FStructuralSwitchPredicates.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
 uint8 FStructuralSwitchWireEcho::BuildWireSignature(AFGBuildableCircuitSwitch* Switch)
@@ -74,11 +74,11 @@ void FStructuralSwitchWireEcho::OnCircuitsRebuilt(
 
 	FStructuralSwitchBridgeStrategy::ApplyWireEcho(Ctx, Switch);
 
-	if (FStructuralPowerSwitchProcessor::NeedsAdvancedWork(Ctx, Switch) && Root != INDEX_NONE)
+	if (FStructuralSwitchPredicates::NeedsAdvancedWork(Ctx, Switch) && Root != INDEX_NONE)
 	{
 		const bool bSwitchOn = Switch->IsBridgeActive();
 		FStructuralPowerTransferGate::FlipBridgeGate(Ctx, Switch, bSwitchOn);
-		if (!FStructuralPowerSwitchProcessor::HasAssignedControl(Ctx, Switch))
+		if (!FStructuralSwitchPredicates::HasAssignedControl(Ctx, Switch))
 		{
 			FStructuralPowerTransferGate::RefreshSiteStructuralConsumersOnRoot(
 				Ctx,

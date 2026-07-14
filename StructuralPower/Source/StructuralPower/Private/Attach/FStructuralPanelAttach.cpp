@@ -107,7 +107,7 @@ bool FStructuralPanelAttach::TryLinkSupply(
 		return false;
 	}
 
-	const FStructuralComponentKey CompKey = Session.MakeComponentKeyForRoot(ComponentRoot);
+	const FStructuralComponentKey CompKey = Session.Ids().MakeComponentKeyForRoot(ComponentRoot);
 	if (!CompKey.IsValid())
 	{
 		return false;
@@ -181,14 +181,14 @@ void FStructuralPanelAttach::RestitchDownstream(
 		return;
 	}
 
-	Session.EnumerateTrackedLightsOnRoot(ComponentRoot, [&](AFGBuildableLightSource* Light)
+	Session.Reconcile().EnumerateTrackedLightsOnRoot(ComponentRoot, [&](AFGBuildableLightSource* Light)
 	{
 		if (!IsValid(Light))
 		{
 			return;
 		}
 
-		const FName LightSource = Session.ResolveSource(Light, EStructuralChannel::Light);
+		const FName LightSource = Session.Ids().ResolveSource(Light, EStructuralChannel::Light);
 		if (LightSource != EffectiveControl)
 		{
 			return;

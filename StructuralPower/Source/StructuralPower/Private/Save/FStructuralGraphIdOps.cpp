@@ -62,7 +62,7 @@ FStructuralComponentKey FStructuralGraphIdOps::MakeComponentKeyForBuildable(
 		Session->LightweightIndex());
 	if (Anchor.IsValid())
 	{
-		return MakeComponentKeyForParent(Session->MakeParentNodeId(Anchor));
+		return MakeComponentKeyForParent(Session->BridgeRootIndex().MakeParentNodeId(Anchor));
 	}
 
 	return {};
@@ -281,7 +281,7 @@ void FStructuralGraphIdOps::SetEndpointIds(
 			/*bDefer=*/true);
 	}
 
-	const FStructuralWallAnchor Anchor = Session->ResolveOutletAnchor(Buildable);
+	const FStructuralWallAnchor Anchor = Session->BridgeRootIndex().ResolveOutletAnchor(Buildable);
 	FStructuralNodeId ParentId;
 	const int32 Root = Session->BridgeRootIndex().ResolveEndpointComponentRoot(
 		Buildable,
@@ -296,12 +296,11 @@ void FStructuralGraphIdOps::SetEndpointIds(
 	{
 		if (AFGBuildableLightSource* Light = FStructuralPowerBuildableCasts::AsLight(Buildable))
 		{
-			const FStructuralChannelKey LightKey =
-				Session->Ids().ResolveChannelKeyForBuildable(Light);
+			const FStructuralChannelKey LightKey = ResolveChannelKeyForBuildable(Light);
 			FStructuralEndpointDispatcher::DispatchPlacement(*Session, Light);
-			if (Session->IsPanelDownstreamLight(Root, LightKey))
+			if (Session->Reconcile().IsPanelDownstreamLight(Root, LightKey))
 			{
-				Session->RefreshPanelsForLightSourceOnRoot(Root, LightKey.Source);
+				Session->Reconcile().RefreshPanelsForLightSourceOnRoot(Root, LightKey.Source);
 			}
 		}
 	}
@@ -333,7 +332,12 @@ void FStructuralGraphIdOps::SetEndpointIds(
 		}
 	}
 
-	Session->RebuildControlIdGangsForRoot(Root);
+	RebuildControlIdGangsForRoot(Root);
+}
+
+void FStructuralGraphIdOps::RebuildControlIdGangsForRoot(const int32 ComponentRoot)
+{
+	Session->Owner().RebuildControlIdGangsForRoot(ComponentRoot);
 }
 
 bool FStructuralGraphIdOps::CollectIdsOnComponent(

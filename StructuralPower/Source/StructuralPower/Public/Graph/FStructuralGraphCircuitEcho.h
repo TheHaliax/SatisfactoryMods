@@ -26,6 +26,7 @@ public:
 	void NotePanelToggleHandled(AFGBuildableLightsControlPanel* Panel);
 	void NoteSwitchCircuitEchoProcessed(AFGBuildableCircuitSwitch* Switch);
 	void NoteSwitchToggleHandled(AFGBuildableCircuitSwitch* Switch);
+	void EnsurePanelListener(AFGBuildableLightsControlPanel* Panel);
 
 private:
 	class FStructuralGraphSession* Session = nullptr;

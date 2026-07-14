@@ -68,11 +68,11 @@ void FStructuralPowerPanelProcessor::Process(
 		return;
 	}
 
-	const FStructuralChannelKey ChannelKey = Ctx.Session().ResolveChannelKeyForBuildable(Panel);
+	const FStructuralChannelKey ChannelKey = Ctx.Session().Ids().ResolveChannelKeyForBuildable(Panel);
 	const EAttachContext AttachContext = Ctx.GetAttachContext();
-	const FStructuralWallAnchor ParentAnchor = Ctx.Session().ResolveOutletAnchor(Panel);
+	const FStructuralWallAnchor ParentAnchor = Ctx.Session().BridgeRootIndex().ResolveOutletAnchor(Panel);
 	FStructuralNodeId ParentId;
-	const int32 Root = Ctx.Session().ResolveEndpointComponentRoot(Panel, ParentAnchor, ParentId);
+	const int32 Root = Ctx.Session().BridgeRootIndex().ResolveEndpointComponentRoot(Panel, ParentAnchor, ParentId);
 
 	const FStructuralNodeId PanelId = Ctx.Session().MakeNodeId(Panel);
 	FTrackedEndpoint& Tracked = Ctx.Session().TrackedEndpoints().FindOrAdd(PanelId);
@@ -84,16 +84,16 @@ void FStructuralPowerPanelProcessor::Process(
 	Tracked.MountParentId = ParentId;
 	Tracked.Kind = EStructuralEndpointKind::Panel;
 	Ctx.Session().RegisterBuildableActor(Panel);
-	Ctx.Session().EnsurePanelListener(Panel);
+	Ctx.Session().CircuitEcho().EnsurePanelListener(Panel);
 	if (Root != INDEX_NONE)
 	{
 		if (IsBulkLoadAttachContext(AttachContext))
 		{
-			Ctx.Session().AddEndpointToRootIndex(Root, EStructuralEndpointKind::Panel, PanelId);
+			Ctx.Session().BridgeRootIndex().AddEndpointToRootIndex(Root, EStructuralEndpointKind::Panel, PanelId);
 		}
 		else
 		{
-			Ctx.Session().MarkBridgeEndpointRootIndexDirty();
+			Ctx.Session().BridgeRootIndex().MarkBridgeEndpointRootIndexDirty();
 		}
 	}
 
@@ -122,10 +122,74 @@ void FStructuralPowerPanelProcessor::Process(
 		return;
 	}
 
+	// Pre-unify OnWireDelta short-paths — keep inside Process for WireDelta/Toggle funnel.
+	if (AttachContext == EAttachContext::WireDelta || AttachContext == EAttachContext::Toggle)
+	{
+		if (AttachContext != EAttachContext::Toggle
+			&& Ctx.Session().CircuitEcho().ShouldSkipPanelCircuitEcho(Panel))
+		{
+			return;
+		}
+
+		if (AttachContext == EAttachContext::Toggle)
+		{
+			const TCHAR* SkipReason = nullptr;
+			if (Ctx.Session().CircuitEcho().ShouldSkipPanelCircuitEcho(Panel, &SkipReason)
+				&& SkipReason
+				&& FCString::Strcmp(SkipReason, TEXT("skip_feed_open")) == 0)
+			{
+				Ctx.Session().CircuitEcho().NotePanelToggleHandled(Panel);
+				return;
+			}
+		}
+
+		if (AttachContext == EAttachContext::WireDelta
+			&& Tracked.bPanelLinksReady
+			&& Tracked.CachedPanelRoot == Root)
+		{
+			if (FStructuralPanelAttach::SupplyAlreadyLinked(
+					Ctx.Session(),
+					Panel,
+					Ports,
+					Root,
+					ChannelKey))
+			{
+				UFGPowerConnectionComponent* InputPower =
+					FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
+				if (IsValid(InputPower))
+				{
+					Ctx.Session().Circuit().PromoteDirectHiddenLinks(InputPower);
+				}
+
+				const FName EffectiveControl =
+					FStructuralPanelControlledSync::ResolveEffectiveLightControl(Ctx.Session(), Panel);
+				if (!EffectiveControl.IsNone())
+				{
+					FStructuralPanelControlledSync::ApplyKeyedSubnet(Ctx.Session(), Panel);
+				}
+
+				UE_LOG(LogStructuralPower, Log,
+					TEXT("[HALSP] panel wire delta %s kind=%s scope=%s site=%d role=%s attach=%s"
+						" root=%d inputPowered=%d path=repair_only"),
+					*Panel->GetName(),
+					StructuralEndpointKindToString(EStructuralEndpointKind::Panel),
+					StructuralPowerScopeToString(EStructuralPowerScope::Site),
+					Root,
+					StructuralPowerRoleToString(EStructuralPowerRole::Router),
+					AttachContextToString(AttachContext),
+					Root,
+					InputPower && FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower)
+						? 1
+						: 0);
+				return;
+			}
+		}
+	}
+
 	const FName FeedSwitchId = ChannelKey.Source;
 	if (Root != INDEX_NONE
 		&& !FeedSwitchId.IsNone()
-		&& Ctx.Session().IsSwitchFeedOpen(Root, FeedSwitchId))
+		&& Ctx.Session().Reconcile().IsSwitchFeedOpen(Root, FeedSwitchId))
 	{
 		FStructuralPanelAttach::TearDownLinks(Panel, Ports);
 
@@ -140,7 +204,7 @@ void FStructuralPowerPanelProcessor::Process(
 	{
 		if (Root != INDEX_NONE
 			&& !FeedSwitchId.IsNone()
-			&& Ctx.Session().IsSwitchFeedOpen(Root, FeedSwitchId))
+			&& Ctx.Session().Reconcile().IsSwitchFeedOpen(Root, FeedSwitchId))
 		{
 			FStructuralPanelAttach::TearDownLinks(Panel, Ports);
 			Tracked.bPanelLinksReady = false;
@@ -205,8 +269,8 @@ void FStructuralPowerPanelProcessor::Process(
 	bool bSupplyReady = false;
 	if (Root != INDEX_NONE)
 	{
-		const bool bFeedReady = Ctx.Session().DoesComponentRootCarryPower(Root)
-			|| Ctx.Session().DoesSiteStructuralBusCarryPower(Root)
+		const bool bFeedReady = Ctx.Session().Circuit().DoesComponentRootCarryPower(Root)
+			|| Ctx.Session().Circuit().DoesSiteStructuralBusCarryPower(Root)
 			|| (!ChannelKey.Source.IsNone()
 				&& [&]() -> bool
 				{
@@ -295,6 +359,11 @@ void FStructuralPowerPanelProcessor::Process(
 		bSupplyReady,
 		Controlled,
 		TEXT("process"));
+
+	if (AttachContext == EAttachContext::Toggle)
+	{
+		Ctx.Session().CircuitEcho().NotePanelToggleHandled(Panel);
+	}
 }
 
 void FStructuralPowerPanelProcessor::OnWireDelta(
@@ -306,118 +375,14 @@ void FStructuralPowerPanelProcessor::OnWireDelta(
 		return;
 	}
 
-	FStructuralGraphSession& Session = Ctx.Session();
 	const EAttachContext AttachContext = Ctx.GetAttachContext();
-
-	if (AttachContext != EAttachContext::Toggle
-		&& Session.ShouldSkipPanelCircuitEcho(Panel))
-	{
-		return;
-	}
-
-	if (AttachContext == EAttachContext::Toggle)
-	{
-		const TCHAR* SkipReason = nullptr;
-		if (Session.ShouldSkipPanelCircuitEcho(Panel, &SkipReason)
-			&& SkipReason
-			&& FCString::Strcmp(SkipReason, TEXT("skip_feed_open")) == 0)
-		{
-			Session.NotePanelToggleHandled(Panel);
-			return;
-		}
-	}
-
-	FStructuralPanelPorts Ports;
-	if (!FStructuralPanelPortResolver::Resolve(Panel, Ports))
-	{
-		return;
-	}
-
-	const FStructuralWallAnchor ParentAnchor = Session.ResolveOutletAnchor(Panel);
-	FStructuralNodeId ParentId;
-	const int32 Root = Session.ResolveEndpointComponentRoot(Panel, ParentAnchor, ParentId);
-
-	const FStructuralNodeId PanelId = Session.MakeNodeId(Panel);
-	FTrackedEndpoint& Tracked = Session.TrackedEndpoints().FindOrAdd(PanelId);
-	Tracked.Actor = Panel;
-	Tracked.MountParentId = ParentId;
-	Tracked.Kind = EStructuralEndpointKind::Panel;
-	Session.RegisterBuildableActor(Panel);
-	Session.EnsurePanelListener(Panel);
-	if (Root != INDEX_NONE)
-	{
-		Session.MarkBridgeEndpointRootIndexDirty();
-	}
-
 	const bool bLocalPromoteOnly =
 		AttachContext != EAttachContext::RuntimePlace
 		|| IsBulkLoadAttachContext(AttachContext)
 		|| AttachContext == EAttachContext::WireDelta
 		|| AttachContext == EAttachContext::Toggle;
 
-	if (AttachContext == EAttachContext::WireDelta && Tracked.bPanelLinksReady
-		&& Tracked.CachedPanelRoot == Root)
-	{
-		const FStructuralChannelKey ChannelKey = Session.ResolveChannelKeyForBuildable(Panel);
-		if (FStructuralPanelAttach::SupplyAlreadyLinked(Session,
-				Panel,
-				Ports,
-				Root,
-				ChannelKey))
-		{
-			UFGPowerConnectionComponent* InputPower =
-				FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
-			if (IsValid(InputPower))
-			{
-				Session.Circuit().PromoteDirectHiddenLinks(InputPower);
-			}
-
-			const FName EffectiveControl =
-				FStructuralPanelControlledSync::ResolveEffectiveLightControl(Session, Panel);
-			if (!EffectiveControl.IsNone())
-			{
-				FStructuralPanelControlledSync::ApplyKeyedSubnet(Session, Panel);
-			}
-
-			UE_LOG(LogStructuralPower, Log,
-				TEXT("[HALSP] panel wire delta %s kind=%s scope=%s site=%d role=%s attach=%s"
-					" root=%d inputPowered=%d path=repair_only"),
-				*Panel->GetName(),
-				StructuralEndpointKindToString(EStructuralEndpointKind::Panel),
-				StructuralPowerScopeToString(EStructuralPowerScope::Site),
-				Root,
-				StructuralPowerRoleToString(EStructuralPowerRole::Router),
-				AttachContextToString(AttachContext),
-				Root,
-				InputPower && FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower)
-					? 1
-					: 0);
-			return;
-		}
-	}
-
-	FStructuralPowerBridgeProcessor::ApplyLocalAttachForPanel(
-		Ctx,
-		Panel,
-		bLocalPromoteOnly);
-
-	const UFGPowerConnectionComponent* InputPower =
-		FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] panel wire delta %s kind=%s scope=%s site=%d role=%s attach=%s"
-			" root=%d inputPowered=%d"),
-		*Panel->GetName(),
-		StructuralEndpointKindToString(EStructuralEndpointKind::Panel),
-		StructuralPowerScopeToString(EStructuralPowerScope::Site),
-		Root,
-		StructuralPowerRoleToString(EStructuralPowerRole::Router),
-		AttachContextToString(AttachContext),
-		Root,
-		InputPower && FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower) ? 1 : 0);
-
-	if (AttachContext == EAttachContext::Toggle)
-	{
-		Session.NotePanelToggleHandled(Panel);
-	}
+	// Short-circuits live in Process for WireDelta/Toggle attach funnel.
+	Process(Ctx, Panel, bLocalPromoteOnly);
 }
 

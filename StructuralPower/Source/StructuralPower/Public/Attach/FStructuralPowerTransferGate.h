@@ -40,4 +40,22 @@ public:
 		bool bGateOpen);
 
 	static void SuspendAllKeyedLightingTransfer(FStructuralPowerContext& Ctx);
+
+	static void PropagateWiredFeedChange(
+		FStructuralPowerContext& Ctx,
+		AFGBuildableCircuitSwitch* Switch,
+		int32 LocalRoot);
+
+	static void ApplyWireDeltaTransferSideEffects(
+		FStructuralPowerContext& Ctx,
+		AFGBuildableCircuitSwitch* Switch,
+		int32 Root);
+
+	static void ApplyToggleTransferSideEffects(
+		FStructuralPowerContext& Ctx,
+		AFGBuildableCircuitSwitch* Switch,
+		int32 Root,
+		bool bKeyedSubnet,
+		FName SwitchControlId,
+		bool bSwitchOn);
 };

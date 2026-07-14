@@ -48,7 +48,7 @@
 #include "Processors/FStructuralEndpointCatalog.h"
 #include "Processors/FStructuralEndpointDispatcher.h"
 #include "Processors/FStructuralEndpointProcessors.h"
-#include "Processors/FStructuralPowerTransferGate.h"
+#include "Attach/FStructuralPowerTransferGate.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "Subsystems/UStructuralPowerFactoryTickHandler.h"
 #include "StructuralPowerConstants.h"
@@ -412,29 +412,15 @@ AStructuralPowerGraphSubsystem::GetOrCreateOutletBusConnector(AFGBuildablePowerP
 FStructuralWallAnchor
 AStructuralPowerGraphSubsystem::ResolveOutletAnchor(AFGBuildable* Outlet) const
 {
-	return FStructuralAttachmentResolver::ResolveStructuralParent(
-		Outlet,
-		GetWorld(),
-		MakeOutletParentResolveParams());
+	return const_cast<AStructuralPowerGraphSubsystem*>(this)
+		->BridgeRootIndex.ResolveOutletAnchor(Outlet);
 }
 
 FStructuralOutletParentResolveParams
 AStructuralPowerGraphSubsystem::MakeOutletParentResolveParams() const
 {
-	FStructuralOutletParentResolveParams Params;
-	Params.LightweightIndex = &LightweightIndex;
-	Params.BusMemberIndex = &BusMemberSpatialIndex;
-	Params.StructureGraph = &StructureGraph;
-	Params.bAllowLiveScan = !bBulkLoadDrainActive;
-	Params.ResolveActorFromNodeId = [this](const FStructuralNodeId& NodeId) -> AFGBuildable*
-	{
-		if (const TWeakObjectPtr<AFGBuildable>* Entry = RegisteredBuildables.Find(NodeId))
-		{
-			return Entry->Get();
-		}
-		return nullptr;
-	};
-	return Params;
+	return const_cast<AStructuralPowerGraphSubsystem*>(this)
+		->BridgeRootIndex.MakeOutletParentResolveParams();
 }
 
 FStructuralComponentResolveResult AStructuralPowerGraphSubsystem::ResolveStructuralComponentAt(

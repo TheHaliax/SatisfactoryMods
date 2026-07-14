@@ -11,6 +11,7 @@
 #include "Config/FStructuralPowerModConfig.h"
 #include "Core/EAttachContext.h"
 #include "Core/FStructuralGraphSession.h"
+#include "Graph/FStructuralGraphCircuitEcho.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "Diagnostics/FStructuralPowerTraceScope.h"
@@ -225,7 +226,7 @@ void FStructuralEndpointDispatcher::DispatchSwitchCircuitsRebuilt(
 		return;
 	}
 
-	if (Session.ShouldSkipSwitchCircuitEcho(Switch))
+	if (Session.CircuitEcho().ShouldSkipSwitchCircuitEcho(Switch))
 	{
 		return;
 	}
@@ -250,7 +251,7 @@ void FStructuralEndpointDispatcher::DispatchSwitchCircuitsRebuilt(
 			Root);
 	}
 
-	Session.NoteSwitchCircuitEchoProcessed(Switch);
+	Session.CircuitEcho().NoteSwitchCircuitEchoProcessed(Switch);
 }
 
 void FStructuralEndpointDispatcher::DispatchPanelWireDelta(
@@ -273,7 +274,7 @@ void FStructuralEndpointDispatcher::DispatchPanelWireDelta(
 		return;
 	}
 
-	if (Session.ShouldSkipPanelCircuitEcho(Panel))
+	if (Session.CircuitEcho().ShouldSkipPanelCircuitEcho(Panel))
 	{
 		return;
 	}

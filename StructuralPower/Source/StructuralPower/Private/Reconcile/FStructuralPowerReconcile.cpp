@@ -20,10 +20,10 @@
 #include "Panel/FStructuralPanelControlledSync.h"
 #include "Panel/FStructuralPanelPortResolver.h"
 #include "Processors/FStructuralEndpointDispatcher.h"
-#include "Processors/FStructuralPowerTransferGate.h"
+#include "Attach/FStructuralPowerTransferGate.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
 #include "Processors/FStructuralPowerLightProcessor.h"
-#include "Processors/FStructuralPowerSwitchProcessor.h"
+#include "Attach/FStructuralSwitchPredicates.h"
 #include "Save/FStructuralControlIdGangIndex.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Core/EAttachContext.h"
@@ -121,7 +121,7 @@ bool FStructuralPowerReconcile::PanelNeedsLightingReconcileRetry(
 
 	const FStructuralChannelKey ChannelKey =
 		Session->Ids().ResolveChannelKeyForBuildable(Panel);
-	const int32 Root = Session->GetEndpointComponentRoot(Panel);
+	const int32 Root = Session->BridgeRootIndex().GetEndpointComponentRoot(Panel);
 	if (Root == INDEX_NONE)
 	{
 		return true;
@@ -229,7 +229,7 @@ bool FStructuralPowerReconcile::IsPanelDownstreamLight(
 			return false;
 		}
 
-		const FStructuralWallAnchor Anchor = Session->ResolveOutletAnchor(Panel);
+		const FStructuralWallAnchor Anchor = Session->BridgeRootIndex().ResolveOutletAnchor(Panel);
 		FStructuralNodeId ParentId;
 		if (Session->BridgeRootIndex().ResolveEndpointComponentRoot(Panel, Anchor, ParentId) != Root)
 		{
@@ -329,7 +329,7 @@ bool FStructuralPowerReconcile::IsSwitchFeedOpen(
 		}
 
 		OutMatched = true;
-		return !FStructuralPowerSwitchProcessor::ShouldInjectStructuralPath(Switch)
+		return !FStructuralSwitchPredicates::ShouldInjectStructuralPath(Switch)
 			|| !Switch->IsBridgeActive();
 	};
 
@@ -383,7 +383,7 @@ void FStructuralPowerReconcile::LogPanelReconcileSummary(
 	}
 
 	const FStructuralChannelKey ChannelKey = Session->Ids().ResolveChannelKeyForBuildable(Panel);
-	const FStructuralWallAnchor ParentAnchor = Session->ResolveOutletAnchor(Panel);
+	const FStructuralWallAnchor ParentAnchor = Session->BridgeRootIndex().ResolveOutletAnchor(Panel);
 	FStructuralNodeId ParentId;
 	const int32 Root = Session->BridgeRootIndex().ResolveEndpointComponentRoot(Panel, ParentAnchor, ParentId);
 	const UFGPowerConnectionComponent* InputPower =
@@ -532,7 +532,7 @@ void FStructuralPowerReconcile::RefreshKeyedTransferAfterLoad()
 		return;
 	}
 
-	Session->RefreshBridgeEndpointRootIndex();
+	Session->BridgeRootIndex().RefreshBridgeEndpointRootIndex();
 
 	TSet<int32> Roots;
 	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Session->TrackedEndpoints())
@@ -634,7 +634,7 @@ void FStructuralPowerReconcile::RefreshNamedControlPanelsAfterLoad()
 		return;
 	}
 
-	Session->RefreshBridgeEndpointRootIndex();
+	Session->BridgeRootIndex().RefreshBridgeEndpointRootIndex();
 
 	TArray<AFGBuildableLightsControlPanel*> Panels;
 	CollectKnownPanelEndpoints(Panels);
@@ -653,7 +653,7 @@ void FStructuralPowerReconcile::RefreshNamedControlPanelsAfterLoad()
 		}
 
 		const FName Source = Session->Ids().ResolveSource(Panel, EStructuralChannel::Light);
-		const FStructuralWallAnchor Anchor = Session->ResolveOutletAnchor(Panel);
+		const FStructuralWallAnchor Anchor = Session->BridgeRootIndex().ResolveOutletAnchor(Panel);
 		FStructuralNodeId ParentId;
 		const int32 Root =
 			Session->BridgeRootIndex().ResolveEndpointComponentRoot(Panel, Anchor, ParentId);
@@ -888,7 +888,7 @@ void FStructuralPowerReconcile::RefreshPanelsForLightSourceOnRoot(
 		return;
 	}
 
-	Session->RefreshBridgeEndpointRootIndex();
+	Session->BridgeRootIndex().RefreshBridgeEndpointRootIndex();
 
 	auto RefreshPanel = [&](AFGBuildableLightsControlPanel* Panel)
 	{
@@ -930,7 +930,7 @@ void FStructuralPowerReconcile::RefreshPanelsForLightSourceOnRoot(
 			continue;
 		}
 
-		const FStructuralWallAnchor Anchor = Session->ResolveOutletAnchor(Pair.Value.GetPanel());
+		const FStructuralWallAnchor Anchor = Session->BridgeRootIndex().ResolveOutletAnchor(Pair.Value.GetPanel());
 		FStructuralNodeId ParentId;
 		if (Session->BridgeRootIndex().ResolveEndpointComponentRoot(
 				Pair.Value.GetPanel(),

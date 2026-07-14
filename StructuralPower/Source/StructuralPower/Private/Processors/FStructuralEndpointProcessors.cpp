@@ -348,11 +348,11 @@ public:
 		AFGBuildable* Buildable,
 		const bool bLocalPromoteOnly) override
 	{
-		if (AFGBuildableGenerator* Generator = Cast<AFGBuildableGenerator>(Buildable))
-		{
-			FStructuralPowerGeneratorProcessor::Process(Ctx, Generator);
-		}
-		(void)bLocalPromoteOnly;
+		FStructuralEndpointAttach::RunStrategy(
+			Ctx,
+			Buildable,
+			GetDescriptor().AttachStrategy,
+			bLocalPromoteOnly);
 	}
 
 	void TearDown(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
@@ -375,6 +375,8 @@ static FGeneratorEndpointProcessor GGeneratorProcessor;
 
 void FStructuralEndpointProcessors::RegisterAll(FStructuralEndpointCatalog& Catalog)
 {
+	// WTF: new Wave 1 kinds = catalog descriptor + RunStrategy leaf + SiteMembership only.
+	// Never new Session forwarders / never dual place-wire engines.
 	Catalog.RegisterProcessor(GPoleProcessor);
 	Catalog.RegisterProcessor(GStorageProcessor);
 	Catalog.RegisterProcessor(GSwitchProcessor);

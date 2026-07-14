@@ -17,4 +17,5 @@ public:
 	static void DisarmDirectedPair(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 	static void SyncDirectedBridgePair(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 	static void Apply(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
+	static void RemeshUnmeshedBridgesAfterBulkLoad(FStructuralPowerContext& Ctx);
 };

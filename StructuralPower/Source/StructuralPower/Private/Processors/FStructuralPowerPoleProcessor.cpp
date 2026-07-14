@@ -12,6 +12,7 @@
 #include "Core/EStructuralPowerRole.h"
 #include "Core/EStructuralPowerScope.h"
 #include "Core/FStructuralGraphSession.h"
+#include "Graph/FStructuralBridgeRootIndex.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Diagnostics/FStructuralPowerTraceScope.h"
 #include "Graph/FStructuralEndpointTypes.h"
@@ -90,7 +91,7 @@ void FStructuralPowerPoleProcessor::Process(
 
 	if (!bBulk && Site.SiteRoot == INDEX_NONE)
 	{
-		Session.MarkBridgeEndpointRootIndexDirty();
+		Session.BridgeRootIndex().MarkBridgeEndpointRootIndexDirty();
 	}
 
 	const FVector AnchorLocation = FStructuralOutletParentHeuristics::GetOutletAnchorLocation(Pole);

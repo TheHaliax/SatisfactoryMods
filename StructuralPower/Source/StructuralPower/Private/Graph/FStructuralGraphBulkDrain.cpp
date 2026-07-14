@@ -6,6 +6,7 @@
 #include "Circuit/FStructuralGraphCircuitOps.h"
 #include "Core/EAttachContext.h"
 #include "Core/FStructuralGraphSession.h"
+#include "Graph/FStructuralBridgeRootIndex.h"
 #include "Core/FStructuralPowerContext.h"
 
 #include "Buildables/FGBuildable.h"
@@ -13,8 +14,8 @@
 #include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Processors/FStructuralPowerSwitchProcessor.h"
-#include "Processors/FStructuralSwitchBridgeStrategy.h"
-#include "Processors/FStructuralPowerTransferGate.h"
+#include "Attach/FStructuralSwitchBridgeStrategy.h"
+#include "Attach/FStructuralPowerTransferGate.h"
 #include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
 
@@ -258,8 +259,8 @@ void FStructuralGraphBulkDrain::FinishBulkLoadDrain()
 
 	if (!bRemeshPrepared)
 	{
-		Session->MarkBridgeEndpointRootIndexDirty();
-		Session->RefreshBridgeEndpointRootIndex();
+		Session->BridgeRootIndex().MarkBridgeEndpointRootIndexDirty();
+		Session->BridgeRootIndex().RefreshBridgeEndpointRootIndex();
 		PrepareRemeshQueue();
 	}
 

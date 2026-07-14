@@ -439,7 +439,7 @@ bool AStructuralPowerGraphSubsystem::EnsureParentRegisteredInGraph(
 	const FStructuralWallAnchor& Anchor,
 	FStructuralNodeId& OutParentId)
 {
-	return GetGraphSession().EnsureParentRegisteredInGraph(Anchor, OutParentId);
+	return BridgeRootIndex.EnsureParentRegisteredInGraph(Anchor, OutParentId);
 }
 
 void AStructuralPowerGraphSubsystem::LinkBusToVisibleConnectionsLocal(
@@ -479,60 +479,14 @@ UFGPowerConnectionComponent* AStructuralPowerGraphSubsystem::ResolveSubnetFeedCo
 
 bool AStructuralPowerGraphSubsystem::DoesComponentRootCarryPower(int32 ComponentRoot) const
 {
-	if (ComponentRoot == INDEX_NONE)
-	{
-		return false;
-	}
-
-	if (UFGCircuitConnectionComponent* Source = const_cast<AStructuralPowerGraphSubsystem*>(this)
-			->GetComponentSourceConnector(ComponentRoot, nullptr))
-	{
-		return FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(
-			Cast<UFGPowerConnectionComponent>(Source));
-	}
-
-	return false;
+	return const_cast<AStructuralPowerGraphSubsystem*>(this)
+		->CircuitOps.DoesComponentRootCarryPower(ComponentRoot);
 }
 
 bool AStructuralPowerGraphSubsystem::DoesSiteStructuralBusCarryPower(int32 ComponentRoot) const
 {
-	if (ComponentRoot == INDEX_NONE)
-	{
-		return false;
-	}
-
-	bool bPowered = false;
-	EndpointIndex.ForEachBridgeOnRoot(
-		ComponentRoot,
-		[this, &bPowered](const FStructuralNodeId& EndpointId)
-		{
-			if (bPowered)
-			{
-				return;
-			}
-
-			const FTrackedEndpoint* Tracked = TrackedEndpoints.Find(EndpointId);
-			if (!Tracked)
-			{
-				return;
-			}
-
-			const AFGBuildable* Host = Tracked->Actor.Get();
-			if (!IsValid(Host))
-			{
-				return;
-			}
-
-			if (UFGStructuralPowerConnectionComponent* Bus = FindBusConnector(Host))
-			{
-				if (FStructuralCircuitPromotionUtil::ComponentCarriesPower(Bus))
-				{
-					bPowered = true;
-				}
-			}
-		});
-
-	return bPowered;
+	return const_cast<AStructuralPowerGraphSubsystem*>(this)
+		->CircuitOps.DoesSiteStructuralBusCarryPower(ComponentRoot);
 }
 
 bool AStructuralPowerGraphSubsystem::FindNearestStructureAnchorForEquipment(
@@ -595,28 +549,7 @@ void AStructuralPowerGraphSubsystem::OnSwitchStateChanged(AFGBuildableCircuitSwi
 
 void AStructuralPowerGraphSubsystem::EnsurePanelListener(AFGBuildableLightsControlPanel* Panel)
 {
-	if (!IsValid(Panel))
-	{
-		return;
-	}
-
-	TInlineComponentArray<UStructuralPowerPanelListener*> Listeners;
-	Panel->GetComponents(Listeners);
-	if (Listeners.Num() > 0)
-	{
-		return;
-	}
-
-	UStructuralPowerPanelListener* Listener =
-		NewObject<UStructuralPowerPanelListener>(Panel, NAME_None, RF_Transient);
-	if (!Listener)
-	{
-		return;
-	}
-
-	Panel->AddInstanceComponent(Listener);
-	Listener->RegisterComponent();
-	Listener->BindSubsystem(this, Panel);
+	GetGraphSession().CircuitEcho().EnsurePanelListener(Panel);
 }
 
 void AStructuralPowerGraphSubsystem::ProcessStructure(AFGBuildable* Buildable)

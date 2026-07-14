@@ -101,7 +101,7 @@ FStructuralBridgeAttachOutcome RefreshWireDeltaMembership(
 		else if (Tracked.MountParentId.IsValid())
 		{
 			Site.MountParentId = Tracked.MountParentId;
-			Site.SiteRoot = Session.FindRootForTrackedEndpoint(Tracked);
+			Site.SiteRoot = Session.BridgeRootIndex().FindRootForTrackedEndpoint(Tracked);
 			Site.bAnchored = Site.SiteRoot != INDEX_NONE;
 		}
 	}
@@ -129,7 +129,7 @@ FStructuralBridgeAttachOutcome RefreshWireDeltaMembership(
 			Session.Circuit().PromoteDirectHiddenLinks(OutletBus);
 		}
 
-		Session.AddEndpointToRootIndex(Site.SiteRoot, Request.Kind, EndpointId);
+		Session.BridgeRootIndex().AddEndpointToRootIndex(Site.SiteRoot, Request.Kind, EndpointId);
 		Outcome.bAttached = true;
 	}
 	else
@@ -186,10 +186,10 @@ FStructuralBridgeAttachOutcome FStructuralBridgeAttach::AttachOnPlace(
 		}
 		else
 		{
-			const FStructuralWallAnchor ParentAnchor = Session.ResolveOutletAnchor(Host);
-			Session.ResolveEndpointComponentRoot(Host, ParentAnchor, Site.MountParentId);
+			const FStructuralWallAnchor ParentAnchor = Session.BridgeRootIndex().ResolveOutletAnchor(Host);
+			Session.BridgeRootIndex().ResolveEndpointComponentRoot(Host, ParentAnchor, Site.MountParentId);
 			Tracked.MountParentId = Site.MountParentId;
-			Site.SiteRoot = Session.FindRootForTrackedEndpoint(Tracked);
+			Site.SiteRoot = Session.BridgeRootIndex().FindRootForTrackedEndpoint(Tracked);
 			Site.bAnchored = Site.SiteRoot != INDEX_NONE;
 		}
 	}
@@ -229,7 +229,7 @@ FStructuralBridgeAttachOutcome FStructuralBridgeAttach::AttachOnPlace(
 			Site);
 		if (Site.SiteRoot != INDEX_NONE && Site.MountParentId.IsValid())
 		{
-			Session.AddEndpointToRootIndex(Site.SiteRoot, Request.Kind, EndpointId);
+			Session.BridgeRootIndex().AddEndpointToRootIndex(Site.SiteRoot, Request.Kind, EndpointId);
 		}
 		Outcome.bAttached = true;
 		return Outcome;
@@ -275,7 +275,7 @@ FStructuralBridgeAttachOutcome FStructuralBridgeAttach::AttachOnPlace(
 
 	if (Site.bAnchored && Site.SiteRoot != INDEX_NONE && Site.MountParentId.IsValid())
 	{
-		Session.AddEndpointToRootIndex(Site.SiteRoot, Request.Kind, EndpointId);
+		Session.BridgeRootIndex().AddEndpointToRootIndex(Site.SiteRoot, Request.Kind, EndpointId);
 	}
 
 	Outcome.bAttached = true;

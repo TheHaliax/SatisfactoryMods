@@ -92,6 +92,9 @@ public:
 		UFGStructuralPowerConnectionComponent* StartHidden,
 		int32 MaxHiddenHops = 512) const;
 
+	bool DoesComponentRootCarryPower(int32 ComponentRoot) const;
+	bool DoesSiteStructuralBusCarryPower(int32 ComponentRoot) const;
+
 private:
 	FStructuralGraphSession* Session = nullptr;
 };

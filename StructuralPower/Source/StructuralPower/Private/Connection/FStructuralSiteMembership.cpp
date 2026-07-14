@@ -9,6 +9,8 @@
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "Core/FStructuralGraphSession.h"
+#include "Graph/FStructuralBridgeRootIndex.h"
+#include "Save/FStructuralGraphIdOps.h"
 #include "Circuit/FStructuralGraphCircuitOps.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "Diagnostics/FStructuralPowerTraceScope.h"
@@ -64,7 +66,7 @@ bool FStructuralSiteMembership::ResolveSiteContext(
 		return false;
 	}
 
-	const FStructuralOutletParentResolveParams Params = Session.MakeOutletParentResolveParams();
+	const FStructuralOutletParentResolveParams Params = Session.BridgeRootIndex().MakeOutletParentResolveParams();
 	const FStructuralOutletParentResolveResult ParentResolve =
 		FStructuralOutletParentResolver::ResolveDetailed(Endpoint, Session.GetWorld(), Params);
 
@@ -83,7 +85,7 @@ bool FStructuralSiteMembership::ResolveSiteContext(
 		AFGBuildablePowerPole* Pole = Cast<AFGBuildablePowerPole>(Endpoint);
 		if (IsValid(Pole))
 		{
-			OutSite.SiteRoot = Session.ResolvePoleComponentRoot(
+			OutSite.SiteRoot = Session.BridgeRootIndex().ResolvePoleComponentRoot(
 				Pole,
 				OutSite.ParentAnchor,
 				OutSite.MountParentId);
@@ -91,7 +93,7 @@ bool FStructuralSiteMembership::ResolveSiteContext(
 	}
 	else
 	{
-		OutSite.SiteRoot = Session.ResolveEndpointComponentRoot(
+		OutSite.SiteRoot = Session.BridgeRootIndex().ResolveEndpointComponentRoot(
 			Endpoint,
 			OutSite.ParentAnchor,
 			OutSite.MountParentId);
@@ -151,7 +153,7 @@ void FStructuralSiteMembership::IntegrateOnPlace(
 	Session.RegisterBuildableActor(Host);
 	if (!Params.bSkipEndpointIndexDirty)
 	{
-		Session.MarkBridgeEndpointRootIndexDirty();
+		Session.BridgeRootIndex().MarkBridgeEndpointRootIndexDirty();
 	}
 
 	if (Kind != EStructuralEndpointKind::Switch)
@@ -196,7 +198,7 @@ void FStructuralSiteMembership::IntegrateOnPlace(
 	if (!Session.IsBulkLoadDrainActive())
 	{
 		FName StructureName = NAME_None;
-		const FStructuralComponentKey CompKey = Session.MakeComponentKeyForRoot(Site.SiteRoot);
+		const FStructuralComponentKey CompKey = Session.Ids().MakeComponentKeyForRoot(Site.SiteRoot);
 		if (CompKey.IsValid())
 		{
 			Session.IdRegistry().TryGetComponentDefaultId(CompKey, StructureName);
@@ -243,7 +245,7 @@ FStructuralSwitchMembershipResult FStructuralSiteMembership::IntegrateSwitchOnPl
 	if (!ResolveSiteContext(Session, Switch, Site))
 	{
 		const FStructuralOutletParentResolveParams ParentParams =
-			Session.MakeOutletParentResolveParams();
+			Session.BridgeRootIndex().MakeOutletParentResolveParams();
 		const FStructuralSwitchParentResolveResult ParentResolve =
 			FStructuralSwitchParentResolver::Resolve(
 				Switch,
@@ -253,9 +255,9 @@ FStructuralSwitchMembershipResult FStructuralSiteMembership::IntegrateSwitchOnPl
 				/*bPreferWirePort=*/false,
 				&ParentParams);
 		Site.ParentAnchor = ParentResolve.Anchor;
-		Session.ResolveEndpointComponentRoot(Switch, Site.ParentAnchor, Site.MountParentId);
+		Session.BridgeRootIndex().ResolveEndpointComponentRoot(Switch, Site.ParentAnchor, Site.MountParentId);
 		Tracked.MountParentId = Site.MountParentId;
-		Site.SiteRoot = Session.FindRootForTrackedEndpoint(Tracked);
+		Site.SiteRoot = Session.BridgeRootIndex().FindRootForTrackedEndpoint(Tracked);
 		Site.bAnchored = Site.SiteRoot != INDEX_NONE;
 	}
 
@@ -281,7 +283,7 @@ FStructuralSwitchMembershipResult FStructuralSiteMembership::IntegrateSwitchOnPl
 				Site);
 			if (Site.MountParentId.IsValid())
 			{
-				Session.AddEndpointToRootIndex(Root, EStructuralEndpointKind::Switch, SwitchId);
+				Session.BridgeRootIndex().AddEndpointToRootIndex(Root, EStructuralEndpointKind::Switch, SwitchId);
 			}
 		}
 		else
@@ -363,11 +365,11 @@ FStructuralSwitchMembershipResult FStructuralSiteMembership::IntegrateSwitchOnPl
 
 	if (Site.bAnchored && Root != INDEX_NONE && Site.MountParentId.IsValid())
 	{
-		Session.AddEndpointToRootIndex(Root, EStructuralEndpointKind::Switch, SwitchId);
+		Session.BridgeRootIndex().AddEndpointToRootIndex(Root, EStructuralEndpointKind::Switch, SwitchId);
 	}
 	else
 	{
-		Session.MarkBridgeEndpointRootIndexDirty();
+		Session.BridgeRootIndex().MarkBridgeEndpointRootIndexDirty();
 	}
 
 	const bool bMeshed = Session.Circuit().HasBridgeBusPeerMesh(OutletBus);

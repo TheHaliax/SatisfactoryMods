@@ -6,6 +6,7 @@
 #include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Core/FStructuralGraphSession.h"
+#include "Graph/FStructuralBridgeRootIndex.h"
 #include "Circuit/FStructuralGraphCircuitOps.h"
 #include "Engine/World.h"
 #include "FGCircuitConnectionComponent.h"
@@ -69,7 +70,7 @@ FStructuralSiteFeedSignature FStructuralCrossSiteGraph::ComputeSiteFeedSignature
 		return Signature;
 	}
 
-	Signature.bPowered = Session.DoesComponentRootCarryPower(Site);
+	Signature.bPowered = Session.Circuit().DoesComponentRootCarryPower(Site);
 	if (!Signature.bPowered)
 	{
 		return Signature;
@@ -149,7 +150,7 @@ void FStructuralCrossSiteGraph::CollectWiredSwitchSites(
 		return;
 	}
 
-	const FStructuralOutletParentResolveParams ParentParams = Session.MakeOutletParentResolveParams();
+	const FStructuralOutletParentResolveParams ParentParams = Session.BridgeRootIndex().MakeOutletParentResolveParams();
 	FStructuralSwitchParentResolver::ForEachWiredStructureSideAnchor(
 		Switch,
 		World,
@@ -158,7 +159,7 @@ void FStructuralCrossSiteGraph::CollectWiredSwitchSites(
 		[&](const FStructuralWallAnchor& Anchor)
 		{
 			FStructuralNodeId ParentId;
-			if (Session.EnsureParentRegisteredInGraph(Anchor, ParentId))
+			if (Session.BridgeRootIndex().EnsureParentRegisteredInGraph(Anchor, ParentId))
 			{
 				ConsiderRoot(Session.StructureGraph().FindRoot(ParentId));
 			}

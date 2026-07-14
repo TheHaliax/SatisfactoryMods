@@ -8,7 +8,7 @@ You still use normal power poles and cables where the mod does not apply (machin
 
 The mod rewrites attach and reconcile on vanilla circuit APIs — **stable retroactive load** after earlier save-load pain. Shipped today: opt-in **structural lighting**, **I-key Id config**, **power-switch gating**, and **hoverpack structural tether**.
 
-> **Welcome back if an older version put you off:** see [CHANGELOG](../CHANGELOG.md) **3.0.0** section for the v2.0 → v2.1 → v3.0 story. Short version: retroactive wiring is **kept**; v3.0 is worth retrying if you left on v2.1.
+> **Welcome back if an older version put you off:** see the [README](../README.md) v2.1 note. Short version: retroactive wiring is **kept**; v3.0 is worth retrying if you left on v2.1.
 
 ## What gets wired
 
@@ -45,14 +45,13 @@ Pieces the mod does not recognise (machines, generators) keep working with norma
 When enabled:
 
 - Lights on **powered** structure can draw from the hidden bus — no wire to every foundation.
-- Use **lights control panels** and **named groups** for multiple zones on one build.
-- Press **I** while looking at a light, switch, or panel to assign **Source** / **Control** ids.
+- Use **lights control panels** and **named groups** for multiple zones on one build (assign group ids with the **I** panel below).
 
 Without Group Lighting enabled, lights behave vanilla (wire required).
 
 ## Id config panel (I key)
 
-Look at an eligible buildable and press **I**:
+**Global** feature on eligible / enabled components — not limited to structural lighting. Look at a supported buildable and press **I** to set **Source** / **Control** ids (light groups, switch subnets, and other keyed consumers as they ship).
 
 | Target | Source | Control |
 |--------|--------|---------|

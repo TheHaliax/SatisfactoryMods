@@ -120,7 +120,7 @@ void FStructuralGraphBootstrap::OnWorldReady(UWorld* World)
 	}
 	else
 	{
-		Session->MarkBridgeEndpointRootIndexDirty();
+		Session->BridgeRootIndex().MarkBridgeEndpointRootIndexDirty();
 	}
 
 	if (FStructuralPowerModConfig::IsGroupLightingEnabled())

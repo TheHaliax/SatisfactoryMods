@@ -19,11 +19,6 @@
 			"Name": "StructuralPower",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
-		},
-		{
-			"Name": "StructuralPowerTests",
-			"Type": "Developer",
-			"LoadingPhase": "Default"
 		}
 	],
 	"Plugins": [

@@ -18,7 +18,6 @@ SatisfactoryMods/
   StructuralPower/
     StructuralPower.uplugin
     Source/StructuralPower/
-    Source/StructuralPowerTests/
     Config/
     Resources/
     Screenshots/

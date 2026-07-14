@@ -147,7 +147,7 @@ bool ShouldOverrideControlledBuildables(
 		return true;
 	}
 
-	const FName Control = Session.ResolveControl(Panel, EStructuralChannel::Light);
+	const FName Control = Session.Ids().ResolveControl(Panel, EStructuralChannel::Light);
 	return FStructuralPowerRouter::IsAssignedControl(Control);
 }
 } // namespace
@@ -161,10 +161,10 @@ FName FStructuralPanelControlledSync::ResolveEffectiveLightControl(
 		return NAME_None;
 	}
 
-	const FName Control = Session.ResolveControl(Panel, EStructuralChannel::Light);
+	const FName Control = Session.Ids().ResolveControl(Panel, EStructuralChannel::Light);
 	if (Control.IsNone() || Control == StructuralPowerConstants::ControlUnconfigured)
 	{
-		return Session.ResolveSource(Panel, EStructuralChannel::Light);
+		return Session.Ids().ResolveSource(Panel, EStructuralChannel::Light);
 	}
 
 	return Control;
@@ -190,7 +190,7 @@ void FStructuralPanelControlledSync::ApplyKeyedSubnet(
 		return;
 	}
 
-	const int32 Root = Session.GetEndpointComponentRoot(Panel);
+	const int32 Root = Session.BridgeRootIndex().GetEndpointComponentRoot(Panel);
 	if (Root == INDEX_NONE)
 	{
 		return;
@@ -202,7 +202,7 @@ void FStructuralPanelControlledSync::ApplyKeyedSubnet(
 		return;
 	}
 
-	const FStructuralChannelKey ChannelKey = Session.ResolveChannelKeyForBuildable(Panel);
+	const FStructuralChannelKey ChannelKey = Session.Ids().ResolveChannelKeyForBuildable(Panel);
 	if (!ShouldOverrideControlledBuildables(Session, Panel, Root, ChannelKey, Ports))
 	{
 		// FG AFGBuildableControlPanelHost::SearchDownstreamCircuit owns mControlledBuildables.
@@ -210,14 +210,14 @@ void FStructuralPanelControlledSync::ApplyKeyedSubnet(
 	}
 
 	TArray<AFGBuildable*> KeyedLights;
-	Session.EnumerateTrackedLightsOnRoot(Root, [&](AFGBuildableLightSource* Light)
+	Session.Reconcile().EnumerateTrackedLightsOnRoot(Root, [&](AFGBuildableLightSource* Light)
 	{
 		if (!IsValid(Light))
 		{
 			return;
 		}
 
-		const FName LightSource = Session.ResolveSource(Light, EStructuralChannel::Light);
+		const FName LightSource = Session.Ids().ResolveSource(Light, EStructuralChannel::Light);
 		if (LightSource == EffectiveControl)
 		{
 			KeyedLights.Add(Light);
@@ -256,7 +256,7 @@ void FStructuralPanelControlledSync::ReleaseIntegratedSubnet(
 	}
 
 	const FName EffectiveControl = ResolveEffectiveLightControl(Session, Panel);
-	const FName PanelControl = Session.ResolveControl(Panel, EStructuralChannel::Light);
+	const FName PanelControl = Session.Ids().ResolveControl(Panel, EStructuralChannel::Light);
 	if (FStructuralPowerRouter::IsAssignedControl(EffectiveControl)
 		|| FStructuralPowerRouter::IsAssignedControl(PanelControl))
 	{
@@ -287,20 +287,20 @@ void FStructuralPanelControlledSync::MirrorSharedControlState(
 		return;
 	}
 
-	const FName Control = Session.ResolveControl(Panel, EStructuralChannel::Light);
+	const FName Control = Session.Ids().ResolveControl(Panel, EStructuralChannel::Light);
 	const FName EffectiveControl = ResolveEffectiveLightControl(Session, Panel);
 	if (EffectiveControl.IsNone())
 	{
 		return;
 	}
 
-	const int32 Root = Session.GetEndpointComponentRoot(Panel);
+	const int32 Root = Session.BridgeRootIndex().GetEndpointComponentRoot(Panel);
 	if (Root == INDEX_NONE)
 	{
 		return;
 	}
 
-	Session.RefreshBridgeEndpointRootIndex();
+	Session.BridgeRootIndex().RefreshBridgeEndpointRootIndex();
 	const TArray<FStructuralNodeId>* PanelIds =
 		Session.EndpointIndex().Get(Root, EStructuralEndpointKind::Panel);
 	if (!PanelIds || PanelIds->Num() == 0)
@@ -326,7 +326,7 @@ void FStructuralPanelControlledSync::MirrorSharedControlState(
 			continue;
 		}
 
-		const FName PeerControl = Session.ResolveControl(Peer, EStructuralChannel::Light);
+		const FName PeerControl = Session.Ids().ResolveControl(Peer, EStructuralChannel::Light);
 		const bool bSameBank = Control.IsNone()
 			|| Control == StructuralPowerConstants::ControlUnconfigured
 			? (PeerControl.IsNone() || PeerControl == StructuralPowerConstants::ControlUnconfigured)

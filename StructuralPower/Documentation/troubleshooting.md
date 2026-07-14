@@ -45,7 +45,7 @@ For switch/panel toggle debugging with trace on: grep `switch restitch_off_settl
 
 ## Save / reload issues
 
-v3.0.0 strips persisted mod bus components before circuit bridge BeginPlay and rebuilds topology from geometry. If an older v2.1/v2.2 build failed on load, update to **3.0.0** and retry. Report with `FactoryGame.log` from load if it persists.
+v3.0.0 strips persisted mod bus components before circuit bridge BeginPlay and rebuilds topology from geometry. If an older v2.1 build failed on load, update to **3.0.0** and retry. Report with `FactoryGame.log` from load if it persists.
 
 ## No LogStructuralPower lines during gameplay
 

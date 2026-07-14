@@ -121,59 +121,14 @@ public:
 	void UnregisterBuildableActor(const FStructuralNodeId& NodeId);
 	bool HasActiveDeferredWork() const;
 	void NotifyDeferredWorkRegistered();
-	void AddEndpointToRootIndex(int32 Root, EStructuralEndpointKind Kind, const FStructuralNodeId& EndpointId);
-	void MarkBridgeEndpointRootIndexDirty();
-	void RefreshBridgeEndpointRootIndex();
-	int32 FindRootForTrackedEndpoint(const FTrackedEndpoint& Tracked) const;
 
-	FStructuralWallAnchor ResolveOutletAnchor(AFGBuildable* Outlet) const;
-	int32 ResolveEndpointComponentRoot(
-		AFGBuildable* Endpoint,
-		const FStructuralWallAnchor& Anchor,
-		FStructuralNodeId& OutParentId);
-	FStructuralChannelKey ResolveChannelKeyForBuildable(AFGBuildable* Buildable);
-	FName ResolveSource(AFGBuildable* Buildable, EStructuralChannel Tag);
-	FName ResolveControl(AFGBuildable* Buildable, EStructuralChannel Tag);
-	FStructuralComponentKey MakeComponentKeyForRoot(int32 ComponentRoot) const;
-	FName GetOrCreateComponentDefaultId(const FStructuralComponentKey& ComponentKey);
-
-	bool EnsureParentRegisteredInGraph(const FStructuralWallAnchor& Anchor, FStructuralNodeId& OutParentId);
-	FStructuralNodeId MakeParentNodeId(const FStructuralWallAnchor& Anchor) const;
-	FStructuralOutletParentResolveParams MakeOutletParentResolveParams() const;
-
-	bool DoesComponentRootCarryPower(int32 ComponentRoot) const;
-	bool DoesSiteStructuralBusCarryPower(int32 ComponentRoot) const;
-	bool IsDirectSwitchFedLight(int32 Root, const FStructuralChannelKey& LightKey);
-	bool IsPanelDownstreamLight(int32 Root, const FStructuralChannelKey& LightKey);
-	bool IsSwitchFeedOpen(int32 Root, FName SwitchControlId);
-
-	void MarkEchoDirtyForSwitchToggle(AFGBuildableCircuitSwitch* Switch, int32 LocalRoot);
-	void NoteSwitchToggleHandled(AFGBuildableCircuitSwitch* Switch);
-	void NoteSwitchCircuitEchoProcessed(AFGBuildableCircuitSwitch* Switch);
-	bool ShouldSkipSwitchCircuitEcho(AFGBuildableCircuitSwitch* Switch, const TCHAR** OutReason = nullptr);
-	bool ShouldSkipPanelCircuitEcho(AFGBuildableLightsControlPanel* Panel, const TCHAR** OutReason = nullptr);
-
-	void EnsurePanelListener(AFGBuildableLightsControlPanel* Panel);
-	void NotePanelToggleHandled(AFGBuildableLightsControlPanel* Panel);
 	bool IsBuildablePlacementPending(AFGBuildable* Buildable) const;
-
-	int32 ResolvePoleComponentRoot(
-		AFGBuildablePowerPole* Pole,
-		const FStructuralWallAnchor& Anchor,
-		FStructuralNodeId& OutParentId);
-	void EnumerateTrackedLightsOnRoot(
-		int32 Root,
-		TFunctionRef<void(AFGBuildableLightSource*)> Visitor);
-
-	int32 GetEndpointComponentRoot(AFGBuildable* Endpoint);
 	void DispatchOutlet(AFGBuildable* Buildable);
 	void ProcessStructure(AFGBuildable* Buildable);
 	void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
 	void MaybeReleaseFactoryTick();
 	void ScheduleFinalLightingReconcile();
 	int32 GetPendingJobCount() const;
-	void RebuildControlIdGangsForRoot(int32 ComponentRoot);
-	void RefreshPanelsForLightSourceOnRoot(int32 Root, FName LightSource);
 
 	void DispatchPlacement(
 		AFGBuildable* Buildable,

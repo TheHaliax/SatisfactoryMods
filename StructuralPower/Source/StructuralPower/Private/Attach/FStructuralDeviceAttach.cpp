@@ -63,7 +63,7 @@ bool FStructuralDeviceAttach::TryAttachConsumer(
 		return false;
 	}
 
-	const FStructuralComponentKey CompKey = Session.MakeComponentKeyForRoot(ComponentRoot);
+	const FStructuralComponentKey CompKey = Session.Ids().MakeComponentKeyForRoot(ComponentRoot);
 	if (!CompKey.IsValid() || DeviceKey.Source.IsNone())
 	{
 		return false;

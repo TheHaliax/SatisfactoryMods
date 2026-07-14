@@ -4,11 +4,12 @@
 #include "Equipment/FStructuralHoverpackEquipmentBridge.h"
 
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
-#include "Core/FStructuralGraphSession.h"
 #include "Circuit/FStructuralGraphCircuitOps.h"
+#include "Core/FStructuralGraphSession.h"
 #include "Equipment/FStructuralHoverpackBridge.h"
 #include "FGCircuitConnectionComponent.h"
 #include "FGPowerConnectionComponent.h"
+#include "Save/AStructuralPowerGraphSubsystem.h"
 
 FName FStructuralHoverpackEquipmentBridge::GetKind() const
 {

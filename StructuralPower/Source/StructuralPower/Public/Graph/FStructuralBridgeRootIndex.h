@@ -10,6 +10,7 @@ class AFGBuildable;
 class AFGBuildablePowerPole;
 class FStructuralGraphSession;
 struct FStructuralNodeId;
+struct FStructuralOutletParentResolveParams;
 struct FStructuralWallAnchor;
 struct FTrackedEndpoint;
 
@@ -59,6 +60,10 @@ public:
 	bool EnsureParentRegisteredInGraph(
 		const FStructuralWallAnchor& Anchor,
 		FStructuralNodeId& OutParentId);
+
+	FStructuralWallAnchor ResolveOutletAnchor(AFGBuildable* Outlet) const;
+	FStructuralOutletParentResolveParams MakeOutletParentResolveParams() const;
+	FStructuralNodeId MakeParentNodeId(const FStructuralWallAnchor& Anchor) const;
 
 private:
 	FStructuralGraphSession* Session = nullptr;

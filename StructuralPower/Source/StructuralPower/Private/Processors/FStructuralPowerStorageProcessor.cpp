@@ -114,7 +114,7 @@ void FStructuralPowerStorageProcessor::Process(
 
 	if (!bBulk && !(Site.SiteRoot != INDEX_NONE && Site.MountParentId.IsValid()))
 	{
-		Session.MarkBridgeEndpointRootIndexDirty();
+		Session.BridgeRootIndex().MarkBridgeEndpointRootIndexDirty();
 	}
 
 	EnsureStorageListener(Session.Owner(), Storage);

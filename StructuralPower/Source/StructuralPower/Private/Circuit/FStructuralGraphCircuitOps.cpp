@@ -21,7 +21,7 @@
 #include "FGCircuitSubsystem.h"
 #include "FGPowerConnectionComponent.h"
 #include "Graph/FStructuralEndpointTypes.h"
-#include "Processors/FStructuralPowerSwitchProcessor.h"
+#include "Attach/FStructuralSwitchPredicates.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Buildables/FGBuildablePowerStorage.h"
 #include "Rules/FStructuralEligibilityRules.h"
@@ -862,7 +862,7 @@ UFGPowerConnectionComponent* FStructuralGraphCircuitOps::ResolveSubnetFeedConnec
 		if (UFGStructuralPowerConnectionComponent* ControlBus =
 				AStructuralPowerGraphSubsystem::FindSwitchControlBus(Switch))
 		{
-			if (FStructuralPowerSwitchProcessor::ShouldInjectStructuralPath(Switch))
+			if (FStructuralSwitchPredicates::ShouldInjectStructuralPath(Switch))
 			{
 				return ControlBus;
 			}
@@ -879,4 +879,62 @@ UFGPowerConnectionComponent* FStructuralGraphCircuitOps::ResolveSubnetFeedConnec
 	}
 
 	return ResolveDefaultFeed();
+}
+
+bool FStructuralGraphCircuitOps::DoesComponentRootCarryPower(const int32 ComponentRoot) const
+{
+	if (ComponentRoot == INDEX_NONE)
+	{
+		return false;
+	}
+
+	if (UFGCircuitConnectionComponent* Source = const_cast<FStructuralGraphCircuitOps*>(this)
+			->GetComponentSourceConnector(ComponentRoot, nullptr))
+	{
+		return FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(
+			Cast<UFGPowerConnectionComponent>(Source));
+	}
+
+	return false;
+}
+
+bool FStructuralGraphCircuitOps::DoesSiteStructuralBusCarryPower(const int32 ComponentRoot) const
+{
+	if (ComponentRoot == INDEX_NONE)
+	{
+		return false;
+	}
+
+	bool bPowered = false;
+	Session->EndpointIndex().ForEachBridgeOnRoot(
+		ComponentRoot,
+		[this, &bPowered](const FStructuralNodeId& EndpointId)
+		{
+			if (bPowered)
+			{
+				return;
+			}
+
+			const FTrackedEndpoint* Tracked = Session->TrackedEndpoints().Find(EndpointId);
+			if (!Tracked)
+			{
+				return;
+			}
+
+			const AFGBuildable* Host = Tracked->Actor.Get();
+			if (!IsValid(Host))
+			{
+				return;
+			}
+
+			if (UFGStructuralPowerConnectionComponent* Bus = Session->FindBusConnector(Host))
+			{
+				if (FStructuralCircuitPromotionUtil::ComponentCarriesPower(Bus))
+				{
+					bPowered = true;
+				}
+			}
+		});
+
+	return bPowered;
 }

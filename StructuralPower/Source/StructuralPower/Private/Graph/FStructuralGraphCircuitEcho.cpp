@@ -4,6 +4,9 @@
 #include "Graph/FStructuralGraphCircuitEcho.h"
 
 #include "Core/FStructuralGraphSession.h"
+#include "Graph/FStructuralBridgeRootIndex.h"
+#include "Reconcile/FStructuralPowerReconcile.h"
+#include "Save/FStructuralGraphIdOps.h"
 
 #include "Attach/FStructuralPanelAttach.h"
 #include "Buildables/FGBuildableCircuitSwitch.h"
@@ -14,8 +17,10 @@
 #include "FGPowerConnectionComponent.h"
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Graph/FStructuralSwitchParentResolver.h"
+#include "Network/UStructuralPowerPanelListener.h"
 #include "Panel/FStructuralPanelPortResolver.h"
 #include "Routing/EStructuralChannel.h"
+#include "Save/AStructuralPowerGraphSubsystem.h"
 
 void FStructuralGraphCircuitEcho::Bind(FStructuralGraphSession* InSession)
 {
@@ -40,7 +45,7 @@ bool FStructuralGraphCircuitEcho::ShouldSkipPanelCircuitEcho(
 	}
 
 	const FStructuralChannelKey ChannelKey = Session->Ids().ResolveChannelKeyForBuildable(Panel);
-	const FStructuralWallAnchor ParentAnchor = Session->ResolveOutletAnchor(Panel);
+	const FStructuralWallAnchor ParentAnchor = Session->BridgeRootIndex().ResolveOutletAnchor(Panel);
 	FStructuralNodeId ParentId;
 	const int32 Root =
 		Session->BridgeRootIndex().ResolveEndpointComponentRoot(Panel, ParentAnchor, ParentId);
@@ -137,7 +142,7 @@ bool FStructuralGraphCircuitEcho::ShouldSkipSwitchCircuitEcho(
 	}
 	else
 	{
-		const FStructuralWallAnchor ParentAnchor = Session->ResolveOutletAnchor(Switch);
+		const FStructuralWallAnchor ParentAnchor = Session->BridgeRootIndex().ResolveOutletAnchor(Switch);
 		Root = Session->BridgeRootIndex().ResolveEndpointComponentRoot(Switch, ParentAnchor, ParentId);
 	}
 
@@ -240,4 +245,30 @@ void FStructuralGraphCircuitEcho::NoteSwitchToggleHandled(AFGBuildableCircuitSwi
 	}
 
 	Session->SiteState().NoteSwitchToggleHandled(Session->MakeNodeId(Switch));
+}
+
+void FStructuralGraphCircuitEcho::EnsurePanelListener(AFGBuildableLightsControlPanel* Panel)
+{
+	if (!Session || !IsValid(Panel))
+	{
+		return;
+	}
+
+	TInlineComponentArray<UStructuralPowerPanelListener*> Listeners;
+	Panel->GetComponents(Listeners);
+	if (Listeners.Num() > 0)
+	{
+		return;
+	}
+
+	UStructuralPowerPanelListener* Listener =
+		NewObject<UStructuralPowerPanelListener>(Panel, NAME_None, RF_Transient);
+	if (!Listener)
+	{
+		return;
+	}
+
+	Panel->AddInstanceComponent(Listener);
+	Listener->RegisterComponent();
+	Listener->BindSubsystem(&Session->Owner(), Panel);
 }

@@ -42,6 +42,8 @@ public:
 
 	bool CollectIdsOnComponent(const FStructuralComponentKey& Key, FStructuralComponentIdList& Out) const;
 
+	void RebuildControlIdGangsForRoot(int32 ComponentRoot);
+
 private:
 	FStructuralGraphSession* Session = nullptr;
 };
