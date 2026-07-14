@@ -125,6 +125,10 @@ void UStructuralPowerFactoryTickHandler::PostFactoryTick(
 				: StructuralPowerConstants::DeferredPlacementsPerTick;
 			Graph->TickDeferredPlacements(MaxJobs);
 		}
+		else if (Graph->HasActiveDeferredWork())
+		{
+			Graph->TickIdleDeferredWork();
+		}
 		else
 		{
 			Graph->MaybeReleaseFactoryTick();

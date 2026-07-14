@@ -80,7 +80,7 @@ void FStructuralPowerPanelProcessor::Process(
 		&& Tracked.CachedPanelKey == ChannelKey;
 
 	Tracked.Actor = Panel;
-	Tracked.ParentId = ParentId;
+	Tracked.MountParentId = ParentId;
 	Tracked.Kind = EStructuralEndpointKind::Panel;
 	Ctx.Session().RegisterBuildableActor(Panel);
 	Ctx.Session().EnsurePanelListener(Panel);
@@ -339,7 +339,7 @@ void FStructuralPowerPanelProcessor::OnWireDelta(
 	const FStructuralNodeId PanelId = Session.MakeNodeId(Panel);
 	FTrackedEndpoint& Tracked = Session.TrackedEndpoints().FindOrAdd(PanelId);
 	Tracked.Actor = Panel;
-	Tracked.ParentId = ParentId;
+	Tracked.MountParentId = ParentId;
 	Tracked.Kind = EStructuralEndpointKind::Panel;
 	Session.RegisterBuildableActor(Panel);
 	Session.EnsurePanelListener(Panel);

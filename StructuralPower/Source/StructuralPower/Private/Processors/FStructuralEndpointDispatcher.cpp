@@ -232,12 +232,12 @@ void FStructuralEndpointDispatcher::DispatchSwitchCircuitsRebuilt(
 
 	const FStructuralNodeId SwitchId = Session.MakeNodeId(Switch);
 	const FTrackedEndpoint* Tracked = Session.TrackedEndpoints().Find(SwitchId);
-	if (!Tracked || !Tracked->ParentId.IsValid())
+	if (!Tracked || !Tracked->MountParentId.IsValid())
 	{
 		return;
 	}
 
-	const int32 Root = Session.StructureGraph().FindRoot(Tracked->ParentId);
+	const int32 Root = Session.StructureGraph().FindRoot(Tracked->MountParentId);
 	if (IStructuralEndpointProcessor* Processor =
 			FStructuralEndpointCatalog::Get().FindMutable(EStructuralEndpointKind::Switch))
 	{
@@ -285,7 +285,7 @@ void FStructuralEndpointDispatcher::DispatchPanelWireDelta(
 	if (!bPortsResolved
 		&& (!Existing
 			|| Existing->Kind != EStructuralEndpointKind::Panel
-			|| !Existing->ParentId.IsValid()))
+			|| !Existing->MountParentId.IsValid()))
 	{
 		return;
 	}
@@ -298,7 +298,7 @@ void FStructuralEndpointDispatcher::DispatchPanelWireDelta(
 
 	if (Existing
 		&& Existing->Kind == EStructuralEndpointKind::Panel
-		&& Existing->ParentId.IsValid())
+		&& Existing->MountParentId.IsValid())
 	{
 		if (IStructuralEndpointProcessor* Processor =
 				FStructuralEndpointCatalog::Get().FindMutable(EStructuralEndpointKind::Panel))

@@ -255,9 +255,18 @@ void AStructuralPowerGraphSubsystem::SetEndpointIds(
 	FName Source,
 	FName Control,
 	bool bClearSource,
-	bool bClearControl)
+	bool bClearControl,
+	const bool bGlobalControl,
+	const bool bTouchGlobalControl)
 {
-	IdOps.SetEndpointIds(Buildable, Source, Control, bClearSource, bClearControl);
+	IdOps.SetEndpointIds(
+		Buildable,
+		Source,
+		Control,
+		bClearSource,
+		bClearControl,
+		bGlobalControl,
+		bTouchGlobalControl);
 }
 
 bool AStructuralPowerGraphSubsystem::CollectIdsOnComponent(
@@ -284,11 +293,6 @@ void AStructuralPowerGraphSubsystem::RebuildControlIdGangsForRoot(const int32 Co
 			return;
 		}
 
-		if (MakeComponentKeyForBuildable(Buildable) != ComponentKey)
-		{
-			return;
-		}
-
 		const EStructuralChannel Tag = FStructuralEligibilityRules::ClassifyBuildable(Buildable);
 		const EStructuralMembershipRole Role = FStructuralMembershipRole::Resolve(Buildable, Tag);
 		if (!FStructuralMembershipRole::PublishesControl(Role))
@@ -302,19 +306,36 @@ void AStructuralPowerGraphSubsystem::RebuildControlIdGangsForRoot(const int32 Co
 			return;
 		}
 
-		ControlIdGangIndex.RegisterPublisher(
-			NodeId,
-			FStructuralControlGangKey{ComponentKey, ControlId});
+		bool bGlobal = false;
+		if (const FStructuralEndpointOverrides* Overrides =
+				IdRegistry.FindPlayerOverride(NodeId))
+		{
+			bGlobal = Overrides->bGlobalControl;
+		}
+
+		FStructuralControlGangKey GangKey;
+		GangKey.Scope = bGlobal
+			? EStructuralControlGangScope::Global
+			: EStructuralControlGangScope::Site;
+		GangKey.ComponentKey = ComponentKey;
+		GangKey.ControlId = ControlId;
+		ControlIdGangIndex.RegisterPublisher(NodeId, GangKey);
 	};
 
+	// Tracked endpoints on this root only — never scan RegisteredBuildables foundations.
 	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : TrackedEndpoints)
 	{
-		RegisterPublisher(Pair.Key, Pair.Value.Actor.Get());
-	}
+		if (!Pair.Value.MountParentId.IsValid())
+		{
+			continue;
+		}
 
-	for (const TPair<FStructuralNodeId, TWeakObjectPtr<AFGBuildable>>& Pair : RegisteredBuildables)
-	{
-		RegisterPublisher(Pair.Key, Pair.Value.Get());
+		if (StructureGraph.FindRoot(Pair.Value.MountParentId) != ComponentRoot)
+		{
+			continue;
+		}
+
+		RegisterPublisher(Pair.Key, Pair.Value.Actor.Get());
 	}
 }
 

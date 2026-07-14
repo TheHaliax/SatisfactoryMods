@@ -60,6 +60,11 @@ FStructuralNodeId MakeActorNodeId(const AFGBuildable* Buildable)
 }
 }
 
+void FStructuralConnectivityGraph::InvalidateCanonicalCache() const
+{
+	CanonicalByRoot.Reset();
+}
+
 void FStructuralConnectivityGraph::Reset()
 {
 	Nodes.Reset();
@@ -69,6 +74,7 @@ void FStructuralConnectivityGraph::Reset()
 	IdToIndex.Reset();
 	Cells.Reset();
 	NumValid = 0;
+	InvalidateCanonicalCache();
 }
 
 FIntVector FStructuralConnectivityGraph::ToCell(const FVector& P)
@@ -155,6 +161,8 @@ void FStructuralConnectivityGraph::Union(int32 A, int32 B)
 	{
 		return;
 	}
+
+	InvalidateCanonicalCache();
 
 	if (RankArr[A] < RankArr[B])
 	{
@@ -278,26 +286,19 @@ void FStructuralConnectivityGraph::CollectComponent(int32 StartIndex, TArray<int
 		return;
 	}
 
-	TSet<int32> Visited;
-	TArray<int32> Queue;
-	TArray<int32> Neighbors;
-	Queue.Add(StartIndex);
-	Visited.Add(StartIndex);
-
-	int32 Head = 0;
-	while (Head < Queue.Num())
+	// UF membership — not spatial BFS. Spatial walk on megasites is O(N×neighbors).
+	const int32 Root = FindRootIndexReadOnly(StartIndex);
+	Out.Reserve(NumValid);
+	for (int32 Index = 0; Index < Nodes.Num(); ++Index)
 	{
-		const int32 Current = Queue[Head++];
-		Out.Add(Current);
-
-		CollectNeighbors(Current, Neighbors);
-		for (int32 Neighbor : Neighbors)
+		if (!Nodes[Index].bValid)
 		{
-			if (!Visited.Contains(Neighbor))
-			{
-				Visited.Add(Neighbor);
-				Queue.Add(Neighbor);
-			}
+			continue;
+		}
+
+		if (FindRootIndexReadOnly(Index) == Root)
+		{
+			Out.Add(Index);
 		}
 	}
 }
@@ -394,6 +395,8 @@ void FStructuralConnectivityGraph::RemoveNode(
 
 	TArray<int32> Component;
 	CollectComponent(Index, Component);
+
+	InvalidateCanonicalCache();
 
 	UnindexCells(Index);
 	Nodes[Index].bValid = false;
@@ -541,22 +544,34 @@ FStructuralNodeId FStructuralConnectivityGraph::MakeCanonicalNodeIdForComponent(
 		return FStructuralNodeId();
 	}
 
-	TArray<int32> Members;
-	CollectComponent(Root, Members);
+	if (const FStructuralNodeId* Cached = CanonicalByRoot.Find(Root))
+	{
+		return *Cached;
+	}
 
 	FStructuralNodeId Best;
-	for (int32 MemberIndex : Members)
+	for (int32 Index = 0; Index < Nodes.Num(); ++Index)
 	{
-		if (!Nodes.IsValidIndex(MemberIndex) || !Nodes[MemberIndex].bValid)
+		if (!Nodes[Index].bValid)
 		{
 			continue;
 		}
 
-		const FStructuralNodeId& Candidate = Nodes[MemberIndex].Id;
+		if (FindRootIndexReadOnly(Index) != Root)
+		{
+			continue;
+		}
+
+		const FStructuralNodeId& Candidate = Nodes[Index].Id;
 		if (!Best.IsValid() || CompareNodeId(Candidate, Best) < 0)
 		{
 			Best = Candidate;
 		}
+	}
+
+	if (Best.IsValid())
+	{
+		CanonicalByRoot.Add(Root, Best);
 	}
 
 	return Best;

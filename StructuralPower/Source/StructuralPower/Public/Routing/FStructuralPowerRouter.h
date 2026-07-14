@@ -46,5 +46,7 @@ public:
 
 	static FName ResolveSwitchControlFromTag(const AFGBuildableCircuitSwitch* Switch);
 
-	static FName MakeDefaultIdName(const FStructuralNodeId& CanonicalNodeId);
+	static FName MakeStructureDefaultIdName(int32 StructureIndex);
+
+	static bool IsLegacyStructureDefaultId(FName Id);
 };

@@ -12,8 +12,7 @@
 #include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Processors/FStructuralPowerLightProcessor.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
-#include "Processors/FStructuralSwitchBridgeStrategy.h"
-#include "Processors/FStructuralSwitchMembership.h"
+#include "Processors/FStructuralPowerSwitchProcessor.h"
 
 FStructuralBridgeAttachOutcome FStructuralEndpointAttach::AttachOnPlace(
 	FStructuralPowerContext& Ctx,
@@ -52,8 +51,7 @@ bool FStructuralEndpointAttach::AttachToggleBridge(FStructuralPowerContext& Ctx,
 {
 	if (AFGBuildableCircuitSwitch* Switch = FStructuralPowerBuildableCasts::AsSwitch(Host))
 	{
-		FStructuralSwitchMembership::Apply(Ctx, Switch);
-		FStructuralSwitchBridgeStrategy::Apply(Ctx, Switch);
+		FStructuralPowerSwitchProcessor::Process(Ctx, Switch);
 		return true;
 	}
 	return false;
@@ -80,7 +78,8 @@ bool FStructuralEndpointAttach::RunStrategy(
 		{
 			Request.Kind = EStructuralEndpointKind::Storage;
 		}
-		return AttachOnPlace(Ctx, Request).OutletBus != nullptr;
+		const FStructuralBridgeAttachOutcome Outcome = AttachOnPlace(Ctx, Request);
+		return Outcome.bAttached || Outcome.OutletBus != nullptr;
 	}
 	case EStructuralAttachStrategy::ToggleBridge:
 		return AttachToggleBridge(Ctx, Host);

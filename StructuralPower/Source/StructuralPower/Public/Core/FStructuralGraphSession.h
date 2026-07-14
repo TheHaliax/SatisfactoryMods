@@ -95,6 +95,7 @@ public:
 	bool& PostLoadRebuilt();
 
 	bool IsBulkLoadDrainActive() const;
+	bool HasPendingBulkRemesh() const;
 
 	bool ShouldDeferCircuitDrivenRefresh() const;
 	bool ShouldDeferSwitchCircuitRefresh() const;

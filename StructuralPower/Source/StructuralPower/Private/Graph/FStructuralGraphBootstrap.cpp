@@ -49,6 +49,9 @@ void FStructuralGraphBootstrap::OnWorldReady(UWorld* World)
 	int32 SeededPoles = 0;
 	int32 SeededSwitches = 0;
 	int32 SeededStorage = 0;
+	int32 SeededPanels = 0;
+	int32 SeededLights = 0;
+	const bool bSeedLighting = FStructuralPowerModConfig::IsGroupLightingEnabled();
 	if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World))
 	{
 		for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef())
@@ -73,6 +76,18 @@ void FStructuralGraphBootstrap::OnWorldReady(UWorld* World)
 				Session->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
 				++SeededStorage;
 			}
+			else if (bSeedLighting && Buildable->IsA<AFGBuildableLightsControlPanel>())
+			{
+				// Seed before remesh/reconcile — BeginPlay next-tick alone races post-load.
+				Session->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+				++SeededPanels;
+			}
+			else if (bSeedLighting
+				&& FStructuralEligibilityRules::IsStructuralLightConsumer(Buildable))
+			{
+				Session->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+				++SeededLights;
+			}
 		}
 	}
 
@@ -82,16 +97,20 @@ void FStructuralGraphBootstrap::OnWorldReady(UWorld* World)
 
 	UE_LOG(LogStructuralPower, Log,
 		TEXT("Graph ready — %d structure node(s), %d component(s) (largest %d), %d LW tracked,"
-			" %d pole(s) seeded, %d switch(es) seeded, %d storage seeded"),
+			" %d pole(s) seeded, %d switch(es) seeded, %d storage seeded,"
+			" %d panel(s) seeded, %d light(s) seeded"),
 		Session->StructureGraph().GetNodeCount(),
 		Components,
 		Largest,
 		Session->LightweightIndex().GetTrackedCount(),
 		SeededPoles,
 		SeededSwitches,
-		SeededStorage);
+		SeededStorage,
+		SeededPanels,
+		SeededLights);
 
-	Session->BulkLoadDrainActive() = (SeededPoles + SeededSwitches + SeededStorage) > 0;
+	Session->BulkLoadDrainActive() =
+		(SeededPoles + SeededSwitches + SeededStorage + SeededPanels + SeededLights) > 0;
 	if (Session->BulkLoadDrainActive())
 	{
 		Session->EndpointIndex().Reset();

@@ -273,7 +273,7 @@ void FStructuralPowerTransferGate::SuspendAllKeyedLightingTransfer(FStructuralPo
 			continue;
 		}
 
-		const int32 Root = Ctx.Session().StructureGraph().FindRoot(Pair.Value.ParentId);
+		const int32 Root = Ctx.Session().StructureGraph().FindRoot(Pair.Value.MountParentId);
 		if (Root == INDEX_NONE)
 		{
 			continue;

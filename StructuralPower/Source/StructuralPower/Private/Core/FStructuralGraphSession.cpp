@@ -190,6 +190,11 @@ bool FStructuralGraphSession::IsBulkLoadDrainActive() const
 	return Owner().IsBulkLoadDrainActive();
 }
 
+bool FStructuralGraphSession::HasPendingBulkRemesh() const
+{
+	return Owner().HasPendingBulkRemesh();
+}
+
 EAttachContext FStructuralGraphSession::GetCurrentAttachContext() const
 {
 	return Owner().GetCurrentAttachContext();

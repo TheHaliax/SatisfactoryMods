@@ -85,11 +85,11 @@ public:
 		AFGBuildable* Buildable,
 		const bool bLocalPromoteOnly) override
 	{
-		if (AFGBuildablePowerPole* Pole = FStructuralPowerBuildableCasts::AsPole(Buildable))
-		{
-			FStructuralPowerPoleProcessor::Process(Ctx, Pole);
-		}
-		(void)bLocalPromoteOnly;
+		FStructuralEndpointAttach::RunStrategy(
+			Ctx,
+			Buildable,
+			GetDescriptor().AttachStrategy,
+			bLocalPromoteOnly);
 	}
 
 	void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
@@ -131,11 +131,11 @@ public:
 		AFGBuildable* Buildable,
 		const bool bLocalPromoteOnly) override
 	{
-		if (AFGBuildablePowerStorage* Storage = FStructuralPowerBuildableCasts::AsStorage(Buildable))
-		{
-			FStructuralPowerStorageProcessor::Process(Ctx, Storage);
-		}
-		(void)bLocalPromoteOnly;
+		FStructuralEndpointAttach::RunStrategy(
+			Ctx,
+			Buildable,
+			GetDescriptor().AttachStrategy,
+			bLocalPromoteOnly);
 	}
 
 	void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override
@@ -186,11 +186,11 @@ public:
 		AFGBuildable* Buildable,
 		const bool bLocalPromoteOnly) override
 	{
-		if (AFGBuildableCircuitSwitch* Switch = FStructuralPowerBuildableCasts::AsSwitch(Buildable))
-		{
-			FStructuralPowerSwitchProcessor::Process(Ctx, Switch);
-		}
-		(void)bLocalPromoteOnly;
+		FStructuralEndpointAttach::RunStrategy(
+			Ctx,
+			Buildable,
+			GetDescriptor().AttachStrategy,
+			bLocalPromoteOnly);
 	}
 
 	void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildable* Buildable) override

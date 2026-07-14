@@ -29,7 +29,7 @@ Major architecture release — **stable retroactive load**, lighting, switches, 
 - **Bridge attach unify** — `FStructuralBridgeAttach` shared place/load for poles and power storage (`IntegrateOnPlace`)
 - **Switch parity** — wire-delta and bulk-load paths match runtime placement bridge strategy (`bcb08cb`, `75f6912`)
 - **Pole BeginPlay** — enqueue when `OnBuildEffectFinished` missed runtime pole
-- **Contributor docs** — `development.md` attach map + HALSP pole lines; POLICY §13 source comment hygiene
+- **Contributor docs** — `development.md` attach map + trace pole lines; source comment hygiene
 
 ## 2.2.0 — 2026-07-05
 Structural lighting, named light groups, and unified device Id config (I key).

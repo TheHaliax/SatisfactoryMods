@@ -112,17 +112,19 @@ bool UStructuralPowerRootInstanceModule::TryEnqueueBuildable(
 
 static bool ShouldUseBulkBeginPlayLog(UWorld* World)
 {
+	// BeginPlay fires before PostLoad rebuild / bulk drain flag — Log spam = hitch.
 	if (!IsValid(World))
 	{
-		return false;
+		return true;
 	}
 
-	if (const AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::Find(World))
+	const AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::Find(World);
+	if (!Graph)
 	{
-		return Graph->IsBulkLoadDrainActive();
+		return true;
 	}
 
-	return false;
+	return !Graph->IsPostLoadRebuilt() || Graph->IsBulkLoadDrainActive();
 }
 
 static void HandlePoleBeginPlay(AFGBuildablePowerPole* Pole)
@@ -262,9 +264,18 @@ static void HandlePanelBeginPlay(AFGBuildableLightsControlPanel* Panel)
 		return;
 	}
 
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] panel BeginPlay %s — enqueue outlet"),
-		*Panel->GetName());
+	if (ShouldUseBulkBeginPlayLog(World))
+	{
+		UE_LOG(LogStructuralPower, Verbose,
+			TEXT("[HALSP] panel BeginPlay %s — enqueue outlet"),
+			*Panel->GetName());
+	}
+	else
+	{
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[HALSP] panel BeginPlay %s — enqueue outlet"),
+			*Panel->GetName());
+	}
 
 	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateStatic(
 		&EnqueuePanelOutletWhenReady,
@@ -285,9 +296,18 @@ static void HandleLightBeginPlay(AFGBuildableLightSource* Light)
 		return;
 	}
 
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] light BeginPlay %s — enqueue outlet"),
-		*Light->GetName());
+	if (ShouldUseBulkBeginPlayLog(World))
+	{
+		UE_LOG(LogStructuralPower, Verbose,
+			TEXT("[HALSP] light BeginPlay %s — enqueue outlet"),
+			*Light->GetName());
+	}
+	else
+	{
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[HALSP] light BeginPlay %s — enqueue outlet"),
+			*Light->GetName());
+	}
 
 	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
 		[WorldWeak = TWeakObjectPtr<UWorld>(World),

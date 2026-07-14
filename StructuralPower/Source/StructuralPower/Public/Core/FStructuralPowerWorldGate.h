@@ -9,9 +9,7 @@ class UWorld;
 
 namespace FStructuralPowerWorldGate
 {
-/** Title / main-menu maps — no graph work. */
 STRUCTURALPOWER_API bool IsMenuWorld(const UWorld* World);
 
-/** Playable session map (not menu). */
 STRUCTURALPOWER_API bool IsGameplayWorld(const UWorld* World);
 }

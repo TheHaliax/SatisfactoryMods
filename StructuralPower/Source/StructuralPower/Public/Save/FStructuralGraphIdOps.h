@@ -36,7 +36,9 @@ public:
 		FName Source,
 		FName Control,
 		bool bClearSource,
-		bool bClearControl);
+		bool bClearControl,
+		bool bGlobalControl = false,
+		bool bTouchGlobalControl = false);
 
 	bool CollectIdsOnComponent(const FStructuralComponentKey& Key, FStructuralComponentIdList& Out) const;
 

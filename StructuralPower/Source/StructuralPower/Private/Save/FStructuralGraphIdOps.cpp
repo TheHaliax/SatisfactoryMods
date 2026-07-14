@@ -53,7 +53,7 @@ FStructuralComponentKey FStructuralGraphIdOps::MakeComponentKeyForBuildable(
 	const FStructuralNodeId BuildableId = Session->MakeNodeId(Buildable);
 	if (const FTrackedEndpoint* Endpoint = Session->TrackedEndpoints().Find(BuildableId))
 	{
-		return MakeComponentKeyForParent(Endpoint->ParentId);
+		return MakeComponentKeyForParent(Endpoint->MountParentId);
 	}
 
 	const FStructuralWallAnchor Anchor = FStructuralAttachmentResolver::ResolveStructuralParent(
@@ -248,7 +248,9 @@ void FStructuralGraphIdOps::SetEndpointIds(
 	FName Source,
 	FName Control,
 	bool bClearSource,
-	bool bClearControl)
+	bool bClearControl,
+	const bool bGlobalControl,
+	const bool bTouchGlobalControl)
 {
 	if (!IsValid(Buildable) || !Buildable->HasAuthority())
 	{
@@ -261,7 +263,9 @@ void FStructuralGraphIdOps::SetEndpointIds(
 		Source,
 		Control,
 		bClearSource,
-		bClearControl);
+		bClearControl,
+		bGlobalControl,
+		bTouchGlobalControl);
 
 	const bool bIsLight = Buildable->IsA<AFGBuildableLightSource>();
 	const bool bIsPanel = Buildable->IsA<AFGBuildableLightsControlPanel>();
@@ -355,25 +359,29 @@ bool FStructuralGraphIdOps::CollectIdsOnComponent(
 	TSet<FName> NamedControls;
 	TSet<FName> NamedSwitchControls;
 	TSet<FName> NamedLightGroups;
+	TSet<FStructuralNodeId> Visited;
 
+	// Tracked endpoints only — never walk RegisteredBuildables (every foundation).
+	// MakeComponentKeyForBuildable + parent resolve on that set froze Id open.
 	auto ConsiderBuildable = [&](const FStructuralNodeId& NodeId, const AFGBuildable* Buildable)
 	{
-		if (!IsValid(Buildable))
+		if (!IsValid(Buildable) || Visited.Contains(NodeId))
 		{
 			return;
 		}
 
-		const FStructuralComponentKey BuildableKey = MakeComponentKeyForBuildable(Buildable);
-		if (!BuildableKey.IsValid()
-			|| Session->StructureGraph().FindRoot(BuildableKey.CanonicalNodeId) != TargetRoot)
-		{
-			return;
-		}
+		Visited.Add(NodeId);
 
 		const bool bIsLight = FStructuralEligibilityRules::IsStructuralLightConsumer(Buildable);
 		const bool bIsPanel = Buildable->IsA<AFGBuildableLightsControlPanel>();
 		const bool bIsSwitch = Buildable->IsA<AFGBuildableCircuitSwitch>();
 		const bool bIsGenerator = Buildable->IsA<AFGBuildableGenerator>();
+		if (!bIsLight && !bIsPanel && !bIsSwitch && !bIsGenerator
+			&& !FStructuralEligibilityRules::IsPowerBridgePole(Buildable)
+			&& !FStructuralEligibilityRules::IsPowerStorage(Buildable))
+		{
+			return;
+		}
 
 		if (const FStructuralEndpointOverrides* Overrides = Session->IdRegistry().FindPlayerOverride(NodeId))
 		{
@@ -407,11 +415,18 @@ bool FStructuralGraphIdOps::CollectIdsOnComponent(
 			const FName TagControl =
 				FStructuralPowerRouter::ResolveSwitchControlFromTag(
 					Cast<AFGBuildableCircuitSwitch>(Buildable));
-			if (!FStructuralPowerRouter::IsReservedSentinel(TagControl))
+			if (!TagControl.IsNone()
+				&& !FStructuralPowerRouter::IsReservedSentinel(TagControl))
 			{
 				NamedControls.Add(TagControl);
 				NamedSwitchControls.Add(TagControl);
 			}
+		}
+
+		// Poles/storage: overrides already harvested — skip Resolve* (MakeCanonical).
+		if (!bIsLight && !bIsPanel && !bIsSwitch && !bIsGenerator)
+		{
+			return;
 		}
 
 		const EStructuralChannel Tag = FStructuralEligibilityRules::ClassifyBuildable(Buildable);
@@ -445,21 +460,48 @@ bool FStructuralGraphIdOps::CollectIdsOnComponent(
 
 	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Session->TrackedEndpoints())
 	{
-		ConsiderBuildable(Pair.Key, Pair.Value.Actor.Get());
-	}
+		if (!Pair.Value.MountParentId.IsValid())
+		{
+			continue;
+		}
 
-	for (const TPair<FStructuralNodeId, TWeakObjectPtr<AFGBuildable>>& Pair :
-		Session->RegisteredBuildables())
-	{
-		ConsiderBuildable(Pair.Key, Pair.Value.Get());
+		if (Session->StructureGraph().FindRoot(Pair.Value.MountParentId) != TargetRoot)
+		{
+			continue;
+		}
+
+		ConsiderBuildable(Pair.Key, Pair.Value.Actor.Get());
 	}
 
 	Session->IdRegistry().ForEachPlayerOverride(
 		[&](const FStructuralNodeId& NodeId, const FStructuralEndpointOverrides&)
 	{
-		if (const TWeakObjectPtr<AFGBuildable>* Buildable = Session->RegisteredBuildables().Find(NodeId))
+		if (const FTrackedEndpoint* Tracked = Session->TrackedEndpoints().Find(NodeId))
 		{
-			ConsiderBuildable(NodeId, Buildable->Get());
+			if (Tracked->MountParentId.IsValid()
+				&& Session->StructureGraph().FindRoot(Tracked->MountParentId) == TargetRoot)
+			{
+				ConsiderBuildable(NodeId, Tracked->Actor.Get());
+			}
+			return;
+		}
+
+		if (const TWeakObjectPtr<AFGBuildable>* BuildablePtr =
+				Session->RegisteredBuildables().Find(NodeId))
+		{
+			AFGBuildable* Buildable = BuildablePtr->Get();
+			if (!IsValid(Buildable) || !FStructuralEligibilityRules::IsIdConfigTarget(Buildable))
+			{
+				return;
+			}
+
+			// Orphan override: one resolve max (not whole foundation registry).
+			const FStructuralComponentKey BuildableKey = MakeComponentKeyForBuildable(Buildable);
+			if (BuildableKey.IsValid()
+				&& Session->StructureGraph().FindRoot(BuildableKey.CanonicalNodeId) == TargetRoot)
+			{
+				ConsiderBuildable(NodeId, Buildable);
+			}
 		}
 	});
 
@@ -474,7 +516,7 @@ bool FStructuralGraphIdOps::CollectIdsOnComponent(
 			continue;
 		}
 
-		if (Session->StructureGraph().FindRoot(Pair.Value.ParentId) != TargetRoot)
+		if (Session->StructureGraph().FindRoot(Pair.Value.MountParentId) != TargetRoot)
 		{
 			continue;
 		}

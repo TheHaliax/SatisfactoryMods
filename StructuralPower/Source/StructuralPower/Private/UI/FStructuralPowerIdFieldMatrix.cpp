@@ -5,7 +5,9 @@
 
 #include "Blueprint/WidgetTree.h"
 #include "Buildables/FGBuildable.h"
+#include "Buildables/FGBuildableCircuitSwitch.h"
 #include "Components/Button.h"
+#include "Components/CheckBox.h"
 #include "Components/ComboBoxString.h"
 #include "Components/EditableTextBox.h"
 #include "Components/HorizontalBox.h"
@@ -173,6 +175,39 @@ bool FStructuralPowerIdFieldMatrix::Build(
 			OutWidgets.AssignControlText,
 			OptionManager->GetControlOptionCount(),
 			[OptionManager](int32 Index) { return OptionManager->GetControlOptionAt(Index); });
+
+		if (TargetBuildable->IsA<AFGBuildableCircuitSwitch>())
+		{
+			UHorizontalBox* GlobalRow = WidgetTree->ConstructWidget<UHorizontalBox>(
+				UHorizontalBox::StaticClass(),
+				TEXT("GlobalControlRow"));
+			OutWidgets.GlobalControlCheck = WidgetTree->ConstructWidget<UCheckBox>(
+				UCheckBox::StaticClass(),
+				TEXT("GlobalControlCheck"));
+			OutWidgets.GlobalControlCheck->SetIsChecked(false);
+			GlobalRow->AddChild(OutWidgets.GlobalControlCheck);
+			if (UHorizontalBoxSlot* CheckSlot =
+					Cast<UHorizontalBoxSlot>(OutWidgets.GlobalControlCheck->Slot))
+			{
+				CheckSlot->SetPadding(FMargin(0.0f, 0.0f, 8.0f, 0.0f));
+				CheckSlot->SetVerticalAlignment(VAlign_Center);
+			}
+
+			UTextBlock* GlobalLabel = WidgetTree->ConstructWidget<UTextBlock>(
+				UTextBlock::StaticClass(),
+				TEXT("GlobalControlLabel"));
+			SetTextStyle(
+				GlobalLabel,
+				TEXT("Global control (all sites)"),
+				12);
+			GlobalRow->AddChild(GlobalLabel);
+			if (UHorizontalBoxSlot* LabelSlot = Cast<UHorizontalBoxSlot>(GlobalLabel->Slot))
+			{
+				LabelSlot->SetVerticalAlignment(VAlign_Center);
+			}
+
+			AddVBoxRow(ContentVBox, GlobalRow, FMargin(0.0f, 0.0f, 0.0f, 12.0f));
+		}
 	}
 
 	UHorizontalBox* ButtonRow = WidgetTree->ConstructWidget<UHorizontalBox>(

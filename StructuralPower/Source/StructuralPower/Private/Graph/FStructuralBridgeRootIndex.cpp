@@ -59,12 +59,12 @@ void FStructuralBridgeRootIndex::AddEndpointToRootIndex(
 int32 FStructuralBridgeRootIndex::FindRootForTrackedEndpoint(
 	const FTrackedEndpoint& Tracked) const
 {
-	if (!Tracked.ParentId.IsValid())
+	if (!Tracked.MountParentId.IsValid())
 	{
 		return INDEX_NONE;
 	}
 
-	return Session->StructureGraph().FindRoot(Tracked.ParentId);
+	return Session->StructureGraph().FindRoot(Tracked.MountParentId);
 }
 
 int32 FStructuralBridgeRootIndex::ResolveBridgeRootFromAnchor(
@@ -205,7 +205,7 @@ int32 FStructuralBridgeRootIndex::ResolveBridgeHostComponentRoot(
 	{
 		if (FTrackedEndpoint* Tracked = Session->TrackedEndpoints().Find(Session->MakeNodeId(Host)))
 		{
-			Tracked->ParentId = ParentId;
+			Tracked->MountParentId = ParentId;
 		}
 	}
 

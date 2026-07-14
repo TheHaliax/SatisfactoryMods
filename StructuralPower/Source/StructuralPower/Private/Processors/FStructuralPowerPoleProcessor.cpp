@@ -48,7 +48,7 @@ void FStructuralPowerPoleProcessor::ResolvePoleStructuralSite(
 	{
 		bStructurallyAnchored = Site.bAnchored;
 		OutRoot = Site.SiteRoot;
-		OutParentId = Site.ParentId;
+		OutParentId = Site.MountParentId;
 	}
 
 	if (OutParentResolve)
@@ -82,7 +82,7 @@ void FStructuralPowerPoleProcessor::Process(
 		{
 			if (Existing->Kind == EStructuralEndpointKind::Pole
 				&& IsValid(Session.FindBusConnector(Pole))
-				&& !Existing->ParentId.IsValid()
+				&& !Existing->MountParentId.IsValid()
 				&& !Existing->bAwaitingStructuralSite
 				&& !FStructuralPoleWireUtil::HasVanillaWire(Pole))
 			{
@@ -116,7 +116,7 @@ void FStructuralPowerPoleProcessor::Process(
 	const FStructuralSiteContext& Site = Outcome.Site;
 	const bool bStructurallyAnchored = Site.bAnchored && Site.SiteRoot != INDEX_NONE;
 
-	if (bStructurallyAnchored && Site.SiteRoot != INDEX_NONE && Site.ParentId.IsValid())
+	if (bStructurallyAnchored && Site.SiteRoot != INDEX_NONE && Site.MountParentId.IsValid())
 	{
 		Session.AddEndpointToRootIndex(Site.SiteRoot, EStructuralEndpointKind::Pole, PoleId);
 	}
@@ -235,7 +235,7 @@ void FStructuralPowerPoleProcessor::OnWireDelta(
 
 	if (Site.bAnchored && Site.SiteRoot != INDEX_NONE)
 	{
-		Tracked.ParentId = Site.ParentId;
+		Tracked.MountParentId = Site.MountParentId;
 		Session.AddEndpointToRootIndex(
 			Site.SiteRoot,
 			EStructuralEndpointKind::Pole,

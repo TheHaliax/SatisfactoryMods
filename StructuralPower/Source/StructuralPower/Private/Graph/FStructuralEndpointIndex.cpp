@@ -18,7 +18,7 @@ void FStructuralEndpointIndex::RebuildFrom(
 
 	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Tracked)
 	{
-		if (!Pair.Value.ParentId.IsValid())
+		if (!Pair.Value.MountParentId.IsValid())
 		{
 			continue;
 		}
@@ -29,7 +29,7 @@ void FStructuralEndpointIndex::RebuildFrom(
 			continue;
 		}
 
-		const int32 Root = Graph.FindRoot(Pair.Value.ParentId);
+		const int32 Root = Graph.FindRoot(Pair.Value.MountParentId);
 		if (Root == INDEX_NONE)
 		{
 			continue;

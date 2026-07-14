@@ -12,7 +12,7 @@
 struct FStructuralSiteContext
 {
 	FStructuralWallAnchor ParentAnchor;
-	FStructuralNodeId ParentId;
+	FStructuralNodeId MountParentId;
 	int32 SiteRoot = INDEX_NONE;
 	EStructuralHostKind HostKind = EStructuralHostKind::Unknown;
 	EStructuralOutletParentMethod ParentMethod = EStructuralOutletParentMethod::None;

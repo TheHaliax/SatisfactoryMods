@@ -44,12 +44,12 @@ bool FStructuralPowerRestitch::ShouldEndpointParticipateInRestitch(
 	{
 		const FStructuralNodeId NodeId = Session->MakeNodeId(Host);
 		const FTrackedEndpoint* Tracked = Session->TrackedEndpoints().Find(NodeId);
-		if (!Tracked || !Tracked->ParentId.IsValid())
+		if (!Tracked || !Tracked->MountParentId.IsValid())
 		{
 			return false;
 		}
 
-		return Session->StructureGraph().FindRoot(Tracked->ParentId) != INDEX_NONE;
+		return Session->StructureGraph().FindRoot(Tracked->MountParentId) != INDEX_NONE;
 	}
 
 	return false;

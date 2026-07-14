@@ -59,7 +59,25 @@ TArray<FStructuralNodeId> FStructuralControlIdGangIndex::GetGangMembers(
 	const FStructuralComponentKey& ComponentKey,
 	const FName ControlId) const
 {
-	const FStructuralControlGangKey GangKey{ComponentKey, ControlId};
+	const FStructuralControlGangKey GangKey{
+		EStructuralControlGangScope::Site,
+		ComponentKey,
+		ControlId};
+	if (const TArray<FStructuralNodeId>* Found = GangsByControlId.Find(GangKey))
+	{
+		return *Found;
+	}
+
+	return {};
+}
+
+TArray<FStructuralNodeId> FStructuralControlIdGangIndex::GetGlobalGangMembers(
+	const FName ControlId) const
+{
+	const FStructuralControlGangKey GangKey{
+		EStructuralControlGangScope::Global,
+		FStructuralComponentKey{},
+		ControlId};
 	if (const TArray<FStructuralNodeId>* Found = GangsByControlId.Find(GangKey))
 	{
 		return *Found;

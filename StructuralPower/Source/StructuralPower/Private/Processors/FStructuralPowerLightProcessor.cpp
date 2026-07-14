@@ -54,7 +54,7 @@ void FStructuralPowerLightProcessor::Process(
 	const FStructuralNodeId LightId = Ctx.Session().MakeNodeId(Light);
 	FTrackedEndpoint& Tracked = Ctx.Session().TrackedEndpoints().FindOrAdd(LightId);
 	Tracked.Actor = Light;
-	Tracked.ParentId = ParentId;
+	Tracked.MountParentId = ParentId;
 	Tracked.Kind = EStructuralEndpointKind::Light;
 	Ctx.Session().RegisterBuildableActor(Light);
 	if (Root != INDEX_NONE)

@@ -34,7 +34,9 @@ void UStructuralPowerRCO::Server_SetEndpointIds_Implementation(
 	FName Source,
 	FName Control,
 	bool bClearSource,
-	bool bClearControl)
+	bool bClearControl,
+	const bool bGlobalControl,
+	const bool bTouchGlobalControl)
 {
 	if (!IsValid(Buildable) || !Buildable->HasAuthority())
 	{
@@ -56,15 +58,25 @@ void UStructuralPowerRCO::Server_SetEndpointIds_Implementation(
 		return;
 	}
 
-	Graph->SetEndpointIds(Buildable, Source, Control, bClearSource, bClearControl);
+	Graph->SetEndpointIds(
+		Buildable,
+		Source,
+		Control,
+		bClearSource,
+		bClearControl,
+		bGlobalControl,
+		bTouchGlobalControl);
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] RCO SetEndpointIds %s src=%s ctl=%s clearSrc=%d clearCtl=%d"),
+		TEXT("[HALSP] RCO SetEndpointIds %s src=%s ctl=%s clearSrc=%d clearCtl=%d"
+			" global=%d touchGlobal=%d"),
 		*Buildable->GetName(),
 		bClearSource ? TEXT("(clear)") : *Source.ToString(),
 		bClearControl ? TEXT("(clear)") : *Control.ToString(),
 		bClearSource ? 1 : 0,
-		bClearControl ? 1 : 0);
+		bClearControl ? 1 : 0,
+		bGlobalControl ? 1 : 0,
+		bTouchGlobalControl ? 1 : 0);
 }
 
 void UStructuralPowerRCO::Server_RequestComponentIdList_Implementation(AFGBuildable* ContextBuildable)

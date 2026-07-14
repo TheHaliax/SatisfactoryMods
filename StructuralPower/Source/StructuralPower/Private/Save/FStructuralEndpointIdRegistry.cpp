@@ -7,10 +7,29 @@
 
 void FStructuralEndpointIdRegistry::Bind(
 	TMap<FStructuralComponentKey, FName>& InComponentDefaultIds,
-	TMap<FStructuralNodeId, FStructuralEndpointOverrides>& InPlayerEndpointOverrides)
+	TMap<FStructuralNodeId, FStructuralEndpointOverrides>& InPlayerEndpointOverrides,
+	int32& InNextStructureDefaultIdIndex)
 {
 	ComponentDefaultIds = &InComponentDefaultIds;
 	PlayerEndpointOverrides = &InPlayerEndpointOverrides;
+	NextStructureDefaultIdIndex = &InNextStructureDefaultIdIndex;
+	if (*NextStructureDefaultIdIndex < 1)
+	{
+		*NextStructureDefaultIdIndex = 1;
+	}
+}
+
+FName FStructuralEndpointIdRegistry::AllocNextStructureDefaultId()
+{
+	if (!NextStructureDefaultIdIndex)
+	{
+		return NAME_None;
+	}
+
+	const FName Created =
+		FStructuralPowerRouter::MakeStructureDefaultIdName(*NextStructureDefaultIdIndex);
+	++(*NextStructureDefaultIdIndex);
+	return Created;
 }
 
 FName FStructuralEndpointIdRegistry::GetOrCreateComponentDefaultId(
@@ -21,14 +40,53 @@ FName FStructuralEndpointIdRegistry::GetOrCreateComponentDefaultId(
 		return NAME_None;
 	}
 
-	if (const FName* Existing = ComponentDefaultIds->Find(ComponentKey))
+	if (FName* Existing = ComponentDefaultIds->Find(ComponentKey))
 	{
+		if (FStructuralPowerRouter::IsLegacyStructureDefaultId(*Existing))
+		{
+			*Existing = AllocNextStructureDefaultId();
+		}
 		return *Existing;
 	}
 
-	const FName Created = FStructuralPowerRouter::MakeDefaultIdName(ComponentKey.CanonicalNodeId);
+	const FName Created = AllocNextStructureDefaultId();
 	ComponentDefaultIds->Add(ComponentKey, Created);
 	return Created;
+}
+
+bool FStructuralEndpointIdRegistry::TryGetComponentDefaultId(
+	const FStructuralComponentKey& ComponentKey,
+	FName& OutId) const
+{
+	OutId = NAME_None;
+	if (!ComponentDefaultIds || !ComponentKey.IsValid())
+	{
+		return false;
+	}
+
+	if (const FName* Existing = ComponentDefaultIds->Find(ComponentKey))
+	{
+		OutId = *Existing;
+		return !OutId.IsNone();
+	}
+
+	return false;
+}
+
+void FStructuralEndpointIdRegistry::MigrateLegacyStructureDefaultIds()
+{
+	if (!ComponentDefaultIds)
+	{
+		return;
+	}
+
+	for (TPair<FStructuralComponentKey, FName>& Pair : *ComponentDefaultIds)
+	{
+		if (FStructuralPowerRouter::IsLegacyStructureDefaultId(Pair.Value))
+		{
+			Pair.Value = AllocNextStructureDefaultId();
+		}
+	}
 }
 
 bool FStructuralEndpointIdRegistry::TryGetPlayerOverride(
@@ -61,7 +119,9 @@ void FStructuralEndpointIdRegistry::ApplyPlayerOverrideEdits(
 	FName Source,
 	FName Control,
 	bool bClearSource,
-	bool bClearControl)
+	bool bClearControl,
+	const bool bGlobalControl,
+	const bool bTouchGlobalControl)
 {
 	if (!PlayerEndpointOverrides)
 	{
@@ -82,10 +142,16 @@ void FStructuralEndpointIdRegistry::ApplyPlayerOverrideEdits(
 	if (bClearControl)
 	{
 		Entry.ControlOverride = NAME_None;
+		Entry.bGlobalControl = false;
 	}
 	else if (FStructuralPowerRouter::IsPlayerChosenIdValid(Control))
 	{
 		Entry.ControlOverride = Control;
+	}
+
+	if (bTouchGlobalControl)
+	{
+		Entry.bGlobalControl = bGlobalControl && !Entry.ControlOverride.IsNone();
 	}
 
 	if (!Entry.HasAnyOverride())

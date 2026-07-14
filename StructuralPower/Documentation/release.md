@@ -9,7 +9,7 @@ Test hosts run **our Alpakit release zips**, not SMR pulls (unless you later wir
 1. `powershell -File tools/pack-structuralpower-release.ps1`
 2. **Client:** `StructuralPower-Windows.zip` → Steam `FactoryGame/Mods/StructuralPower`
 3. **Linux `10.0.0.11:7256`:** `scp` `StructuralPower-LinuxServer.zip` → `STRUCTURAL_POWER_ZIP=~/sat-server/StructuralPower-LinuxServer.zip` + `deploy-test-mods.sh` + `systemctl restart sat-server-test`
-4. **Windows `207.244.250.178:7777`:** FTP `StructuralPower-WindowsServer.zip` → `FactoryGame/Mods/StructuralPower` (local gitignored `tools/windows-dedicated-server/`) → restart via hosting panel
+4. **Windows `207.244.250.178:7777`:** FTP `StructuralPower-WindowsServer.zip` → `FactoryGame/Mods/StructuralPower` → restart via hosting panel
 
 SML + UtilityMod on laptop script still download from SMR API; only StructuralPower uses the zip override today.
 
@@ -40,7 +40,7 @@ Mod page: [ficsit.app/mod/StructuralPower](https://ficsit.app/mod/StructuralPowe
    ```powershell
    curl -sL "https://api.ficsit.app/v1/mod/5W9LAp72Xzuwjn/versions"
    ```
-   Store in gitignored `tools/mod-versions.env`: `SAT_STRUCTURAL_POWER_VERSION=<id>`. Not required for routine testing.
+   Store as env `SAT_STRUCTURAL_POWER_VERSION=<id>` for laptop deploy scripts if used. Not required for routine testing.
 8. **Verify** — Mod Manager / ficsit profile installs StructuralPower **3.0.0**; join test server with same mod set.
 9. **Smoke test** — load legacy save (pre-v3.0); lights/switches/panels; **I** key; `!lighting`; save/reload; switch subnet ON/OFF; hoverpack tether.
 

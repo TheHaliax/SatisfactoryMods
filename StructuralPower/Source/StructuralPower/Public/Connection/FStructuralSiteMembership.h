@@ -46,4 +46,12 @@ public:
 		FTrackedEndpoint& Tracked,
 		const FStructuralSiteContext& Site,
 		const FStructuralSiteMembershipParams& Params = FStructuralSiteMembershipParams());
+
+	static bool ReaffirmMountParent(
+		FStructuralGraphSession& Session,
+		AFGBuildable* Host,
+		FTrackedEndpoint& Tracked,
+		bool bUsePoleRootResolver = false);
+
+	static int32 SiteRootFromMount(FStructuralGraphSession& Session, const FStructuralNodeId& MountParentId);
 };

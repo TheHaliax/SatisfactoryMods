@@ -31,7 +31,7 @@ void FStructuralGraphRemoval::OnBuildableRemoved(AFGBuildable* Buildable)
 	int32 GangRoot = INDEX_NONE;
 	if (const FTrackedEndpoint* TrackedBefore = Session->TrackedEndpoints().Find(NodeId))
 	{
-		GangRoot = Session->StructureGraph().FindRoot(TrackedBefore->ParentId);
+		GangRoot = Session->StructureGraph().FindRoot(TrackedBefore->MountParentId);
 	}
 
 	Session->ControlIdGangIndex().RemoveNode(NodeId);
@@ -39,7 +39,7 @@ void FStructuralGraphRemoval::OnBuildableRemoved(AFGBuildable* Buildable)
 
 	if (FTrackedEndpoint* Tracked = Session->TrackedEndpoints().Find(NodeId))
 	{
-		const int32 OldRoot = Session->StructureGraph().FindRoot(Tracked->ParentId);
+		const int32 OldRoot = Session->StructureGraph().FindRoot(Tracked->MountParentId);
 
 		if (AFGBuildable* Host = Tracked->Actor.Get())
 		{

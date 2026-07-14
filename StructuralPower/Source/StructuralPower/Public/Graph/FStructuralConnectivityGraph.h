@@ -35,7 +35,7 @@ public:
 
 	FStructuralNodeId MakeCanonicalNodeIdForComponent(int32 Root) const;
 
-bool FindNearestStructureAnchor(
+	bool FindNearestStructureAnchor(
 		const FVector& QueryLoc,
 		float MaxHorizontal,
 		float MaxVertical,
@@ -70,6 +70,7 @@ private:
 	int32 Find(int32 Index);
 	int32 FindRootIndexReadOnly(int32 Index) const;
 	void Union(int32 A, int32 B);
+	void InvalidateCanonicalCache() const;
 
 	TArray<FNode> Nodes;
 	TArray<int32> Parent;
@@ -78,4 +79,5 @@ private:
 	TMap<FStructuralNodeId, int32> IdToIndex;
 	TMap<FIntVector, TArray<int32>> Cells;
 	int32 NumValid = 0;
+	mutable TMap<int32, FStructuralNodeId> CanonicalByRoot;
 };

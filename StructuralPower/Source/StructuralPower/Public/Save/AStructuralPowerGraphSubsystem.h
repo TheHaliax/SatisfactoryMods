@@ -84,6 +84,7 @@ public:
 	void EnqueuePlacement(AFGBuildable* Buildable, EStructuralPlacementJobType JobType, bool bDefer);
 	void EnqueueLightweightPlacement(const FStructuralLightweightKey& Key, bool bDefer);
 	void TickDeferredPlacements(int32 MaxJobs);
+	void TickIdleDeferredWork();
 	void OnBuildableRemoved(AFGBuildable* Buildable);
 	void OnLightweightRemoved(const FStructuralLightweightKey& Key);
 	void ProcessWallOutletAfterWire(AFGBuildablePowerPole* Pole);
@@ -132,7 +133,9 @@ public:
 		FName Source,
 		FName Control,
 		bool bClearSource,
-		bool bClearControl);
+		bool bClearControl,
+		bool bGlobalControl = false,
+		bool bTouchGlobalControl = false);
 	bool GetEndpointOverrides(const AFGBuildable* Buildable, FStructuralEndpointOverrides& Out) const;
 	bool CollectIdsOnComponent(const FStructuralComponentKey& Key, FStructuralComponentIdList& Out) const;
 	FName GetOrCreateComponentDefaultId(const FStructuralComponentKey& ComponentKey);
@@ -166,6 +169,8 @@ public:
 	bool ShouldDeferSwitchCircuitRefresh() const { return CircuitPromotionDepth > 0; }
 
 	bool IsBulkLoadDrainActive() const { return bBulkLoadDrainActive; }
+	bool IsPostLoadRebuilt() const { return bPostLoadRebuilt; }
+	bool HasPendingBulkRemesh() const { return BulkDrainOps.HasPendingRemesh(); }
 	bool IsPendingPostLoadLightReconcile() const { return bPendingPostLoadLightReconcile; }
 	bool IsPendingFinalLightingReconcile() const { return bPendingFinalLightingReconcile; }
 	bool HasActiveDeferredWork() const;
@@ -208,7 +213,11 @@ public:
 
 	virtual void PreSaveGame_Implementation(int32 saveVersion, int32 gameVersion) override {}
 	virtual void PostSaveGame_Implementation(int32 saveVersion, int32 gameVersion) override {}
-	virtual void PostLoadGame_Implementation(int32 saveVersion, int32 gameVersion) override { bPostLoadRebuilt = false; }
+	virtual void PostLoadGame_Implementation(int32 saveVersion, int32 gameVersion) override
+	{
+		bPostLoadRebuilt = false;
+		IdRegistry.MigrateLegacyStructureDefaultIds();
+	}
 	virtual void GatherDependencies_Implementation(TArray<UObject*>& out_dependentObjects) override {}
 	virtual bool NeedTransform_Implementation() override { return false; }
 	virtual bool ShouldSave_Implementation() const override { return true; }
@@ -318,6 +327,9 @@ private:
 
 	UPROPERTY(SaveGame)
 	TMap<FStructuralComponentKey, FName> ComponentDefaultIds;
+
+	UPROPERTY(SaveGame)
+	int32 NextStructureDefaultIdIndex = 1;
 
 	UPROPERTY(SaveGame)
 	TMap<FStructuralNodeId, FStructuralEndpointOverrides> PlayerEndpointOverrides;

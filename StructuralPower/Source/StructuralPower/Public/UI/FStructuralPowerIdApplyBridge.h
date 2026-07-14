@@ -7,6 +7,7 @@
 
 class AFGBuildable;
 class AFGPlayerController;
+class UCheckBox;
 class UComboBoxString;
 class UEditableTextBox;
 class UStructuralPowerIdOptionManager;
@@ -43,7 +44,8 @@ public:
 		const UComboBoxString* SuggestedSourceCombo,
 		const UComboBoxString* SuggestedControlCombo,
 		const UEditableTextBox* AssignSourceText,
-		const UEditableTextBox* AssignControlText);
+		const UEditableTextBox* AssignControlText,
+		const UCheckBox* GlobalControlCheck = nullptr);
 
 	static void ResetEndpointIds(
 		AFGPlayerController* PlayerController,

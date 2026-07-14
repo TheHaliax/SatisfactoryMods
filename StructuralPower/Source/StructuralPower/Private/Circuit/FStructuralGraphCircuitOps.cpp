@@ -363,7 +363,11 @@ bool FStructuralGraphCircuitOps::TryMeshPeerBusOnComponent(
 		return false;
 	}
 
-	Session->BridgeRootIndex().RefreshBridgeEndpointRootIndex();
+	// Caller must Refresh when index dirty — hot remesh/mesh must not rebuild every call.
+	if (Session->BridgeEndpointRootIndexDirty())
+	{
+		Session->BridgeRootIndex().RefreshBridgeEndpointRootIndex();
+	}
 
 	const bool bPromoteCircuit = !bMeshOnlyLinks;
 	bool bLinked = false;
@@ -840,7 +844,7 @@ UFGPowerConnectionComponent* FStructuralGraphCircuitOps::ResolveSubnetFeedConnec
 		AFGBuildableCircuitSwitch* Switch =
 			Cast<AFGBuildableCircuitSwitch>(Pair.Value.Actor.Get());
 		if (!IsValid(Switch)
-			|| Session->StructureGraph().FindRoot(Pair.Value.ParentId) != ComponentRoot)
+			|| Session->StructureGraph().FindRoot(Pair.Value.MountParentId) != ComponentRoot)
 		{
 			continue;
 		}

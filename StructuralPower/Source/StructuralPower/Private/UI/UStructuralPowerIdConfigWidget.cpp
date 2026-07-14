@@ -329,6 +329,7 @@ void UStructuralPowerIdConfigWidget::RebuildPanelContent()
 	SuggestedControlCombo = nullptr;
 	AssignSourceText = nullptr;
 	AssignControlText = nullptr;
+	GlobalControlCheck = nullptr;
 	ApplyButton = nullptr;
 	ResetButton = nullptr;
 	ActiveIdsText = nullptr;
@@ -344,6 +345,7 @@ void UStructuralPowerIdConfigWidget::RebuildPanelContent()
 	SuggestedControlCombo = BuiltWidgets.SuggestedControlCombo;
 	AssignSourceText = BuiltWidgets.AssignSourceText;
 	AssignControlText = BuiltWidgets.AssignControlText;
+	GlobalControlCheck = BuiltWidgets.GlobalControlCheck;
 	ApplyButton = BuiltWidgets.ApplyButton;
 	ResetButton = BuiltWidgets.ResetButton;
 	ActiveIdsText = BuiltWidgets.ActiveIdsText;
@@ -493,7 +495,8 @@ void UStructuralPowerIdConfigWidget::ApplyTypedIdsToServer()
 		SuggestedSourceCombo,
 		SuggestedControlCombo,
 		AssignSourceText,
-		AssignControlText);
+		AssignControlText,
+		GlobalControlCheck);
 }
 
 void UStructuralPowerIdConfigWidget::OnApplyTypedIdClicked()

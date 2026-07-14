@@ -26,7 +26,7 @@ bool FStructuralBridgeAttach::HasPlacementMembership(
 	const FTrackedEndpoint* Tracked = Session.TrackedEndpoints().Find(EndpointId);
 	return Tracked
 		&& Tracked->Kind == ExpectedKind
-		&& Tracked->ParentId.IsValid();
+		&& Tracked->MountParentId.IsValid();
 }
 
 FStructuralBridgeAttachOutcome FStructuralBridgeAttach::AttachOnPlace(
@@ -58,8 +58,8 @@ FStructuralBridgeAttachOutcome FStructuralBridgeAttach::AttachOnPlace(
 		else
 		{
 			const FStructuralWallAnchor ParentAnchor = Session.ResolveOutletAnchor(Host);
-			Session.ResolveEndpointComponentRoot(Host, ParentAnchor, Site.ParentId);
-			Tracked.ParentId = Site.ParentId;
+			Session.ResolveEndpointComponentRoot(Host, ParentAnchor, Site.MountParentId);
+			Tracked.MountParentId = Site.MountParentId;
 			Site.SiteRoot = Session.FindRootForTrackedEndpoint(Tracked);
 			Site.bAnchored = Site.SiteRoot != INDEX_NONE;
 		}
@@ -71,7 +71,7 @@ FStructuralBridgeAttachOutcome FStructuralBridgeAttach::AttachOnPlace(
 		Outcome.bSiteNotReady = !bBulk;
 		Tracked.Actor = Host;
 		Tracked.Kind = Request.Kind;
-		Tracked.ParentId = Site.ParentId;
+		Tracked.MountParentId = Site.MountParentId;
 		Tracked.bAwaitingStructuralSite = true;
 		Session.RegisterBuildableActor(Host);
 
@@ -98,6 +98,10 @@ FStructuralBridgeAttachOutcome FStructuralBridgeAttach::AttachOnPlace(
 			Request.Kind,
 			Tracked,
 			Site);
+		if (Site.SiteRoot != INDEX_NONE && Site.MountParentId.IsValid())
+		{
+			Session.AddEndpointToRootIndex(Site.SiteRoot, Request.Kind, EndpointId);
+		}
 		Outcome.bAttached = true;
 		return Outcome;
 	}
@@ -133,11 +137,16 @@ FStructuralBridgeAttachOutcome FStructuralBridgeAttach::AttachOnPlace(
 	else
 	{
 		Tracked.Actor = Host;
-		Tracked.ParentId = Site.ParentId;
+		Tracked.MountParentId = Site.MountParentId;
 		Tracked.Kind = Request.Kind;
 		Tracked.bStructuralPowerTransferActive = Site.bAnchored;
 		Session.RegisterBuildableActor(Host);
 		Session.LinkBusToVisibleConnectionsLocal(Host, OutletBus);
+	}
+
+	if (Site.bAnchored && Site.SiteRoot != INDEX_NONE && Site.MountParentId.IsValid())
+	{
+		Session.AddEndpointToRootIndex(Site.SiteRoot, Request.Kind, EndpointId);
 	}
 
 	Outcome.bAttached = true;

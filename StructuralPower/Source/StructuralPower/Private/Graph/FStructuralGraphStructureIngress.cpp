@@ -6,6 +6,7 @@
 #include "Core/FStructuralGraphSession.h"
 
 #include "Buildables/FGBuildable.h"
+#include "Connection/FStructuralSiteMembership.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "Engine/World.h"
 #include "Graph/FStructuralEndpointTypes.h"
@@ -87,7 +88,9 @@ void FStructuralGraphStructureIngress::ProcessLightweightStructure(
 
 void FStructuralGraphStructureIngress::RetryAwaitingStructuralSiteEndpoints()
 {
-	for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Session->TrackedEndpoints())
+	// Only endpoints still waiting on a site — never reaffirm/enqueue the whole world
+	// on every foundation place (that path melted tiny legacy saves).
+	for (TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Session->TrackedEndpoints())
 	{
 		if (!Pair.Value.bAwaitingStructuralSite)
 		{
@@ -96,14 +99,30 @@ void FStructuralGraphStructureIngress::RetryAwaitingStructuralSiteEndpoints()
 
 		if (Pair.Value.Kind != EStructuralEndpointKind::Pole
 			&& Pair.Value.Kind != EStructuralEndpointKind::Switch
-			&& Pair.Value.Kind != EStructuralEndpointKind::Storage)
+			&& Pair.Value.Kind != EStructuralEndpointKind::Storage
+			&& Pair.Value.Kind != EStructuralEndpointKind::Light
+			&& Pair.Value.Kind != EStructuralEndpointKind::Panel)
 		{
 			continue;
 		}
 
-		if (AFGBuildable* Buildable = Pair.Value.Actor.Get())
+		AFGBuildable* Buildable = Pair.Value.Actor.Get();
+		if (!IsValid(Buildable))
 		{
-			Session->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+			continue;
+		}
+
+		const bool bUsePoleResolver = Pair.Value.Kind == EStructuralEndpointKind::Pole;
+		if (FStructuralSiteMembership::ReaffirmMountParent(
+				*Session,
+				Buildable,
+				Pair.Value,
+				bUsePoleResolver))
+		{
+			Session->EnqueuePlacement(
+				Buildable,
+				EStructuralPlacementJobType::Outlet,
+				/*bDefer=*/true);
 		}
 	}
 }

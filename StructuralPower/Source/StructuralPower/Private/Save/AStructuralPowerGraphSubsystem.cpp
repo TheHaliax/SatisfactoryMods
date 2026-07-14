@@ -59,7 +59,10 @@
 AStructuralPowerGraphSubsystem::AStructuralPowerGraphSubsystem()
 {
 	bReplicates = false;
-	IdRegistry.Bind(ComponentDefaultIds, PlayerEndpointOverrides);
+	IdRegistry.Bind(
+		ComponentDefaultIds,
+		PlayerEndpointOverrides,
+		NextStructureDefaultIdIndex);
 }
 
 FStructuralGraphSession& AStructuralPowerGraphSubsystem::GetGraphSession()
@@ -595,4 +598,11 @@ void AStructuralPowerGraphSubsystem::TickDeferredPlacements(int32 MaxJobs)
 			MaybeRunPostLoadLightReconcile();
 			MaybeReleaseFactoryTick();
 		});
+}
+
+void AStructuralPowerGraphSubsystem::TickIdleDeferredWork()
+{
+	MaybeRunPostLoadLightReconcile();
+	MaybeRunFinalLightingReconcile();
+	MaybeReleaseFactoryTick();
 }

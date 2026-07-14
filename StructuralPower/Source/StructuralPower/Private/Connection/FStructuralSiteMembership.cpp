@@ -15,6 +15,8 @@
 #include "Graph/FStructuralOutletParentHeuristics.h"
 #include "Graph/FStructuralOutletParentResolver.h"
 #include "Diagnostics/FStructuralPowerTraceScope.h"
+#include "Routing/EStructuralChannel.h"
+#include "Save/FStructuralEndpointIdRegistry.h"
 #include "StructuralPowerLog.h"
 
 namespace
@@ -80,7 +82,7 @@ bool FStructuralSiteMembership::ResolveSiteContext(
 			OutSite.SiteRoot = Session.ResolvePoleComponentRoot(
 				Pole,
 				OutSite.ParentAnchor,
-				OutSite.ParentId);
+				OutSite.MountParentId);
 		}
 	}
 	else
@@ -88,7 +90,7 @@ bool FStructuralSiteMembership::ResolveSiteContext(
 		OutSite.SiteRoot = Session.ResolveEndpointComponentRoot(
 			Endpoint,
 			OutSite.ParentAnchor,
-			OutSite.ParentId);
+			OutSite.MountParentId);
 	}
 
 	return OutSite.SiteRoot != INDEX_NONE;
@@ -108,7 +110,7 @@ void FStructuralSiteMembership::RegisterOnBulkLoad(
 
 	Tracked.Actor = Host;
 	Tracked.Kind = Kind;
-	Tracked.ParentId = Site.ParentId;
+	Tracked.MountParentId = Site.MountParentId;
 	Tracked.bAwaitingStructuralSite = false;
 	Session.RegisterBuildableActor(Host);
 
@@ -140,7 +142,8 @@ void FStructuralSiteMembership::IntegrateOnPlace(
 
 	Tracked.Actor = Host;
 	Tracked.Kind = Kind;
-	Tracked.ParentId = Site.ParentId;
+	Tracked.MountParentId = Site.MountParentId;
+	Tracked.bAwaitingStructuralSite = !(Site.bAnchored && Site.SiteRoot != INDEX_NONE);
 	Session.RegisterBuildableActor(Host);
 	if (!Params.bSkipEndpointIndexDirty)
 	{
@@ -186,17 +189,78 @@ void FStructuralSiteMembership::IntegrateOnPlace(
 	const float ParentDistCm = Site.ParentAnchor.IsValid()
 		? FVector::Dist(AnchorLocation, Site.ParentAnchor.WorldLocation)
 		: -1.0f;
+	if (!Session.IsBulkLoadDrainActive())
+	{
+		FName StructureName = NAME_None;
+		const FStructuralComponentKey CompKey = Session.MakeComponentKeyForRoot(Site.SiteRoot);
+		if (CompKey.IsValid())
+		{
+			Session.IdRegistry().TryGetComponentDefaultId(CompKey, StructureName);
+		}
+		const FString MountLabel = Site.MountParentId.IsLightweight()
+			? FString::Printf(TEXT("LW%d"), Site.MountParentId.LightweightIndex)
+			: Site.MountParentId.ActorName.ToString();
 
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] site integrate %s kind=%s host=%d site=%d anchored=%d"
-			" parentMethod=%s distCm=%.0f busCircuit=%d powered=%d"),
-		*Host->GetName(),
-		StructuralEndpointKindToString(Kind),
-		static_cast<int32>(Site.HostKind),
-		Site.SiteRoot,
-		Site.bAnchored ? 1 : 0,
-		FStructuralOutletParentResolver::FormatParentMethod(Site.ParentMethod),
-		ParentDistCm,
-		OutletBus->GetCircuitID(),
-		FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0);
+		UE_LOG(LogStructuralPower, Log,
+			TEXT("[HALSP] site integrate %s kind=%s structure=%s site=%d mount=%s host=%d"
+				" anchored=%d parentMethod=%s distCm=%.0f busCircuit=%d powered=%d"),
+			*Host->GetName(),
+			StructuralEndpointKindToString(Kind),
+			StructureName.IsNone() ? TEXT("-") : *StructureName.ToString(),
+			Site.SiteRoot,
+			*MountLabel,
+			static_cast<int32>(Site.HostKind),
+			Site.bAnchored ? 1 : 0,
+			FStructuralOutletParentResolver::FormatParentMethod(Site.ParentMethod),
+			ParentDistCm,
+			OutletBus->GetCircuitID(),
+			FStructuralCircuitPromotionUtil::ComponentCarriesPower(OutletBus) ? 1 : 0);
+	}
+}
+
+int32 FStructuralSiteMembership::SiteRootFromMount(
+	FStructuralGraphSession& Session,
+	const FStructuralNodeId& MountParentId)
+{
+	if (!MountParentId.IsValid())
+	{
+		return INDEX_NONE;
+	}
+
+	return Session.StructureGraph().FindRoot(MountParentId);
+}
+
+bool FStructuralSiteMembership::ReaffirmMountParent(
+	FStructuralGraphSession& Session,
+	AFGBuildable* Host,
+	FTrackedEndpoint& Tracked,
+	const bool bUsePoleRootResolver)
+{
+	if (!IsValid(Host))
+	{
+		return false;
+	}
+
+	if (Tracked.MountParentId.IsValid())
+	{
+		const int32 Root = SiteRootFromMount(Session, Tracked.MountParentId);
+		if (Root != INDEX_NONE)
+		{
+			Tracked.bAwaitingStructuralSite = false;
+			return true;
+		}
+	}
+
+	FStructuralSiteContext Site;
+	if (!ResolveSiteContext(Session, Host, Site, bUsePoleRootResolver)
+		|| !Site.MountParentId.IsValid()
+		|| Site.SiteRoot == INDEX_NONE)
+	{
+		Tracked.bAwaitingStructuralSite = true;
+		return false;
+	}
+
+	Tracked.MountParentId = Site.MountParentId;
+	Tracked.bAwaitingStructuralSite = false;
+	return true;
 }

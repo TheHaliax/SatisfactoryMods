@@ -3,10 +3,13 @@
 
 #include "UI/FStructuralPowerIdDisplaySync.h"
 
+#include "Components/CheckBox.h"
 #include "Components/ComboBoxString.h"
 #include "Components/EditableTextBox.h"
 #include "Components/TextBlock.h"
+#include "Routing/EStructuralChannel.h"
 #include "Routing/FStructuralPowerRouter.h"
+#include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
 #include "UI/FStructuralPowerIdWidgetHelpers.h"
@@ -179,14 +182,39 @@ void FStructuralPowerIdDisplaySync::RefreshIdDisplayFromList(
 		}
 	}
 
+	bool bGlobalControl = false;
+	if (IsValid(Widget->TargetBuildable))
+	{
+		if (UWorld* World = Widget->GetWorld())
+		{
+			if (AStructuralPowerGraphSubsystem* Graph = AStructuralPowerGraphSubsystem::Find(World))
+			{
+				FStructuralEndpointOverrides Overrides;
+				if (Graph->GetEndpointOverrides(Widget->TargetBuildable, Overrides))
+				{
+					bGlobalControl = Overrides.bGlobalControl;
+				}
+			}
+		}
+	}
+
+	if (IsValid(Widget->GlobalControlCheck))
+	{
+		Widget->GlobalControlCheck->SetIsChecked(bGlobalControl);
+	}
+
 	if (IsValid(Widget->ActiveIdsText))
 	{
 		const FString SourceLine = List.SourceOverride.IsNone()
 			? (List.ResolvedSource.IsNone() ? TEXT("-") : List.ResolvedSource.ToString())
 			: FString::Printf(TEXT("%s*"), *List.SourceOverride.ToString());
-		const FString ControlLine = List.ControlOverride.IsNone()
+		FString ControlLine = List.ControlOverride.IsNone()
 			? (List.ResolvedControl.IsNone() ? TEXT("-") : List.ResolvedControl.ToString())
 			: FString::Printf(TEXT("%s*"), *List.ControlOverride.ToString());
+		if (bGlobalControl && ControlLine != TEXT("-"))
+		{
+			ControlLine += TEXT(" (global)");
+		}
 
 		const bool bShowSource = Widget->OptionManager->ShowsSourceIdField();
 		const bool bShowControl = Widget->OptionManager->ShowsControlIdField();

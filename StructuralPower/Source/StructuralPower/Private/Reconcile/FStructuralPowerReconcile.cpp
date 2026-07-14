@@ -23,6 +23,8 @@
 #include "Processors/FStructuralPowerTransferGate.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
 #include "Processors/FStructuralPowerLightProcessor.h"
+#include "Processors/FStructuralPowerSwitchProcessor.h"
+#include "Save/FStructuralControlIdGangIndex.h"
 #include "Routing/FStructuralPowerRouter.h"
 #include "Core/EAttachContext.h"
 #include "Core/FStructuralPowerContext.h"
@@ -47,6 +49,11 @@ void FStructuralPowerReconcile::MaybeRunPostLoadLightReconcile()
 	if (Session->BulkLoadDrainActive())
 	{
 		Session->FinishBulkLoadDrain();
+		// Remesh spreads across factory ticks — do not clear drain mid-queue.
+		if (Session->HasPendingBulkRemesh())
+		{
+			return;
+		}
 	}
 
 	if (!Session->PendingPostLoadLightReconcile())
@@ -215,7 +222,7 @@ bool FStructuralPowerReconcile::IsDirectSwitchFedLight(
 			continue;
 		}
 
-		if (Session->StructureGraph().FindRoot(Pair.Value.ParentId) != Root)
+		if (Session->StructureGraph().FindRoot(Pair.Value.MountParentId) != Root)
 		{
 			continue;
 		}
@@ -307,6 +314,7 @@ bool FStructuralPowerReconcile::IsPanelDownstreamLight(
 		return true;
 	}
 
+	// BeginPlay / seed race: panels may not be tracked yet on first post-load pass.
 	if (UWorld* World = Session->GetWorld())
 	{
 		if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World))
@@ -333,6 +341,24 @@ bool FStructuralPowerReconcile::IsSwitchFeedOpen(
 		return false;
 	}
 
+	auto TrySwitch = [&](AFGBuildableCircuitSwitch* Switch, bool& OutMatched) -> bool
+	{
+		OutMatched = false;
+		if (!IsValid(Switch))
+		{
+			return false;
+		}
+
+		if (Session->Ids().ResolveControl(Switch, EStructuralChannel::Switch) != SwitchControlId)
+		{
+			return false;
+		}
+
+		OutMatched = true;
+		return !FStructuralPowerSwitchProcessor::ShouldInjectStructuralPath(Switch)
+			|| !Switch->IsBridgeActive();
+	};
+
 	if (const TArray<FStructuralNodeId>* SwitchIds =
 			Session->EndpointIndex().Get(Root, EStructuralEndpointKind::Switch))
 	{
@@ -340,15 +366,27 @@ bool FStructuralPowerReconcile::IsSwitchFeedOpen(
 		{
 			if (const FTrackedEndpoint* Tracked = Session->TrackedEndpoints().Find(NodeId))
 			{
-				if (AFGBuildableCircuitSwitch* Switch = Tracked->GetSwitch())
+				bool bMatched = false;
+				const bool bOpen = TrySwitch(Tracked->GetSwitch(), bMatched);
+				if (bMatched)
 				{
-					if (Session->Ids().ResolveControl(Switch, EStructuralChannel::Switch) != SwitchControlId)
-					{
-						continue;
-					}
-
-					return !FStructuralPowerSwitchProcessor::ShouldInjectStructuralPath(Switch) || !Switch->IsBridgeActive();
+					return bOpen;
 				}
+			}
+		}
+	}
+
+	// Global Control gang: switches on other sites with the same Control gate this feed.
+	for (const FStructuralNodeId& NodeId :
+		Session->ControlIdGangIndex().GetGlobalGangMembers(SwitchControlId))
+	{
+		if (const FTrackedEndpoint* Tracked = Session->TrackedEndpoints().Find(NodeId))
+		{
+			bool bMatched = false;
+			const bool bOpen = TrySwitch(Tracked->GetSwitch(), bMatched);
+			if (bMatched)
+			{
+				return bOpen;
 			}
 		}
 	}
@@ -542,7 +580,7 @@ void FStructuralPowerReconcile::RefreshKeyedTransferAfterLoad()
 			continue;
 		}
 
-		const int32 Root = Session->StructureGraph().FindRoot(Pair.Value.ParentId);
+		const int32 Root = Session->StructureGraph().FindRoot(Pair.Value.MountParentId);
 		if (Root == INDEX_NONE)
 		{
 			continue;
@@ -742,13 +780,16 @@ void FStructuralPowerReconcile::SuspendAllIntegratedLighting()
 		}
 	}
 
-	if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World))
+	if (Lights.Num() == 0)
 	{
-		for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef())
+		if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World))
 		{
-			if (FStructuralEligibilityRules::IsStructuralLightConsumer(Buildable))
+			for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef())
 			{
-				ConsiderLight(FStructuralPowerBuildableCasts::AsLight(Buildable));
+				if (FStructuralEligibilityRules::IsStructuralLightConsumer(Buildable))
+				{
+					ConsiderLight(FStructuralPowerBuildableCasts::AsLight(Buildable));
+				}
 			}
 		}
 	}
@@ -836,13 +877,16 @@ void FStructuralPowerReconcile::ReconcileAllLightConsumers()
 		}
 	}
 
-	if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World))
+	if (Lights.Num() == 0)
 	{
-		for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef())
+		if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World))
 		{
-			if (FStructuralEligibilityRules::IsStructuralLightConsumer(Buildable))
+			for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef())
 			{
-				Consider(FStructuralPowerBuildableCasts::AsLight(Buildable));
+				if (FStructuralEligibilityRules::IsStructuralLightConsumer(Buildable))
+				{
+					Consider(FStructuralPowerBuildableCasts::AsLight(Buildable));
+				}
 			}
 		}
 	}

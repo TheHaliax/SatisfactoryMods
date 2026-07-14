@@ -19,7 +19,7 @@ Common case: **isolated structure** — a foundation with no adjacency to the re
 3. Run `StructuralPower.Diag` — poles on powered structure should count under `IN_CIRCUIT`.
 4. Enable trace in console (`StructuralPower.Trace 1`), place or rewire one pole, and grep the log for `[HALSP]`.
 
-For switch/panel toggle debugging with trace on: grep `switch restitch_off_settled` — `passPanel=0` and `poweredDirect=0` mean OFF succeeded even if `armedPanel>0`. See [development.md](development.md#halsp-trace-developers).
+For switch/panel toggle debugging with trace on: grep `switch restitch_off_settled` — `passPanel=0` and `poweredDirect=0` mean OFF succeeded even if `armedPanel>0`. See [development.md](development.md#trace-developers).
 
 ## Structural lighting
 

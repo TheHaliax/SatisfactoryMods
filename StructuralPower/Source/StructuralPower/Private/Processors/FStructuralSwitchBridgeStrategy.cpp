@@ -18,7 +18,7 @@
 
 namespace
 {
-static void OpenDirectedBridgeLeg(
+static void StrategyOpenDirectedBridgeLeg(
 	UFGStructuralPowerConnectionComponent* SourceBus,
 	UFGCircuitConnectionComponent* Leg)
 {
@@ -33,7 +33,7 @@ static void OpenDirectedBridgeLeg(
 	}
 }
 
-static void CloseDirectedBridgeLeg(
+static void StrategyCloseDirectedBridgeLeg(
 	UFGStructuralPowerConnectionComponent* SourceBus,
 	UFGPowerConnectionComponent* Leg)
 {
@@ -48,25 +48,25 @@ static void CloseDirectedBridgeLeg(
 	}
 }
 
-static void CloseBypassZeroWireOnLegs(
+static void StrategyCloseBypassZeroWireOnLegs(
 	UFGStructuralPowerConnectionComponent* SourceBus,
 	AFGBuildableCircuitSwitch* Switch)
 {
-	OpenDirectedBridgeLeg(SourceBus, Switch->GetConnection0());
-	OpenDirectedBridgeLeg(SourceBus, Switch->GetConnection1());
+	StrategyOpenDirectedBridgeLeg(SourceBus, Switch->GetConnection0());
+	StrategyOpenDirectedBridgeLeg(SourceBus, Switch->GetConnection1());
 
 	if (UFGPowerConnectionComponent* Conn0 = Cast<UFGPowerConnectionComponent>(Switch->GetConnection0()))
 	{
-		CloseDirectedBridgeLeg(SourceBus, Conn0);
+		StrategyCloseDirectedBridgeLeg(SourceBus, Conn0);
 	}
 
 	if (UFGPowerConnectionComponent* Conn1 = Cast<UFGPowerConnectionComponent>(Switch->GetConnection1()))
 	{
-		CloseDirectedBridgeLeg(SourceBus, Conn1);
+		StrategyCloseDirectedBridgeLeg(SourceBus, Conn1);
 	}
 }
 
-static int32 CountVanillaWirePorts(AFGBuildableCircuitSwitch* Switch)
+static int32 StrategyCountVanillaWirePorts(AFGBuildableCircuitSwitch* Switch)
 {
 	int32 Count = 0;
 	if (const UFGPowerConnectionComponent* Conn0 =
@@ -103,7 +103,7 @@ void FStructuralSwitchBridgeStrategy::ApplyMembership(
 	const bool bWired = FStructuralSwitchParentResolver::HasAnyVanillaWire(Switch);
 	const bool bConfigured = FStructuralPowerSwitchProcessor::HasAssignedControl(Ctx, Switch);
 	const bool bSwitchOn = Switch->IsBridgeActive();
-	const int32 WirePortCount = CountVanillaWirePorts(Switch);
+	const int32 WirePortCount = StrategyCountVanillaWirePorts(Switch);
 
 	FStructuralGraphSession& Session = Ctx.Session();
 	UFGStructuralPowerConnectionComponent* SourceBus = Session.FindBusConnector(Switch);
@@ -138,7 +138,7 @@ void FStructuralSwitchBridgeStrategy::ApplyMembership(
 	}
 
 	Session.LinkBusToVisibleConnectionsLocal(Switch, SourceBus, /*bMeshOnlyLinks=*/true);
-	CloseBypassZeroWireOnLegs(SourceBus, Switch);
+	StrategyCloseBypassZeroWireOnLegs(SourceBus, Switch);
 }
 
 void FStructuralSwitchBridgeStrategy::ApplyToggle(
@@ -177,7 +177,7 @@ void FStructuralSwitchBridgeStrategy::ApplyToggle(
 	}
 
 	Session.LinkBusToVisibleConnectionsLocal(Switch, SourceBus, /*bMeshOnlyLinks=*/true);
-	CloseBypassZeroWireOnLegs(SourceBus, Switch);
+	StrategyCloseBypassZeroWireOnLegs(SourceBus, Switch);
 }
 
 void FStructuralSwitchBridgeStrategy::ApplyWireEcho(

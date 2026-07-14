@@ -4,6 +4,7 @@
 #include "UI/FStructuralPowerIdApplyBridge.h"
 
 #include "Buildables/FGBuildable.h"
+#include "Components/CheckBox.h"
 #include "Components/ComboBoxString.h"
 #include "Components/EditableTextBox.h"
 #include "FGPlayerController.h"
@@ -141,7 +142,8 @@ void FStructuralPowerIdApplyBridge::ApplyTypedIds(
 	const UComboBoxString* SuggestedSourceCombo,
 	const UComboBoxString* SuggestedControlCombo,
 	const UEditableTextBox* AssignSourceText,
-	const UEditableTextBox* AssignControlText)
+	const UEditableTextBox* AssignControlText,
+	const UCheckBox* GlobalControlCheck)
 {
 	if (!IsValid(Target) || !IsValid(OptionManager))
 	{
@@ -181,7 +183,8 @@ void FStructuralPowerIdApplyBridge::ApplyTypedIds(
 		}
 	}
 
-	if (!bTouchSource && !bTouchControl)
+	const bool bTouchGlobal = IsValid(GlobalControlCheck);
+	if (!bTouchSource && !bTouchControl && !bTouchGlobal)
 	{
 		UE_LOG(LogStructuralPower, Warning, TEXT("[HALSP] Id panel apply — no ids selected or typed"));
 		return;
@@ -191,6 +194,7 @@ void FStructuralPowerIdApplyBridge::ApplyTypedIds(
 	bool bClearControl = false;
 	FName SourceToSet = NAME_None;
 	FName ControlToSet = NAME_None;
+	const bool bGlobalControl = bTouchGlobal && GlobalControlCheck->IsChecked();
 
 	if (bTouchSource)
 	{
@@ -245,17 +249,21 @@ void FStructuralPowerIdApplyBridge::ApplyTypedIds(
 		SourceToSet,
 		ControlToSet,
 		bClearSource,
-		bClearControl);
+		bClearControl,
+		bGlobalControl,
+		bTouchGlobal);
 
 	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] Id panel apply target=%s src=%s ctl=%s clearSrc=%d clearCtl=%d touchSrc=%d touchCtl=%d"),
+		TEXT("[HALSP] Id panel apply target=%s src=%s ctl=%s clearSrc=%d clearCtl=%d"
+			" touchSrc=%d touchCtl=%d global=%d"),
 		*Target->GetName(),
 		bClearSource ? TEXT("(clear)") : *SourceToSet.ToString(),
 		bClearControl ? TEXT("(clear)") : *ControlToSet.ToString(),
 		bClearSource ? 1 : 0,
 		bClearControl ? 1 : 0,
 		bTouchSource ? 1 : 0,
-		bTouchControl ? 1 : 0);
+		bTouchControl ? 1 : 0,
+		bGlobalControl ? 1 : 0);
 
 	RequestComponentIdList(PlayerController, Target);
 }

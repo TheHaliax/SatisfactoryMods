@@ -24,7 +24,7 @@ STRUCTURALPOWER_API const TCHAR* StructuralEndpointKindToString(EStructuralEndpo
 struct FTrackedEndpoint
 {
 	TWeakObjectPtr<AFGBuildable> Actor;
-	FStructuralNodeId ParentId;
+	FStructuralNodeId MountParentId;
 	EStructuralEndpointKind Kind = EStructuralEndpointKind::Pole;
 
 	FStructuralChannelKey CachedPanelKey;

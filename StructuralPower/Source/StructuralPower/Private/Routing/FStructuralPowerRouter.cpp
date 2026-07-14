@@ -128,23 +128,23 @@ FName FStructuralPowerRouter::ResolveSwitchControlFromTag(const AFGBuildableCirc
 	return FName(*Tag);
 }
 
-FName FStructuralPowerRouter::MakeDefaultIdName(const FStructuralNodeId& CanonicalNodeId)
+FName FStructuralPowerRouter::MakeStructureDefaultIdName(const int32 StructureIndex)
 {
-	if (!CanonicalNodeId.IsValid())
+	if (StructureIndex < 1)
 	{
 		return NAME_None;
 	}
 
-	if (CanonicalNodeId.IsLightweight())
+	return FName(*FString::Printf(TEXT("Structure %d"), StructureIndex));
+}
+
+bool FStructuralPowerRouter::IsLegacyStructureDefaultId(const FName Id)
+{
+	if (Id.IsNone())
 	{
-		return FName(*FString::Printf(
-			TEXT("SP_%s_LW%d"),
-			*CanonicalNodeId.BuildableClass.GetAssetName(),
-			CanonicalNodeId.LightweightIndex));
+		return false;
 	}
 
-	return FName(*FString::Printf(
-		TEXT("SP_%s_%s"),
-		*CanonicalNodeId.BuildableClass.GetAssetName(),
-		*CanonicalNodeId.ActorName.ToString()));
+	const FString AsString = Id.ToString();
+	return AsString.StartsWith(TEXT("SP_"), ESearchCase::CaseSensitive);
 }

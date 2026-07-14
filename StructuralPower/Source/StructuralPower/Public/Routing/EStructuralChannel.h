@@ -52,9 +52,12 @@ struct STRUCTURALPOWER_API FStructuralEndpointOverrides
 	UPROPERTY(SaveGame)
 	FName ControlOverride = NAME_None;
 
+	UPROPERTY(SaveGame)
+	bool bGlobalControl = false;
+
 	bool HasAnyOverride() const
 	{
-		return !SourceOverride.IsNone() || !ControlOverride.IsNone();
+		return !SourceOverride.IsNone() || !ControlOverride.IsNone() || bGlobalControl;
 	}
 };
 

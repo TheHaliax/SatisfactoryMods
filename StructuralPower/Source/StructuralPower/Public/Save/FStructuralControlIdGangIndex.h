@@ -7,21 +7,58 @@
 #include "Core/FStructuralNodeId.h"
 #include "Routing/EStructuralChannel.h"
 
+enum class EStructuralControlGangScope : uint8
+{
+	Site,
+	Global
+};
+
 struct FStructuralControlGangKey
 {
+	EStructuralControlGangScope Scope = EStructuralControlGangScope::Site;
 	FStructuralComponentKey ComponentKey;
 	FName ControlId = NAME_None;
 
-	bool IsValid() const { return ComponentKey.IsValid() && !ControlId.IsNone(); }
+	bool IsValid() const
+	{
+		if (ControlId.IsNone())
+		{
+			return false;
+		}
+
+		if (Scope == EStructuralControlGangScope::Global)
+		{
+			return true;
+		}
+
+		return ComponentKey.IsValid();
+	}
 
 	bool operator==(const FStructuralControlGangKey& Other) const
 	{
-		return ComponentKey == Other.ComponentKey && ControlId == Other.ControlId;
+		if (Scope != Other.Scope || ControlId != Other.ControlId)
+		{
+			return false;
+		}
+
+		if (Scope == EStructuralControlGangScope::Global)
+		{
+			return true;
+		}
+
+		return ComponentKey == Other.ComponentKey;
 	}
 
 	friend uint32 GetTypeHash(const FStructuralControlGangKey& Key)
 	{
-		return HashCombine(GetTypeHash(Key.ComponentKey), GetTypeHash(Key.ControlId));
+		uint32 Hash = HashCombine(
+			::GetTypeHash(static_cast<uint8>(Key.Scope)),
+			GetTypeHash(Key.ControlId));
+		if (Key.Scope == EStructuralControlGangScope::Site)
+		{
+			Hash = HashCombine(Hash, GetTypeHash(Key.ComponentKey));
+		}
+		return Hash;
 	}
 };
 
@@ -37,6 +74,8 @@ public:
 	TArray<FStructuralNodeId> GetGangMembers(
 		const FStructuralComponentKey& ComponentKey,
 		FName ControlId) const;
+
+	TArray<FStructuralNodeId> GetGlobalGangMembers(FName ControlId) const;
 
 	int32 GetGangMemberCount(
 		const FStructuralComponentKey& ComponentKey,

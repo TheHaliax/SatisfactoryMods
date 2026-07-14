@@ -22,7 +22,6 @@ namespace StructuralPowerConstants
 	inline constexpr float StructuralConnectivityGapCm = 8.0f;
 	inline constexpr int32 MaxHiddenConnectionLinks = 255;
 	inline constexpr int32 DeferredPlacementsPerTick = 15;
-	/** Bulk load: time budget is the limiter, not a low job cap. */
 	inline constexpr int32 BulkDeferredPlacementsMaxJobs = 65536;
 	inline constexpr double BulkLoadDrainTickBudgetSec = 0.050;
 

@@ -17,6 +17,7 @@ class FStructuralPowerIdModalHost;
 class FStructuralPowerIdWindowPool;
 class UBorder;
 class UButton;
+class UCheckBox;
 class UComboBoxString;
 class UEditableTextBox;
 class UStructuralPowerIdOptionManager;
@@ -127,6 +128,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UEditableTextBox> AssignControlText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCheckBox> GlobalControlCheck;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> ApplyButton;

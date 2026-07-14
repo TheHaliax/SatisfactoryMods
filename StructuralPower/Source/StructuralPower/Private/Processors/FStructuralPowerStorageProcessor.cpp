@@ -121,7 +121,7 @@ void FStructuralPowerStorageProcessor::Process(
 
 	const FStructuralSiteContext& Site = Outcome.Site;
 
-	if (bBulk && Site.SiteRoot != INDEX_NONE && Site.ParentId.IsValid())
+	if (bBulk && Site.SiteRoot != INDEX_NONE && Site.MountParentId.IsValid())
 	{
 		Session.AddEndpointToRootIndex(Site.SiteRoot, EStructuralEndpointKind::Storage, StorageId);
 	}
@@ -187,9 +187,9 @@ void FStructuralPowerStorageProcessor::OnWireDelta(
 	FStructuralSiteContext Site;
 	if (!FStructuralSiteMembership::ResolveSiteContext(Session, Storage, Site))
 	{
-		if (Tracked.ParentId.IsValid())
+		if (Tracked.MountParentId.IsValid())
 		{
-			Site.ParentId = Tracked.ParentId;
+			Site.MountParentId = Tracked.MountParentId;
 			Site.SiteRoot = Session.FindRootForTrackedEndpoint(Tracked);
 			Site.bAnchored = Site.SiteRoot != INDEX_NONE;
 		}

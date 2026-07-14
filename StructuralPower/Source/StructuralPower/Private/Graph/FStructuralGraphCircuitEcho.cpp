@@ -130,9 +130,9 @@ bool FStructuralGraphCircuitEcho::ShouldSkipSwitchCircuitEcho(
 	const FTrackedEndpoint* Tracked = Session->TrackedEndpoints().Find(SwitchId);
 	FStructuralNodeId ParentId;
 	int32 Root = INDEX_NONE;
-	if (Tracked && Tracked->ParentId.IsValid())
+	if (Tracked && Tracked->MountParentId.IsValid())
 	{
-		ParentId = Tracked->ParentId;
+		ParentId = Tracked->MountParentId;
 		Root = Session->StructureGraph().FindRoot(ParentId);
 	}
 	else

@@ -24,7 +24,9 @@ public:
 		FName Source,
 		FName Control,
 		bool bClearSource,
-		bool bClearControl);
+		bool bClearControl,
+		bool bGlobalControl = false,
+		bool bTouchGlobalControl = false);
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestComponentIdList(AFGBuildable* ContextBuildable);

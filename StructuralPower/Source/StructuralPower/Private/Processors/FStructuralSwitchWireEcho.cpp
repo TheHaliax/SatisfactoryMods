@@ -68,8 +68,8 @@ void FStructuralSwitchWireEcho::OnCircuitsRebuilt(
 			TEXT("switch_circuits_rebuilt"));
 	}
 
-	const int32 Root = Tracked.ParentId.IsValid()
-		? Ctx.Session().StructureGraph().FindRoot(Tracked.ParentId)
+	const int32 Root = Tracked.MountParentId.IsValid()
+		? Ctx.Session().StructureGraph().FindRoot(Tracked.MountParentId)
 		: INDEX_NONE;
 
 	FStructuralSwitchBridgeStrategy::ApplyWireEcho(Ctx, Switch);
