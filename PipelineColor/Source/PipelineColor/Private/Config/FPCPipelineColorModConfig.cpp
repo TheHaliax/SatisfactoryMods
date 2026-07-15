@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Haliax
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "Appearance/FPCFluidRoster.h"
 #include "Config/FPCPipelineColorModConfig.h"
 
 #include "Configuration/ConfigManager.h"
@@ -232,6 +233,48 @@ bool FPCPipelineColorModConfig::TrySetMetallicOverride(FName CatalogKey, bool bO
 	}
 
 	GMetallicOverrides.Add(CatalogKey, bOn);
+	SaveToDisk();
+	BroadcastConfigChanged();
+	return true;
+}
+
+bool FPCPipelineColorModConfig::TrySetAllMetallic(bool bOn, UWorld* World)
+{
+	if (!CanMutateLiveConfig(World))
+	{
+		return false;
+	}
+
+	auto AddKey = [bOn](FName Key)
+	{
+		if (!Key.IsNone())
+		{
+			GMetallicOverrides.Add(Key, bOn);
+		}
+	};
+
+	AddKey(FName(TEXT("Neutral")));
+	for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows())
+	{
+		AddKey(Row.Stem);
+	}
+	AddKey(FName(TEXT("Fallback")));
+
+	SaveToDisk();
+	BroadcastConfigChanged();
+	return true;
+}
+
+bool FPCPipelineColorModConfig::TryResetMetallicToDefaults(UWorld* World)
+{
+	if (!CanMutateLiveConfig(World))
+	{
+		return false;
+	}
+
+	GMetallicOverrides.Reset();
+	CVarDefaultGasMetallic->Set(1);
+	CVarDefaultLiquidMetallic->Set(0);
 	SaveToDisk();
 	BroadcastConfigChanged();
 	return true;

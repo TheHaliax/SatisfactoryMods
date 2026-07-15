@@ -7,11 +7,18 @@
 #include "FGFactoryColoringTypes.h"
 #include "Templates/SubclassOf.h"
 
+class AFGPlayerController;
+
 class FPCSwatchSlotDispatch
 {
 public:
 	static void RegisterHooks();
 
-	static TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> GetActivePcDesc();
-	static void SetActivePcDesc(TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
+	static TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> GetActivePcDesc(
+		AFGPlayerController* PlayerController);
+	static void SetActivePcDesc(
+		AFGPlayerController* PlayerController,
+		TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
+
+	static AFGPlayerController* ResolvePlayerController(UObject* WorldContext);
 };

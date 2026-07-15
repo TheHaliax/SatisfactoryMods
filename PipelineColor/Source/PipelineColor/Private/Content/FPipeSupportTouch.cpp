@@ -8,7 +8,6 @@
 #include "Buildables/FGBuildablePipelineAttachment.h"
 #include "Components/ActorComponent.h"
 #include "EngineUtils.h"
-#include "FGBuildableSubsystem.h"
 #include "FGPipeConnectionComponent.h"
 #include "UObject/SoftObjectPath.h"
 
@@ -17,6 +16,10 @@ namespace FPipeSupportTouch
 namespace
 {
 constexpr float TouchRadiusUu = 50.f;
+
+TMap<TWeakObjectPtr<AFGBuildablePipeline>, TArray<TWeakObjectPtr<AFGBuildable>>>
+	GPipeToSupports;
+TMap<TWeakObjectPtr<AFGBuildable>, TWeakObjectPtr<AFGBuildablePipeline>> GSupportToPipe;
 
 TSubclassOf<AFGBuildable> LoadFluidSupportParent(const TCHAR* SoftPath)
 {
@@ -31,7 +34,7 @@ const TArray<TSubclassOf<AFGBuildable>>& FluidSupportParents()
 	if (!bReady)
 	{
 		bReady = true;
-		TSubclassOf<AFGBuildable> Loaded[] = {
+		const TSubclassOf<AFGBuildable> Loaded[] = {
 			LoadFluidSupportParent(TEXT(
 				"/Game/FactoryGame/Buildable/Factory/PipelineSupport/"
 				"Build_PipelineSupport.Build_PipelineSupport_C")),
@@ -45,7 +48,7 @@ const TArray<TSubclassOf<AFGBuildable>>& FluidSupportParents()
 				"/Game/FactoryGame/Buildable/Factory/PipelineSupportWallHole/"
 				"Build_PipelineSupportWallHole.Build_PipelineSupportWallHole_C")),
 		};
-		for (TSubclassOf<AFGBuildable> Cls : Loaded)
+		for (const TSubclassOf<AFGBuildable>& Cls : Loaded)
 		{
 			if (Cls)
 			{
@@ -63,6 +66,33 @@ void AddUniqueSupport(TArray<AFGBuildable*>& Out, AFGBuildable* Candidate)
 		return;
 	}
 	Out.AddUnique(Candidate);
+}
+
+void PruneCacheDead()
+{
+	for (auto It = GPipeToSupports.CreateIterator(); It; ++It)
+	{
+		if (!It.Key().IsValid())
+		{
+			It.RemoveCurrent();
+			continue;
+		}
+		TArray<TWeakObjectPtr<AFGBuildable>>& List = It.Value();
+		for (int32 i = List.Num() - 1; i >= 0; --i)
+		{
+			if (!List[i].IsValid())
+			{
+				List.RemoveAtSwap(i);
+			}
+		}
+	}
+	for (auto It = GSupportToPipe.CreateIterator(); It; ++It)
+	{
+		if (!It.Key().IsValid() || !It.Value().IsValid())
+		{
+			It.RemoveCurrent();
+		}
+	}
 }
 
 UFGPipeConnectionComponentBase* FirstPipeSnapConn(AFGBuildable* Buildable)
@@ -121,92 +151,8 @@ AFGBuildablePipeline* PipeFromConn(UFGPipeConnectionComponentBase* Conn)
 	}
 	return Cast<AFGBuildablePipeline>(Other->GetOwner());
 }
-} // namespace
 
-bool IsPipeSupport(const AFGBuildable* Buildable)
-{
-	if (!IsValid(Buildable)
-		|| Buildable->IsA<AFGBuildablePipeline>()
-		|| Buildable->IsA<AFGBuildablePipelineAttachment>())
-	{
-		return false;
-	}
-
-	for (TSubclassOf<AFGBuildable> Parent : FluidSupportParents())
-	{
-		if (Parent && Buildable->IsA(Parent))
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
-AFGBuildablePipeline* FindTouchedPipe(AFGBuildable* Support)
-{
-	if (!IsPipeSupport(Support))
-	{
-		return nullptr;
-	}
-
-	TInlineComponentArray<UFGPipeConnectionComponentBase*> Conns(Support);
-	for (UFGPipeConnectionComponentBase* Conn : Conns)
-	{
-		if (AFGBuildablePipeline* Pipe = PipeFromConn(Conn))
-		{
-			return Pipe;
-		}
-	}
-
-	UWorld* World = Support->GetWorld();
-	if (!IsValid(World))
-	{
-		return nullptr;
-	}
-
-	AFGBuildablePipeline* Best = nullptr;
-	float BestDistSq = TouchRadiusUu * TouchRadiusUu;
-	const FVector SnapLoc = SupportSnapWorldLoc(Support);
-
-	auto Consider = [&](AFGBuildablePipeline* Pipe)
-	{
-		if (!IsValid(Pipe))
-		{
-			return;
-		}
-		const float Offset = Pipe->FindOffsetClosestToLocation(SnapLoc);
-		FVector OnSpline = FVector::ZeroVector;
-		FVector Dir = FVector::ZeroVector;
-		Pipe->GetLocationAndDirectionAtOffset(Offset, OnSpline, Dir);
-		const float DistSq = FVector::DistSquared(SnapLoc, OnSpline);
-		if (DistSq <= BestDistSq)
-		{
-			BestDistSq = DistSq;
-			Best = Pipe;
-		}
-	};
-
-	if (AFGBuildableSubsystem* Sub = AFGBuildableSubsystem::Get(World))
-	{
-		for (AFGBuildable* Buildable : Sub->GetAllBuildablesRef())
-		{
-			Consider(Cast<AFGBuildablePipeline>(Buildable));
-		}
-	}
-	else
-	{
-		for (TActorIterator<AFGBuildablePipeline> It(World); It; ++It)
-		{
-			Consider(*It);
-		}
-	}
-
-	return Best;
-}
-
-void CollectSupportsTouchingPipe(
-	AFGBuildablePipeline* Pipe,
-	TArray<AFGBuildable*>& OutSupports)
+void ScanSupportsTouchingPipe(AFGBuildablePipeline* Pipe, TArray<AFGBuildable*>& OutSupports)
 {
 	OutSupports.Reset();
 	if (!IsValid(Pipe))
@@ -266,19 +212,173 @@ void CollectSupportsTouchingPipe(
 		}
 	};
 
-	if (AFGBuildableSubsystem* Sub = AFGBuildableSubsystem::Get(World))
+	for (TActorIterator<AFGBuildable> It(World); It; ++It)
 	{
-		for (AFGBuildable* Buildable : Sub->GetAllBuildablesRef())
+		ConsiderSupport(*It);
+	}
+}
+} // namespace
+
+void RememberLink(AFGBuildablePipeline* Pipe, AFGBuildable* Support)
+{
+	if (!IsValid(Pipe) || !IsValid(Support))
+	{
+		return;
+	}
+	PruneCacheDead();
+	GSupportToPipe.FindOrAdd(Support) = Pipe;
+	TArray<TWeakObjectPtr<AFGBuildable>>& List = GPipeToSupports.FindOrAdd(Pipe);
+	List.AddUnique(Support);
+}
+
+void InvalidateBuildable(AFGBuildable* Buildable)
+{
+	if (!IsValid(Buildable))
+	{
+		return;
+	}
+	PruneCacheDead();
+
+	if (AFGBuildablePipeline* Pipe = Cast<AFGBuildablePipeline>(Buildable))
+	{
+		if (TArray<TWeakObjectPtr<AFGBuildable>>* List = GPipeToSupports.Find(Pipe))
 		{
-			ConsiderSupport(Buildable);
+			for (const TWeakObjectPtr<AFGBuildable>& Weak : *List)
+			{
+				GSupportToPipe.Remove(Weak);
+			}
+		}
+		GPipeToSupports.Remove(Pipe);
+		return;
+	}
+
+	if (TWeakObjectPtr<AFGBuildablePipeline>* PipeWeak = GSupportToPipe.Find(Buildable))
+	{
+		if (AFGBuildablePipeline* Pipe = PipeWeak->Get())
+		{
+			if (TArray<TWeakObjectPtr<AFGBuildable>>* List = GPipeToSupports.Find(Pipe))
+			{
+				List->Remove(Buildable);
+			}
+		}
+		GSupportToPipe.Remove(Buildable);
+	}
+}
+
+bool IsPipeSupport(const AFGBuildable* Buildable)
+{
+	if (!IsValid(Buildable)
+		|| Buildable->IsA<AFGBuildablePipeline>()
+		|| Buildable->IsA<AFGBuildablePipelineAttachment>())
+	{
+		return false;
+	}
+
+	for (const TSubclassOf<AFGBuildable>& Parent : FluidSupportParents())
+	{
+		if (Parent && Buildable->IsA(Parent))
+		{
+			return true;
 		}
 	}
-	else
+	return false;
+}
+
+AFGBuildablePipeline* FindTouchedPipe(AFGBuildable* Support)
+{
+	if (!IsPipeSupport(Support))
 	{
-		for (TActorIterator<AFGBuildable> It(World); It; ++It)
+		return nullptr;
+	}
+
+	if (const TWeakObjectPtr<AFGBuildablePipeline>* Cached = GSupportToPipe.Find(Support))
+	{
+		if (AFGBuildablePipeline* Pipe = Cached->Get())
 		{
-			ConsiderSupport(*It);
+			return Pipe;
 		}
+	}
+
+	TInlineComponentArray<UFGPipeConnectionComponentBase*> Conns(Support);
+	for (UFGPipeConnectionComponentBase* Conn : Conns)
+	{
+		if (AFGBuildablePipeline* Pipe = PipeFromConn(Conn))
+		{
+			RememberLink(Pipe, Support);
+			return Pipe;
+		}
+	}
+
+	UWorld* World = Support->GetWorld();
+	if (!IsValid(World))
+	{
+		return nullptr;
+	}
+
+	AFGBuildablePipeline* Best = nullptr;
+	float BestDistSq = TouchRadiusUu * TouchRadiusUu;
+	const FVector SnapLoc = SupportSnapWorldLoc(Support);
+
+	auto Consider = [&](AFGBuildablePipeline* Pipe)
+	{
+		if (!IsValid(Pipe))
+		{
+			return;
+		}
+		const float Offset = Pipe->FindOffsetClosestToLocation(SnapLoc);
+		FVector OnSpline = FVector::ZeroVector;
+		FVector Dir = FVector::ZeroVector;
+		Pipe->GetLocationAndDirectionAtOffset(Offset, OnSpline, Dir);
+		const float DistSq = FVector::DistSquared(SnapLoc, OnSpline);
+		if (DistSq <= BestDistSq)
+		{
+			BestDistSq = DistSq;
+			Best = Pipe;
+		}
+	};
+
+	for (TActorIterator<AFGBuildablePipeline> It(World); It; ++It)
+	{
+		Consider(*It);
+	}
+
+	if (Best)
+	{
+		RememberLink(Best, Support);
+	}
+	return Best;
+}
+
+void CollectSupportsTouchingPipe(
+	AFGBuildablePipeline* Pipe,
+	TArray<AFGBuildable*>& OutSupports)
+{
+	OutSupports.Reset();
+	if (!IsValid(Pipe))
+	{
+		return;
+	}
+
+	PruneCacheDead();
+	if (TArray<TWeakObjectPtr<AFGBuildable>>* List = GPipeToSupports.Find(Pipe))
+	{
+		for (const TWeakObjectPtr<AFGBuildable>& Weak : *List)
+		{
+			if (AFGBuildable* Support = Weak.Get())
+			{
+				AddUniqueSupport(OutSupports, Support);
+			}
+		}
+		if (OutSupports.Num() > 0)
+		{
+			return;
+		}
+	}
+
+	ScanSupportsTouchingPipe(Pipe, OutSupports);
+	for (AFGBuildable* Support : OutSupports)
+	{
+		RememberLink(Pipe, Support);
 	}
 }
 } // namespace FPipeSupportTouch

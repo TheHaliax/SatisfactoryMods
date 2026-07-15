@@ -29,7 +29,8 @@ struct PIPELINECOLOR_API FPCSwatchEntry
 		FFactoryCustomizationColorSlot Slot(Primary, Secondary);
 		if (PaintFinish.IsValid())
 		{
-			Slot.PaintFinish = PaintFinish.TryLoadClass<UFGFactoryCustomizationDescriptor_PaintFinish>();
+			Slot.PaintFinish =
+				PaintFinish.TryLoadClass<UFGFactoryCustomizationDescriptor_PaintFinish>();
 		}
 		return Slot;
 	}

@@ -13,7 +13,7 @@ No design-resolution ids or milestone notes in `Source/`. SPDX headers stay.
 
 ## Repository layout
 
-```
+```text
 SatisfactoryMods/
   PipelineColor/
     PipelineColor.uplugin
@@ -31,7 +31,7 @@ Junction or copy `PipelineColor/` into StarterProject `Mods/PipelineColor`, then
 
 Typical junction:
 
-```
+```text
 E:\Modding\Satisfactory\StarterProject\Mods\PipelineColor
   → C:\Users\Haliax\Documents\GitHub\SatisfactoryMods\PipelineColor
 ```
@@ -44,7 +44,7 @@ powershell -File tools/pack-pipelinecolor.ps1 -Config Shipping
 
 Deploy cooked output to:
 
-```
+```text
 <Satisfactory>/FactoryGame/Mods/PipelineColor
 ```
 

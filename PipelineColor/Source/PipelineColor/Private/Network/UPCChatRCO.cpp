@@ -27,7 +27,7 @@ void UPCChatRCO::Server_RunBangCommand_Implementation(const FString& CommandLine
 void UPCChatRCO::Server_SetActivePcSwatch_Implementation(
 	TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch)
 {
-	FPCSwatchSlotDispatch::SetActivePcDesc(Swatch);
+	FPCSwatchSlotDispatch::SetActivePcDesc(GetOwnerPlayerController(), Swatch);
 }
 
 void UPCChatRCO::Server_SetPcSwatchColors_Implementation(
@@ -52,7 +52,7 @@ void UPCChatRCO::Server_SetPcSwatchColors_Implementation(
 		return;
 	}
 
-	FPCSwatchSlotDispatch::SetActivePcDesc(Swatch);
+	FPCSwatchSlotDispatch::SetActivePcDesc(GetOwnerPlayerController(), Swatch);
 	Store->SetFromSlot(Key, ColorData);
 	UE_LOG(LogPipelineColor, Log, TEXT("%s RCO SetPcSwatchColors key=%s"),
 		PIPELINECOLOR_LOG_PREFIX, *Key.ToString());

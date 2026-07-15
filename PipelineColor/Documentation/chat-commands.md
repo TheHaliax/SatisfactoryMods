@@ -11,13 +11,15 @@ The same commands register with **SML** (`AChatCommandSubsystem::RegisterCommand
 `[]` — required argument.
 
 - `!Metallic [fluid]` — **toggle** metallic finish for that fluid (saved to `Configs/PipelineColor.cfg`)
+- `!Metallic all on|off` — set **all** fluids metallic or color
+- `!Metallic default` — reset swatch colors + metallic overrides/defaults to mod defaults
 - `!pchelp` — list Pipeline Color chat commands
 
 Fluid tokens accept catalog keys or Customizer-style labels (e.g. `Water`, `NitrogenGas`, `PC Nitrogen Gas`). Matching ignores spaces and case. Toggle flips the **effective** state (override or gas/liquid default).
 
 ## Examples
 
-```
+```text
 !Metallic Water
 !Metallic NitrogenGas
 !pchelp

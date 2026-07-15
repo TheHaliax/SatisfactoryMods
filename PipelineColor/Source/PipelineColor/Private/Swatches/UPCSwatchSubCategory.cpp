@@ -5,6 +5,5 @@
 
 UPCSwatchSubCategory::UPCSwatchSubCategory()
 {
-	mDisplayName = FText::FromString(TEXT("Default"));
-	mMenuPriority = 0.f;
+	mDisplayName = NSLOCTEXT("PipelineColor", "SubCategoryDefault", "Default");
 }

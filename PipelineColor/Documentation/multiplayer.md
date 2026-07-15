@@ -18,7 +18,7 @@ Release builds should include server targets (Windows Server / Linux Server) bef
 
 ### Server config path
 
-```
+```text
 <Satisfactory>/Configs/PipelineColor.cfg
 ```
 

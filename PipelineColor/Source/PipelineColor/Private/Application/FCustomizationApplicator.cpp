@@ -24,18 +24,65 @@ TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> LoadCustomSwatch()
 	return Cached;
 }
 
-void ApplyRoughnessToMetallicCDO(float Roughness)
+// Stamp finish CDO roughness for SetCustomizationData duration only.
+struct FScopedFinishRoughnessStamp
 {
-	if (UPCFinish_MetallicColor* CDO = GetMutableDefault<UPCFinish_MetallicColor>())
+	UFGFactoryCustomizationDescriptor_PaintFinish* CDO = nullptr;
+	float SavedRoughness = 0.f;
+	float SavedMetallic = 0.f;
+	bool bSavedForced = false;
+	bool bForceMetallic = false;
+	bool bActive = false;
+
+	FScopedFinishRoughnessStamp(
+		TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> Finish,
+		float Roughness,
+		bool bSetMetallicOne)
 	{
+		if (!Finish)
+		{
+			return;
+		}
+		CDO = Finish->GetDefaultObject<UFGFactoryCustomizationDescriptor_PaintFinish>();
+		if (!CDO)
+		{
+			return;
+		}
+		SavedRoughness = CDO->RoughnessValue;
+		SavedMetallic = CDO->MetallicValue;
+		bSavedForced = CDO->mHasForcedColor;
+		bForceMetallic = bSetMetallicOne;
 		CDO->RoughnessValue = Roughness;
-		CDO->MetallicValue = 1.f;
-		CDO->mHasForcedColor = false;
+		if (bForceMetallic)
+		{
+			CDO->MetallicValue = 1.f;
+			CDO->mHasForcedColor = false;
+		}
+		bActive = true;
 	}
-}
+
+	~FScopedFinishRoughnessStamp()
+	{
+		if (!bActive || !CDO)
+		{
+			return;
+		}
+		CDO->RoughnessValue = SavedRoughness;
+		if (bForceMetallic)
+		{
+			CDO->MetallicValue = SavedMetallic;
+			CDO->mHasForcedColor = bSavedForced;
+		}
+	}
+
+	FScopedFinishRoughnessStamp(const FScopedFinishRoughnessStamp&) = delete;
+	FScopedFinishRoughnessStamp& operator=(const FScopedFinishRoughnessStamp&) = delete;
+};
 } // namespace
 
-bool FCustomizationApplicator::ApplyIfChanged(AFGBuildable* Buildable, const FPCAppearanceSpec& Spec)
+bool FCustomizationApplicator::ApplyIfChanged(
+	AFGBuildable* Buildable,
+	const FPCAppearanceSpec& Spec)
 {
 	if (!IsValid(Buildable) || !Buildable->HasAuthority())
 	{
@@ -62,11 +109,9 @@ bool FCustomizationApplicator::ApplyIfChanged(AFGBuildable* Buildable, const FPC
 		return false;
 	}
 
-	if (Spec.bOverrideRoughness
-		&& Spec.PaintFinish == UPCFinish_MetallicColor::StaticClass())
-	{
-		ApplyRoughnessToMetallicCDO(Spec.RoughnessValue);
-	}
+	const bool bStampRoughness = Spec.bOverrideRoughness && Spec.PaintFinish != nullptr;
+	const bool bStampMetallicOne =
+		Spec.PaintFinish == UPCFinish_MetallicColor::StaticClass();
 
 	FFactoryCustomizationData Next;
 	Next.InlineCombine(Data);
@@ -76,7 +121,16 @@ bool FCustomizationApplicator::ApplyIfChanged(AFGBuildable* Buildable, const FPC
 	Next.OverrideColorData.SecondaryColor = Spec.SecondaryColor;
 	Next.OverrideColorData.PaintFinish = Spec.PaintFinish;
 
-	Buildable->SetCustomizationData_Native(Next, /*skipCombine=*/true);
+	if (bStampRoughness)
+	{
+		FScopedFinishRoughnessStamp Stamp(
+			Spec.PaintFinish, Spec.RoughnessValue, bStampMetallicOne);
+		Buildable->SetCustomizationData_Native(Next, /*skipCombine=*/true);
+	}
+	else
+	{
+		Buildable->SetCustomizationData_Native(Next, /*skipCombine=*/true);
+	}
 
 	UE_LOG(LogPipelineColor, Log, TEXT("%s apply %s key=%s primary=(%.2f,%.2f,%.2f)"),
 		PIPELINECOLOR_LOG_PREFIX,

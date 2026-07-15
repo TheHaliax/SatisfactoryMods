@@ -15,11 +15,24 @@
 #include "PipelineColorLog.h"
 #include "Store/APCSwatchStoreSubsystem.h"
 
-static TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> GActivePcDesc;
-
 namespace
 {
 bool GHooksRegistered = false;
+
+TMap<TWeakObjectPtr<AFGPlayerController>,
+	TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>>
+	GActiveByPc;
+
+void PruneDeadActiveEntries()
+{
+	for (auto It = GActiveByPc.CreateIterator(); It; ++It)
+	{
+		if (!It.Key().IsValid())
+		{
+			It.RemoveCurrent();
+		}
+	}
+}
 
 APCSwatchStoreSubsystem* StoreFor(UObject* WorldContext)
 {
@@ -29,13 +42,7 @@ APCSwatchStoreSubsystem* StoreFor(UObject* WorldContext)
 
 UPCChatRCO* LocalRco(UObject* WorldContext)
 {
-	UWorld* World = IsValid(WorldContext) ? WorldContext->GetWorld() : nullptr;
-	if (!IsValid(World))
-	{
-		return nullptr;
-	}
-
-	AFGPlayerController* PC = Cast<AFGPlayerController>(World->GetFirstPlayerController());
+	AFGPlayerController* PC = FPCSwatchSlotDispatch::ResolvePlayerController(WorldContext);
 	if (!IsValid(PC) || !PC->IsLocalController())
 	{
 		return nullptr;
@@ -43,7 +50,9 @@ UPCChatRCO* LocalRco(UObject* WorldContext)
 	return PC->GetRemoteCallObjectOfClass<UPCChatRCO>();
 }
 
-void SyncActivePcToServer(UObject* WorldContext, TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch)
+void SyncActivePcToServer(
+	UObject* WorldContext,
+	TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch)
 {
 	UWorld* World = IsValid(WorldContext) ? WorldContext->GetWorld() : nullptr;
 	if (!IsValid(World) || World->GetNetMode() != NM_Client)
@@ -93,11 +102,14 @@ void SubmitPcColors(
 	}
 }
 
-void RememberIfPc(TSubclassOf<UFGCustomizationRecipe> Recipe, UObject* WorldContext)
+void RememberIfPc(
+	TSubclassOf<UFGCustomizationRecipe> Recipe,
+	UObject* WorldContext)
 {
+	AFGPlayerController* PC = FPCSwatchSlotDispatch::ResolvePlayerController(WorldContext);
 	if (!Recipe)
 	{
-		GActivePcDesc = nullptr;
+		FPCSwatchSlotDispatch::SetActivePcDesc(PC, nullptr);
 		SyncActivePcToServer(WorldContext, nullptr);
 		return;
 	}
@@ -106,12 +118,12 @@ void RememberIfPc(TSubclassOf<UFGCustomizationRecipe> Recipe, UObject* WorldCont
 	TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch(Desc.Get());
 	if (APCSwatchStoreSubsystem::IsPCCustomization(Swatch))
 	{
-		GActivePcDesc = Swatch;
+		FPCSwatchSlotDispatch::SetActivePcDesc(PC, Swatch);
 		SyncActivePcToServer(WorldContext, Swatch);
 	}
 	else
 	{
-		GActivePcDesc = nullptr;
+		FPCSwatchSlotDispatch::SetActivePcDesc(PC, nullptr);
 		SyncActivePcToServer(WorldContext, nullptr);
 	}
 }
@@ -154,28 +166,107 @@ bool HandleCustomSlotWrite(
 	{
 		return false;
 	}
-	if (!APCSwatchStoreSubsystem::IsPCCustomization(GActivePcDesc))
+
+	AFGPlayerController* PC = FPCSwatchSlotDispatch::ResolvePlayerController(WorldContext);
+	const TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Active =
+		FPCSwatchSlotDispatch::GetActivePcDesc(PC);
+	if (!APCSwatchStoreSubsystem::IsPCCustomization(Active))
 	{
 		return false;
 	}
 
-	SubmitPcColors(WorldContext, GActivePcDesc, ColorData);
+	SubmitPcColors(WorldContext, Active, ColorData);
 	UE_LOG(LogPipelineColor, Log, TEXT("%s custom slot → RCO/store"),
 		PIPELINECOLOR_LOG_PREFIX);
 	return true;
 }
 } // namespace
 
+AFGPlayerController* FPCSwatchSlotDispatch::ResolvePlayerController(UObject* WorldContext)
+{
+	if (!IsValid(WorldContext))
+	{
+		return nullptr;
+	}
+
+	if (AFGPlayerController* PC = Cast<AFGPlayerController>(WorldContext))
+	{
+		return PC;
+	}
+
+	if (const AActor* Actor = Cast<AActor>(WorldContext))
+	{
+		if (AFGPlayerController* PC =
+			Cast<AFGPlayerController>(Actor->GetInstigatorController()))
+		{
+			return PC;
+		}
+		if (AFGPlayerController* PC = Cast<AFGPlayerController>(Actor->GetOwner()))
+		{
+			return PC;
+		}
+		if (const APawn* Pawn = Cast<APawn>(Actor->GetOwner()))
+		{
+			if (AFGPlayerController* PC = Cast<AFGPlayerController>(Pawn->GetController()))
+			{
+				return PC;
+			}
+		}
+	}
+
+	UWorld* World = WorldContext->GetWorld();
+	if (!IsValid(World))
+	{
+		return nullptr;
+	}
+
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (AFGPlayerController* PC = Cast<AFGPlayerController>(It->Get()))
+		{
+			if (PC->IsLocalController())
+			{
+				return PC;
+			}
+		}
+	}
+	return Cast<AFGPlayerController>(World->GetFirstPlayerController());
+}
+
 void FPCSwatchSlotDispatch::SetActivePcDesc(
+	AFGPlayerController* PlayerController,
 	TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch)
 {
-	GActivePcDesc = APCSwatchStoreSubsystem::IsPCCustomization(Swatch) ? Swatch : nullptr;
+	PruneDeadActiveEntries();
+	if (!IsValid(PlayerController))
+	{
+		return;
+	}
+
+	if (APCSwatchStoreSubsystem::IsPCCustomization(Swatch))
+	{
+		GActiveByPc.FindOrAdd(PlayerController) = Swatch;
+	}
+	else
+	{
+		GActiveByPc.Remove(PlayerController);
+	}
 }
 
 TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>
-FPCSwatchSlotDispatch::GetActivePcDesc()
+FPCSwatchSlotDispatch::GetActivePcDesc(AFGPlayerController* PlayerController)
 {
-	return GActivePcDesc;
+	PruneDeadActiveEntries();
+	if (!IsValid(PlayerController))
+	{
+		return nullptr;
+	}
+	if (const TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>* Found =
+		GActiveByPc.Find(PlayerController))
+	{
+		return *Found;
+	}
+	return nullptr;
 }
 
 void FPCSwatchSlotDispatch::RegisterHooks()
@@ -200,7 +291,8 @@ void FPCSwatchSlotDispatch::RegisterHooks()
 			{
 				if (APCSwatchStoreSubsystem::IsPCCustomization(SwatchDesc))
 				{
-					GActivePcDesc = SwatchDesc;
+					AFGPlayerController* PC = ResolvePlayerController(WorldContext);
+					SetActivePcDesc(PC, SwatchDesc);
 					SyncActivePcToServer(WorldContext, SwatchDesc);
 				}
 				Scope.Cancel();
@@ -220,14 +312,15 @@ void FPCSwatchSlotDispatch::RegisterHooks()
 		[](UFGBuildGunStatePaint* Self,
 			TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> SwatchDesc)
 		{
+			AFGPlayerController* PC = ResolvePlayerController(Self);
 			if (APCSwatchStoreSubsystem::IsPCCustomization(SwatchDesc))
 			{
-				GActivePcDesc = SwatchDesc;
+				SetActivePcDesc(PC, SwatchDesc);
 				SyncActivePcToServer(Self, SwatchDesc);
 			}
 			else
 			{
-				GActivePcDesc = nullptr;
+				SetActivePcDesc(PC, nullptr);
 				SyncActivePcToServer(Self, nullptr);
 			}
 		});

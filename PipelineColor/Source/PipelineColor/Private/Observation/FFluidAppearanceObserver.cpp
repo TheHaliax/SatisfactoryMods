@@ -41,6 +41,19 @@ void EnqueueIntegrantActor(IFGFluidIntegrantInterface* Integrant)
 		EnqueueBuildable(Buildable);
 	}
 }
+
+void EnqueueNetworkFirstIntegrant(AFGPipeNetwork* Network)
+{
+	if (!IsValid(Network) || !Network->HasAuthority())
+	{
+		return;
+	}
+
+	if (IFGFluidIntegrantInterface* First = Network->GetFirstFluidIntegrant())
+	{
+		EnqueueIntegrantActor(First);
+	}
+}
 } // namespace
 
 void FFluidAppearanceObserver::EnqueueFromWorld(UWorld* World, AFGBuildable* Buildable)
@@ -77,30 +90,14 @@ void FFluidAppearanceObserver::RegisterHooks()
 		AFGPipeNetwork::FlushNetwork,
 		[](AFGPipeNetwork* Network)
 		{
-			if (!IsValid(Network) || !Network->HasAuthority())
-			{
-				return;
-			}
-
-			if (IFGFluidIntegrantInterface* First = Network->GetFirstFluidIntegrant())
-			{
-				EnqueueIntegrantActor(First);
-			}
+			EnqueueNetworkFirstIntegrant(Network);
 		});
 
 	SUBSCRIBE_METHOD_AFTER(
 		AFGPipeNetwork::TrySetFluidDescriptor,
 		[](AFGPipeNetwork* Network, TSubclassOf<UFGItemDescriptor> /*Desc*/)
 		{
-			if (!IsValid(Network) || !Network->HasAuthority())
-			{
-				return;
-			}
-
-			if (IFGFluidIntegrantInterface* First = Network->GetFirstFluidIntegrant())
-			{
-				EnqueueIntegrantActor(First);
-			}
+			EnqueueNetworkFirstIntegrant(Network);
 		});
 
 	UE_LOG(LogPipelineColor, Log, TEXT("%s fluid hooks registered"), PIPELINECOLOR_LOG_PREFIX);

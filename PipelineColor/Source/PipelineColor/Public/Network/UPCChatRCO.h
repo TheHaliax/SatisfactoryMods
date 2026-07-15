@@ -14,7 +14,8 @@ class PIPELINECOLOR_API UPCChatRCO : public UFGRemoteCallObject
 	GENERATED_BODY()
 
 public:
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void GetLifetimeReplicatedProps(
+		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	UFUNCTION(Server, Reliable)
 	void Server_RunBangCommand(const FString& CommandLine);

@@ -5,6 +5,7 @@
 
 #include "Appearance/FPCAppearanceSpec.h"
 #include "Appearance/FPCFluidAppearanceCatalog.h"
+#include "Appearance/FPCFluidRoster.h"
 #include "Core/FPCWorldGate.h"
 #include "FGFactoryColoringTypes.h"
 #include "Kismet/GameplayStatics.h"
@@ -95,6 +96,10 @@ int32 APCSwatchStoreSubsystem::FindIndex(FName Key) const
 FName APCSwatchStoreSubsystem::KeyFromSwatchStatic(
 	TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch)
 {
+	if (!Swatch)
+	{
+		return NAME_None;
+	}
 	return UPCSwatchDescBase::GetCatalogKey(Swatch);
 }
 
@@ -156,6 +161,11 @@ void APCSwatchStoreSubsystem::SetFromSlot(FName Key, const FFactoryCustomization
 
 void APCSwatchStoreSubsystem::SeedMissingFromCatalog()
 {
+	if (!HasAuthority())
+	{
+		return;
+	}
+
 	RebuildMaps();
 	FPCFluidAppearanceCatalog& Catalog = FPCFluidAppearanceCatalog::Get();
 	Catalog.EnsureLoaded();
@@ -183,51 +193,13 @@ void APCSwatchStoreSubsystem::SeedMissingFromCatalog()
 		EnsureKey(FName(TEXT("Neutral")), Neutral);
 	}
 
-	struct FFluidSeed
-	{
-		FName Key;
-		const TCHAR* Path;
-	};
-	const FFluidSeed Fluids[] = {
-		{FName(TEXT("Water")),
-			TEXT("/Game/FactoryGame/Resource/RawResources/Water/Desc_Water.Desc_Water_C")},
-		{FName(TEXT("CrudeOil")),
-			TEXT("/Game/FactoryGame/Resource/RawResources/CrudeOil/Desc_LiquidOil.Desc_LiquidOil_C")},
-		{FName(TEXT("HeavyOilResidue")),
-			TEXT("/Game/FactoryGame/Resource/Parts/HeavyOilResidue/Desc_HeavyOilResidue.Desc_HeavyOilResidue_C")},
-		{FName(TEXT("Fuel")),
-			TEXT("/Game/FactoryGame/Resource/Parts/Fuel/Desc_LiquidFuel.Desc_LiquidFuel_C")},
-		{FName(TEXT("Turbofuel")),
-			TEXT("/Game/FactoryGame/Resource/Parts/Turbofuel/Desc_TurboFuel.Desc_TurboFuel_C")},
-		{FName(TEXT("LiquidBiofuel")),
-			TEXT("/Game/FactoryGame/Resource/Parts/BioFuel/Desc_LiquidBiofuel.Desc_LiquidBiofuel_C")},
-		{FName(TEXT("AluminaSolution")),
-			TEXT("/Game/FactoryGame/Resource/Parts/Alumina/Desc_AluminaSolution.Desc_AluminaSolution_C")},
-		{FName(TEXT("SulfuricAcid")),
-			TEXT("/Game/FactoryGame/Resource/Parts/SulfuricAcid/Desc_SulfuricAcid.Desc_SulfuricAcid_C")},
-		{FName(TEXT("DissolvedSilica")),
-			TEXT("/Game/FactoryGame/Resource/Parts/DissolvedSilica/Desc_DissolvedSilica.Desc_DissolvedSilica_C")},
-		{FName(TEXT("NitricAcid")),
-			TEXT("/Game/FactoryGame/Resource/Parts/NitricAcid/Desc_NitricAcid.Desc_NitricAcid_C")},
-		{FName(TEXT("DarkMatterResidue")),
-			TEXT("/Game/FactoryGame/Resource/Parts/DarkEnergy/Desc_DarkEnergy.Desc_DarkEnergy_C")},
-		{FName(TEXT("ExcitedPhotonicMatter")),
-			TEXT("/Game/FactoryGame/Resource/Parts/QuantumEnergy/Desc_QuantumEnergy.Desc_QuantumEnergy_C")},
-		{FName(TEXT("IonizedFuel")),
-			TEXT("/Game/FactoryGame/Resource/Parts/IonizedFuel/Desc_IonizedFuel.Desc_IonizedFuel_C")},
-		{FName(TEXT("RocketFuel")),
-			TEXT("/Game/FactoryGame/Resource/Parts/RocketFuel/Desc_RocketFuel.Desc_RocketFuel_C")},
-		{FName(TEXT("NitrogenGas")),
-			TEXT("/Game/FactoryGame/Resource/RawResources/NitrogenGas/Desc_NitrogenGas.Desc_NitrogenGas_C")},
-	};
-
-	for (const FFluidSeed& Seed : Fluids)
+	for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows())
 	{
 		TSubclassOf<UFGItemDescriptor> Desc =
-			FSoftClassPath(Seed.Path).TryLoadClass<UFGItemDescriptor>();
+			FSoftClassPath(Row.SoftPath).TryLoadClass<UFGItemDescriptor>();
 		FPCAppearanceSpec Spec;
 		Catalog.Resolve(Desc, !Desc, Spec);
-		EnsureKey(Seed.Key, Spec);
+		EnsureKey(Row.Stem, Spec);
 	}
 
 	{
@@ -243,6 +215,11 @@ void APCSwatchStoreSubsystem::SeedMissingFromCatalog()
 
 void APCSwatchStoreSubsystem::ForceReseedNeutralMatte()
 {
+	if (!HasAuthority())
+	{
+		return;
+	}
+
 	RebuildMaps();
 	FPCFluidAppearanceCatalog& Catalog = FPCFluidAppearanceCatalog::Get();
 	Catalog.EnsureLoaded();
@@ -274,4 +251,58 @@ void APCSwatchStoreSubsystem::ForceReseedNeutralMatte()
 	RebuildMaps();
 	UE_LOG(LogPipelineColor, Log, TEXT("%s Neutral reseeded Matte"),
 		PIPELINECOLOR_LOG_PREFIX);
+}
+
+void APCSwatchStoreSubsystem::ReseedAllFromCatalog()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	FPCFluidAppearanceCatalog& Catalog = FPCFluidAppearanceCatalog::Get();
+	Catalog.EnsureLoaded();
+
+	Entries.Reset();
+	KeyToIndex.Reset();
+
+	auto WriteKey = [this](FName Key, const FPCAppearanceSpec& Spec)
+	{
+		FPCSwatchEntry Entry;
+		Entry.Key = Key;
+		Entry.Primary = Spec.PrimaryColor;
+		Entry.Secondary = Spec.SecondaryColor;
+		Entry.PaintFinish = Spec.PaintFinish
+			? FSoftClassPath(Spec.PaintFinish.Get())
+			: FSoftClassPath();
+		KeyToIndex.Add(Key, Entries.Num());
+		Entries.Add(Entry);
+	};
+
+	{
+		FPCAppearanceSpec Neutral;
+		Catalog.Resolve(nullptr, true, Neutral);
+		WriteKey(FName(TEXT("Neutral")), Neutral);
+	}
+
+	for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows())
+	{
+		TSubclassOf<UFGItemDescriptor> Desc =
+			FSoftClassPath(Row.SoftPath).TryLoadClass<UFGItemDescriptor>();
+		FPCAppearanceSpec Spec;
+		Catalog.Resolve(Desc, !Desc, Spec);
+		WriteKey(Row.Stem, Spec);
+	}
+
+	{
+		FPCAppearanceSpec Fallback = Catalog.GetNeutral();
+		Fallback.PrimaryColor = FLinearColor::FromSRGBColor(FColor::White);
+		WriteKey(FName(TEXT("Fallback")), Fallback);
+	}
+
+	RebuildMaps();
+	EntryChanged.Broadcast(NAME_None);
+	ForceNetUpdate();
+	UE_LOG(LogPipelineColor, Log, TEXT("%s store reseeded all (%d entries)"),
+		PIPELINECOLOR_LOG_PREFIX, Entries.Num());
 }

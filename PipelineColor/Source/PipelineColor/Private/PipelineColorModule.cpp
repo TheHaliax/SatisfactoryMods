@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "PipelineColorModule.h"
-#include "PipelineColorRootInstanceModule.h"
 
-#include "Config/FPCPipelineColorModConfig.h"
 #include "Command/FPCBangCommands.h"
+#include "Config/FPCPipelineColorModConfig.h"
 #include "HAL/IConsoleManager.h"
+#include "PipelineColorRootInstanceModule.h"
 
 #define LOCTEXT_NAMESPACE "FPipelineColorModule"
 

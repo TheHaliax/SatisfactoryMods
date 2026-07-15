@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Regenerate Icon1024/512/128.png from tools/ BaseIcon + Mask + UnispaceBd.
-# Defaults match make-icons.py color scheme — do not invent palettes here.
+# Defaults match make-icons.py color scheme -- do not invent palettes here.
 param(
     [Parameter(Mandatory = $true)]
     [string]$ModRoot,

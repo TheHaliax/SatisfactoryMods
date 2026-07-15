@@ -46,6 +46,10 @@ No SML Mods menu. Edit `Configs/PipelineColor.cfg` on the host, use console `Pip
 
 ![PipelineColor — fluid-colored pipe rows](https://raw.githubusercontent.com/TheHaliax/SatisfactoryMods/refs/heads/main/PipelineColor/Screenshots/gameplay-fluid-rows.jpg)
 
+![PipelineColor — color finishes (matte)](https://raw.githubusercontent.com/TheHaliax/SatisfactoryMods/refs/heads/main/PipelineColor/Screenshots/gameplay-fluid-rows-matte.jpg)
+
+![PipelineColor — metallic finishes](https://raw.githubusercontent.com/TheHaliax/SatisfactoryMods/refs/heads/main/PipelineColor/Screenshots/gameplay-fluid-rows-metallic.jpg)
+
 ![PipelineColor — wall and floor pipe supports](https://raw.githubusercontent.com/TheHaliax/SatisfactoryMods/refs/heads/main/PipelineColor/Screenshots/gameplay-supports.jpg)
 
 ![PipelineColor — Customizer PipelineColor swatches](https://raw.githubusercontent.com/TheHaliax/SatisfactoryMods/refs/heads/main/PipelineColor/Screenshots/customizer-pc-swatches.jpg)

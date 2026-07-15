@@ -8,7 +8,8 @@
 #include "UPCFinishDescs.generated.h"
 
 UCLASS()
-class PIPELINECOLOR_API UPCFinish_MetallicColor : public UFGFactoryCustomizationDescriptor_PaintFinish
+class PIPELINECOLOR_API UPCFinish_MetallicColor
+	: public UFGFactoryCustomizationDescriptor_PaintFinish
 {
 	GENERATED_BODY()
 

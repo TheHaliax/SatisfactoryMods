@@ -3,11 +3,13 @@
 
 #include "Command/FPCBangCommands.h"
 
+#include "Appearance/FPCFluidRoster.h"
 #include "Config/FPCPipelineColorModConfig.h"
 #include "FGChatManager.h"
 #include "FGGameState.h"
 #include "FGPlayerController.h"
 #include "Network/UPCChatRCO.h"
+#include "Store/APCSwatchStoreSubsystem.h"
 #include "Swatches/UPCSwatchDescs.h"
 
 namespace
@@ -121,28 +123,15 @@ struct FFluidAlias
 void CollectFluidAliases(TArray<FFluidAlias>& Out)
 {
 	Out.Reset();
-	const TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Descs[] = {
-		UPCSwatchDesc_Neutral::StaticClass(),
-		UPCSwatchDesc_Water::StaticClass(),
-		UPCSwatchDesc_CrudeOil::StaticClass(),
-		UPCSwatchDesc_HeavyOilResidue::StaticClass(),
-		UPCSwatchDesc_Fuel::StaticClass(),
-		UPCSwatchDesc_Turbofuel::StaticClass(),
-		UPCSwatchDesc_LiquidBiofuel::StaticClass(),
-		UPCSwatchDesc_AluminaSolution::StaticClass(),
-		UPCSwatchDesc_SulfuricAcid::StaticClass(),
-		UPCSwatchDesc_DissolvedSilica::StaticClass(),
-		UPCSwatchDesc_NitricAcid::StaticClass(),
-		UPCSwatchDesc_DarkMatterResidue::StaticClass(),
-		UPCSwatchDesc_ExcitedPhotonicMatter::StaticClass(),
-		UPCSwatchDesc_IonizedFuel::StaticClass(),
-		UPCSwatchDesc_RocketFuel::StaticClass(),
-		UPCSwatchDesc_NitrogenGas::StaticClass(),
-		UPCSwatchDesc_Fallback::StaticClass(),
-	};
+	TArray<TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>> Descs;
+	FPCFluidRoster::AppendAllSwatchClasses(Descs);
 
 	for (const TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>& Desc : Descs)
 	{
+		if (!Desc)
+		{
+			continue;
+		}
 		const UPCSwatchDescBase* CDO = Cast<UPCSwatchDescBase>(Desc->GetDefaultObject());
 		if (!CDO || CDO->CatalogKey.IsNone())
 		{
@@ -184,7 +173,15 @@ void SendHelp(AFGPlayerController* PlayerController)
 {
 	SendBangChat(
 		PlayerController,
-		TEXT("!Metallic <fluid>  — toggle metallic finish for that fluid"),
+		TEXT("!Metallic <fluid>  — toggle metallic for that fluid"),
+		FLinearColor::Yellow);
+	SendBangChat(
+		PlayerController,
+		TEXT("!Metallic all on|off  — all fluids metallic or color"),
+		FLinearColor::Yellow);
+	SendBangChat(
+		PlayerController,
+		TEXT("!Metallic default  — reset colors + metallic to defaults"),
 		FLinearColor::Yellow);
 	SendBangChat(
 		PlayerController,
@@ -206,6 +203,31 @@ bool TryToggleMetallic(UWorld* World, FName Key, FString& OutMessage)
 		*FriendlyNameFromKey(Key),
 		bNext ? TEXT("on") : TEXT("off"));
 	return true;
+}
+
+bool TryParseAllMetallic(const FString& Rest, bool& bOutOn)
+{
+	TArray<FString> Tokens;
+	Rest.ParseIntoArrayWS(Tokens);
+	if (Tokens.Num() < 2 || !Tokens[0].Equals(TEXT("all"), ESearchCase::IgnoreCase))
+	{
+		return false;
+	}
+	if (Tokens[1].Equals(TEXT("on"), ESearchCase::IgnoreCase)
+		|| Tokens[1].Equals(TEXT("1"), ESearchCase::IgnoreCase)
+		|| Tokens[1].Equals(TEXT("true"), ESearchCase::IgnoreCase))
+	{
+		bOutOn = true;
+		return true;
+	}
+	if (Tokens[1].Equals(TEXT("off"), ESearchCase::IgnoreCase)
+		|| Tokens[1].Equals(TEXT("0"), ESearchCase::IgnoreCase)
+		|| Tokens[1].Equals(TEXT("false"), ESearchCase::IgnoreCase))
+	{
+		bOutOn = false;
+		return true;
+	}
+	return false;
 }
 } // namespace
 
@@ -291,7 +313,52 @@ void FPCBangCommands::Execute(AFGPlayerController* PlayerController, const FStri
 	{
 		if (Rest.IsEmpty())
 		{
-			SendBangChat(PlayerController, TEXT("Use !Metallic <fluid>"), FLinearColor::Red);
+			SendBangChat(
+				PlayerController,
+				TEXT("Use !Metallic <fluid>, all on|off, or default"),
+				FLinearColor::Red);
+			return;
+		}
+
+		if (Rest.Equals(TEXT("default"), ESearchCase::IgnoreCase))
+		{
+			if (!FPCPipelineColorModConfig::TryResetMetallicToDefaults(World))
+			{
+				SendBangChat(
+					PlayerController,
+					TEXT("Cannot reset metallic on client."),
+					FLinearColor::Red);
+				return;
+			}
+
+			if (APCSwatchStoreSubsystem* Store =
+				APCSwatchStoreSubsystem::GetOrCreate(World))
+			{
+				Store->ReseedAllFromCatalog();
+			}
+
+			SendBangChat(
+				PlayerController,
+				TEXT("Pipeline Color defaults restored (colors + metallic)."));
+			return;
+		}
+
+		bool bAllOn = false;
+		if (TryParseAllMetallic(Rest, bAllOn))
+		{
+			if (!FPCPipelineColorModConfig::TrySetAllMetallic(bAllOn, World))
+			{
+				SendBangChat(
+					PlayerController,
+					TEXT("Cannot change metallic on client."),
+					FLinearColor::Red);
+				return;
+			}
+			SendBangChat(
+				PlayerController,
+				bAllOn
+					? TEXT("All fluids metallic on.")
+					: TEXT("All fluids metallic off (color)."));
 			return;
 		}
 

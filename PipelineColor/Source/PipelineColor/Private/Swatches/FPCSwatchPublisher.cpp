@@ -3,6 +3,7 @@
 
 #include "Swatches/FPCSwatchPublisher.h"
 
+#include "Appearance/FPCFluidRoster.h"
 #include "Core/FPCWorldGate.h"
 #include "FGCustomizationRecipe.h"
 #include "FGFactoryColoringTypes.h"
@@ -11,8 +12,6 @@
 #include "PipelineColorLog.h"
 #include "PipelineColorRootInstanceModule.h"
 #include "Store/APCSwatchStoreSubsystem.h"
-#include "Swatches/UPCSwatchDescs.h"
-#include "Swatches/UPCSwatchRecipes.h"
 
 namespace
 {
@@ -21,30 +20,7 @@ bool GForceRecipeHookRegistered = false;
 void AppendPcCustomizationRecipes(
 	TArray<TSubclassOf<UFGCustomizationRecipe>>& Out)
 {
-	static const TSubclassOf<UFGCustomizationRecipe> Recipes[] = {
-		UPCSwatchRecipe_Neutral::StaticClass(),
-		UPCSwatchRecipe_Water::StaticClass(),
-		UPCSwatchRecipe_CrudeOil::StaticClass(),
-		UPCSwatchRecipe_HeavyOilResidue::StaticClass(),
-		UPCSwatchRecipe_Fuel::StaticClass(),
-		UPCSwatchRecipe_Turbofuel::StaticClass(),
-		UPCSwatchRecipe_LiquidBiofuel::StaticClass(),
-		UPCSwatchRecipe_AluminaSolution::StaticClass(),
-		UPCSwatchRecipe_SulfuricAcid::StaticClass(),
-		UPCSwatchRecipe_DissolvedSilica::StaticClass(),
-		UPCSwatchRecipe_NitricAcid::StaticClass(),
-		UPCSwatchRecipe_DarkMatterResidue::StaticClass(),
-		UPCSwatchRecipe_ExcitedPhotonicMatter::StaticClass(),
-		UPCSwatchRecipe_IonizedFuel::StaticClass(),
-		UPCSwatchRecipe_RocketFuel::StaticClass(),
-		UPCSwatchRecipe_NitrogenGas::StaticClass(),
-		UPCSwatchRecipe_Fallback::StaticClass(),
-	};
-
-	for (const TSubclassOf<UFGCustomizationRecipe>& Recipe : Recipes)
-	{
-		Out.AddUnique(Recipe);
-	}
+	FPCFluidRoster::AppendAllRecipeClasses(Out);
 }
 
 UFGFactoryCustomizationCollection* LoadSwatchCollectionCDO()
@@ -107,7 +83,12 @@ void FPCSwatchPublisher::PublishForWorld(UWorld* World)
 	UPipelineColorRootInstanceModule::GetOrCreatePipelineColorSubCategory();
 
 	APCSwatchStoreSubsystem* Store = APCSwatchStoreSubsystem::GetOrCreate(World);
-	if (Store)
+	if (!Store)
+	{
+		UE_LOG(LogPipelineColor, Warning,
+			TEXT("%s PublishForWorld: swatch store missing"), PIPELINECOLOR_LOG_PREFIX);
+	}
+	else
 	{
 		Store->RebuildMaps();
 		Store->SeedMissingFromCatalog();
@@ -122,23 +103,12 @@ void FPCSwatchPublisher::PublishForWorld(UWorld* World)
 		return;
 	}
 
-	InjectOne(Collection, UPCSwatchDesc_Neutral::StaticClass());
-	InjectOne(Collection, UPCSwatchDesc_Water::StaticClass());
-	InjectOne(Collection, UPCSwatchDesc_CrudeOil::StaticClass());
-	InjectOne(Collection, UPCSwatchDesc_HeavyOilResidue::StaticClass());
-	InjectOne(Collection, UPCSwatchDesc_Fuel::StaticClass());
-	InjectOne(Collection, UPCSwatchDesc_Turbofuel::StaticClass());
-	InjectOne(Collection, UPCSwatchDesc_LiquidBiofuel::StaticClass());
-	InjectOne(Collection, UPCSwatchDesc_AluminaSolution::StaticClass());
-	InjectOne(Collection, UPCSwatchDesc_SulfuricAcid::StaticClass());
-	InjectOne(Collection, UPCSwatchDesc_DissolvedSilica::StaticClass());
-	InjectOne(Collection, UPCSwatchDesc_NitricAcid::StaticClass());
-	InjectOne(Collection, UPCSwatchDesc_DarkMatterResidue::StaticClass());
-	InjectOne(Collection, UPCSwatchDesc_ExcitedPhotonicMatter::StaticClass());
-	InjectOne(Collection, UPCSwatchDesc_IonizedFuel::StaticClass());
-	InjectOne(Collection, UPCSwatchDesc_RocketFuel::StaticClass());
-	InjectOne(Collection, UPCSwatchDesc_NitrogenGas::StaticClass());
-	InjectOne(Collection, UPCSwatchDesc_Fallback::StaticClass());
+	TArray<TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>> Swatches;
+	FPCFluidRoster::AppendAllSwatchClasses(Swatches);
+	for (const TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>& Swatch : Swatches)
+	{
+		InjectOne(Collection, Swatch);
+	}
 
 	UE_LOG(LogPipelineColor, Log,
 		TEXT("%s menu injected (top category + CatalogKey color swatches)"),

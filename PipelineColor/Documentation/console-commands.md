@@ -6,7 +6,7 @@ Chat equivalents: see [chat-commands.md](chat-commands.md) (`!Metallic`, `!pchel
 
 ## PipelineColor.Set
 
-```
+```text
 PipelineColor.Set <key> <value>
 ```
 
@@ -29,7 +29,7 @@ Prefer `PipelineColor.Set` when you want disk persistence in the same shape as c
 
 ## Config file path
 
-```
+```text
 <Satisfactory>/Configs/PipelineColor.cfg
 ```
 

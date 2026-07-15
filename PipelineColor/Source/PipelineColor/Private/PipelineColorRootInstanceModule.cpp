@@ -7,6 +7,8 @@
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildablePipeline.h"
 #include "Buildables/FGBuildablePipelineAttachment.h"
+#include "Command/PipelineColorSmlChatCommands.h"
+#include "Config/FPCPipelineColorModConfig.h"
 #include "Content/FPipeFluidKeyResolver.h"
 #include "Content/FPipeSupportTouch.h"
 #include "Core/FPCWorldGate.h"
@@ -19,15 +21,12 @@
 #include "FGRecipe.h"
 #include "FGRecipeManager.h"
 #include "FGUnlockSubsystem.h"
-#include "Observation/FFluidAppearanceObserver.h"
 #include "Network/UPCChatRCO.h"
-#include "Command/PipelineColorSmlChatCommands.h"
-#include "Config/FPCPipelineColorModConfig.h"
-#include "Unlocks/FGUnlockCustomizer.h"
-#include "Unlocks/FGUnlockRecipe.h"
+#include "Observation/FFluidAppearanceObserver.h"
 #include "Patching/NativeHookManager.h"
 #include "PipelineColorLog.h"
 #include "Reflection/ClassGenerator.h"
+#include "Engine/Texture2D.h"
 #include "Session/FPCLoadAnnouncement.h"
 #include "Session/UPCWorldSubsystem.h"
 #include "Store/FPCSwatchSlotDispatch.h"
@@ -36,6 +35,8 @@
 #include "Swatches/UPCSwatchSubCategory.h"
 #include "TimerManager.h"
 #include "UObject/SoftObjectPath.h"
+#include "Unlocks/FGUnlockCustomizer.h"
+#include "Unlocks/FGUnlockRecipe.h"
 
 FDelegateHandle UPipelineColorRootInstanceModule::PostLoadMapHandle;
 TSubclassOf<UFGCustomizerCategory>
@@ -105,6 +106,24 @@ UPipelineColorRootInstanceModule::GetOrCreatePipelineColorCategory()
 	{
 		CDO->mDisplayName = FText::FromString(TEXT("PipelineColor"));
 		CDO->mMenuPriority = 35.f;
+
+		const FSoftObjectPath IconPath(TEXT(
+			"/Game/FactoryGame/Buildable/-Shared/Customization/Patterns/Icons/"
+			"IconDesc_ParkingStencil_512.IconDesc_ParkingStencil_512"));
+		if (UTexture2D* Icon = Cast<UTexture2D>(IconPath.TryLoad()))
+		{
+			CDO->mCategoryIcon.SetResourceObject(Icon);
+			CDO->mCategoryIcon.ImageSize = FVector2D(
+				static_cast<float>(Icon->GetSizeX()),
+				static_cast<float>(Icon->GetSizeY()));
+			CDO->mCategoryIcon.DrawAs = ESlateBrushDrawType::Image;
+		}
+		else
+		{
+			UE_LOG(LogPipelineColor, Warning,
+				TEXT("%s category: Parking stencil icon missing"),
+				PIPELINECOLOR_LOG_PREFIX);
+		}
 	}
 
 	CachedCategory = Generated;
@@ -305,9 +324,15 @@ void UPipelineColorRootInstanceModule::HandleBuildableBuilt(AFGBuildable* Builda
 	{
 		if (AFGBuildablePipeline* Pipe = FPipeSupportTouch::FindTouchedPipe(Buildable))
 		{
+			FPipeSupportTouch::RememberLink(Pipe, Buildable);
 			FFluidAppearanceObserver::EnqueueFromWorld(Buildable->GetWorld(), Pipe);
 		}
 		return;
+	}
+
+	if (AFGBuildablePipeline* Pipe = Cast<AFGBuildablePipeline>(Buildable))
+	{
+		FPipeSupportTouch::InvalidateBuildable(Pipe);
 	}
 
 	if (!FPipeFluidKeyResolver::IsPipeColorTarget(Buildable))

@@ -57,6 +57,7 @@ void UPCWorldSubsystem::Deinitialize()
 
 	Dirty.Reset();
 	WatchList.Reset();
+	WatchMembership.Reset();
 	LastApplied.Reset();
 	bWorldReadyDone = false;
 	Super::Deinitialize();
@@ -148,20 +149,21 @@ void FinalizePaintFinishSpec(FPCAppearanceSpec& Spec)
 
 	if (!bMetallic)
 	{
+		if (Spec.CatalogKey == FName(TEXT("Neutral")))
+		{
+			Spec.PaintFinish = FPCFluidAppearanceCatalog::Get().GetFinishClass(
+				EPCPaintFinishKind::Matte);
+			Spec.RoughnessValue = FPCMetallicColorCorrection::NeutralMatteRoughness;
+			Spec.bOverrideRoughness = true;
+			return;
+		}
+
 		Spec.bOverrideRoughness = false;
 		if (!Spec.PaintFinish
 			|| Spec.PaintFinish == UPCFinish_MetallicColor::StaticClass())
 		{
-			if (Spec.CatalogKey == FName(TEXT("Neutral")))
-			{
-				Spec.PaintFinish = FPCFluidAppearanceCatalog::Get().GetFinishClass(
-					EPCPaintFinishKind::Matte);
-			}
-			else
-			{
-				Spec.PaintFinish = FPCFluidAppearanceCatalog::Get().GetFinishClass(
-					EPCPaintFinishKind::Default);
-			}
+			Spec.PaintFinish = FPCFluidAppearanceCatalog::Get().GetFinishClass(
+				EPCPaintFinishKind::Default);
 		}
 		return;
 	}
@@ -186,6 +188,8 @@ void PaintSupportsMatchingPipe(AFGBuildablePipeline* Pipe, const FPCAppearanceSp
 		{
 			continue;
 		}
+
+		FPipeSupportTouch::RememberLink(Pipe, Support);
 
 		if (const FPCAppearanceSpec* Prev = LastApplied.Find(Support))
 		{
@@ -246,18 +250,11 @@ void UPCWorldSubsystem::Enqueue(AFGBuildable* Buildable)
 
 	Dirty.Add(Buildable);
 
-	bool bAlready = false;
-	for (const TWeakObjectPtr<AFGBuildable>& Entry : WatchList)
+	const TWeakObjectPtr<AFGBuildable> WeakBuildable(Buildable);
+	if (!WatchMembership.Contains(WeakBuildable))
 	{
-		if (Entry.Get() == Buildable)
-		{
-			bAlready = true;
-			break;
-		}
-	}
-	if (!bAlready)
-	{
-		WatchList.Add(Buildable);
+		WatchMembership.Add(WeakBuildable);
+		WatchList.Add(WeakBuildable);
 	}
 }
 
@@ -388,15 +385,22 @@ void UPCWorldSubsystem::BudgetedEmptyPass(int32 MaxCount)
 			WatchCursor = 0;
 		}
 
-		TWeakObjectPtr<AFGBuildable> Weak = WatchList[WatchCursor++];
+		TWeakObjectPtr<AFGBuildable> Weak = WatchList[WatchCursor];
 		++Done;
 
 		AFGBuildable* Buildable = Weak.Get();
 		if (!IsValid(Buildable))
 		{
+			WatchMembership.Remove(Weak);
+			WatchList.RemoveAt(WatchCursor);
+			if (WatchCursor >= WatchList.Num())
+			{
+				WatchCursor = 0;
+			}
 			continue;
 		}
 
+		++WatchCursor;
 		Enqueue(Buildable);
 	}
 }

@@ -42,6 +42,7 @@ private:
 
 	TSet<TWeakObjectPtr<AFGBuildable>> Dirty;
 	TArray<TWeakObjectPtr<AFGBuildable>> WatchList;
+	TSet<TWeakObjectPtr<AFGBuildable>> WatchMembership;
 	TMap<TWeakObjectPtr<AFGBuildable>, FPCAppearanceSpec> LastApplied;
 
 	FDelegateHandle StoreChangedHandle;

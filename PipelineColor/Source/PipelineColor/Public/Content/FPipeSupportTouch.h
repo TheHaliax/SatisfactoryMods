@@ -18,4 +18,7 @@ void CollectSupportsTouchingPipe(
 	TArray<AFGBuildable*>& OutSupports);
 
 AFGBuildablePipeline* FindTouchedPipe(AFGBuildable* Support);
+
+void RememberLink(AFGBuildablePipeline* Pipe, AFGBuildable* Support);
+void InvalidateBuildable(AFGBuildable* Buildable);
 } // namespace FPipeSupportTouch

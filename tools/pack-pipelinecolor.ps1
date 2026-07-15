@@ -140,11 +140,15 @@ if (-not $NoCopy) {
 
     $ResourcesSrc = Join-Path $ModRoot 'Resources'
     if (Test-Path -LiteralPath $ResourcesSrc) {
-        Copy-Item -Recurse -Force $ResourcesSrc (Join-Path $GameModRoot 'Resources')
+        $ResourcesDest = Join-Path $GameModRoot 'Resources'
+        New-Item -ItemType Directory -Force -Path $ResourcesDest | Out-Null
+        Copy-Item -Force (Join-Path $ResourcesSrc '*') $ResourcesDest
     }
     $ConfigSrc = Join-Path $ModRoot 'Config'
     if (Test-Path -LiteralPath $ConfigSrc) {
-        Copy-Item -Recurse -Force $ConfigSrc (Join-Path $GameModRoot 'Config')
+        $ConfigDest = Join-Path $GameModRoot 'Config'
+        New-Item -ItemType Directory -Force -Path $ConfigDest | Out-Null
+        Copy-Item -Force (Join-Path $ConfigSrc '*') $ConfigDest
     }
 
     Write-Host "Deployed to $GameModRoot"

@@ -33,6 +33,7 @@ public:
 
 	void SeedMissingFromCatalog();
 	void ForceReseedNeutralMatte();
+	void ReseedAllFromCatalog();
 
 	bool TryGet(FName Key, FPCSwatchEntry& Out) const;
 	bool TryGetBySwatch(

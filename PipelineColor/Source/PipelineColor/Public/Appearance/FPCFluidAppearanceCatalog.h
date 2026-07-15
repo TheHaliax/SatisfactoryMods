@@ -49,8 +49,9 @@ private:
 	void BuildEntries();
 	static FLinearColor HexRgb(uint8 R, uint8 G, uint8 B);
 	static TSubclassOf<UFGItemDescriptor> LoadFluidDesc(const TCHAR* SoftPath);
-	static TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> LoadDefaultFinish();
-	static TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> LoadMatteFinish();
+	static TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> LoadFinish(
+		const TCHAR* SoftPath,
+		const TCHAR* Label);
 
 	bool bBuilt = false;
 	FPCAppearanceSpec NeutralSpec;

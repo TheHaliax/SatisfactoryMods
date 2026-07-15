@@ -24,6 +24,8 @@ public:
 	static bool IsGasCatalogKey(FName CatalogKey);
 	static bool IsMetallicForKey(FName CatalogKey);
 	static bool TrySetMetallicOverride(FName CatalogKey, bool bOn, UWorld* World);
+	static bool TrySetAllMetallic(bool bOn, UWorld* World);
+	static bool TryResetMetallicToDefaults(UWorld* World);
 
 	static bool IsDefaultGasMetallic();
 	static bool IsDefaultLiquidMetallic();
