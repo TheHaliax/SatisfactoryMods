@@ -4,9 +4,11 @@ Runnable tooling for building, packaging, and shipping the mods in this repo.
 
 | Script | Purpose |
 |--------|---------|
-| `pack-structuralpower.ps1` | Iterative dev build of the runtime module + deploy to a local install |
-| `pack-structuralpower-release.ps1` | Alpakit Release cook → SMR upload zip (client + Win/Linux server) |
-| `make-icons.py` | Generate `Icon1024/512/128.png` from a layered control mask |
+| `pack-structuralpower.ps1` | Iterative SP runtime build + deploy (icons auto) |
+| `pack-pipelinecolor.ps1` | Iterative PipelineColor runtime build + deploy (icons auto) |
+| `pack-structuralpower-release.ps1` | Alpakit Release cook → SMR zip (icons auto before cook) |
+| `Invoke-ModIcons.ps1` | Shared wrapper: regen `Icon1024/512/128.png` for a mod |
+| `make-icons.py` | Icon compositor (base + mask + font + uplugin badge) |
 | `../scripts/check-version.ps1` | Pre-release guard: uplugin ↔ changelog version drift |
 
 Machine paths (engine root, StarterProject, Steam install) are script parameters with defaults
@@ -19,13 +21,15 @@ for the author's layout — override them for yours. Defaults:
 ## Iterative development
 
 Compile the runtime module and drop the DLL into the local game. Incremental by default
-(seconds); pass `-Clean` for a full `FactoryGameSteam` rebuild.
+(seconds); pass `-Clean` for a full `FactoryGameSteam` rebuild. Icons regenerate from
+`.uplugin` SemVersion before Resources copy (pass `-SkipIcons` to skip).
 
 ```powershell
 powershell -File tools/pack-structuralpower.ps1 -Config Shipping
+powershell -File tools/pack-pipelinecolor.ps1 -Config Shipping
 ```
 
-The mod is resolved as the sibling `../StructuralPower` when the script runs from `tools/`, so
+The mod is resolved as the sibling `../<ModName>` when the script runs from `tools/`, so
 no path juggling is needed inside the repo.
 
 ## Release (SMR)
@@ -52,26 +56,23 @@ See `StructuralPower/Documentation/release.md` for the full checklist and server
 
 ## Icons
 
-`make-icons.py` renders the three mod icons from one **control mask** registered to the base art,
-so the icon never drifts from the shipped version.
+Bundled assets (do not swap palettes casually — defaults are the locked look):
+
+| File | Role |
+|------|------|
+| `BaseIcon1024.png` | Background |
+| `Mask1024.png` | Blue lineart · red name box · green version box |
+| `UnispaceBd.ttf` | Badge font (copy of Windows Unispace Bold) |
 
 ```powershell
-pip install -r tools/requirements.txt
-python tools/make-icons.py
+pip install -r tools/requirements.txt   # once
+powershell -File tools/Invoke-ModIcons.ps1 -ModRoot StructuralPower
+# or:
+python tools/make-icons.py --uplugin PipelineColor/PipelineColor.uplugin --out-dir PipelineColor/Resources
 ```
 
-Inputs (defaults resolve inside the repo):
-
-- `BaseIcon1024.png` — 1024² background.
-- `Mask1024.png` — pure-RGB control map: **blue** = lineart, **red** = mod-name box,
-  **green** = version box (boxes are control-only, never drawn).
-- Font: Unispace Bold (`--font`); name from the uplugin `FriendlyName`, version `V<major.minor>`.
-
-Rendering: the silhouette (lineart ∪ name ∪ version glyphs) is filled with a vertical gradient
-(`--fill-top`/`--fill-bottom`), given a rounded outline in the **inverted** gradient for contrast,
-and a duotone split shadow (`--shadow-*`). Composited at 1024, then Lanczos-downscaled to 512/128
-and written to `StructuralPower/Resources/`. Tweak the look via the `--fill-*`, `--outline-px`, and
-`--shadow-*` flags without touching the art.
+`FriendlyName` + `SemVersion` → badge **V\<major.minor\>**. Fill/shadow CLI flags exist for
+experiments; pack scripts never pass them — script defaults only.
 
 ## Why the release script builds the editor module first
 

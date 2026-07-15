@@ -140,10 +140,12 @@ def build(args) -> None:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Generate StructuralPower mod icons from a control mask.")
+    p = argparse.ArgumentParser(
+        description="Generate mod icons (1024/512/128) from tools/ base art + mask + font."
+    )
     p.add_argument("--background", default=str(SCRIPT_DIR / "BaseIcon1024.png"))
     p.add_argument("--mask", default=str(SCRIPT_DIR / "Mask1024.png"))
-    p.add_argument("--font", default=r"C:\Windows\Fonts\unispace bd.ttf")
+    p.add_argument("--font", default=str(SCRIPT_DIR / "UnispaceBd.ttf"))
     p.add_argument("--uplugin", default=str(MOD_DIR / "StructuralPower.uplugin"))
     p.add_argument("--out-dir", default=str(MOD_DIR / "Resources"))
     p.add_argument("--name", default=None, help="override; defaults to uplugin FriendlyName")

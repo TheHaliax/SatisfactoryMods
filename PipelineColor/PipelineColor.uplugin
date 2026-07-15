@@ -1,0 +1,36 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0.0",
+	"SemVersion": "1.0.0",
+	"GameVersion": ">=491125",
+	"RequiredOnRemote": true,
+	"RemoteVersionRange": "^1.0.0",
+	"FriendlyName": "PipelineColor",
+	"Description": "Auto-colors pipelines, fittings, supports, and inline pumps from the fluid in the network. Customizer PC swatches, SaveGame store, metallic finishes for gases by default. Config via cfg / console / chat.",
+	"Category": "Modding",
+	"CreatedBy": "Haliax",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"Installed": false,
+	"BuiltInInitialFeatureState": "Active",
+	"Modules": [
+		{
+			"Name": "PipelineColor",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "SML",
+			"Enabled": true,
+			"SemVersion": "^3.12.0"
+		},
+		{
+			"Name": "AbstractInstance",
+			"Enabled": true,
+			"BasePlugin": true
+		}
+	]
+}

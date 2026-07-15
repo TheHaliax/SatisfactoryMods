@@ -10,6 +10,7 @@ param(
     [string]$Config = 'Shipping',
     [switch]$NoCopy,
     [switch]$Clean,
+    [switch]$SkipIcons,
     [string]$ProjectPath = 'E:\Modding\Satisfactory\StarterProject\FactoryGame.uproject',
     [string]$ModRoot = '',
     [string]$StarterModLink = 'E:\Modding\Satisfactory\StarterProject\Mods\StructuralPower',
@@ -171,6 +172,10 @@ $ModulesJson = @"
 $SourceModulesPath = Join-Path $ModRoot "Binaries\Win64\$ModulesName"
 New-Item -ItemType Directory -Force -Path (Split-Path $SourceModulesPath) | Out-Null
 [System.IO.File]::WriteAllText($SourceModulesPath, $ModulesJson, (New-Object System.Text.UTF8Encoding $false))
+
+if (-not $SkipIcons) {
+    & (Join-Path $PSScriptRoot 'Invoke-ModIcons.ps1') -ModRoot $ModRoot -ModName 'StructuralPower'
+}
 
 $GameModRoot = Join-Path $GamePath 'FactoryGame\Mods\StructuralPower'
 $DestBin = Join-Path $GameModRoot 'Binaries\Win64'

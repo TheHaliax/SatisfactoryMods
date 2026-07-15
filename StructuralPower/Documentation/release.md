@@ -28,7 +28,7 @@ Mod page: [ficsit.app/mod/StructuralPower](https://ficsit.app/mod/StructuralPowe
 ## Release checklist (3.0.0)
 
 1. **Version fields** in `StructuralPower.uplugin` — `SemVersion` / `VersionName` **3.0.0**, `RemoteVersionRange` **^3.0.0**, `Version` integer **3** (major), `GameVersion` **>=491125**, SML **^3.12.0**.
-2. **Icons** — `python tools/make-icons.py` (reads `.uplugin` → badge **V3.0** on `Icon1024/512/128.png`). Commit `StructuralPower/Resources/`.
+2. **Icons** — pack scripts auto-run `tools/Invoke-ModIcons.ps1` (or manual same). Reads `.uplugin` → badge **V3.0** on `Icon1024/512/128.png`. Commit `StructuralPower/Resources/`.
 3. **Version guard** — `powershell -File scripts/check-version.ps1`
 4. **Docs** — `CHANGELOG.md`, root `README.md` (version table), `StructuralPower/README.md`, evergreen `Documentation/*` (player-guide, commands, troubleshooting). Icons in same commit as version bump.
 5. **Alpakit Release** — cook client + Windows Server + Linux Server. Output:
@@ -47,7 +47,7 @@ Mod page: [ficsit.app/mod/StructuralPower](https://ficsit.app/mod/StructuralPowe
 ## Updating a release
 
 1. Bump `SemVersion` in `.uplugin`.
-2. `python tools/make-icons.py` — refresh `Resources/Icon*.png`.
+2. `powershell -File tools/Invoke-ModIcons.ps1 -ModRoot StructuralPower` — refresh `Resources/Icon*.png` (also runs inside pack scripts).
 3. Alpakit Release → new `StructuralPower.zip`.
 4. New Version on ficsit.app.
 5. Re-run [internal test deploy](#internal-test-deploy-haliax) to all three targets.

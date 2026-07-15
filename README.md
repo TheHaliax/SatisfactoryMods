@@ -26,6 +26,24 @@ Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 
 ---
 
+[![PipelineColor icon](PipelineColor/Resources/Icon128.png)](PipelineColor/)
+
+[PipelineColor](PipelineColor/README.md)
+
+| | |
+|---|---|
+| **Added** | 2026-07-15 |
+| **Published** | — |
+| **Updated** | 2026-07-15 |
+| **Version** | 1.0.0 |
+| **Next** | — |
+
+Fluid-driven colors for pipelines, junctions, pumps, and matching pipe supports. Customizer **PipelineColor** swatches, SaveGame store, metallic gases by default. Config via cfg / console / `!` chat (no SML Mods menu).
+
+Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
+
+---
+
 ## Generative AI Disclosure
 
 This project uses generative AI tools **only as a minor workflow assistant**. The developer is fully responsible for mod design, logic, execution, and stability — all implementation remains hands-on.
