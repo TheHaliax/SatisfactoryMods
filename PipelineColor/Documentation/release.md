@@ -19,7 +19,7 @@ Players and dedicated servers install **`.smod` files from [ficsit.app](https://
 5. **Alpakit Release** — cook client + Windows Server + Linux Server. Output under StarterProject `Saved/ArchivedPlugins/PipelineColor/`.
 6. **ficsit.app** → New Version → upload combined zip + changelog from `CHANGELOG.md` **1.0.0**. Refresh mod icon from `Resources/Icon512.png` if asked. Merge to `main` before announce so GitHub README/screenshots align.
 7. **Verify** — Mod Manager installs **1.0.0**; client and dedicated share `^1.0.0`.
-8. **Smoke test** — fill/empty pipes; Customizer PC swatches + save/reload; supports against painted pipes; `!Metallic` / `!pchelp`; gas metallic, liquid default.
+8. **Smoke test** — fill/empty pipes; Customizer PC swatches + save/reload; supports against painted pipes; `!Metallic` / `all on` / `all off` / `default` / `!pchelp`; gas metallic, liquid default; chromatics stay distinct under metallic.
 
 ## Dev pack (not SMR)
 

@@ -55,7 +55,7 @@ APCMetallicChatCommand::APCMetallicChatCommand()
 	Usage = NSLOCTEXT(
 		"PipelineColor",
 		"ChatCmd.Metallic",
-		"!Metallic <fluid> | all on|off | default — metallic / reset");
+		"!Metallic <fluid> | all on | all off | default");
 }
 
 EExecutionStatus APCMetallicChatCommand::ExecuteCommand_Implementation(

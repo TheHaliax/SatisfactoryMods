@@ -33,12 +33,12 @@ Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 | | |
 |---|---|
 | **Added** | 2026-07-15 |
-| **Published** | — |
+| **Published** | 2026-07-15 |
 | **Updated** | 2026-07-15 |
 | **Version** | 1.0.0 |
 | **Next** | — |
 
-Fluid-driven colors for pipelines, junctions, pumps, and matching pipe supports. Customizer **PipelineColor** swatches, SaveGame store, metallic gases by default. Config via cfg / console / `!` chat (no SML Mods menu).
+Fluid-driven colors for pipelines, junctions, pumps, and matching pipe supports. Customizer **PipelineColor** swatches, SaveGame store, metallic gases by default. Chat `!Metallic` (toggle / `all on` / `all off` / `default`). Config via cfg / console (no SML Mods menu).
 
 Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 

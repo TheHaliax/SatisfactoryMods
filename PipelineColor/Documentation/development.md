@@ -6,10 +6,10 @@ Contributor notes for PipelineColor sources in this repository.
 
 | Surface | Role |
 |---------|------|
-| **`Source/`** | Prefer clear code; comments only for engine traps (apply/replication, load order). Teaching prose belongs in `Documentation/`. |
-| **`Documentation/`** | Player + contributor what / why / how |
+| **`Source/`** | Prefer clear code; comment non-obvious engine/replication traps. Player-facing “how it works” goes in `Documentation/`. |
+| **`Documentation/`** | Player + contributor guides |
 
-No design-resolution ids or milestone notes in `Source/`. SPDX headers stay.
+SPDX headers stay on source files.
 
 ## Repository layout
 
@@ -32,8 +32,8 @@ Junction or copy `PipelineColor/` into StarterProject `Mods/PipelineColor`, then
 Typical junction:
 
 ```text
-E:\Modding\Satisfactory\StarterProject\Mods\PipelineColor
-  → C:\Users\Haliax\Documents\GitHub\SatisfactoryMods\PipelineColor
+<StarterProject>/Mods/PipelineColor
+  → <this-repo>/PipelineColor
 ```
 
 ## Dev build
@@ -60,6 +60,7 @@ Icons regenerate via `tools/Invoke-ModIcons.ps1 -ModRoot PipelineColor` (also fr
 | World session / scan | `Session/UPCWorldSubsystem.*` |
 | Apply | `Application/FCustomizationApplicator.cpp` |
 | Metallic post | `Appearance/FPCMetallicColorCorrection.h`, `FPCMetallicFlag.h` |
+| Fluid roster | `Appearance/FPCFluidRoster.*` |
 | Catalog / specs | `Appearance/FPCFluidAppearanceCatalog.*`, `FPCAppearanceSpec.h` |
 | Swatch descs / publish | `Swatches/*` |
 | SaveGame store | `Store/APCSwatchStoreSubsystem.*`, `FPCSwatchSlotDispatch.*` |

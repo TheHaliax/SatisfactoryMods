@@ -7,18 +7,22 @@ Auto-colors pipelines, junctions, inline pumps, and matching pipe supports from 
 ## How it works
 
 - **Liquids:** wiki Primary colors + Default paint finish (`UPCSwatchDesc_*`, Customizer **PipelineColor** category)
-- **Empty:** Neutral color swatch + Matte finish
+- **Empty:** Neutral swatch + Matte (metallic optional via `!Metallic Neutral`)
 - **Gases:** metallic PaintFinish by default (override per fluid or global defaults)
+- **Metallic chromatics:** keep catalog hue/value; neutrals remap along a silver rail (bright → chrome, dark → burnished)
 - **Supports:** floor / stackable / wall / wall-hole parents inherit the touched pipe’s fluid look (includes WallPipeSupports-style BP children)
-- Updates on fluid descriptor changes; empty networks settle via budgeted scan
-- Authority apply via `SetCustomizationData_Native` (replicates to clients)
-- Customizer edits persist in the **world save** (SaveGame store / RCO)
+- Updates when fluid changes; empty networks settle after a short scan
+- Server/host applies paint; clients receive the result
+- Customizer edits persist in the **world save**
 
 ## Chat commands
 
-Type on the **server or listen host**. Commands start with `!` and do not appear in public chat. Responses use **Hal:** system messages.
+Type on the **server or listen host**. Commands start with `!` and do not appear in public chat. Responses show as **Hal:** system messages.
 
 - `!Metallic <fluid>` — toggle metallic finish for that fluid (saved to cfg)
+- `!Metallic all on` — force every catalog fluid metallic on (per-fluid overrides)
+- `!Metallic all off` — force every catalog fluid metallic off / color (same)
+- `!Metallic default` — clear overrides, restore gas-on / liquid-off defaults, reseed store colors
 - `!pchelp` — list Pipeline Color chat commands
 
 Same verbs register with SML for **Chat Mk 2** expandable help. Fluid names match Customizer labels (e.g. `Water`, `PC Nitrogen Gas`).

@@ -177,11 +177,15 @@ void SendHelp(AFGPlayerController* PlayerController)
 		FLinearColor::Yellow);
 	SendBangChat(
 		PlayerController,
-		TEXT("!Metallic all on|off  — all fluids metallic or color"),
+		TEXT("!Metallic all on  — force every fluid metallic on"),
 		FLinearColor::Yellow);
 	SendBangChat(
 		PlayerController,
-		TEXT("!Metallic default  — reset colors + metallic to defaults"),
+		TEXT("!Metallic all off  — force every fluid metallic off (color)"),
+		FLinearColor::Yellow);
+	SendBangChat(
+		PlayerController,
+		TEXT("!Metallic default  — clear overrides; gas on / liquid off + reseed colors"),
 		FLinearColor::Yellow);
 	SendBangChat(
 		PlayerController,
