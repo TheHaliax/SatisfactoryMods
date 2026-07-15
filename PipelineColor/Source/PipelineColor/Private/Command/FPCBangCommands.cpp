@@ -141,7 +141,7 @@ void CollectFluidAliases(TArray<FFluidAlias>& Out)
 		UPCSwatchDesc_Fallback::StaticClass(),
 	};
 
-	for (const TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Desc : Descs)
+	for (const TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>& Desc : Descs)
 	{
 		const UPCSwatchDescBase* CDO = Cast<UPCSwatchDescBase>(Desc->GetDefaultObject());
 		if (!CDO || CDO->CatalogKey.IsNone())
