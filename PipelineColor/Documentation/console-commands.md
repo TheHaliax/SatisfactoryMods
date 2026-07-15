@@ -2,7 +2,9 @@
 
 Open the in-game console (`~`) on the **server or listen host** (not pure clients).
 
-Chat equivalents: see [chat-commands.md](chat-commands.md) (`!Metallic`, `!pchelp`).
+Chat equivalents: see [chat-commands.md](chat-commands.md) (`!Metallic <fluid>`, `all on`, `all off`, `default`, `!pchelp`).
+
+`!Metallic default` also reseeds SaveGame swatch colors from the catalog (not only cfg).
 
 ## PipelineColor.Set
 

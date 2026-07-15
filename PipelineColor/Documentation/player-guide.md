@@ -24,18 +24,27 @@ Machines, tanks, and non-pipe buildables stay vanilla unless they are one of tho
 
 ## Metallic finishes
 
-At **apply time**, the mod chooses metallic vs default finish from:
+At **apply time**, the mod chooses metallic vs default/matte finish from:
 
-1. Per-fluid override (`MetallicOverrides` / `!Metallic` toggle / `PipelineColor.Set Metallic.<Key>`)
+1. Per-fluid override (`MetallicOverrides` / `!Metallic` / `PipelineColor.Set Metallic.<Key>`)
 2. Else defaults: gases metallic, liquids not (`DefaultGasMetallic` / `DefaultLiquidMetallic`)
 
-`!Metallic <fluid>` toggles the effective metallic state and writes an override to cfg.
+Colored fluids keep their pigment when metallic. Near-neutral greys remap along a silver rail (bright like Alumina → chrome; darker greys → burnished). Empty **Neutral** uses Matte unless you turn Neutral metallic; Neutral metallic uses roughness `1.0`, Neutral matte/color uses roughness `4.0`.
+
+Chat:
+
+- `!Metallic <fluid>` — toggle that fluid
+- `!Metallic all on` — stamp metallic **on** for every catalog fluid (overrides, not the gas/liquid default flags)
+- `!Metallic all off` — stamp metallic **off** (color) for every catalog fluid the same way
+- `!Metallic default` — clear those overrides, restore gas-on / liquid-off defaults, and reseed Customizer store colors from catalog
+
+`all on` / `all off` leave `DefaultGasMetallic` / `DefaultLiquidMetallic` alone until `default`.
 
 This is **not** the Customizer Secondary RGB slot. Changing Secondary in the Customizer stores color data in the SaveGame store; metallic sheen is finish + config.
 
 ## Empty / Neutral
 
-When a network has no fluid, pipes receive the Neutral swatch and Matte finish. Budgeted empty scans catch transitions after drain.
+When a network has no fluid, pipes receive the Neutral swatch (Matte by default). Budgeted empty scans catch transitions after drain.
 
 ## Config surfaces
 
@@ -43,7 +52,7 @@ When a network has no fluid, pipes receive the Neutral swatch and Matte finish. 
 |---------|-----|
 | `Configs/PipelineColor.cfg` | Host JSON — defaults + metallic overrides |
 | Console `PipelineColor.Set` | Same keys on authority |
-| Chat `!Metallic` / `!pchelp` | Per-fluid metallic toggle + help |
+| Chat `!Metallic` / `!pchelp` | Toggle, `all on`, `all off`, `default`, help |
 
 There is **no** SML Mods configuration menu.
 
