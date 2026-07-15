@@ -23,10 +23,13 @@
 tools/*
 !tools/pack-structuralpower.ps1
 !tools/pack-structuralpower-release.ps1
+!tools/pack-pipelinecolor.ps1
+!tools/Invoke-ModIcons.ps1
 !tools/make-icons.py
 !tools/requirements.txt
 !tools/BaseIcon1024.png
 !tools/Mask1024.png
+!tools/UnispaceBd.ttf
 !tools/README.md
 
 # Local development notes (roadmap, research, scratch specs) — not for repo

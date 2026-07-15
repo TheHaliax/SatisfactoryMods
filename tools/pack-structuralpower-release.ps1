@@ -6,7 +6,8 @@
 param(
     [string]$ProjectPath = 'E:\Modding\Satisfactory\StarterProject\FactoryGame.uproject',
     [string]$ModName = 'StructuralPower',
-    [string]$UeCssRoot = 'C:\Program'
+    [string]$UeCssRoot = 'C:\Program',
+    [switch]$SkipIcons
 )
 
 $ErrorActionPreference = 'Stop'
@@ -25,13 +26,22 @@ if (-not (Test-Path $ProjectPath)) {
 
 $ProjectPath = (Resolve-Path $ProjectPath).Path
 
+$ProjectDir = Split-Path $ProjectPath -Parent
+$ModRoot = Join-Path $ProjectDir "Mods\$ModName"
+if (-not (Test-Path -LiteralPath (Join-Path $ModRoot "$ModName.uplugin"))) {
+    throw "Mod root missing uplugin: $ModRoot"
+}
+
+if (-not $SkipIcons) {
+    & (Join-Path $PSScriptRoot 'Invoke-ModIcons.ps1') -ModRoot $ModRoot -ModName $ModName
+}
+
 # The cook runs the editor, which must LOAD the plugin's editor module. Two gotchas bite here:
 #   1. '-Module=' builds do NOT emit the '.modules' manifest, and the loader maps
 #      module -> dll via that manifest.
 #   2. 'git clean' wipes untracked plugin Binaries, deleting the editor dll + manifest.
 # So build the editor module and (re)write its manifest first, or the cook fails with
 # "module '<Mod>' could not be found" (ExitCode 25, Error_UnknownCookFailure).
-$ProjectDir = Split-Path $ProjectPath -Parent
 $PluginBinWin64 = Join-Path $ProjectDir "Mods\$ModName\Binaries\Win64"
 $EditorDll = "UnrealEditor-$ModName.dll"
 $EditorDllPath = Join-Path $PluginBinWin64 $EditorDll
