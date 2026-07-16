@@ -2,11 +2,11 @@
 
 **Version 3.1.0** · Satisfactory 1.2 (≥491125) · SML ^3.12.0
 
-Structural Power adds a hidden power network through structural pieces — foundations, walls, ramps, and bridge poles — so you can power outlets and poles without running visible wires along every segment. **v3.1** adds opt-in **machine groups** (generators, storage, resources, production; transport/pipes stubs). **v3.0** reworked attach, load, and reconcile on vanilla circuit APIs with opt-in **structural lighting** and **named light groups**.
+Structural Power adds a hidden power network through structural pieces — foundations, walls, ramps, and bridge poles — so you can power outlets and poles without running visible wires along every segment. **v3.1** adds opt-in **machine groups** and **pipe topology** (generators, storage, resources, production; fluid supports and machine pipe ports → inline pumps; transport stub). **v3.0** reworked attach, load, and reconcile on vanilla circuit APIs with opt-in **structural lighting** and **named light groups**.
 
 ### A note on v2.1 (and why v3.0+ is worth another try)
 
-**I'm sorry.** **v2.1.0** added switches and hoverpack tether, but the save-load path change **broke legacy support** so badly on many existing bases that first-time use failed entirely. That was never the intent — and it is why the full rework exists. **v2.0.0** had already introduced retroactive wiring (no rebuild). There was **no public v2.2 release**; the next shipped line was **v3.0.0**, now **v3.1.0** with machines.
+**I'm sorry.** **v2.1.0** added switches and hoverpack tether, but the save-load path change **broke legacy support** so badly on many existing bases that first-time use failed entirely. That was never the intent — and it is why the full rework exists. **v2.0.0** had already introduced retroactive wiring (no rebuild). There was **no public v2.2 release**; the next shipped line was **v3.0.0**, now **v3.1.0** with machines and pipe topology.
 
 **v3.0+** rebuilds the stack: session/attach funnel, budgeted remesh on load, and reconcile against FactoryGame circuits — aimed at being **extreme lean at runtime** and **compatible with megabases**, while restoring **full legacy / retroactive support**. Existing structures still wire on load; you do not need to rebuild your factory to use the mod again.
 
@@ -24,6 +24,7 @@ After that settle, **post-load gameplay performance has generally been net posit
 - Ground poles, wall outlets, and towers bridge to the nearest powered structure
 - Connectivity is rebuilt from world geometry on load — nothing structural is persisted, so saves can't carry stale links
 - **Machines** (opt-in, default off) — generators and power storage attach on structure; miners and manufacturers draw from the same bus when a bus host is present
+- **Pipes** (opt-in, default off) — fluid pipe supports and machine pipe ports inject structure power into connected pipe runs; inline pumps draw from that bus (not hypertubes)
 - **Structural lighting** (opt-in) — lights on powered foundations draw from the bus (named groups via lights control panels)
 - **Id assign** (**I**) — Source/Control ids on eligible buildables (lights, switches, panels, and other enabled components)
 - **Power switches** gate keyed subnets on structures — optional pole bridge; Mode B keyed subnets by default
@@ -40,7 +41,7 @@ Available commands (`[]` — required argument):
 - `!Resources` — toggle **miners / extractors** (default off)
 - `!Production` — toggle **manufacturers / radar / sink** (default off)
 - `!Transport` — toggle **wired transport** consumers — stub (default off)
-- `!Pipes` — toggle **pipeline pumps** — stub (default off)
+- `!Pipes` / `!pipe` — toggle **structural pipe bus** (supports + machine pipe ports → pumps; default off)
 - `!Belts` — toggle **belts** group — no attach yet (default off)
 - `!HoverH [1-10]` — set hoverpack **horizontal** reach multiplier (saved to cfg)
 - `!HoverV [1-10]` — set hoverpack **vertical** reach multiplier (saved to cfg)
@@ -52,13 +53,14 @@ Settings persist to `Configs/StructuralPower.cfg` on the server/host. Change via
 
 Feature releases after the v3.0 foundation. Stages are **opt-in** on servers (off until you enable them).
 
-### v3.1.0 — Machines *(current)*
+### v3.1.0 — Machines + pipes *(current)*
 
 - **Generators** — coal, fuel, nuclear, geothermal, wind, alien booster, HUB biomass
 - **Power storage** — charge/discharge on structure grid
 - **Resources** — miners, water/oil, fracking, geysers
 - **Production** — manufacturers, radar, AWESOME Sink
-- **Transport / Pipes** — wired-power stubs (stations, pumps); full topology later
+- **Pipes** — fluid supports + machine pipe ports inject runs; inline pumps on bus (`!Pipes` / `!pipe`)
+- **Transport** — wired-power stub (stations, elevators)
 - **Belts** — toggle only (no attach)
 
 ### v3.0.0 — Foundation rewrite *(prior)*
@@ -69,19 +71,15 @@ Feature releases after the v3.0 foundation. Stages are **opt-in** on servers (of
 - Session/attach funnel + budgeted load remesh
 - Server config via cfg / console / chat only
 
-### v3.2 — Pipe topology *(next)*
-
-- Pipe runs extend the bus; mid-run pumps
-
-### v3.3 — Belt topology
+### v3.2 — Belt topology *(next)*
 
 - Conveyor runs to remote miners
 
-### v3.4 — Hypertube topology
+### v3.3 — Hypertube topology
 
 - Launcher draw along hyper runs
 
-### v3.5 — Rail topology
+### v3.4 — Rail topology
 
 - Rail bed coupling; train power stays vanilla third rail
 

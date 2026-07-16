@@ -16,11 +16,11 @@ Each mod has its own folder and README with features, requirements, and roadmap.
 |---|---|
 | **Added** | 2026-06-30 |
 | **Published** | 2026-07-02 |
-| **Updated** | 2026-07-15 |
+| **Updated** | 2026-07-16 |
 | **Version** | 3.1.0 |
-| **Next** | **3.2** — [Pipe topology](StructuralPower/README.md#v32--pipe-topology-next) ([roadmap](StructuralPower/README.md#roadmap)) |
+| **Next** | **3.2** — [Belt topology](StructuralPower/README.md#v32--belt-topology-next) ([roadmap](StructuralPower/README.md#roadmap)) |
 
-Hidden structural power bus for foundations, walls, ramps, and bridge poles. Retroactive — existing builds are wired on load. **v3.1:** opt-in machines (gen/storage/resources/production; transport/pipes stubs). **v3.0:** vanilla-first rewrite, lighting, Id panel, switches, hoverpack. Config via cfg / console / `!` chat.
+Hidden structural power bus for foundations, walls, ramps, and bridge poles. Retroactive — existing builds are wired on load. **v3.1:** opt-in machines + pipe topology (gen/storage/resources/production, supports→pumps). **v3.0:** vanilla-first rewrite, lighting, Id panel, switches, hoverpack. Config via cfg / console / `!` chat.
 
 Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 
@@ -34,11 +34,11 @@ Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 |---|---|
 | **Added** | 2026-07-15 |
 | **Published** | 2026-07-15 |
-| **Updated** | 2026-07-15 |
-| **Version** | 1.0.0 |
+| **Updated** | 2026-07-16 |
+| **Version** | 1.1.0 |
 | **Next** | — |
 
-Fluid-driven colors for pipelines, junctions, pumps, and matching pipe supports. Customizer **PipelineColor** swatches, SaveGame store, metallic gases by default. Chat `!Metallic` (toggle / `all on` / `all off` / `default`). Config via cfg / console (no SML Mods menu).
+Fluid-driven colors for pipelines, junctions, pumps, and matching pipe supports. Customizer **PipelineColor** swatches, SaveGame store, metallic gases by default. **v1.1:** inline flow meter paint on place/split/load. Chat `!Metallic` (toggle / `all on` / `all off` / `default`). Config via cfg / console (no SML Mods menu).
 
 Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 

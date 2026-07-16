@@ -52,7 +52,8 @@ bool FStructuralPlacementQueue::IsBuildablePending(AFGBuildable* Buildable,
 
 bool FStructuralPlacementQueue::IsAnyBuildableJobPending(AFGBuildable* Buildable) const {
   return IsBuildablePending(Buildable, EStructuralPlacementJobType::Outlet) ||
-         IsBuildablePending(Buildable, EStructuralPlacementJobType::Structure);
+         IsBuildablePending(Buildable, EStructuralPlacementJobType::Structure) ||
+         IsBuildablePending(Buildable, EStructuralPlacementJobType::Pipe);
 }
 
 bool FStructuralPlacementQueue::IsLightweightPending(const FStructuralLightweightKey& Key) const {

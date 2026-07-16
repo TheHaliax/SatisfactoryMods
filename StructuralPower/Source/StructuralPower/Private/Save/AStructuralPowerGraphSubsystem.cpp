@@ -462,6 +462,8 @@ void AStructuralPowerGraphSubsystem::EnqueuePlacement(AFGBuildable* Buildable,
 
   if (JobType == EStructuralPlacementJobType::Outlet) {
     ProcessOutlet(Buildable);
+  } else if (JobType == EStructuralPlacementJobType::Pipe) {
+    ProcessPipe(Buildable);
   } else {
     ProcessStructure(Buildable);
   }
@@ -481,6 +483,8 @@ void AStructuralPowerGraphSubsystem::TickDeferredPlacements(int32 MaxJobs) {
       [this](AFGBuildable* Buildable, EStructuralPlacementJobType JobType) {
         if (JobType == EStructuralPlacementJobType::Outlet) {
           ProcessOutlet(Buildable);
+        } else if (JobType == EStructuralPlacementJobType::Pipe) {
+          ProcessPipe(Buildable);
         } else {
           ProcessStructure(Buildable);
         }

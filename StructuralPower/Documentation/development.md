@@ -87,7 +87,7 @@ Roadmap: [../README.md#roadmap](../README.md#roadmap). Player behavior: [player-
 | Extractor | `FStructuralPowerMachineConsumerProcessor` | `GroupResources` |
 | Manufacturer | same consumer processor | `GroupProduction` |
 | Transport | same consumer processor (stub) | `GroupTransport` |
-| Pipe pump | same consumer processor (stub) | `GroupPipes` |
+| Pipe pump | `FStructuralPipeTopology` inject + consumer processor | `GroupPipes` |
 | Belts | toggle registry only — no attach | `GroupBelts` |
 | Switch | `FStructuralPowerSwitchProcessor` + `FStructuralSwitchBridgeStrategy` | always on |
 | Panel | `FStructuralPanelAttach` | `GroupLighting` |

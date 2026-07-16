@@ -27,6 +27,7 @@ class PIPELINECOLOR_API UPCWorldSubsystem : public UTickableWorldSubsystem {
   virtual bool IsTickable() const override;
 
   void Enqueue(AFGBuildable* Buildable);
+  void InvalidateApplied(AFGBuildable* Buildable);
   void ScanWorld();
   void ProcessNow(AFGBuildable* Buildable);
 

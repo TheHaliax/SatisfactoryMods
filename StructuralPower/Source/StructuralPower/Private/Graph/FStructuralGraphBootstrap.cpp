@@ -38,6 +38,7 @@ void FStructuralGraphBootstrap::OnWorldReady(UWorld* World) {
 
   Session->CrossSite().Clear();
   Session->SiteState().ClearFeedSignatures();
+  Session->PipeTopology().Reset();
 
   RebuildBuildableRegistry(World);
   RebuildLightweightIndex(World);
@@ -51,6 +52,7 @@ void FStructuralGraphBootstrap::OnWorldReady(UWorld* World) {
   int32 SeededPanels = 0;
   int32 SeededLights = 0;
   int32 SeededMachines = 0;
+  int32 SeededPipeTopo = 0;
   const bool bSeedLighting = FStructuralPowerModConfig::IsGroupLightingEnabled();
   const bool bSeedGeneration = FStructuralPowerModConfig::IsGroupGenerationEnabled();
   const bool bSeedResources = FStructuralPowerModConfig::IsGroupResourcesEnabled();
@@ -58,6 +60,18 @@ void FStructuralGraphBootstrap::OnWorldReady(UWorld* World) {
   const bool bSeedTransport = FStructuralPowerModConfig::IsGroupTransportEnabled();
   const bool bSeedPipes = FStructuralPowerModConfig::IsGroupPipesEnabled();
   if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World)) {
+    // Pipe membership before pump outlets — injects ready for consumer attach.
+    for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef()) {
+      if (!IsValid(Buildable) || !Buildable->HasAuthority()) {
+        continue;
+      }
+      if (FStructuralEligibilityRules::IsFluidPipeSupport(Buildable) ||
+          FStructuralEligibilityRules::IsFluidPipeConductor(Buildable)) {
+        Session->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Pipe, /*bDefer=*/true);
+        ++SeededPipeTopo;
+      }
+    }
+
     for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef()) {
       if (!IsValid(Buildable) || !Buildable->HasAuthority()) {
         continue;
@@ -107,13 +121,14 @@ void FStructuralGraphBootstrap::OnWorldReady(UWorld* World) {
   UE_LOG(LogStructuralPower, Log,
          TEXT("Graph ready — %d structure node(s), %d component(s) (largest %d), %d LW tracked,"
               " %d pole(s) seeded, %d switch(es) seeded, %d storage seeded,"
-              " %d panel(s) seeded, %d light(s) seeded, %d machine(s) seeded"),
+              " %d panel(s) seeded, %d light(s) seeded, %d machine(s) seeded,"
+              " %d pipe topo seeded"),
          Session->StructureGraph().GetNodeCount(), Components, Largest,
          Session->LightweightIndex().GetTrackedCount(), SeededPoles, SeededSwitches, SeededStorage,
-         SeededPanels, SeededLights, SeededMachines);
+         SeededPanels, SeededLights, SeededMachines, SeededPipeTopo);
 
   Session->BulkLoadDrainActive() = (SeededPoles + SeededSwitches + SeededStorage + SeededPanels +
-                                    SeededLights + SeededMachines) > 0;
+                                    SeededLights + SeededMachines + SeededPipeTopo) > 0;
   if (Session->BulkLoadDrainActive()) {
     Session->EndpointIndex().Reset();
     Session->BridgeEndpointRootIndexDirty() = false;

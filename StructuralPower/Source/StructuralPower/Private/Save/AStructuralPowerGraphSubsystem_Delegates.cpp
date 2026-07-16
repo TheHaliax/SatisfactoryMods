@@ -18,6 +18,8 @@
 #include "Equipment/FStructuralEquipmentBridgeRegistry.h"
 #include "FGCircuitConnectionComponent.h"
 #include "Graph/FStructuralEndpointTypes.h"
+#include "Graph/FStructuralPipeTopology.h"
+#include "Lightweight/FStructuralLightweightTypes.h"
 #include "Network/UStructuralPowerPanelListener.h"
 #include "Processors/FStructuralEndpointCatalog.h"
 #include "Processors/FStructuralEndpointDispatcher.h"
@@ -424,6 +426,25 @@ void AStructuralPowerGraphSubsystem::EnsurePanelListener(AFGBuildableLightsContr
 
 void AStructuralPowerGraphSubsystem::ProcessStructure(AFGBuildable* Buildable) {
   GetGraphSession().StructureIngress().ProcessStructure(Buildable);
+}
+
+void AStructuralPowerGraphSubsystem::ProcessPipe(AFGBuildable* Buildable) {
+  if (!IsValid(Buildable)) {
+    return;
+  }
+
+  FStructuralGraphSession& Session = GetGraphSession();
+  if (FStructuralEligibilityRules::IsFluidPipeSupport(Buildable)) {
+    Session.PipeTopology().ProcessSupport(Buildable, Session);
+    return;
+  }
+
+  if (FStructuralEligibilityRules::IsFluidPipeConductor(Buildable)) {
+    Session.PipeTopology().IntegrateConductor(Buildable, Session);
+    const FStructuralNodeId Id = Session.MakeNodeId(Buildable);
+    const FStructuralNodeId PipeRoot = Session.PipeTopology().FindRoot(Id);
+    Session.PipeTopology().EnqueuePumpsOnRoot(Session, PipeRoot);
+  }
 }
 
 void AStructuralPowerGraphSubsystem::ProcessLightweightStructure(

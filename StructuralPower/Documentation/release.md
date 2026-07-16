@@ -42,7 +42,7 @@ Mod page: [ficsit.app/mod/StructuralPower](https://ficsit.app/mod/StructuralPowe
    ```
    Store as env `SAT_STRUCTURAL_POWER_VERSION=<id>` for laptop deploy scripts if used. Not required for routine testing.
 8. **Verify** — Mod Manager / ficsit profile installs StructuralPower **3.1.0**; join test server with same mod set.
-9. **Smoke test** — load legacy save; `!Generation` gen on foundation; `!Resources` miner; lights/switches/panels; **I** key; `!lighting`; save/reload; switch subnet ON/OFF; hoverpack tether; mass foundation remove (no long hitch).
+9. **Smoke test** — load legacy save; `!Generation` gen on foundation; `!Resources` miner; `!Pipes` / `!pipe` support→pipe→pump, extractor pipe port, junction/valve split; lights/switches/panels; **I** key; `!lighting`; save/reload; switch subnet ON/OFF; hoverpack tether; mass foundation remove (no long hitch).
 
 ## Updating a release
 

@@ -1,17 +1,18 @@
 # Changelog
 
-## 3.1.0 — 2026-07-15
+## 3.1.0 — 2026-07-16
 
-Opt-in machine groups on the structural bus (default **off**). Generators and power storage host a site bus on foundations; resource and production consumers attach to the same structure root. Transport and pipes are wired-consumer stubs; belts are toggle-only.
+Opt-in machine groups and **pipe topology** on the structural bus (default **off**). Generators and power storage host a site bus on foundations; resource and production consumers attach to the same structure root. Fluid pipe runs inject from supports and machine pipe ports; inline pumps draw from the bus. Transport is a wired-consumer stub; belts are toggle-only.
 
 - **Generation** — `!Generation` / `GroupGeneration`; gens (coal, fuel, nuclear, geo, wind, alien booster) + power storage as OutletBus hosts; HUB biomass; no pole required for gen attach on structure
 - **Resources** — `!Resources` / `GroupResources`; miners, water/oil, fracking, geysers attach as consumers when a bus host exists on the structure
 - **Production** — `!Production` / `GroupProduction`; manufacturers, radar, AWESOME Sink
-- **Transport / Pipes** — `!Transport` / `!Pipes` stubs: wired stations/pumps attach; **no** track or pipe-run topology yet
+- **Pipes** — `!Pipes` / `!pipe` / `GroupPipes`; `FStructuralPipeTopology` unions fluid conductors (pipelines, attachments, pipe reservoirs; hypertubes excluded); fluid pipe supports + machine pipe ports inject structure power into runs; inline pumps consume from the bus
+- **Transport** — `!Transport` / `GroupTransport` stub: wired stations attach; **no** track topology yet
 - **Belts** — `!Belts` / `GroupBelts` toggle persistence only (no attach)
 - **Factory place** — `AFGBuildableFactory::BeginPlay` enqueue so miners/gens are not missed when build-effect hooks skip
 - **Remove path** — mass foundation dismantle batches UF reunite next tick; lightweight spatial unindex is O(cells) per pad (no full-grid rebuild)
-- **Config** — six machine group keys via cfg / `StructuralPower.Set` / `!` chat (same scaffold as lighting)
+- **Config** — machine group keys via cfg / `StructuralPower.Set` / `!` chat (same scaffold as lighting)
 
 ## 3.0.0 — 2026-07-09
 

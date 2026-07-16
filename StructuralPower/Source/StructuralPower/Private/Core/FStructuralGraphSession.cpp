@@ -5,6 +5,7 @@
 
 #include "Graph/FStructuralBusMemberSpatialIndex.h"
 #include "Graph/FStructuralConnectivityGraph.h"
+#include "Graph/FStructuralPipeTopology.h"
 #include "Graph/FStructuralGraphBootstrap.h"
 #include "Graph/FStructuralGraphBulkDrain.h"
 #include "Graph/FStructuralGraphCircuitEcho.h"
@@ -39,6 +40,14 @@ FStructuralConnectivityGraph& FStructuralGraphSession::StructureGraph() {
 
 const FStructuralConnectivityGraph& FStructuralGraphSession::StructureGraph() const {
   return Owner().StructureGraph;
+}
+
+FStructuralPipeTopology& FStructuralGraphSession::PipeTopology() {
+  return Owner().PipeTopology;
+}
+
+const FStructuralPipeTopology& FStructuralGraphSession::PipeTopology() const {
+  return Owner().PipeTopology;
 }
 
 FStructuralLightweightIndex& FStructuralGraphSession::LightweightIndex() {
@@ -217,10 +226,6 @@ void FStructuralGraphSession::EnqueuePlacement(AFGBuildable* Buildable,
   Owner().EnqueuePlacement(Buildable, JobType, bDefer);
 }
 
-void FStructuralGraphSession::ProcessOutlet(AFGBuildable* Buildable) {
-  Owner().ProcessOutlet(Buildable);
-}
-
 void FStructuralGraphSession::OnBuildableRemoved(AFGBuildable* Buildable) {
   Removal().OnBuildableRemoved(Buildable);
 }
@@ -275,6 +280,10 @@ void FStructuralGraphSession::DispatchOutlet(AFGBuildable* Buildable) {
 
 void FStructuralGraphSession::ProcessStructure(AFGBuildable* Buildable) {
   StructureIngress().ProcessStructure(Buildable);
+}
+
+void FStructuralGraphSession::ProcessPipe(AFGBuildable* Buildable) {
+  Owner().ProcessPipe(Buildable);
 }
 
 void FStructuralGraphSession::ProcessLightweightStructure(const FStructuralLightweightKey& Key) {

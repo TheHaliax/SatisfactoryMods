@@ -94,6 +94,13 @@ bool UStructuralPowerRootInstanceModule::TryEnqueueBuildable(AFGBuildable* Build
     return true;
   }
 
+  if (FStructuralEligibilityRules::IsFluidPipeSupport(Buildable) ||
+      FStructuralEligibilityRules::IsFluidPipeConductor(Buildable)) {
+    FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("enqueue_pipe"), SourceTag);
+    Graph->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Pipe, /*bDefer=*/true);
+    return true;
+  }
+
   FStructuralPowerTrace::LogHook(Buildable, HookName, TEXT("ignored"), TEXT("not_bus_or_outlet"));
   return false;
 }

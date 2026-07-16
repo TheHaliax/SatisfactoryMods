@@ -32,6 +32,7 @@ class FStructuralEndpointIndex;
 class FStructuralGraphCircuitOps;
 class FStructuralGraphIdOps;
 class FStructuralLightweightIndex;
+class FStructuralPipeTopology;
 class FStructuralPowerReconcile;
 class FStructuralPowerRestitch;
 class FStructuralEndpointIdRegistry;
@@ -63,6 +64,9 @@ class STRUCTURALPOWER_API FStructuralGraphSession {
 
   FStructuralConnectivityGraph& StructureGraph();
   const FStructuralConnectivityGraph& StructureGraph() const;
+
+  FStructuralPipeTopology& PipeTopology();
+  const FStructuralPipeTopology& PipeTopology() const;
 
   FStructuralLightweightIndex& LightweightIndex();
   FStructuralEndpointIndex& EndpointIndex();
@@ -114,7 +118,6 @@ class STRUCTURALPOWER_API FStructuralGraphSession {
   FStructuralPowerContext GetProcessorContext() const;
 
   void EnqueuePlacement(AFGBuildable* Buildable, EStructuralPlacementJobType JobType, bool bDefer);
-  void ProcessOutlet(AFGBuildable* Buildable);
   void OnBuildableRemoved(AFGBuildable* Buildable);
 
   FStructuralNodeId MakeNodeId(const AFGBuildable* Buildable) const;
@@ -133,6 +136,7 @@ class STRUCTURALPOWER_API FStructuralGraphSession {
   bool IsBuildablePlacementPending(AFGBuildable* Buildable) const;
   void DispatchOutlet(AFGBuildable* Buildable);
   void ProcessStructure(AFGBuildable* Buildable);
+  void ProcessPipe(AFGBuildable* Buildable);
   void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
   void MaybeReleaseFactoryTick();
   void ScheduleFinalLightingReconcile();

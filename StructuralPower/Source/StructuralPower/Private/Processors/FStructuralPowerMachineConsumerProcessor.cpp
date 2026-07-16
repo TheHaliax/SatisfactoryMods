@@ -7,12 +7,14 @@
 #include "Attach/FStructuralPowerTransferGate.h"
 #include "Buildables/FGBuildable.h"
 #include "Circuit/FStructuralGraphCircuitOps.h"
+#include "Config/FStructuralPowerModConfig.h"
 #include "Core/EAttachContext.h"
 #include "Core/FStructuralGraphSession.h"
 #include "Core/FStructuralPowerContext.h"
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "FGPowerConnectionComponent.h"
 #include "Graph/FStructuralEndpointTypes.h"
+#include "Graph/FStructuralPipeTopology.h"
 #include "Lightweight/FStructuralLightweightTypes.h"
 #include "Network/UStructuralPowerMachineWireListener.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
@@ -80,8 +82,19 @@ void FStructuralPowerMachineConsumerProcessor::Process(FStructuralPowerContext& 
   const FStructuralWallAnchor ParentAnchor =
       Ctx.Session().BridgeRootIndex().ResolveOutletAnchor(Device);
   FStructuralNodeId ParentId;
-  const int32 Root =
+  int32 Root =
       Ctx.Session().BridgeRootIndex().ResolveEndpointComponentRoot(Device, ParentAnchor, ParentId);
+
+  // Pipe pumps: prefer structure site injected via pipe topology (support / machine).
+  if (Kind == EStructuralEndpointKind::PipePump &&
+      FStructuralPowerModConfig::IsGroupPipesEnabled()) {
+    const int32 Injected =
+        Ctx.Session().PipeTopology().ResolveInjectedStructureRoot(Device, Ctx.Session());
+    if (Injected != INDEX_NONE) {
+      Root = Injected;
+      ParentId = Ctx.Session().StructureGraph().MakeCanonicalNodeIdForComponent(Injected);
+    }
+  }
 
   const FStructuralNodeId DeviceId = Ctx.Session().MakeNodeId(Device);
   FTrackedEndpoint& Tracked = Ctx.Session().TrackedEndpoints().FindOrAdd(DeviceId);
@@ -150,6 +163,11 @@ void FStructuralPowerMachineConsumerProcessor::Process(FStructuralPowerContext& 
     Tracked.bStructuralPowerTransferActive = true;
     Tracked.bAwaitingStructuralSite = false;
     Ctx.Session().Circuit().PromoteDirectHiddenLinks(Plug);
+
+    if (Kind != EStructuralEndpointKind::PipePump &&
+        FStructuralPowerModConfig::IsGroupPipesEnabled()) {
+      Ctx.Session().PipeTopology().RegisterMachineInject(Device, Root, Ctx.Session());
+    }
     return;
   }
 

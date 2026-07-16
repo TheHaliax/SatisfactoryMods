@@ -70,6 +70,7 @@ static bool IsStructuralPowerCommand(const FString& CommandLine) {
          Verb.Equals(TEXT("production"), ESearchCase::IgnoreCase) ||
          Verb.Equals(TEXT("transport"), ESearchCase::IgnoreCase) ||
          Verb.Equals(TEXT("pipes"), ESearchCase::IgnoreCase) ||
+         Verb.Equals(TEXT("pipe"), ESearchCase::IgnoreCase) ||
          Verb.Equals(TEXT("belts"), ESearchCase::IgnoreCase) ||
          Verb.Equals(TEXT("pwrhelp"), ESearchCase::IgnoreCase);
 }
@@ -163,7 +164,7 @@ static void SendHelp(AFGPlayerController* PlayerController) {
   SendSystemChat(PlayerController,
                  TEXT("!lighting !generation !resources !production — group toggles (default off)"),
                  FLinearColor::Yellow);
-  SendSystemChat(PlayerController, TEXT("!transport !pipes !belts — group toggles (default off)"),
+  SendSystemChat(PlayerController, TEXT("!transport !pipe/!pipes !belts — group toggles (default off)"),
                  FLinearColor::Yellow);
 }
 }
@@ -310,7 +311,14 @@ void FStructuralPowerBangCommands::Execute(AFGPlayerController* PlayerController
           TEXT("pipes"),
           &FStructuralPowerModConfig::IsGroupPipesEnabled,
           TEXT("GroupPipes"),
-          TEXT("Structural pipes enabled — pumps may attach on powered structure."),
+          TEXT("Structural pipes enabled — pipe bus via supports/machines; pumps attach."),
+          TEXT("Structural pipes disabled — pumps need vanilla wires."),
+      },
+      {
+          TEXT("pipe"),
+          &FStructuralPowerModConfig::IsGroupPipesEnabled,
+          TEXT("GroupPipes"),
+          TEXT("Structural pipes enabled — pipe bus via supports/machines; pumps attach."),
           TEXT("Structural pipes disabled — pumps need vanilla wires."),
       },
       {

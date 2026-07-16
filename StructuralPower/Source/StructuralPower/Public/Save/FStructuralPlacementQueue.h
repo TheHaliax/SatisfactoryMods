@@ -9,7 +9,7 @@
 class AFGBuildable;
 
 UENUM()
-enum class EStructuralPlacementJobType : uint8 { Structure, Outlet };
+enum class EStructuralPlacementJobType : uint8 { Structure, Outlet, Pipe };
 
 class STRUCTURALPOWER_API FStructuralPlacementQueue {
  public:

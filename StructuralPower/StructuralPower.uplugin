@@ -7,7 +7,7 @@
 	"RequiredOnRemote": true,
 	"RemoteVersionRange": "^3.0.0",
 	"FriendlyName": "StructuralPower",
-	"Description": "Hidden power bus through connected foundations, walls, ramps, and bridge poles. v3.1 opt-in machines — generators and storage as site bus hosts, resource and production consumers on structure; transport/pipes stubs; belts toggle only. Lighting, I-key Id config, switch gating, hoverpack tether. Connectivity rebuilt from world geometry on load.",
+	"Description": "Hidden power bus through connected foundations, walls, ramps, and bridge poles. v3.1 opt-in machines and pipe topology — generators and storage as site bus hosts, resource and production consumers on structure, fluid supports and machine pipe ports inject pipe runs, inline pumps on the bus; transport stub; belts toggle only. Lighting, I-key Id config, switch gating, hoverpack tether. Connectivity rebuilt from world geometry on load.",
 	"Category": "Modding",
 	"CreatedBy": "Haliax",
 	"CanContainContent": true,

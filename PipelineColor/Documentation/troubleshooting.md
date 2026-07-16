@@ -2,7 +2,7 @@
 
 ## Pipes stay default / unpainted
 
-1. Confirm PipelineColor loads — look for `PipelineColor v1.0.0` and `[HALPC]` in `FactoryGame.log`.
+1. Confirm PipelineColor loads — look for `PipelineColor v1.1.0` and `[HALPC]` in `FactoryGame.log`.
 2. Fill the network with a known fluid (Water, Fuel, …) and wait a short settle.
 3. Empty networks use Neutral — that can look like “no paint” compared to bright fluids.
 4. Grep `FactoryGame.log` for `[HALPC]` / `LogPipelineColor`.

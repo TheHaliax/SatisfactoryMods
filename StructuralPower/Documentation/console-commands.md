@@ -19,7 +19,7 @@ Updates a config key and persists to `Configs/StructuralPower.cfg`. Authority on
 | `GroupResources` | `0` / `1` | Miners / extractors (chat: `!Resources`) |
 | `GroupProduction` | `0` / `1` | Manufacturers / radar / sink (chat: `!Production`) |
 | `GroupTransport` | `0` / `1` | Wired transport consumers — stub (chat: `!Transport`) |
-| `GroupPipes` | `0` / `1` | Pipeline pumps — stub (chat: `!Pipes`) |
+| `GroupPipes` | `0` / `1` | Structural pipe bus — supports/machines inject runs; pumps attach (chat: `!Pipes` / `!pipe`) |
 | `GroupBelts` | `0` / `1` | Belts toggle only — no attach (chat: `!Belts`) |
 | `HoverpackStructuralHorizontalMultiplier` | `1.0`–`10.0` (default `1.2`) | Chat: `!HoverH` |
 | `HoverpackStructuralVerticalMultiplier` | `1.0`–`10.0` (default `1.2`) | Chat: `!HoverV` |

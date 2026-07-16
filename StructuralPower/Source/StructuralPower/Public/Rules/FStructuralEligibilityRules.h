@@ -20,6 +20,10 @@ class STRUCTURALPOWER_API FStructuralEligibilityRules {
   static bool IsStructuralManufacturer(const AFGBuildable* Buildable);
   static bool IsStructuralTransport(const AFGBuildable* Buildable);
   static bool IsStructuralPipelinePump(const AFGBuildable* Buildable);
+  /** Fluid pipeline, attachment, or pipe reservoir — not hypertube. */
+  static bool IsFluidPipeConductor(const AFGBuildable* Buildable);
+  /** Floor/stackable/wall/wall-hole fluid pipe supports (soft class parents). */
+  static bool IsFluidPipeSupport(const AFGBuildable* Buildable);
   /** Gen/res/prod/transport/pump — resolve mount via foundation footprint, not actor center. */
   static bool PrefersFoundationMount(const AFGBuildable* Buildable);
   static bool IsIdConfigTarget(const AFGBuildable* Buildable);

@@ -87,6 +87,18 @@ class AStructuralPowerPipesChatCommand : public AChatCommandInstance {
 };
 
 UCLASS(NotPlaceable)
+class AStructuralPowerPipeChatCommand : public AChatCommandInstance {
+  GENERATED_BODY()
+
+ public:
+  AStructuralPowerPipeChatCommand();
+
+  virtual EExecutionStatus ExecuteCommand_Implementation(UCommandSender* Sender,
+                                                         const TArray<FString>& Arguments,
+                                                         const FString& Label) override;
+};
+
+UCLASS(NotPlaceable)
 class AStructuralPowerBeltsChatCommand : public AChatCommandInstance {
   GENERATED_BODY()
 

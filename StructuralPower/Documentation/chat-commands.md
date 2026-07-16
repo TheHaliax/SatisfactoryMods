@@ -17,7 +17,7 @@ The same commands are also registered with **SML** (`AChatCommandSubsystem::Regi
 - `!Resources` — toggle **miners / extractors**
 - `!Production` — toggle **manufacturers / radar / sink**
 - `!Transport` — toggle **wired transport** consumers (stub — no track topology)
-- `!Pipes` — toggle **pipeline pumps** (stub — no pipe-run topology)
+- `!Pipes` / `!pipe` — toggle **structural pipe bus** (supports + machine pipe ports → inline pumps)
 - `!Belts` — toggle **belts** group (no attach yet)
 - `!HoverH [1-10]` — set hoverpack **horizontal** reach multiplier (clamped 1.0–10.0)
 - `!HoverV [1-10]` — set hoverpack **vertical** reach multiplier (clamped 1.0–10.0)

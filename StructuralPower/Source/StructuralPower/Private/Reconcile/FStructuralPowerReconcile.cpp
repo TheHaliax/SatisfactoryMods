@@ -21,6 +21,7 @@
 #include "FGBuildableSubsystem.h"
 #include "FGPowerConnectionComponent.h"
 #include "Graph/FStructuralEndpointTypes.h"
+#include "Graph/FStructuralPipeTopology.h"
 #include "Graph/FStructuralPowerBuildableCasts.h"
 #include "Misc/App.h"
 #include "Panel/FStructuralPanelControlledSync.h"
@@ -31,6 +32,7 @@
 #include "Routing/FStructuralPowerRouter.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "Save/FStructuralControlIdGangIndex.h"
+#include "Save/FStructuralPlacementQueue.h"
 #include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
 
@@ -812,6 +814,28 @@ void FStructuralPowerReconcile::ReconcileGroupTransportState() {
 }
 
 void FStructuralPowerReconcile::ReconcileGroupPipesState() {
+  UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] GroupPipes reconcile — enabled=%d"),
+         FStructuralPowerModConfig::IsGroupPipesEnabled() ? 1 : 0);
+
+  if (!FStructuralPowerModConfig::CanMutateLiveConfig(Session->GetWorld())) {
+    return;
+  }
+
+  // Rebuild pipe membership + support injects before pump consumer attach.
+  Session->PipeTopology().Reset();
+  UWorld* World = Session->GetWorld();
+  if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World)) {
+    for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef()) {
+      if (!IsValid(Buildable) || !Buildable->HasAuthority()) {
+        continue;
+      }
+      if (FStructuralEligibilityRules::IsFluidPipeSupport(Buildable) ||
+          FStructuralEligibilityRules::IsFluidPipeConductor(Buildable)) {
+        Session->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Pipe, /*bDefer=*/true);
+      }
+    }
+  }
+
   ReconcileGroupKindState(EStructuralEndpointKind::PipePump,
                           FStructuralPowerModConfig::IsGroupPipesEnabled(), TEXT("GroupPipes"));
 }

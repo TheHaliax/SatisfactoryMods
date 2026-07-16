@@ -47,6 +47,7 @@ void FStructuralPowerSmlChatCommands::RegisterWithWorld(UWorld* World) {
   Chat->RegisterCommand(ModRef, AStructuralPowerProductionChatCommand::StaticClass());
   Chat->RegisterCommand(ModRef, AStructuralPowerTransportChatCommand::StaticClass());
   Chat->RegisterCommand(ModRef, AStructuralPowerPipesChatCommand::StaticClass());
+  Chat->RegisterCommand(ModRef, AStructuralPowerPipeChatCommand::StaticClass());
   Chat->RegisterCommand(ModRef, AStructuralPowerBeltsChatCommand::StaticClass());
   Chat->RegisterCommand(ModRef, AStructuralPowerHoverHChatCommand::StaticClass());
   Chat->RegisterCommand(ModRef, AStructuralPowerHoverVChatCommand::StaticClass());
@@ -117,12 +118,24 @@ AStructuralPowerPipesChatCommand::AStructuralPowerPipesChatCommand() {
   bOnlyUsableByPlayer = true;
   CommandName = TEXT("pipes");
   Usage =
-      NSLOCTEXT("StructuralPower", "ChatCmd.Pipes", "!pipes — toggle structural pipeline pumps");
+      NSLOCTEXT("StructuralPower", "ChatCmd.Pipes", "!pipes - toggle structural pipe bus (supports/machines -> pumps)");
 }
 
 EExecutionStatus AStructuralPowerPipesChatCommand::ExecuteCommand_Implementation(
     UCommandSender* Sender, const TArray<FString>& /*Arguments*/, const FString& /*Label*/) {
   return RunGroupToggle(Sender, TEXT("pipes"));
+}
+
+AStructuralPowerPipeChatCommand::AStructuralPowerPipeChatCommand() {
+  bOnlyUsableByPlayer = true;
+  CommandName = TEXT("pipe");
+  Usage = NSLOCTEXT("StructuralPower", "ChatCmd.Pipe",
+                    "!pipe - alias for !pipes (structural pipe bus)");
+}
+
+EExecutionStatus AStructuralPowerPipeChatCommand::ExecuteCommand_Implementation(
+    UCommandSender* Sender, const TArray<FString>& /*Arguments*/, const FString& /*Label*/) {
+  return RunGroupToggle(Sender, TEXT("pipe"));
 }
 
 AStructuralPowerBeltsChatCommand::AStructuralPowerBeltsChatCommand() {

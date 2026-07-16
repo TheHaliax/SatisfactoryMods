@@ -6,6 +6,7 @@
 #include "Appearance/FPCFluidAppearanceCatalog.h"
 #include "Appearance/FPCMetallicColorCorrection.h"
 #include "Appearance/FPCMetallicFlag.h"
+#include "Application/FCustomizationApplicator.h"
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildablePipeline.h"
 #include "Config/FPCPipelineColorModConfig.h"
@@ -13,6 +14,7 @@
 #include "Content/FPipeSupportTouch.h"
 #include "Core/FPCWorldGate.h"
 #include "EngineUtils.h"
+#include "FGBuildablePipelineFlowIndicator.h"
 #include "FGBuildableSubsystem.h"
 #include "FGFactoryColoringTypes.h"
 #include "PipelineColorLog.h"
@@ -120,6 +122,25 @@ void UPCWorldSubsystem::ApplyStoreOverlay(FPCAppearanceSpec& Spec) const {
 }
 
 namespace {
+// DummyHeaders GetFlowIndicator() stubs to null — read SaveGame UPROPERTY.
+AFGBuildablePipelineFlowIndicator* ResolveFlowIndicator(AFGBuildablePipeline* Pipe) {
+  if (!IsValid(Pipe)) {
+    return nullptr;
+  }
+
+  if (AFGBuildablePipelineFlowIndicator* Ind = Pipe->GetFlowIndicator()) {
+    return Ind;
+  }
+
+  static FObjectProperty* Prop = FindFProperty<FObjectProperty>(
+      AFGBuildablePipeline::StaticClass(), TEXT("mFlowIndicator"));
+  if (!Prop) {
+    return nullptr;
+  }
+  return Cast<AFGBuildablePipelineFlowIndicator>(
+      Prop->GetObjectPropertyValue_InContainer(Pipe));
+}
+
 void FinalizePaintFinishSpec(FPCAppearanceSpec& Spec) {
   const bool bMetallic = FPCPipelineColorModConfig::IsMetallicForKey(Spec.CatalogKey);
 
@@ -214,6 +235,13 @@ void UPCWorldSubsystem::Enqueue(AFGBuildable* Buildable) {
   }
 }
 
+void UPCWorldSubsystem::InvalidateApplied(AFGBuildable* Buildable) {
+  if (!IsValid(Buildable)) {
+    return;
+  }
+  LastApplied.Remove(Buildable);
+}
+
 void UPCWorldSubsystem::ProcessNow(AFGBuildable* Buildable) {
   if (!bAuthority || !IsValid(Buildable) || !Buildable->HasAuthority()) {
     return;
@@ -249,6 +277,10 @@ void UPCWorldSubsystem::ProcessNow(AFGBuildable* Buildable) {
   }
 
   if (AFGBuildablePipeline* Pipe = Cast<AFGBuildablePipeline>(Buildable)) {
+    // Child meter may spawn after parent LastApplied — sync even when parent skip.
+    if (AFGBuildablePipelineFlowIndicator* Ind = ResolveFlowIndicator(Pipe)) {
+      FCustomizationApplicator::ApplyIfChanged(Ind, Spec);
+    }
     PaintSupportsMatchingPipe(Pipe, Spec, LastApplied);
   }
 }

@@ -18,8 +18,14 @@
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Buildables/FGBuildableManufacturer.h"
+#include "Buildables/FGBuildablePipeHyper.h"
+#include "Buildables/FGBuildablePipeHyperAttachment.h"
+#include "Buildables/FGBuildablePipeReservoir.h"
+#include "Buildables/FGBuildablePipeline.h"
+#include "Buildables/FGBuildablePipelineAttachment.h"
 #include "Buildables/FGBuildablePipelinePump.h"
 #include "Buildables/FGBuildablePortalBase.h"
+#include "UObject/SoftObjectPath.h"
 #include "Buildables/FGBuildablePowerPole.h"
 #include "Buildables/FGBuildablePowerStorage.h"
 #include "Buildables/FGBuildableRadarTower.h"
@@ -109,6 +115,51 @@ bool FStructuralEligibilityRules::IsStructuralTransport(const AFGBuildable* Buil
 
 bool FStructuralEligibilityRules::IsStructuralPipelinePump(const AFGBuildable* Buildable) {
   return IsValid(Buildable) && Buildable->IsA<AFGBuildablePipelinePump>();
+}
+
+bool FStructuralEligibilityRules::IsFluidPipeConductor(const AFGBuildable* Buildable) {
+  if (!IsValid(Buildable) || Buildable->IsA<AFGBuildablePipeHyper>() ||
+      Buildable->IsA<AFGBuildablePipeHyperAttachment>()) {
+    return false;
+  }
+
+  return Buildable->IsA<AFGBuildablePipeline>() ||
+         Buildable->IsA<AFGBuildablePipelineAttachment>() ||
+         Buildable->IsA<AFGBuildablePipeReservoir>();
+}
+
+bool FStructuralEligibilityRules::IsFluidPipeSupport(const AFGBuildable* Buildable) {
+  if (!IsValid(Buildable) || IsFluidPipeConductor(Buildable)) {
+    return false;
+  }
+
+  static TArray<TSubclassOf<AFGBuildable>> Parents;
+  static bool bReady = false;
+  if (!bReady) {
+    bReady = true;
+    const TCHAR* SoftPaths[] = {
+        TEXT("/Game/FactoryGame/Buildable/Factory/PipelineSupport/"
+             "Build_PipelineSupport.Build_PipelineSupport_C"),
+        TEXT("/Game/FactoryGame/Buildable/Factory/PipelineSupport/"
+             "Build_PipeSupportStackable.Build_PipeSupportStackable_C"),
+        TEXT("/Game/FactoryGame/Buildable/Factory/PipelineSupportWall/"
+             "Build_PipelineSupportWall.Build_PipelineSupportWall_C"),
+        TEXT("/Game/FactoryGame/Buildable/Factory/PipelineSupportWallHole/"
+             "Build_PipelineSupportWallHole.Build_PipelineSupportWallHole_C"),
+    };
+    for (const TCHAR* SoftPath : SoftPaths) {
+      if (TSubclassOf<AFGBuildable> Cls = FSoftClassPath(SoftPath).TryLoadClass<AFGBuildable>()) {
+        Parents.Add(Cls);
+      }
+    }
+  }
+
+  for (const TSubclassOf<AFGBuildable>& Parent : Parents) {
+    if (Parent && Buildable->IsA(Parent)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool FStructuralEligibilityRules::IsIdConfigTarget(const AFGBuildable* Buildable) {

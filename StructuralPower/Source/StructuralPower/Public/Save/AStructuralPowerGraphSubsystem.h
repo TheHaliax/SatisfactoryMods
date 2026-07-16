@@ -24,6 +24,7 @@
 #include "Graph/FStructuralGraphRemoval.h"
 #include "Graph/FStructuralGraphStructureIngress.h"
 #include "Graph/FStructuralOutletParentResolver.h"
+#include "Graph/FStructuralPipeTopology.h"
 #include "Graph/FStructuralSiteState.h"
 #include "Graph/FStructuralSwitchParentResolver.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
@@ -247,6 +248,7 @@ class STRUCTURALPOWER_API AStructuralPowerGraphSubsystem : public AInfo, public 
 
  private:
   void ProcessStructure(AFGBuildable* Buildable);
+  void ProcessPipe(AFGBuildable* Buildable);
   void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
 
   UFGStructuralPowerConnectionComponent* GetOrCreateBusConnector(AFGBuildable* Host);
@@ -310,6 +312,7 @@ class STRUCTURALPOWER_API AStructuralPowerGraphSubsystem : public AInfo, public 
   FStructuralOutletParentResolveParams MakeOutletParentResolveParams() const;
 
   FStructuralConnectivityGraph StructureGraph;
+  FStructuralPipeTopology PipeTopology;
   FStructuralLightweightIndex LightweightIndex;
   FStructuralBusMemberSpatialIndex BusMemberSpatialIndex;
   TMap<FStructuralNodeId, FTrackedEndpoint> TrackedEndpoints;

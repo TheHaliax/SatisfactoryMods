@@ -4,7 +4,7 @@
 
 Structural Power injects a **hidden structural bus** into eligible buildables. Power travels through connected foundations, walls, ramps, stairs, walkways, beams, pillars, and bridge poles — without visible cables between those pieces.
 
-**v3.1** adds opt-in **machine groups** (generators, storage, resources, production; transport/pipes stubs). You still use normal power poles and cables where a group is off or the mod does not apply.
+**v3.1** adds opt-in **machine groups** and **pipe topology** (`!Pipes` / `!pipe`). You still use normal power poles and cables where a group is off or the mod does not apply.
 
 The mod rewrites attach and reconcile on vanilla circuit APIs — **stable retroactive load** after earlier save-load pain. Also shipped: opt-in **structural lighting**, **I-key Id config**, **power-switch gating**, and **hoverpack structural tether**.
 
@@ -46,7 +46,7 @@ The mod **rebuilds its connectivity from world geometry** every time the save lo
 | **Resources** | `!Resources` | Miners, water/oil extractors, fracking, geysers (consumers) |
 | **Production** | `!Production` | Manufacturers, radar tower, AWESOME Sink (consumers) |
 | **Transport** | `!Transport` | Wired stations / elevators / etc. — **stub** (no track topology) |
-| **Pipes** | `!Pipes` | Pipeline pumps — **stub** (no pipe-run topology) |
+| **Pipes** | `!Pipes` / `!pipe` | Fluid pipe supports + machine pipe ports inject structure power into runs; **inline pumps** consume from the bus (not hypertubes) |
 | **Belts** | `!Belts` | Toggle only — **no attach** |
 
 Consumers need a **bus host** on the same structure island (pole, storage, or generator). An isolated pad with only a miner and no gen/pole stays unattached until a host appears.

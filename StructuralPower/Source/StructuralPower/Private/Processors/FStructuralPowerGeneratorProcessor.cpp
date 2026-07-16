@@ -17,6 +17,7 @@
 #include "FGCircuitConnectionComponent.h"
 #include "FGPowerConnectionComponent.h"
 #include "Graph/FStructuralEndpointTypes.h"
+#include "Graph/FStructuralPipeTopology.h"
 #include "Graph/FStructuralSiteContext.h"
 #include "Network/UStructuralPowerMachineWireListener.h"
 #include "Processors/FStructuralPowerMachineConsumerProcessor.h"
@@ -123,6 +124,9 @@ void ProcessGenerationHost(FStructuralPowerContext& Ctx, AFGBuildable* Host) {
     }
     FStructuralPowerMachineConsumerProcessor::EnqueueInactiveConsumersOnRoot(Session,
                                                                              Site.SiteRoot);
+    if (FStructuralPowerModConfig::IsGroupPipesEnabled()) {
+      Session.PipeTopology().RegisterMachineInject(Host, Site.SiteRoot, Session);
+    }
   } else if (!Outcome.bAttached && Outcome.bSiteNotReady) {
     FStructuralPowerTrace::LogPlacementSkip(Host, TEXT("gen_no_component"), ELogVerbosity::Log);
   } else if (!Outcome.bAttached) {

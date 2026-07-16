@@ -7,6 +7,7 @@
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildablePipeline.h"
 #include "Buildables/FGBuildablePipelineAttachment.h"
+#include "FGBuildablePipelineFlowIndicator.h"
 #include "Command/PipelineColorSmlChatCommands.h"
 #include "Config/FPCPipelineColorModConfig.h"
 #include "Content/FPipeFluidKeyResolver.h"
@@ -348,11 +349,46 @@ void UPipelineColorRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase Ph
                            UPipelineColorRootInstanceModule::HandleBuildableBuilt(Buildable);
                          });
 
-  SUBSCRIBE_METHOD_VIRTUAL_AFTER(AFGBuildablePipeline::BeginPlay,
-                                 GetMutableDefault<AFGBuildablePipeline>(),
-                                 [](AFGBuildablePipeline* Pipe) {
-                                   UPipelineColorRootInstanceModule::HandleBuildableBuilt(Pipe);
-                                 });
+  SUBSCRIBE_METHOD_VIRTUAL_AFTER(
+      AFGBuildablePipeline::BeginPlay, GetMutableDefault<AFGBuildablePipeline>(),
+      [](AFGBuildablePipeline* Pipe) {
+        UPipelineColorRootInstanceModule::HandleBuildableBuilt(Pipe);
+
+        // Flow meter actor may spawn after first paint; LastApplied would skip reapply.
+        if (!IsValid(Pipe) || !Pipe->HasAuthority()) {
+          return;
+        }
+        UWorld* World = Pipe->GetWorld();
+        if (!IsValid(World)) {
+          return;
+        }
+        World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
+            [PipeWeak = TWeakObjectPtr<AFGBuildablePipeline>(Pipe)]() {
+              AFGBuildablePipeline* PipePtr = PipeWeak.Get();
+              if (!IsValid(PipePtr) || !PipePtr->HasAuthority()) {
+                return;
+              }
+
+              // DummyHeaders GetFlowIndicator stubs null — UPROPERTY fallback.
+              AFGBuildablePipelineFlowIndicator* Ind = PipePtr->GetFlowIndicator();
+              if (!Ind) {
+                static FObjectProperty* Prop = FindFProperty<FObjectProperty>(
+                    AFGBuildablePipeline::StaticClass(), TEXT("mFlowIndicator"));
+                if (Prop) {
+                  Ind = Cast<AFGBuildablePipelineFlowIndicator>(
+                      Prop->GetObjectPropertyValue_InContainer(PipePtr));
+                }
+              }
+              if (!IsValid(Ind)) {
+                return;
+              }
+
+              if (UPCWorldSubsystem* Sys = UPCWorldSubsystem::Get(PipePtr->GetWorld())) {
+                Sys->InvalidateApplied(PipePtr);
+                Sys->Enqueue(PipePtr);
+              }
+            }));
+      });
 
   SUBSCRIBE_METHOD_VIRTUAL_AFTER(
       AFGBuildablePipelineAttachment::BeginPlay,

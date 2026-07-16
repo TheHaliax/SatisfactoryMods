@@ -1,5 +1,11 @@
 # PipelineColor — CHANGELOG
 
+## 1.1.0
+
+- Fix inline flow meters on regular MK1/MK2 pipelines (`Build_Pipeline`, `Build_PipelineMK2`) missing fluid color on placement and after mid-run splits (junction/valve → new meter child)
+- Repaint flow indicator when it spawns after the parent pipe’s first apply pass (`InvalidateApplied` + deferred `BeginPlay` enqueue)
+- `ProcessNow` always syncs the child flow meter even when the parent appearance spec is unchanged
+
 ## 1.0.0
 
 - First public release for Satisfactory 1.2 / SML 3.12
