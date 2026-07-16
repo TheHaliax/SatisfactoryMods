@@ -82,12 +82,18 @@ Roadmap: [../README.md#roadmap](../README.md#roadmap). Player behavior: [player-
 | Kind | Place / load | Config gate |
 |------|--------------|-------------|
 | Pole | `FStructuralBridgeAttach::AttachOnPlace` | always on |
-| Storage | same bridge attach | `GroupGeneration` (stub) |
+| Storage | same bridge attach (OutletBus host) | `GroupGeneration` |
+| Generator | `FStructuralPowerGeneratorProcessor` → bridge attach (OutletBus host) | `GroupGeneration` |
+| Extractor | `FStructuralPowerMachineConsumerProcessor` | `GroupResources` |
+| Manufacturer | same consumer processor | `GroupProduction` |
+| Transport | same consumer processor (stub) | `GroupTransport` |
+| Pipe pump | same consumer processor (stub) | `GroupPipes` |
+| Belts | toggle registry only — no attach | `GroupBelts` |
 | Switch | `FStructuralPowerSwitchProcessor` + `FStructuralSwitchBridgeStrategy` | always on |
 | Panel | `FStructuralPanelAttach` | `GroupLighting` |
 | Light | `FStructuralDeviceAttach::TryAttachConsumer` | `GroupLighting` |
 
-Structure integration goes through `FStructuralSiteMembership` (mount → site → register → strategy). Mount identity is durable **`MountParentId`**; site root is derived via the structure graph. Default structure Ids use human-readable **`Structure N`**.
+Structure integration goes through `FStructuralSiteMembership` (mount → site → register → strategy). Mount identity is durable **`MountParentId`**; site root is derived via the structure graph. Default structure Ids use human-readable **`Structure N`**. Generators and storage participate in bridge peer mesh like poles.
 
 ### Transfer-gated switch path
 

@@ -5,12 +5,11 @@
 
 #include "CoreMinimal.h"
 
-enum class EStructuralHostKind : uint8
-{
-	Unknown,
-	Foundation,
-	Wall,
-	FactoryBuilding,
-	Lightweight,
-	GenericBusMember
+enum class EStructuralHostKind : uint8 {
+  Unknown,
+  Foundation,
+  Wall,
+  FactoryBuilding,
+  Lightweight,
+  GenericBusMember
 };

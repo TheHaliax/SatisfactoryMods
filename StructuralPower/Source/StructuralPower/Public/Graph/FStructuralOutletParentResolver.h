@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Core/FStructuralNodeId.h"
+#include "CoreMinimal.h"
 #include "Lightweight/FStructuralLightweightTypes.h"
 
 class AFGBuildable;
@@ -13,59 +13,46 @@ class FStructuralBusMemberSpatialIndex;
 class FStructuralConnectivityGraph;
 class FStructuralLightweightIndex;
 
-enum class EStructuralOutletParentMethod : uint8
-{
-	None,
-	ActorParent,
-	LightweightFaceAttach,
-	LightweightIndex,
-	StructureGraph,
-	LiveScan
+enum class EStructuralOutletParentMethod : uint8 {
+  None,
+  ActorParent,
+  LightweightFaceAttach,
+  LightweightIndex,
+  StructureGraph,
+  LiveScan
 };
 
-struct FStructuralOutletParentResolveResult
-{
-	FStructuralWallAnchor Anchor;
-	EStructuralOutletParentMethod Method = EStructuralOutletParentMethod::None;
+struct FStructuralOutletParentResolveResult {
+  FStructuralWallAnchor Anchor;
+  EStructuralOutletParentMethod Method = EStructuralOutletParentMethod::None;
 };
 
-struct FStructuralOutletParentResolveParams
-{
-	const FStructuralLightweightIndex* LightweightIndex = nullptr;
-	const FStructuralBusMemberSpatialIndex* BusMemberIndex = nullptr;
-	const FStructuralConnectivityGraph* StructureGraph = nullptr;
-	TFunction<AFGBuildable*(const FStructuralNodeId&)> ResolveActorFromNodeId;
-	bool bAllowLiveScan = true;
+struct FStructuralOutletParentResolveParams {
+  const FStructuralLightweightIndex* LightweightIndex = nullptr;
+  const FStructuralBusMemberSpatialIndex* BusMemberIndex = nullptr;
+  const FStructuralConnectivityGraph* StructureGraph = nullptr;
+  TFunction<AFGBuildable*(const FStructuralNodeId&)> ResolveActorFromNodeId;
+  bool bAllowLiveScan = true;
 };
 
-class STRUCTURALPOWER_API FStructuralOutletParentResolver
-{
-public:
-	static FStructuralWallAnchor Resolve(
-		AFGBuildable* Outlet,
-		UWorld* World,
-		const FStructuralLightweightIndex& LightweightIndex);
+class STRUCTURALPOWER_API FStructuralOutletParentResolver {
+ public:
+  static FStructuralWallAnchor Resolve(AFGBuildable* Outlet, UWorld* World,
+                                       const FStructuralLightweightIndex& LightweightIndex);
 
-	static FStructuralWallAnchor Resolve(
-		AFGBuildable* Outlet,
-		UWorld* World,
-		const FStructuralOutletParentResolveParams& Params);
+  static FStructuralWallAnchor Resolve(AFGBuildable* Outlet, UWorld* World,
+                                       const FStructuralOutletParentResolveParams& Params);
 
-	static FStructuralOutletParentResolveResult ResolveDetailed(
-		AFGBuildable* Outlet,
-		UWorld* World,
-		const FStructuralLightweightIndex& LightweightIndex);
+  static FStructuralOutletParentResolveResult ResolveDetailed(
+      AFGBuildable* Outlet, UWorld* World, const FStructuralLightweightIndex& LightweightIndex);
 
-	static FStructuralOutletParentResolveResult ResolveDetailed(
-		AFGBuildable* Outlet,
-		UWorld* World,
-		const FStructuralOutletParentResolveParams& Params);
+  static FStructuralOutletParentResolveResult ResolveDetailed(
+      AFGBuildable* Outlet, UWorld* World, const FStructuralOutletParentResolveParams& Params);
 
-	static bool IsStructurallyAnchored(
-		const FStructuralOutletParentResolveResult& Result,
-		AFGBuildable* Outlet);
+  static bool IsStructurallyAnchored(const FStructuralOutletParentResolveResult& Result,
+                                     AFGBuildable* Outlet);
 
-	static const TCHAR* FormatParentMethod(EStructuralOutletParentMethod Method);
+  static const TCHAR* FormatParentMethod(EStructuralOutletParentMethod Method);
 
-	static FBox BoundsForStructuralAnchor(const FStructuralWallAnchor& Anchor, UWorld* World);
+  static FBox BoundsForStructuralAnchor(const FStructuralWallAnchor& Anchor, UWorld* World);
 };

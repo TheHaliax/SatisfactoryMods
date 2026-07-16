@@ -6,19 +6,15 @@
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
 FStructuralCircuitPromotionScope::FStructuralCircuitPromotionScope(
-	AStructuralPowerGraphSubsystem* InGraph)
-	: Graph(InGraph)
-{
-	if (Graph)
-	{
-		Graph->BeginCircuitPromotion();
-	}
+    AStructuralPowerGraphSubsystem* InGraph)
+    : Graph(InGraph) {
+  if (Graph) {
+    Graph->BeginCircuitPromotion();
+  }
 }
 
-FStructuralCircuitPromotionScope::~FStructuralCircuitPromotionScope()
-{
-	if (Graph)
-	{
-		Graph->EndCircuitPromotion();
-	}
+FStructuralCircuitPromotionScope::~FStructuralCircuitPromotionScope() {
+  if (Graph) {
+    Graph->EndCircuitPromotion();
+  }
 }

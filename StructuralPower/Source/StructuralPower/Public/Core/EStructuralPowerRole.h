@@ -5,11 +5,10 @@
 
 #include "CoreMinimal.h"
 
-enum class EStructuralPowerRole : uint8
-{
-	Gateway,
-	Router,
-	Host,
+enum class EStructuralPowerRole : uint8 {
+  Gateway,
+  Router,
+  Host,
 };
 
 STRUCTURALPOWER_API const TCHAR* StructuralPowerRoleToString(EStructuralPowerRole Role);

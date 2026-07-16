@@ -4,7 +4,7 @@
 
 StructuralPower sets **`RequiredOnRemote: true`**. Every player joining a session must have the same mod version installed.
 
-Version range in the plugin: `^3.0.0` (compatible 3.0.x).
+Version range in the plugin: `^3.0.0` (compatible 3.x clients on the 3.0 line).
 
 ## Listen server / host
 
@@ -12,7 +12,7 @@ The host runs the graph subsystem and placement hooks. Clients do not simulate s
 
 Mod config and chat commands apply on the **authority** (host). Clients cannot change server settings — host or dedicated operator uses cfg, console, or chat.
 
-**I-key Id panel** runs on the local client; apply sends RCO to server. All players need v3.0.0 for the panel UI.
+**I-key Id panel** runs on the local client; apply sends RCO to server. All players need matching **3.1.0** (or compatible `^3.0.0`) for the panel UI and machine groups.
 
 ## Dedicated server
 

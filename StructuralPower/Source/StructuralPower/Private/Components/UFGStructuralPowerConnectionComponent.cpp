@@ -5,8 +5,7 @@
 
 #include "StructuralPowerConstants.h"
 
-UFGStructuralPowerConnectionComponent::UFGStructuralPowerConnectionComponent()
-{
-	SetIsHidden(true);
-	mMaxNumConnectionLinks = StructuralPowerConstants::MaxHiddenConnectionLinks;
+UFGStructuralPowerConnectionComponent::UFGStructuralPowerConnectionComponent() {
+  SetIsHidden(true);
+  mMaxNumConnectionLinks = StructuralPowerConstants::MaxHiddenConnectionLinks;
 }

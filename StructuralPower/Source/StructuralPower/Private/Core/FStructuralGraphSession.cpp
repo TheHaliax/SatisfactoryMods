@@ -3,372 +3,331 @@
 
 #include "Core/FStructuralGraphSession.h"
 
-#include "Processors/FStructuralEndpointDispatcher.h"
-#include "Save/FStructuralEndpointIdRegistry.h"
+#include "Graph/FStructuralBusMemberSpatialIndex.h"
+#include "Graph/FStructuralConnectivityGraph.h"
 #include "Graph/FStructuralGraphBootstrap.h"
 #include "Graph/FStructuralGraphBulkDrain.h"
 #include "Graph/FStructuralGraphCircuitEcho.h"
 #include "Graph/FStructuralGraphRemoval.h"
 #include "Graph/FStructuralGraphStructureIngress.h"
-#include "Graph/FStructuralBusMemberSpatialIndex.h"
+#include "Processors/FStructuralEndpointDispatcher.h"
+#include "Save/AStructuralPowerGraphSubsystem.h"
+#include "Save/FStructuralEndpointIdRegistry.h"
 #include "Subsystems/UStructuralPowerFactoryTickHandler.h"
 
 FStructuralGraphSession::FStructuralGraphSession(AStructuralPowerGraphSubsystem& InOwner)
-	: OwnerPtr(&InOwner)
-{
+    : OwnerPtr(&InOwner) {
 }
 
-AStructuralPowerGraphSubsystem& FStructuralGraphSession::Owner()
-{
-	check(OwnerPtr);
-	return *OwnerPtr;
+AStructuralPowerGraphSubsystem& FStructuralGraphSession::Owner() {
+  check(OwnerPtr);
+  return *OwnerPtr;
 }
 
-const AStructuralPowerGraphSubsystem& FStructuralGraphSession::Owner() const
-{
-	check(OwnerPtr);
-	return *OwnerPtr;
+const AStructuralPowerGraphSubsystem& FStructuralGraphSession::Owner() const {
+  check(OwnerPtr);
+  return *OwnerPtr;
 }
 
-UWorld* FStructuralGraphSession::GetWorld() const
-{
-	return OwnerPtr ? OwnerPtr->GetWorld() : nullptr;
+UWorld* FStructuralGraphSession::GetWorld() const {
+  return OwnerPtr ? OwnerPtr->GetWorld() : nullptr;
 }
 
-FStructuralConnectivityGraph& FStructuralGraphSession::StructureGraph()
-{
-	return Owner().StructureGraph;
+FStructuralConnectivityGraph& FStructuralGraphSession::StructureGraph() {
+  return Owner().StructureGraph;
 }
 
-const FStructuralConnectivityGraph& FStructuralGraphSession::StructureGraph() const
-{
-	return Owner().StructureGraph;
+const FStructuralConnectivityGraph& FStructuralGraphSession::StructureGraph() const {
+  return Owner().StructureGraph;
 }
 
-FStructuralLightweightIndex& FStructuralGraphSession::LightweightIndex()
-{
-	return Owner().LightweightIndex;
+FStructuralLightweightIndex& FStructuralGraphSession::LightweightIndex() {
+  return Owner().LightweightIndex;
 }
 
-FStructuralEndpointIndex& FStructuralGraphSession::EndpointIndex()
-{
-	return Owner().EndpointIndex;
+FStructuralEndpointIndex& FStructuralGraphSession::EndpointIndex() {
+  return Owner().EndpointIndex;
 }
 
-TMap<FStructuralNodeId, FTrackedEndpoint>& FStructuralGraphSession::TrackedEndpoints()
-{
-	return Owner().TrackedEndpoints;
+TMap<FStructuralNodeId, FTrackedEndpoint>& FStructuralGraphSession::TrackedEndpoints() {
+  return Owner().TrackedEndpoints;
 }
 
-const TMap<FStructuralNodeId, FTrackedEndpoint>& FStructuralGraphSession::TrackedEndpoints() const
-{
-	return Owner().TrackedEndpoints;
+const TMap<FStructuralNodeId, FTrackedEndpoint>& FStructuralGraphSession::TrackedEndpoints() const {
+  return Owner().TrackedEndpoints;
 }
 
-FStructuralGraphCircuitOps& FStructuralGraphSession::Circuit()
-{
-	return Owner().CircuitOps;
+FStructuralGraphCircuitOps& FStructuralGraphSession::Circuit() {
+  return Owner().CircuitOps;
 }
 
-FStructuralGraphIdOps& FStructuralGraphSession::Ids()
-{
-	return Owner().IdOps;
+FStructuralGraphIdOps& FStructuralGraphSession::Ids() {
+  return Owner().IdOps;
 }
 
-FStructuralPowerReconcile& FStructuralGraphSession::Reconcile()
-{
-	return Owner().ReconcileOps;
+FStructuralPowerReconcile& FStructuralGraphSession::Reconcile() {
+  return Owner().ReconcileOps;
 }
 
-FStructuralPowerRestitch& FStructuralGraphSession::Restitch()
-{
-	return Owner().RestitchOps;
+FStructuralPowerRestitch& FStructuralGraphSession::Restitch() {
+  return Owner().RestitchOps;
 }
 
-FStructuralBridgeRootIndex& FStructuralGraphSession::BridgeRootIndex()
-{
-	return Owner().BridgeRootIndex;
+FStructuralBridgeRootIndex& FStructuralGraphSession::BridgeRootIndex() {
+  return Owner().BridgeRootIndex;
 }
 
-FStructuralGraphBootstrap& FStructuralGraphSession::Bootstrap()
-{
-	return Owner().BootstrapOps;
+FStructuralGraphBootstrap& FStructuralGraphSession::Bootstrap() {
+  return Owner().BootstrapOps;
 }
 
-FStructuralGraphStructureIngress& FStructuralGraphSession::StructureIngress()
-{
-	return Owner().StructureIngressOps;
+FStructuralGraphStructureIngress& FStructuralGraphSession::StructureIngress() {
+  return Owner().StructureIngressOps;
 }
 
-FStructuralGraphBulkDrain& FStructuralGraphSession::BulkDrain()
-{
-	return Owner().BulkDrainOps;
+FStructuralGraphBulkDrain& FStructuralGraphSession::BulkDrain() {
+  return Owner().BulkDrainOps;
 }
 
-FStructuralGraphCircuitEcho& FStructuralGraphSession::CircuitEcho()
-{
-	return Owner().CircuitEchoOps;
+FStructuralGraphCircuitEcho& FStructuralGraphSession::CircuitEcho() {
+  return Owner().CircuitEchoOps;
 }
 
-FStructuralGraphRemoval& FStructuralGraphSession::Removal()
-{
-	return Owner().RemovalOps;
+FStructuralGraphRemoval& FStructuralGraphSession::Removal() {
+  return Owner().RemovalOps;
 }
 
-FStructuralPlacementQueue& FStructuralGraphSession::Placement()
-{
-	return Owner().PlacementQueue;
+FStructuralPlacementQueue& FStructuralGraphSession::Placement() {
+  return Owner().PlacementQueue;
 }
 
-FStructuralCrossSiteGraph& FStructuralGraphSession::CrossSite()
-{
-	return Owner().CrossSiteGraph;
+FStructuralCrossSiteGraph& FStructuralGraphSession::CrossSite() {
+  return Owner().CrossSiteGraph;
 }
 
-FStructuralSiteState& FStructuralGraphSession::SiteState()
-{
-	return Owner().SiteState;
+FStructuralSiteState& FStructuralGraphSession::SiteState() {
+  return Owner().SiteState;
 }
 
-FStructuralControlIdGangIndex& FStructuralGraphSession::ControlIdGangIndex()
-{
-	return Owner().ControlIdGangIndex;
+FStructuralControlIdGangIndex& FStructuralGraphSession::ControlIdGangIndex() {
+  return Owner().ControlIdGangIndex;
 }
 
-FStructuralBusMemberSpatialIndex& FStructuralGraphSession::BusMemberSpatialIndex()
-{
-	return Owner().BusMemberSpatialIndex;
+FStructuralBusMemberSpatialIndex& FStructuralGraphSession::BusMemberSpatialIndex() {
+  return Owner().BusMemberSpatialIndex;
 }
 
-int32& FStructuralGraphSession::CircuitPromotionDepth()
-{
-	return Owner().CircuitPromotionDepth;
+int32& FStructuralGraphSession::CircuitPromotionDepth() {
+  return Owner().CircuitPromotionDepth;
 }
 
-bool& FStructuralGraphSession::BulkLoadDrainActive()
-{
-	return Owner().bBulkLoadDrainActive;
+bool& FStructuralGraphSession::BulkLoadDrainActive() {
+  return Owner().bBulkLoadDrainActive;
 }
 
-bool& FStructuralGraphSession::PendingPostLoadLightReconcile()
-{
-	return Owner().bPendingPostLoadLightReconcile;
+bool& FStructuralGraphSession::PendingPostLoadLightReconcile() {
+  return Owner().bPendingPostLoadLightReconcile;
 }
 
-bool& FStructuralGraphSession::PendingFinalLightingReconcile()
-{
-	return Owner().bPendingFinalLightingReconcile;
+bool& FStructuralGraphSession::PendingPostLoadMachineReconcile() {
+  return Owner().bPendingPostLoadMachineReconcile;
 }
 
-int32& FStructuralGraphSession::FinalLightingReconcilePass()
-{
-	return Owner().FinalLightingReconcilePass;
+bool& FStructuralGraphSession::PendingFinalLightingReconcile() {
+  return Owner().bPendingFinalLightingReconcile;
 }
 
-bool& FStructuralGraphSession::BridgeEndpointRootIndexDirty()
-{
-	return Owner().bBridgeEndpointRootIndexDirty;
+bool& FStructuralGraphSession::PendingStructureSplitReconcile() {
+  return Owner().bPendingStructureSplitReconcile;
 }
 
-bool& FStructuralGraphSession::PostLoadRebuilt()
-{
-	return Owner().bPostLoadRebuilt;
+TSet<int32>& FStructuralGraphSession::PendingStructureSplitAffectedRoots() {
+  return Owner().PendingStructureSplitAffectedRoots;
 }
 
-bool FStructuralGraphSession::ShouldDeferCircuitDrivenRefresh() const
-{
-	return Owner().ShouldDeferCircuitDrivenRefresh();
+TArray<FStructuralNodeId>& FStructuralGraphSession::PendingStructureNodeRemovals() {
+  return Owner().PendingStructureNodeRemovals;
 }
 
-bool FStructuralGraphSession::ShouldDeferSwitchCircuitRefresh() const
-{
-	return Owner().ShouldDeferSwitchCircuitRefresh();
+int32& FStructuralGraphSession::FinalLightingReconcilePass() {
+  return Owner().FinalLightingReconcilePass;
 }
 
-bool FStructuralGraphSession::IsBulkLoadDrainActive() const
-{
-	return Owner().IsBulkLoadDrainActive();
+void FStructuralGraphSession::ScheduleStructureSplitReconcile() {
+  Owner().ScheduleStructureSplitReconcile();
 }
 
-bool FStructuralGraphSession::HasPendingBulkRemesh() const
-{
-	return Owner().HasPendingBulkRemesh();
+void FStructuralGraphSession::NoteStructureSplitAffectedRoots(const TArray<int32>& Roots) {
+  for (int32 Root : Roots) {
+    if (Root != INDEX_NONE) {
+      Owner().PendingStructureSplitAffectedRoots.Add(Root);
+    }
+  }
 }
 
-EAttachContext FStructuralGraphSession::GetCurrentAttachContext() const
-{
-	return Owner().GetCurrentAttachContext();
+void FStructuralGraphSession::QueueStructureNodeRemoval(const FStructuralNodeId& NodeId) {
+  if (!NodeId.IsValid() || !StructureGraph().IsTracked(NodeId)) {
+    return;
+  }
+  Owner().PendingStructureNodeRemovals.AddUnique(NodeId);
+  ScheduleStructureSplitReconcile();
+}
+
+bool& FStructuralGraphSession::BridgeEndpointRootIndexDirty() {
+  return Owner().bBridgeEndpointRootIndexDirty;
+}
+
+bool& FStructuralGraphSession::PostLoadRebuilt() {
+  return Owner().bPostLoadRebuilt;
+}
+
+bool FStructuralGraphSession::ShouldDeferCircuitDrivenRefresh() const {
+  return Owner().ShouldDeferCircuitDrivenRefresh();
+}
+
+bool FStructuralGraphSession::ShouldDeferSwitchCircuitRefresh() const {
+  return Owner().ShouldDeferSwitchCircuitRefresh();
+}
+
+bool FStructuralGraphSession::IsBulkLoadDrainActive() const {
+  return Owner().IsBulkLoadDrainActive();
+}
+
+bool FStructuralGraphSession::HasPendingBulkRemesh() const {
+  return Owner().HasPendingBulkRemesh();
+}
+
+EAttachContext FStructuralGraphSession::GetCurrentAttachContext() const {
+  return Owner().GetCurrentAttachContext();
 }
 
 FStructuralPowerContext FStructuralGraphSession::MakeProcessorContext(
-	const EAttachContext AttachContext,
-	const int32 SiteRoot) const
-{
-	return FStructuralPowerContext(
-		*const_cast<FStructuralGraphSession*>(this),
-		AttachContext,
-		SiteRoot);
+    const EAttachContext AttachContext, const int32 SiteRoot) const {
+  return FStructuralPowerContext(*const_cast<FStructuralGraphSession*>(this), AttachContext,
+                                 SiteRoot);
 }
 
-FStructuralPowerContext FStructuralGraphSession::GetProcessorContext() const
-{
-	return MakeProcessorContext(GetCurrentAttachContext());
+FStructuralPowerContext FStructuralGraphSession::GetProcessorContext() const {
+  return MakeProcessorContext(GetCurrentAttachContext());
 }
 
-void FStructuralGraphSession::EnqueuePlacement(
-	AFGBuildable* Buildable,
-	const EStructuralPlacementJobType JobType,
-	const bool bDefer)
-{
-	Owner().EnqueuePlacement(Buildable, JobType, bDefer);
+void FStructuralGraphSession::EnqueuePlacement(AFGBuildable* Buildable,
+                                               const EStructuralPlacementJobType JobType,
+                                               const bool bDefer) {
+  Owner().EnqueuePlacement(Buildable, JobType, bDefer);
 }
 
-void FStructuralGraphSession::ProcessOutlet(AFGBuildable* Buildable)
-{
-	Owner().ProcessOutlet(Buildable);
+void FStructuralGraphSession::ProcessOutlet(AFGBuildable* Buildable) {
+  Owner().ProcessOutlet(Buildable);
 }
 
-void FStructuralGraphSession::OnBuildableRemoved(AFGBuildable* Buildable)
-{
-	Removal().OnBuildableRemoved(Buildable);
+void FStructuralGraphSession::OnBuildableRemoved(AFGBuildable* Buildable) {
+  Removal().OnBuildableRemoved(Buildable);
 }
 
-void FStructuralGraphSession::UnregisterBuildableActor(const FStructuralNodeId& NodeId)
-{
-	Owner().UnregisterBuildableActor(NodeId);
+void FStructuralGraphSession::UnregisterBuildableActor(const FStructuralNodeId& NodeId) {
+  Owner().UnregisterBuildableActor(NodeId);
 }
 
-bool FStructuralGraphSession::HasActiveDeferredWork() const
-{
-	return Owner().HasActiveDeferredWork();
+bool FStructuralGraphSession::HasActiveDeferredWork() const {
+  return Owner().HasActiveDeferredWork();
 }
 
-void FStructuralGraphSession::NotifyDeferredWorkRegistered()
-{
-	Owner().NotifyDeferredWorkRegistered();
+void FStructuralGraphSession::NotifyDeferredWorkRegistered() {
+  Owner().NotifyDeferredWorkRegistered();
 }
 
-FStructuralNodeId FStructuralGraphSession::MakeNodeId(const AFGBuildable* Buildable) const
-{
-	return Owner().MakeNodeId(Buildable);
+FStructuralNodeId FStructuralGraphSession::MakeNodeId(const AFGBuildable* Buildable) const {
+  return Owner().MakeNodeId(Buildable);
 }
 
-UFGStructuralPowerConnectionComponent* FStructuralGraphSession::FindBusConnector(const AFGBuildable* Host) const
-{
-	return Owner().FindBusConnector(Host);
+UFGStructuralPowerConnectionComponent* FStructuralGraphSession::FindBusConnector(
+    const AFGBuildable* Host) const {
+  return Owner().FindBusConnector(Host);
 }
 
-UFGStructuralPowerConnectionComponent* FStructuralGraphSession::GetOrCreateBusConnector(AFGBuildable* Host)
-{
-	return Owner().GetOrCreateBusConnector(Host);
+UFGStructuralPowerConnectionComponent* FStructuralGraphSession::GetOrCreateBusConnector(
+    AFGBuildable* Host) {
+  return Owner().GetOrCreateBusConnector(Host);
 }
 
 UFGStructuralPowerConnectionComponent* FStructuralGraphSession::GetOrCreateSwitchControlBus(
-	AFGBuildableCircuitSwitch* Switch)
-{
-	return Owner().GetOrCreateSwitchControlBus(Switch);
+    AFGBuildableCircuitSwitch* Switch) {
+  return Owner().GetOrCreateSwitchControlBus(Switch);
 }
 
 UFGStructuralPowerConnectionComponent* FStructuralGraphSession::GetOrCreatePanelControlBus(
-	AFGBuildableLightsControlPanel* Panel)
-{
-	return Owner().GetOrCreatePanelControlBus(Panel);
+    AFGBuildableLightsControlPanel* Panel) {
+  return Owner().GetOrCreatePanelControlBus(Panel);
 }
 
-void FStructuralGraphSession::RegisterBuildableActor(AFGBuildable* Buildable)
-{
-	Owner().RegisterBuildableActor(Buildable);
+void FStructuralGraphSession::RegisterBuildableActor(AFGBuildable* Buildable) {
+  Owner().RegisterBuildableActor(Buildable);
 }
 
-bool FStructuralGraphSession::IsBuildablePlacementPending(AFGBuildable* Buildable) const
-{
-	return Owner().IsBuildablePlacementPending(Buildable);
+bool FStructuralGraphSession::IsBuildablePlacementPending(AFGBuildable* Buildable) const {
+  return Owner().IsBuildablePlacementPending(Buildable);
 }
 
-void FStructuralGraphSession::DispatchOutlet(AFGBuildable* Buildable)
-{
-	FStructuralEndpointDispatcher::DispatchOutlet(*this, Buildable);
+void FStructuralGraphSession::DispatchOutlet(AFGBuildable* Buildable) {
+  FStructuralEndpointDispatcher::DispatchOutlet(*this, Buildable);
 }
 
-void FStructuralGraphSession::ProcessStructure(AFGBuildable* Buildable)
-{
-	StructureIngress().ProcessStructure(Buildable);
+void FStructuralGraphSession::ProcessStructure(AFGBuildable* Buildable) {
+  StructureIngress().ProcessStructure(Buildable);
 }
 
-void FStructuralGraphSession::ProcessLightweightStructure(const FStructuralLightweightKey& Key)
-{
-	StructureIngress().ProcessLightweightStructure(Key);
+void FStructuralGraphSession::ProcessLightweightStructure(const FStructuralLightweightKey& Key) {
+  StructureIngress().ProcessLightweightStructure(Key);
 }
 
-void FStructuralGraphSession::MaybeReleaseFactoryTick()
-{
-	Owner().MaybeReleaseFactoryTick();
+void FStructuralGraphSession::MaybeReleaseFactoryTick() {
+  Owner().MaybeReleaseFactoryTick();
 }
 
-void FStructuralGraphSession::ScheduleFinalLightingReconcile()
-{
-	Owner().ScheduleFinalLightingReconcile();
+void FStructuralGraphSession::ScheduleFinalLightingReconcile() {
+  Owner().ScheduleFinalLightingReconcile();
 }
 
-int32 FStructuralGraphSession::GetPendingJobCount() const
-{
-	return Owner().GetPendingJobCount();
+int32 FStructuralGraphSession::GetPendingJobCount() const {
+  return Owner().GetPendingJobCount();
 }
 
-FStructuralEndpointIdRegistry& FStructuralGraphSession::IdRegistry()
-{
-	return Owner().IdRegistry;
+FStructuralEndpointIdRegistry& FStructuralGraphSession::IdRegistry() {
+  return Owner().IdRegistry;
 }
 
-TMap<int32, TWeakObjectPtr<UFGCircuitConnectionComponent>>& FStructuralGraphSession::SourceConnectorByRoot()
-{
-	return Owner().SourceConnectorByRoot;
+TMap<int32, TWeakObjectPtr<UFGCircuitConnectionComponent>>&
+FStructuralGraphSession::SourceConnectorByRoot() {
+  return Owner().SourceConnectorByRoot;
 }
 
-TMap<FStructuralNodeId, TWeakObjectPtr<AFGBuildable>>& FStructuralGraphSession::RegisteredBuildables()
-{
-	return Owner().RegisteredBuildables;
+TMap<FStructuralNodeId, TWeakObjectPtr<AFGBuildable>>&
+FStructuralGraphSession::RegisteredBuildables() {
+  return Owner().RegisteredBuildables;
 }
 
-void FStructuralGraphSession::DispatchPlacement(
-	AFGBuildable* Buildable,
-	const bool bLocalPromoteOnly,
-	const bool bOverrideAttachContext,
-	const EAttachContext AttachContextOverride)
-{
-	FStructuralEndpointDispatcher::DispatchPlacement(
-		*this,
-		Buildable,
-		bLocalPromoteOnly,
-		bOverrideAttachContext,
-		AttachContextOverride);
+void FStructuralGraphSession::DispatchPlacement(AFGBuildable* Buildable,
+                                                const bool bLocalPromoteOnly,
+                                                const bool bOverrideAttachContext,
+                                                const EAttachContext AttachContextOverride) {
+  FStructuralEndpointDispatcher::DispatchPlacement(*this, Buildable, bLocalPromoteOnly,
+                                                   bOverrideAttachContext, AttachContextOverride);
 }
 
-void FStructuralGraphSession::DispatchTeardown(AFGBuildable* Buildable)
-{
-	FStructuralEndpointDispatcher::DispatchTeardown(*this, Buildable);
+void FStructuralGraphSession::DispatchTeardown(AFGBuildable* Buildable) {
+  FStructuralEndpointDispatcher::DispatchTeardown(*this, Buildable);
 }
 
 bool FStructuralGraphSession::FindNearestStructureAnchorForEquipment(
-	const FVector& QueryLoc,
-	const float MaxHorizontal,
-	const float MaxVertical,
-	FVector& OutAnchor,
-	int32& OutComponentRoot) const
-{
-	return Owner().FindNearestStructureAnchorForEquipment(
-		QueryLoc,
-		MaxHorizontal,
-		MaxVertical,
-		OutAnchor,
-		OutComponentRoot);
+    const FVector& QueryLoc, const float MaxHorizontal, const float MaxVertical, FVector& OutAnchor,
+    int32& OutComponentRoot) const {
+  return Owner().FindNearestStructureAnchorForEquipment(QueryLoc, MaxHorizontal, MaxVertical,
+                                                        OutAnchor, OutComponentRoot);
 }
 
 bool FStructuralGraphSession::QueryHoverpackStructuralAnchor(
-	const FVector& QueryLoc,
-	const float MaxHorizontal,
-	const float MaxVertical,
-	FStructuralHoverpackAnchorQuery& Out) const
-{
-	return Owner().QueryHoverpackStructuralAnchor(QueryLoc, MaxHorizontal, MaxVertical, Out);
+    const FVector& QueryLoc, const float MaxHorizontal, const float MaxVertical,
+    FStructuralHoverpackAnchorQuery& Out) const {
+  return Owner().QueryHoverpackStructuralAnchor(QueryLoc, MaxHorizontal, MaxVertical, Out);
 }

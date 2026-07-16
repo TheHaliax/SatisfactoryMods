@@ -5,8 +5,7 @@
 
 #include "CoreMinimal.h"
 
-class STRUCTURALPOWER_API FStructuralPowerSessionSettings
-{
-public:
-	static bool IsPropagationEnabled();
+class STRUCTURALPOWER_API FStructuralPowerSessionSettings {
+ public:
+  static bool IsPropagationEnabled();
 };

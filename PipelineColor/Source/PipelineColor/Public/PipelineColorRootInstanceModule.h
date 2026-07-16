@@ -17,35 +17,34 @@ class UFGRecipe;
 class UWorld;
 
 UCLASS()
-class PIPELINECOLOR_API UPipelineColorRootInstanceModule : public UGameInstanceModule
-{
-	GENERATED_BODY()
+class PIPELINECOLOR_API UPipelineColorRootInstanceModule : public UGameInstanceModule {
+  GENERATED_BODY()
 
-public:
-	UPipelineColorRootInstanceModule();
+ public:
+  UPipelineColorRootInstanceModule();
 
-	virtual void DispatchLifecycleEvent(ELifecyclePhase Phase) override;
+  virtual void DispatchLifecycleEvent(ELifecyclePhase Phase) override;
 
-	static void UnregisterGlobalDelegates();
+  static void UnregisterGlobalDelegates();
 
-	// AccessTransformer Friend.
-	static void InjectSwatchIntoCollection(
-		UFGFactoryCustomizationCollection* Collection,
-		TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
+  // AccessTransformer Friend.
+  static void InjectSwatchIntoCollection(
+      UFGFactoryCustomizationCollection* Collection,
+      TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
 
-	static void ApplyDefaultOrganization(
-		TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
+  static void ApplyDefaultOrganization(
+      TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
 
-	static TSubclassOf<UFGCustomizerCategory> GetOrCreatePipelineColorCategory();
-	static TSubclassOf<UFGCustomizerSubCategory> GetOrCreatePipelineColorSubCategory();
-	static void UnlockPcSwatchesViaUnlockSubsystem(UWorld* World);
+  static TSubclassOf<UFGCustomizerCategory> GetOrCreatePipelineColorCategory();
+  static TSubclassOf<UFGCustomizerSubCategory> GetOrCreatePipelineColorSubCategory();
+  static void UnlockPcSwatchesViaUnlockSubsystem(UWorld* World);
 
-private:
-	static void HandlePostLoadMap(UWorld* World);
-	static void HandleBuildableBuilt(AFGBuildable* Buildable);
-	static void CollectPcRecipes(TArray<TSubclassOf<UFGRecipe>>& Out);
+ private:
+  static void HandlePostLoadMap(UWorld* World);
+  static void HandleBuildableBuilt(AFGBuildable* Buildable);
+  static void CollectPcRecipes(TArray<TSubclassOf<UFGRecipe>>& Out);
 
-	static FDelegateHandle PostLoadMapHandle;
-	static TSubclassOf<UFGCustomizerCategory> CachedCategory;
-	static TSubclassOf<UFGCustomizerSubCategory> CachedSubCategory;
+  static FDelegateHandle PostLoadMapHandle;
+  static TSubclassOf<UFGCustomizerCategory> CachedCategory;
+  static TSubclassOf<UFGCustomizerSubCategory> CachedSubCategory;
 };

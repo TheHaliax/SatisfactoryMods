@@ -14,57 +14,46 @@ struct FStructuralOutletParentResolveParams;
 struct FStructuralWallAnchor;
 struct FTrackedEndpoint;
 
-class STRUCTURALPOWER_API FStructuralBridgeRootIndex
-{
-public:
-	FStructuralBridgeRootIndex() = default;
+class STRUCTURALPOWER_API FStructuralBridgeRootIndex {
+ public:
+  FStructuralBridgeRootIndex() = default;
 
-	void Bind(FStructuralGraphSession* InSession);
+  void Bind(FStructuralGraphSession* InSession);
 
-	void MarkBridgeEndpointRootIndexDirty();
-	void RefreshBridgeEndpointRootIndex();
-	void AddEndpointToRootIndex(
-		int32 Root,
-		EStructuralEndpointKind Kind,
-		const FStructuralNodeId& EndpointId);
+  void MarkBridgeEndpointRootIndexDirty();
+  void RefreshBridgeEndpointRootIndex();
+  void AddEndpointToRootIndex(int32 Root, EStructuralEndpointKind Kind,
+                              const FStructuralNodeId& EndpointId);
 
-	int32 FindRootForTrackedEndpoint(const FTrackedEndpoint& Tracked) const;
+  /** Wipe ByRoot buckets for Roots then re-Add endpoints living there (no full rebuild). */
+  void RekeyEndpointIndexForRoots(const TSet<int32>& Roots);
 
-	int32 ResolveBridgeRootFromAnchor(
-		AFGBuildable* Host,
-		const FStructuralWallAnchor& Anchor,
-		FStructuralNodeId& OutParentId,
-		bool bPreferBulkResolve);
+  int32 FindRootForTrackedEndpoint(const FTrackedEndpoint& Tracked) const;
 
-	int32 ResolveBridgeComponentRootBulk(
-		AFGBuildable* Host,
-		const FStructuralWallAnchor& Anchor,
-		FStructuralNodeId& OutParentId);
+  int32 ResolveBridgeRootFromAnchor(AFGBuildable* Host, const FStructuralWallAnchor& Anchor,
+                                    FStructuralNodeId& OutParentId, bool bPreferBulkResolve);
 
-	int32 ResolvePoleComponentRoot(
-		AFGBuildablePowerPole* Pole,
-		const FStructuralWallAnchor& Anchor,
-		FStructuralNodeId& OutParentId);
+  int32 ResolveBridgeComponentRootBulk(AFGBuildable* Host, const FStructuralWallAnchor& Anchor,
+                                       FStructuralNodeId& OutParentId);
 
-	int32 ResolveEndpointComponentRoot(
-		AFGBuildable* Endpoint,
-		const FStructuralWallAnchor& Anchor,
-		FStructuralNodeId& OutParentId);
+  int32 ResolvePoleComponentRoot(AFGBuildablePowerPole* Pole, const FStructuralWallAnchor& Anchor,
+                                 FStructuralNodeId& OutParentId);
 
-	int32 ResolveBridgeHostComponentRoot(
-		AFGBuildable* Host,
-		FStructuralNodeId* OutParentId = nullptr);
+  int32 ResolveEndpointComponentRoot(AFGBuildable* Endpoint, const FStructuralWallAnchor& Anchor,
+                                     FStructuralNodeId& OutParentId);
 
-	int32 GetEndpointComponentRoot(AFGBuildable* Endpoint);
+  int32 ResolveBridgeHostComponentRoot(AFGBuildable* Host,
+                                       FStructuralNodeId* OutParentId = nullptr);
 
-	bool EnsureParentRegisteredInGraph(
-		const FStructuralWallAnchor& Anchor,
-		FStructuralNodeId& OutParentId);
+  int32 GetEndpointComponentRoot(AFGBuildable* Endpoint);
 
-	FStructuralWallAnchor ResolveOutletAnchor(AFGBuildable* Outlet) const;
-	FStructuralOutletParentResolveParams MakeOutletParentResolveParams() const;
-	FStructuralNodeId MakeParentNodeId(const FStructuralWallAnchor& Anchor) const;
+  bool EnsureParentRegisteredInGraph(const FStructuralWallAnchor& Anchor,
+                                     FStructuralNodeId& OutParentId);
 
-private:
-	FStructuralGraphSession* Session = nullptr;
+  FStructuralWallAnchor ResolveOutletAnchor(AFGBuildable* Outlet) const;
+  FStructuralOutletParentResolveParams MakeOutletParentResolveParams() const;
+  FStructuralNodeId MakeParentNodeId(const FStructuralWallAnchor& Anchor) const;
+
+ private:
+  FStructuralGraphSession* Session = nullptr;
 };

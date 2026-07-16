@@ -9,14 +9,11 @@
 
 class AFGBuildable;
 
-class IContentKeyResolver
-{
-public:
-	virtual ~IContentKeyResolver() = default;
+class IContentKeyResolver {
+ public:
+  virtual ~IContentKeyResolver() = default;
 
-	virtual bool Supports(AFGBuildable* Buildable) const = 0;
-	virtual void Resolve(
-		AFGBuildable* Buildable,
-		TSubclassOf<UFGItemDescriptor>& OutFluid,
-		bool& bOutEmpty) const = 0;
+  virtual bool Supports(AFGBuildable* Buildable) const = 0;
+  virtual void Resolve(AFGBuildable* Buildable, TSubclassOf<UFGItemDescriptor>& OutFluid,
+                       bool& bOutEmpty) const = 0;
 };

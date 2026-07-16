@@ -7,101 +7,82 @@
 
 TUniquePtr<IStructuralPowerIdPresenter> FStructuralPowerIdPresenterFactory::ActivePresenter;
 
-void FStructuralPowerIdPresenterFactory::EnsureDefaultImplementation()
-{
-	if (!ActivePresenter.IsValid())
-	{
-		ActivePresenter = MakeUnique<FStructuralPowerUmgIdPresenter>();
-	}
+void FStructuralPowerIdPresenterFactory::EnsureDefaultImplementation() {
+  if (!ActivePresenter.IsValid()) {
+    ActivePresenter = MakeUnique<FStructuralPowerUmgIdPresenter>();
+  }
 }
 
-IStructuralPowerIdPresenter& FStructuralPowerIdPresenterFactory::Get()
-{
-	EnsureDefaultImplementation();
-	return *ActivePresenter;
+IStructuralPowerIdPresenter& FStructuralPowerIdPresenterFactory::Get() {
+  EnsureDefaultImplementation();
+  return *ActivePresenter;
 }
 
 void FStructuralPowerIdPresenterFactory::SetImplementation(
-	TUniquePtr<IStructuralPowerIdPresenter> Impl)
-{
-	ActivePresenter = MoveTemp(Impl);
-	EnsureDefaultImplementation();
+    TUniquePtr<IStructuralPowerIdPresenter> Impl) {
+  ActivePresenter = MoveTemp(Impl);
+  EnsureDefaultImplementation();
 }
 
-void FStructuralPowerIdPresenterFactory::ResetForMapTravel()
-{
-	Get().ResetForMapTravel();
+void FStructuralPowerIdPresenterFactory::ResetForMapTravel() {
+  Get().ResetForMapTravel();
 }
 
-void FStructuralPowerIdPresenterFactory::CloseActive()
-{
-	Get().Close();
+void FStructuralPowerIdPresenterFactory::CloseActive() {
+  Get().Close();
 }
 
 void FStructuralPowerIdPresenterFactory::ForceReleaseModalState(
-	AFGPlayerController* PlayerController,
-	const bool bRestoreGameInputMode)
-{
-	EnsureDefaultImplementation();
-	if (FStructuralPowerUmgIdPresenter* Umg =
-			static_cast<FStructuralPowerUmgIdPresenter*>(ActivePresenter.Get()))
-	{
-		Umg->ForceReleaseModalState(PlayerController, bRestoreGameInputMode);
-	}
+    AFGPlayerController* PlayerController, const bool bRestoreGameInputMode) {
+  EnsureDefaultImplementation();
+  if (FStructuralPowerUmgIdPresenter* Umg =
+          static_cast<FStructuralPowerUmgIdPresenter*>(ActivePresenter.Get())) {
+    Umg->ForceReleaseModalState(PlayerController, bRestoreGameInputMode);
+  }
 }
 
 void FStructuralPowerIdPresenterFactory::ReleaseForVanillaInteract(
-	AFGPlayerController* PlayerController)
-{
-	EnsureDefaultImplementation();
-	if (FStructuralPowerUmgIdPresenter* Umg =
-			static_cast<FStructuralPowerUmgIdPresenter*>(ActivePresenter.Get()))
-	{
-		Umg->ReleaseForVanillaInteract(PlayerController);
-	}
+    AFGPlayerController* PlayerController) {
+  EnsureDefaultImplementation();
+  if (FStructuralPowerUmgIdPresenter* Umg =
+          static_cast<FStructuralPowerUmgIdPresenter*>(ActivePresenter.Get())) {
+    Umg->ReleaseForVanillaInteract(PlayerController);
+  }
 }
 
 void FStructuralPowerIdPresenterFactory::PrepareWindowForController(
-	AFGPlayerController* PlayerController)
-{
-	Get().PrepareForController(PlayerController);
+    AFGPlayerController* PlayerController) {
+  Get().PrepareForController(PlayerController);
 }
 
-void FStructuralPowerIdPresenterFactory::NormalizeModalState()
-{
-	EnsureDefaultImplementation();
-	if (FStructuralPowerUmgIdPresenter* Umg =
-			static_cast<FStructuralPowerUmgIdPresenter*>(ActivePresenter.Get()))
-	{
-		Umg->NormalizeModalState();
-	}
+void FStructuralPowerIdPresenterFactory::NormalizeModalState() {
+  EnsureDefaultImplementation();
+  if (FStructuralPowerUmgIdPresenter* Umg =
+          static_cast<FStructuralPowerUmgIdPresenter*>(ActivePresenter.Get())) {
+    Umg->NormalizeModalState();
+  }
 }
 
-AFGBuildable* FStructuralPowerIdPresenterFactory::GetOpenTarget()
-{
-	EnsureDefaultImplementation();
-	if (const FStructuralPowerUmgIdPresenter* Umg =
-			static_cast<const FStructuralPowerUmgIdPresenter*>(ActivePresenter.Get()))
-	{
-		return Umg->GetOpenTarget();
-	}
+AFGBuildable* FStructuralPowerIdPresenterFactory::GetOpenTarget() {
+  EnsureDefaultImplementation();
+  if (const FStructuralPowerUmgIdPresenter* Umg =
+          static_cast<const FStructuralPowerUmgIdPresenter*>(ActivePresenter.Get())) {
+    return Umg->GetOpenTarget();
+  }
 
-	return nullptr;
+  return nullptr;
 }
 
-bool FStructuralPowerIdPresenterFactory::IsAnyPanelVisible()
-{
-	EnsureDefaultImplementation();
-	if (const FStructuralPowerUmgIdPresenter* Umg =
-			static_cast<const FStructuralPowerUmgIdPresenter*>(ActivePresenter.Get()))
-	{
-		return Umg->IsAnyPanelVisible();
-	}
+bool FStructuralPowerIdPresenterFactory::IsAnyPanelVisible() {
+  EnsureDefaultImplementation();
+  if (const FStructuralPowerUmgIdPresenter* Umg =
+          static_cast<const FStructuralPowerUmgIdPresenter*>(ActivePresenter.Get())) {
+    return Umg->IsAnyPanelVisible();
+  }
 
-	return Get().IsOpen();
+  return Get().IsOpen();
 }
 
-bool FStructuralPowerIdPresenterFactory::IsTextFieldFocused()
-{
-	return Get().IsTextFieldFocused();
+bool FStructuralPowerIdPresenterFactory::IsTextFieldFocused() {
+  return Get().IsTextFieldFocused();
 }

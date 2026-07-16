@@ -8,8 +8,7 @@
 class AFGBuildableCircuitSwitch;
 struct FStructuralPowerContext;
 
-class STRUCTURALPOWER_API FStructuralSwitchMembership
-{
-public:
-	static void Apply(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
+class STRUCTURALPOWER_API FStructuralSwitchMembership {
+ public:
+  static void Apply(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 };

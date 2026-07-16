@@ -9,12 +9,11 @@ class UPanelWidget;
 class UUserWidget;
 class UWidget;
 
-class STRUCTURALPOWER_API FStructuralPowerIdWidgetTreeUtil
-{
-public:
-	static void WalkWidgetTree(UWidget* Widget, TFunctionRef<void(UWidget*)> Visitor);
+class STRUCTURALPOWER_API FStructuralPowerIdWidgetTreeUtil {
+ public:
+  static void WalkWidgetTree(UWidget* Widget, TFunctionRef<void(UWidget*)> Visitor);
 
-	static bool MountWidgetInHost(UWidget* Host, UWidget* Child);
+  static bool MountWidgetInHost(UWidget* Host, UWidget* Child);
 
-	static UPanelWidget* FindWindowBodyPanel(UUserWidget* Window);
+  static UPanelWidget* FindWindowBodyPanel(UUserWidget* Window);
 };

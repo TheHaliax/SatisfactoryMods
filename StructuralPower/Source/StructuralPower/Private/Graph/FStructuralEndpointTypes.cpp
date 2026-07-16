@@ -4,65 +4,70 @@
 #include "Graph/FStructuralEndpointTypes.h"
 
 #include "Buildables/FGBuildableCircuitSwitch.h"
+#include "Buildables/FGBuildableGenerator.h"
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Buildables/FGBuildablePowerPole.h"
-#include "Buildables/FGBuildableGenerator.h"
 #include "Buildables/FGBuildablePowerStorage.h"
 #include "Graph/FStructuralPowerBuildableCasts.h"
 
-const TCHAR* StructuralEndpointKindToString(const EStructuralEndpointKind Kind)
-{
-	switch (Kind)
-	{
-	case EStructuralEndpointKind::Pole: return TEXT("pole");
-	case EStructuralEndpointKind::Switch: return TEXT("switch");
-	case EStructuralEndpointKind::Light: return TEXT("light");
-	case EStructuralEndpointKind::Panel: return TEXT("panel");
-	case EStructuralEndpointKind::Storage: return TEXT("storage");
-	case EStructuralEndpointKind::Generator: return TEXT("generator");
-	default: return TEXT("?");
-	}
+const TCHAR* StructuralEndpointKindToString(const EStructuralEndpointKind Kind) {
+  switch (Kind) {
+    case EStructuralEndpointKind::Pole:
+      return TEXT("pole");
+    case EStructuralEndpointKind::Switch:
+      return TEXT("switch");
+    case EStructuralEndpointKind::Light:
+      return TEXT("light");
+    case EStructuralEndpointKind::Panel:
+      return TEXT("panel");
+    case EStructuralEndpointKind::Storage:
+      return TEXT("storage");
+    case EStructuralEndpointKind::Generator:
+      return TEXT("generator");
+    case EStructuralEndpointKind::Extractor:
+      return TEXT("extractor");
+    case EStructuralEndpointKind::Manufacturer:
+      return TEXT("manufacturer");
+    case EStructuralEndpointKind::Transport:
+      return TEXT("transport");
+    case EStructuralEndpointKind::PipePump:
+      return TEXT("pipe_pump");
+    default:
+      return TEXT("?");
+  }
 }
 
-AFGBuildableCircuitSwitch* FTrackedEndpoint::GetSwitch() const
-{
-	return Kind == EStructuralEndpointKind::Switch
-		? FStructuralPowerBuildableCasts::AsSwitch(Actor.Get())
-		: nullptr;
+AFGBuildableCircuitSwitch* FTrackedEndpoint::GetSwitch() const {
+  return Kind == EStructuralEndpointKind::Switch
+             ? FStructuralPowerBuildableCasts::AsSwitch(Actor.Get())
+             : nullptr;
 }
 
-AFGBuildablePowerPole* FTrackedEndpoint::GetPole() const
-{
-	return Kind == EStructuralEndpointKind::Pole
-		? FStructuralPowerBuildableCasts::AsPole(Actor.Get())
-		: nullptr;
+AFGBuildablePowerPole* FTrackedEndpoint::GetPole() const {
+  return Kind == EStructuralEndpointKind::Pole ? FStructuralPowerBuildableCasts::AsPole(Actor.Get())
+                                               : nullptr;
 }
 
-AFGBuildableLightSource* FTrackedEndpoint::GetLight() const
-{
-	return Kind == EStructuralEndpointKind::Light
-		? FStructuralPowerBuildableCasts::AsLight(Actor.Get())
-		: nullptr;
+AFGBuildableLightSource* FTrackedEndpoint::GetLight() const {
+  return Kind == EStructuralEndpointKind::Light
+             ? FStructuralPowerBuildableCasts::AsLight(Actor.Get())
+             : nullptr;
 }
 
-AFGBuildableLightsControlPanel* FTrackedEndpoint::GetPanel() const
-{
-	return Kind == EStructuralEndpointKind::Panel
-		? FStructuralPowerBuildableCasts::AsPanel(Actor.Get())
-		: nullptr;
+AFGBuildableLightsControlPanel* FTrackedEndpoint::GetPanel() const {
+  return Kind == EStructuralEndpointKind::Panel
+             ? FStructuralPowerBuildableCasts::AsPanel(Actor.Get())
+             : nullptr;
 }
 
-AFGBuildablePowerStorage* FTrackedEndpoint::GetStorage() const
-{
-	return Kind == EStructuralEndpointKind::Storage
-		? FStructuralPowerBuildableCasts::AsStorage(Actor.Get())
-		: nullptr;
+AFGBuildablePowerStorage* FTrackedEndpoint::GetStorage() const {
+  return Kind == EStructuralEndpointKind::Storage
+             ? FStructuralPowerBuildableCasts::AsStorage(Actor.Get())
+             : nullptr;
 }
 
-AFGBuildableGenerator* FTrackedEndpoint::GetGenerator() const
-{
-	return Kind == EStructuralEndpointKind::Generator
-		? Cast<AFGBuildableGenerator>(Actor.Get())
-		: nullptr;
+AFGBuildableGenerator* FTrackedEndpoint::GetGenerator() const {
+  return Kind == EStructuralEndpointKind::Generator ? Cast<AFGBuildableGenerator>(Actor.Get())
+                                                    : nullptr;
 }

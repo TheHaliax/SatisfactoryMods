@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "CoreMinimal.h"
 #include "UStructuralPowerStorageListener.generated.h"
 
 class AFGBuildablePowerStorage;
@@ -12,26 +12,23 @@ class AStructuralPowerGraphSubsystem;
 class UFGCircuitConnectionComponent;
 
 UCLASS()
-class STRUCTURALPOWER_API UStructuralPowerStorageListener : public UActorComponent
-{
-	GENERATED_BODY()
+class STRUCTURALPOWER_API UStructuralPowerStorageListener : public UActorComponent {
+  GENERATED_BODY()
 
-public:
-	void BindSubsystem(
-		AStructuralPowerGraphSubsystem* Graph,
-		AFGBuildablePowerStorage* Storage);
+ public:
+  void BindSubsystem(AStructuralPowerGraphSubsystem* Graph, AFGBuildablePowerStorage* Storage);
 
-protected:
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+ protected:
+  virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-private:
-	void HandleConnectionChanged(UFGCircuitConnectionComponent* Connection);
+ private:
+  void HandleConnectionChanged(UFGCircuitConnectionComponent* Connection);
 
-	UPROPERTY()
-	TWeakObjectPtr<AStructuralPowerGraphSubsystem> GraphSubsystem;
+  UPROPERTY()
+  TWeakObjectPtr<AStructuralPowerGraphSubsystem> GraphSubsystem;
 
-	UPROPERTY()
-	TWeakObjectPtr<AFGBuildablePowerStorage> BoundStorage;
+  UPROPERTY()
+  TWeakObjectPtr<AFGBuildablePowerStorage> BoundStorage;
 
-	TArray<TWeakObjectPtr<UFGCircuitConnectionComponent>> BoundConns;
+  TArray<TWeakObjectPtr<UFGCircuitConnectionComponent>> BoundConns;
 };

@@ -10,9 +10,8 @@ class AFGBuildablePipeline;
 class AFGBuildablePipelinePump;
 class AFGPipeNetwork;
 
-class FFluidAppearanceObserver
-{
-public:
-	static void RegisterHooks();
-	static void EnqueueFromWorld(class UWorld* World, AFGBuildable* Buildable);
+class FFluidAppearanceObserver {
+ public:
+  static void RegisterHooks();
+  static void EnqueueFromWorld(class UWorld* World, AFGBuildable* Buildable);
 };

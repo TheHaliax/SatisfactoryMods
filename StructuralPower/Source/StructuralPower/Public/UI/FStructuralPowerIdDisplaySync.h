@@ -10,23 +10,19 @@ class UComboBoxString;
 class UStructuralPowerIdConfigWidget;
 class UStructuralPowerIdOptionManager;
 
-class STRUCTURALPOWER_API FStructuralPowerIdDisplaySync
-{
-public:
-	static bool AreFormWidgetsReady(UStructuralPowerIdConfigWidget* Widget);
+class STRUCTURALPOWER_API FStructuralPowerIdDisplaySync {
+ public:
+  static bool AreFormWidgetsReady(UStructuralPowerIdConfigWidget* Widget);
 
-	static void FlushPendingIdList(UStructuralPowerIdConfigWidget* Widget);
+  static void FlushPendingIdList(UStructuralPowerIdConfigWidget* Widget);
 
-	static void ApplyComponentIdList(
-		UStructuralPowerIdConfigWidget* Widget,
-		const FStructuralComponentIdList& List);
+  static void ApplyComponentIdList(UStructuralPowerIdConfigWidget* Widget,
+                                   const FStructuralComponentIdList& List);
 
-	static void RepopulateComboFromManager(
-		UComboBoxString* Combo,
-		UStructuralPowerIdOptionManager* OptionManager,
-		bool bSourceChannel);
+  static void RepopulateComboFromManager(UComboBoxString* Combo,
+                                         UStructuralPowerIdOptionManager* OptionManager,
+                                         bool bSourceChannel);
 
-	static void RefreshIdDisplayFromList(
-		UStructuralPowerIdConfigWidget* Widget,
-		const FStructuralComponentIdList& List);
+  static void RefreshIdDisplayFromList(UStructuralPowerIdConfigWidget* Widget,
+                                       const FStructuralComponentIdList& List);
 };

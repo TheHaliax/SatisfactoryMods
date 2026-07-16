@@ -5,12 +5,11 @@
 
 #include "CoreMinimal.h"
 
-enum class EAttachContext : uint8
-{
-	BulkLoad,
-	RuntimePlace,
-	WireDelta,
-	Toggle,
+enum class EAttachContext : uint8 {
+  BulkLoad,
+  RuntimePlace,
+  WireDelta,
+  Toggle,
 };
 
 STRUCTURALPOWER_API bool IsBulkLoadAttachContext(EAttachContext Context);

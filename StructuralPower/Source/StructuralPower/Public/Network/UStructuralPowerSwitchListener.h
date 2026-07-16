@@ -3,34 +3,33 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "CoreMinimal.h"
 #include "UStructuralPowerSwitchListener.generated.h"
 
 class AFGBuildableCircuitSwitch;
 class AStructuralPowerGraphSubsystem;
 
 UCLASS()
-class STRUCTURALPOWER_API UStructuralPowerSwitchListener : public UActorComponent
-{
-	GENERATED_BODY()
+class STRUCTURALPOWER_API UStructuralPowerSwitchListener : public UActorComponent {
+  GENERATED_BODY()
 
-public:
-	void BindSubsystem(AStructuralPowerGraphSubsystem* Graph, AFGBuildableCircuitSwitch* Switch);
-	void SyncSubscriptions(AStructuralPowerGraphSubsystem* Graph, AFGBuildableCircuitSwitch* Switch);
+ public:
+  void BindSubsystem(AStructuralPowerGraphSubsystem* Graph, AFGBuildableCircuitSwitch* Switch);
+  void SyncSubscriptions(AStructuralPowerGraphSubsystem* Graph, AFGBuildableCircuitSwitch* Switch);
 
-protected:
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+ protected:
+  virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-private:
-	UFUNCTION()
-	void HandleSwitchOnChanged();
+ private:
+  UFUNCTION()
+  void HandleSwitchOnChanged();
 
-	UPROPERTY()
-	TWeakObjectPtr<AStructuralPowerGraphSubsystem> GraphSubsystem;
+  UPROPERTY()
+  TWeakObjectPtr<AStructuralPowerGraphSubsystem> GraphSubsystem;
 
-	UPROPERTY()
-	TWeakObjectPtr<AFGBuildableCircuitSwitch> BoundSwitch;
+  UPROPERTY()
+  TWeakObjectPtr<AFGBuildableCircuitSwitch> BoundSwitch;
 
-	bool bToggleBound = false;
+  bool bToggleBound = false;
 };

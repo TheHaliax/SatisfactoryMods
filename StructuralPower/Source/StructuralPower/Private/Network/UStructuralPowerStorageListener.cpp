@@ -11,66 +11,52 @@
 #include "Processors/FStructuralPowerStorageProcessor.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
-void UStructuralPowerStorageListener::BindSubsystem(
-	AStructuralPowerGraphSubsystem* Graph,
-	AFGBuildablePowerStorage* Storage)
-{
-	if (!IsValid(Graph) || !IsValid(Storage))
-	{
-		return;
-	}
+void UStructuralPowerStorageListener::BindSubsystem(AStructuralPowerGraphSubsystem* Graph,
+                                                    AFGBuildablePowerStorage* Storage) {
+  if (!IsValid(Graph) || !IsValid(Storage)) {
+    return;
+  }
 
-	GraphSubsystem = Graph;
-	BoundStorage = Storage;
+  GraphSubsystem = Graph;
+  BoundStorage = Storage;
 
-	TInlineComponentArray<UFGPowerConnectionComponent*> PowerConns;
-	Storage->GetComponents(PowerConns);
-	for (UFGPowerConnectionComponent* Conn : PowerConns)
-	{
-		if (!IsValid(Conn) || Conn->IsHidden())
-		{
-			continue;
-		}
+  TInlineComponentArray<UFGPowerConnectionComponent*> PowerConns;
+  Storage->GetComponents(PowerConns);
+  for (UFGPowerConnectionComponent* Conn : PowerConns) {
+    if (!IsValid(Conn) || Conn->IsHidden()) {
+      continue;
+    }
 
-		Conn->OnConnectionChanged.AddWeakLambda(
-			this,
-			[this](UFGCircuitConnectionComponent* Connection)
-			{
-				HandleConnectionChanged(Connection);
-			});
-		BoundConns.Add(Conn);
-	}
+    Conn->OnConnectionChanged.AddWeakLambda(
+        this,
+        [this](UFGCircuitConnectionComponent* Connection) { HandleConnectionChanged(Connection); });
+    BoundConns.Add(Conn);
+  }
 }
 
-void UStructuralPowerStorageListener::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	for (const TWeakObjectPtr<UFGCircuitConnectionComponent>& WeakConn : BoundConns)
-	{
-		if (UFGCircuitConnectionComponent* Conn = WeakConn.Get())
-		{
-			Conn->OnConnectionChanged.RemoveAll(this);
-		}
-	}
-	BoundConns.Reset();
+void UStructuralPowerStorageListener::EndPlay(const EEndPlayReason::Type EndPlayReason) {
+  for (const TWeakObjectPtr<UFGCircuitConnectionComponent>& WeakConn : BoundConns) {
+    if (UFGCircuitConnectionComponent* Conn = WeakConn.Get()) {
+      Conn->OnConnectionChanged.RemoveAll(this);
+    }
+  }
+  BoundConns.Reset();
 
-	Super::EndPlay(EndPlayReason);
+  Super::EndPlay(EndPlayReason);
 }
 
 void UStructuralPowerStorageListener::HandleConnectionChanged(
-	UFGCircuitConnectionComponent* /*Connection*/)
-{
-	AStructuralPowerGraphSubsystem* Graph = GraphSubsystem.Get();
-	AFGBuildablePowerStorage* Storage = BoundStorage.Get();
-	if (!IsValid(Graph) || !IsValid(Storage))
-	{
-		return;
-	}
+    UFGCircuitConnectionComponent* /*Connection*/) {
+  AStructuralPowerGraphSubsystem* Graph = GraphSubsystem.Get();
+  AFGBuildablePowerStorage* Storage = BoundStorage.Get();
+  if (!IsValid(Graph) || !IsValid(Storage)) {
+    return;
+  }
 
-	if (Graph->ShouldDeferCircuitDrivenRefresh() || Graph->IsBuildablePlacementPending(Storage))
-	{
-		return;
-	}
+  if (Graph->ShouldDeferCircuitDrivenRefresh() || Graph->IsBuildablePlacementPending(Storage)) {
+    return;
+  }
 
-	FStructuralPowerContext Ctx = Graph->MakeProcessorContext(EAttachContext::WireDelta);
-	FStructuralPowerStorageProcessor::OnWireDelta(Ctx, Storage);
+  FStructuralPowerContext Ctx = Graph->MakeProcessorContext(EAttachContext::WireDelta);
+  FStructuralPowerStorageProcessor::OnWireDelta(Ctx, Storage);
 }

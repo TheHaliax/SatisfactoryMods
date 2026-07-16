@@ -7,8 +7,7 @@
 
 class UWorld;
 
-class STRUCTURALPOWER_API FStructuralPowerDiagnostics
-{
-public:
-	static void AuditWorld(UWorld* World, bool bAllowMenuWorld = false);
+class STRUCTURALPOWER_API FStructuralPowerDiagnostics {
+ public:
+  static void AuditWorld(UWorld* World, bool bAllowMenuWorld = false);
 };

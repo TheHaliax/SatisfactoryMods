@@ -8,13 +8,10 @@
 class AFGBuildableLightSource;
 struct FStructuralPowerContext;
 
-class STRUCTURALPOWER_API FStructuralPowerLightProcessor
-{
-public:
-	static void Process(
-		FStructuralPowerContext& Ctx,
-		AFGBuildableLightSource* Light,
-		bool bLocalPromoteOnly = false);
+class STRUCTURALPOWER_API FStructuralPowerLightProcessor {
+ public:
+  static void Process(FStructuralPowerContext& Ctx, AFGBuildableLightSource* Light,
+                      bool bLocalPromoteOnly = false);
 
-	static void TearDown(FStructuralPowerContext& Ctx, AFGBuildableLightSource* Light);
+  static void TearDown(FStructuralPowerContext& Ctx, AFGBuildableLightSource* Light);
 };

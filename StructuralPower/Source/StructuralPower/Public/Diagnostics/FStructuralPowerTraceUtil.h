@@ -5,15 +5,12 @@
 
 #include "CoreMinimal.h"
 
-namespace FStructuralPowerTraceUtil
-{
-	inline int32 GetFrameNumber()
-	{
-		if (GFrameCounter != 0)
-		{
-			return static_cast<int32>(GFrameCounter);
-		}
+namespace FStructuralPowerTraceUtil {
+inline int32 GetFrameNumber() {
+  if (GFrameCounter != 0) {
+    return static_cast<int32>(GFrameCounter);
+  }
 
-		return GFrameNumber;
-	}
+  return GFrameNumber;
+}
 }

@@ -3,7 +3,6 @@
 
 #include "Swatches/UPCSwatchSubCategory.h"
 
-UPCSwatchSubCategory::UPCSwatchSubCategory()
-{
-	mDisplayName = NSLOCTEXT("PipelineColor", "SubCategoryDefault", "Default");
+UPCSwatchSubCategory::UPCSwatchSubCategory() {
+  mDisplayName = NSLOCTEXT("PipelineColor", "SubCategoryDefault", "Default");
 }

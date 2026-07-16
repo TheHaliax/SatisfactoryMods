@@ -12,11 +12,10 @@ class AFGBuildableLightsControlPanel;
 class AFGBuildablePowerPole;
 class AFGBuildablePowerStorage;
 
-struct STRUCTURALPOWER_API FStructuralPowerBuildableCasts
-{
-	static AFGBuildableCircuitSwitch* AsSwitch(AFGBuildable* Buildable);
-	static AFGBuildablePowerPole* AsPole(AFGBuildable* Buildable);
-	static AFGBuildableLightSource* AsLight(AFGBuildable* Buildable);
-	static AFGBuildableLightsControlPanel* AsPanel(AFGBuildable* Buildable);
-	static AFGBuildablePowerStorage* AsStorage(AFGBuildable* Buildable);
+struct STRUCTURALPOWER_API FStructuralPowerBuildableCasts {
+  static AFGBuildableCircuitSwitch* AsSwitch(AFGBuildable* Buildable);
+  static AFGBuildablePowerPole* AsPole(AFGBuildable* Buildable);
+  static AFGBuildableLightSource* AsLight(AFGBuildable* Buildable);
+  static AFGBuildableLightsControlPanel* AsPanel(AFGBuildable* Buildable);
+  static AFGBuildablePowerStorage* AsStorage(AFGBuildable* Buildable);
 };

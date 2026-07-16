@@ -7,8 +7,7 @@
 
 class UWorld;
 
-class FPCLoadAnnouncement
-{
-public:
-	static void Register();
+class FPCLoadAnnouncement {
+ public:
+  static void Register();
 };

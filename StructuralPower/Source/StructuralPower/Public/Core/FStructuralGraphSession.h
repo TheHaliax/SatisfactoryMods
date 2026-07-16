@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Core/EAttachContext.h"
 #include "Core/FStructuralNodeId.h"
+#include "CoreMinimal.h"
 #include "Graph/FStructuralEndpointTypes.h"
 #include "Lightweight/FStructuralLightweightTypes.h"
 #include "Routing/EStructuralChannel.h"
@@ -52,108 +52,109 @@ struct FStructuralPowerContext;
 struct FStructuralWallAnchor;
 struct FTrackedEndpoint;
 
-class STRUCTURALPOWER_API FStructuralGraphSession
-{
-public:
-	explicit FStructuralGraphSession(AStructuralPowerGraphSubsystem& InOwner);
+class STRUCTURALPOWER_API FStructuralGraphSession {
+ public:
+  explicit FStructuralGraphSession(AStructuralPowerGraphSubsystem& InOwner);
 
-	AStructuralPowerGraphSubsystem& Owner();
-	const AStructuralPowerGraphSubsystem& Owner() const;
+  AStructuralPowerGraphSubsystem& Owner();
+  const AStructuralPowerGraphSubsystem& Owner() const;
 
-	UWorld* GetWorld() const;
+  UWorld* GetWorld() const;
 
-	FStructuralConnectivityGraph& StructureGraph();
-	const FStructuralConnectivityGraph& StructureGraph() const;
+  FStructuralConnectivityGraph& StructureGraph();
+  const FStructuralConnectivityGraph& StructureGraph() const;
 
-	FStructuralLightweightIndex& LightweightIndex();
-	FStructuralEndpointIndex& EndpointIndex();
-	TMap<FStructuralNodeId, FTrackedEndpoint>& TrackedEndpoints();
-	const TMap<FStructuralNodeId, FTrackedEndpoint>& TrackedEndpoints() const;
+  FStructuralLightweightIndex& LightweightIndex();
+  FStructuralEndpointIndex& EndpointIndex();
+  TMap<FStructuralNodeId, FTrackedEndpoint>& TrackedEndpoints();
+  const TMap<FStructuralNodeId, FTrackedEndpoint>& TrackedEndpoints() const;
 
-	FStructuralGraphCircuitOps& Circuit();
-	FStructuralGraphIdOps& Ids();
-	FStructuralPowerReconcile& Reconcile();
-	FStructuralPowerRestitch& Restitch();
-	FStructuralBridgeRootIndex& BridgeRootIndex();
-	FStructuralGraphBootstrap& Bootstrap();
-	FStructuralGraphStructureIngress& StructureIngress();
-	FStructuralGraphBulkDrain& BulkDrain();
-	FStructuralGraphCircuitEcho& CircuitEcho();
-	FStructuralGraphRemoval& Removal();
-	FStructuralPlacementQueue& Placement();
-	FStructuralCrossSiteGraph& CrossSite();
-	FStructuralSiteState& SiteState();
-	FStructuralControlIdGangIndex& ControlIdGangIndex();
-	FStructuralBusMemberSpatialIndex& BusMemberSpatialIndex();
+  FStructuralGraphCircuitOps& Circuit();
+  FStructuralGraphIdOps& Ids();
+  FStructuralPowerReconcile& Reconcile();
+  FStructuralPowerRestitch& Restitch();
+  FStructuralBridgeRootIndex& BridgeRootIndex();
+  FStructuralGraphBootstrap& Bootstrap();
+  FStructuralGraphStructureIngress& StructureIngress();
+  FStructuralGraphBulkDrain& BulkDrain();
+  FStructuralGraphCircuitEcho& CircuitEcho();
+  FStructuralGraphRemoval& Removal();
+  FStructuralPlacementQueue& Placement();
+  FStructuralCrossSiteGraph& CrossSite();
+  FStructuralSiteState& SiteState();
+  FStructuralControlIdGangIndex& ControlIdGangIndex();
+  FStructuralBusMemberSpatialIndex& BusMemberSpatialIndex();
 
-	int32& CircuitPromotionDepth();
-	bool& BulkLoadDrainActive();
-	bool& PendingPostLoadLightReconcile();
-	bool& PendingFinalLightingReconcile();
-	int32& FinalLightingReconcilePass();
-	bool& BridgeEndpointRootIndexDirty();
-	bool& PostLoadRebuilt();
+  int32& CircuitPromotionDepth();
+  bool& BulkLoadDrainActive();
+  bool& PendingPostLoadLightReconcile();
+  bool& PendingPostLoadMachineReconcile();
+  bool& PendingFinalLightingReconcile();
+  bool& PendingStructureSplitReconcile();
+  TSet<int32>& PendingStructureSplitAffectedRoots();
+  TArray<FStructuralNodeId>& PendingStructureNodeRemovals();
+  int32& FinalLightingReconcilePass();
+  bool& BridgeEndpointRootIndexDirty();
+  bool& PostLoadRebuilt();
 
-	bool IsBulkLoadDrainActive() const;
-	bool HasPendingBulkRemesh() const;
+  bool IsBulkLoadDrainActive() const;
+  bool HasPendingBulkRemesh() const;
 
-	bool ShouldDeferCircuitDrivenRefresh() const;
-	bool ShouldDeferSwitchCircuitRefresh() const;
-	EAttachContext GetCurrentAttachContext() const;
+  void ScheduleStructureSplitReconcile();
+  void NoteStructureSplitAffectedRoots(const TArray<int32>& Roots);
+  void QueueStructureNodeRemoval(const FStructuralNodeId& NodeId);
 
-	FStructuralPowerContext MakeProcessorContext(
-		EAttachContext AttachContext,
-		int32 SiteRoot = INDEX_NONE) const;
+  bool ShouldDeferCircuitDrivenRefresh() const;
+  bool ShouldDeferSwitchCircuitRefresh() const;
+  EAttachContext GetCurrentAttachContext() const;
 
-	FStructuralPowerContext GetProcessorContext() const;
+  FStructuralPowerContext MakeProcessorContext(EAttachContext AttachContext,
+                                               int32 SiteRoot = INDEX_NONE) const;
 
-	void EnqueuePlacement(AFGBuildable* Buildable, EStructuralPlacementJobType JobType, bool bDefer);
-	void ProcessOutlet(AFGBuildable* Buildable);
-	void OnBuildableRemoved(AFGBuildable* Buildable);
+  FStructuralPowerContext GetProcessorContext() const;
 
-	FStructuralNodeId MakeNodeId(const AFGBuildable* Buildable) const;
-	UFGStructuralPowerConnectionComponent* FindBusConnector(const AFGBuildable* Host) const;
-	UFGStructuralPowerConnectionComponent* GetOrCreateBusConnector(AFGBuildable* Host);
-	UFGStructuralPowerConnectionComponent* GetOrCreateSwitchControlBus(AFGBuildableCircuitSwitch* Switch);
-	UFGStructuralPowerConnectionComponent* GetOrCreatePanelControlBus(AFGBuildableLightsControlPanel* Panel);
+  void EnqueuePlacement(AFGBuildable* Buildable, EStructuralPlacementJobType JobType, bool bDefer);
+  void ProcessOutlet(AFGBuildable* Buildable);
+  void OnBuildableRemoved(AFGBuildable* Buildable);
 
-	void RegisterBuildableActor(AFGBuildable* Buildable);
-	void UnregisterBuildableActor(const FStructuralNodeId& NodeId);
-	bool HasActiveDeferredWork() const;
-	void NotifyDeferredWorkRegistered();
+  FStructuralNodeId MakeNodeId(const AFGBuildable* Buildable) const;
+  UFGStructuralPowerConnectionComponent* FindBusConnector(const AFGBuildable* Host) const;
+  UFGStructuralPowerConnectionComponent* GetOrCreateBusConnector(AFGBuildable* Host);
+  UFGStructuralPowerConnectionComponent* GetOrCreateSwitchControlBus(
+      AFGBuildableCircuitSwitch* Switch);
+  UFGStructuralPowerConnectionComponent* GetOrCreatePanelControlBus(
+      AFGBuildableLightsControlPanel* Panel);
 
-	bool IsBuildablePlacementPending(AFGBuildable* Buildable) const;
-	void DispatchOutlet(AFGBuildable* Buildable);
-	void ProcessStructure(AFGBuildable* Buildable);
-	void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
-	void MaybeReleaseFactoryTick();
-	void ScheduleFinalLightingReconcile();
-	int32 GetPendingJobCount() const;
+  void RegisterBuildableActor(AFGBuildable* Buildable);
+  void UnregisterBuildableActor(const FStructuralNodeId& NodeId);
+  bool HasActiveDeferredWork() const;
+  void NotifyDeferredWorkRegistered();
 
-	void DispatchPlacement(
-		AFGBuildable* Buildable,
-		bool bLocalPromoteOnly = false,
-		bool bOverrideAttachContext = false,
-		EAttachContext AttachContextOverride = EAttachContext::RuntimePlace);
-	void DispatchTeardown(AFGBuildable* Buildable);
+  bool IsBuildablePlacementPending(AFGBuildable* Buildable) const;
+  void DispatchOutlet(AFGBuildable* Buildable);
+  void ProcessStructure(AFGBuildable* Buildable);
+  void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
+  void MaybeReleaseFactoryTick();
+  void ScheduleFinalLightingReconcile();
+  int32 GetPendingJobCount() const;
 
-	FStructuralEndpointIdRegistry& IdRegistry();
-	TMap<int32, TWeakObjectPtr<UFGCircuitConnectionComponent>>& SourceConnectorByRoot();
-	TMap<FStructuralNodeId, TWeakObjectPtr<AFGBuildable>>& RegisteredBuildables();
+  void DispatchPlacement(AFGBuildable* Buildable, bool bLocalPromoteOnly = false,
+                         bool bOverrideAttachContext = false,
+                         EAttachContext AttachContextOverride = EAttachContext::RuntimePlace);
+  void DispatchTeardown(AFGBuildable* Buildable);
 
-	bool QueryHoverpackStructuralAnchor(
-		const FVector& QueryLoc,
-		float MaxHorizontal,
-		float MaxVertical,
-		FStructuralHoverpackAnchorQuery& Out) const;
+  FStructuralEndpointIdRegistry& IdRegistry();
+  TMap<int32, TWeakObjectPtr<UFGCircuitConnectionComponent>>& SourceConnectorByRoot();
+  TMap<FStructuralNodeId, TWeakObjectPtr<AFGBuildable>>& RegisteredBuildables();
 
-	bool FindNearestStructureAnchorForEquipment(
-		const FVector& QueryLoc,
-		float MaxHorizontal,
-		float MaxVertical,
-		FVector& OutAnchor,
-		int32& OutComponentRoot) const;
+  bool QueryHoverpackStructuralAnchor(const FVector& QueryLoc, float MaxHorizontal,
+                                      float MaxVertical,
+                                      FStructuralHoverpackAnchorQuery& Out) const;
 
-private:
-	AStructuralPowerGraphSubsystem* OwnerPtr = nullptr;
+  bool FindNearestStructureAnchorForEquipment(const FVector& QueryLoc, float MaxHorizontal,
+                                              float MaxVertical, FVector& OutAnchor,
+                                              int32& OutComponentRoot) const;
+
+ private:
+  AStructuralPowerGraphSubsystem* OwnerPtr = nullptr;
 };

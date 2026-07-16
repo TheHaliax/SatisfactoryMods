@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.1.0 — 2026-07-15
+
+Opt-in machine groups on the structural bus (default **off**). Generators and power storage host a site bus on foundations; resource and production consumers attach to the same structure root. Transport and pipes are wired-consumer stubs; belts are toggle-only.
+
+- **Generation** — `!Generation` / `GroupGeneration`; gens (coal, fuel, nuclear, geo, wind, alien booster) + power storage as OutletBus hosts; HUB biomass; no pole required for gen attach on structure
+- **Resources** — `!Resources` / `GroupResources`; miners, water/oil, fracking, geysers attach as consumers when a bus host exists on the structure
+- **Production** — `!Production` / `GroupProduction`; manufacturers, radar, AWESOME Sink
+- **Transport / Pipes** — `!Transport` / `!Pipes` stubs: wired stations/pumps attach; **no** track or pipe-run topology yet
+- **Belts** — `!Belts` / `GroupBelts` toggle persistence only (no attach)
+- **Factory place** — `AFGBuildableFactory::BeginPlay` enqueue so miners/gens are not missed when build-effect hooks skip
+- **Remove path** — mass foundation dismantle batches UF reunite next tick; lightweight spatial unindex is O(cells) per pad (no full-grid rebuild)
+- **Config** — six machine group keys via cfg / `StructuralPower.Set` / `!` chat (same scaffold as lighting)
+
 ## 3.0.0 — 2026-07-09
 
 Architecture rewrite on vanilla circuit APIs — processors, transfer-gated bridges, rebuild-from-geometry, budgeted remesh. Restores stable retroactive load after the 2.1 save-path regression.

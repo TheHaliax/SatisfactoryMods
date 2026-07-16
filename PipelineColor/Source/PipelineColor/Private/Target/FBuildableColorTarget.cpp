@@ -6,21 +6,16 @@
 #include "Application/FCustomizationApplicator.h"
 #include "Buildables/FGBuildable.h"
 
-FBuildableColorTarget::FBuildableColorTarget(AFGBuildable* InBuildable)
-	: Buildable(InBuildable)
-{
+FBuildableColorTarget::FBuildableColorTarget(AFGBuildable* InBuildable) : Buildable(InBuildable) {
 }
 
-bool FBuildableColorTarget::IsValid() const
-{
-	return ::IsValid(Buildable) && Buildable->HasAuthority();
+bool FBuildableColorTarget::IsValid() const {
+  return ::IsValid(Buildable) && Buildable->HasAuthority();
 }
 
-bool FBuildableColorTarget::Apply(const FPCAppearanceSpec& Spec) const
-{
-	if (!IsValid())
-	{
-		return false;
-	}
-	return FCustomizationApplicator::ApplyIfChanged(Buildable, Spec);
+bool FBuildableColorTarget::Apply(const FPCAppearanceSpec& Spec) const {
+  if (!IsValid()) {
+    return false;
+  }
+  return FCustomizationApplicator::ApplyIfChanged(Buildable, Spec);
 }

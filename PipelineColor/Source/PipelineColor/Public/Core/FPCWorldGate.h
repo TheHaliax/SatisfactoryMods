@@ -7,8 +7,7 @@
 
 class UWorld;
 
-namespace FPCWorldGate
-{
+namespace FPCWorldGate {
 bool IsMenuWorld(const UWorld* World);
 bool IsGameplayWorld(const UWorld* World);
 }

@@ -9,12 +9,11 @@
 
 UCLASS()
 class PIPELINECOLOR_API UPCFinish_MetallicColor
-	: public UFGFactoryCustomizationDescriptor_PaintFinish
-{
-	GENERATED_BODY()
+    : public UFGFactoryCustomizationDescriptor_PaintFinish {
+  GENERATED_BODY()
 
-public:
-	UPCFinish_MetallicColor();
+ public:
+  UPCFinish_MetallicColor();
 
-	static void EnsureIconLoaded();
+  static void EnsureIconLoaded();
 };

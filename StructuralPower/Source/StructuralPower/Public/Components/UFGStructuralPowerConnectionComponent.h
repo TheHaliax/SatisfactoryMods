@@ -8,10 +8,10 @@
 #include "UFGStructuralPowerConnectionComponent.generated.h"
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class STRUCTURALPOWER_API UFGStructuralPowerConnectionComponent : public UFGPowerConnectionComponent
-{
-	GENERATED_BODY()
+class STRUCTURALPOWER_API UFGStructuralPowerConnectionComponent
+    : public UFGPowerConnectionComponent {
+  GENERATED_BODY()
 
-public:
-	UFGStructuralPowerConnectionComponent();
+ public:
+  UFGStructuralPowerConnectionComponent();
 };

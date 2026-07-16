@@ -7,8 +7,7 @@
 
 class AFGBuildable;
 
-class FCustomizationApplicator
-{
-public:
-	static bool ApplyIfChanged(AFGBuildable* Buildable, const FPCAppearanceSpec& Spec);
+class FCustomizationApplicator {
+ public:
+  static bool ApplyIfChanged(AFGBuildable* Buildable, const FPCAppearanceSpec& Spec);
 };

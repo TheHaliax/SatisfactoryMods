@@ -7,25 +7,20 @@
 
 class UFGPowerConnectionComponent;
 
-class STRUCTURALPOWER_API FStructuralCircuitPromotionUtil
-{
-public:
-	static bool ComponentOnCircuit(const UFGPowerConnectionComponent* Component);
+class STRUCTURALPOWER_API FStructuralCircuitPromotionUtil {
+ public:
+  static bool ComponentOnCircuit(const UFGPowerConnectionComponent* Component);
 
-	static bool ComponentCarriesPower(const UFGPowerConnectionComponent* Component);
+  static bool ComponentCarriesPower(const UFGPowerConnectionComponent* Component);
 
-	static bool ConnectorSuppliesPower(const UFGPowerConnectionComponent* Component);
+  static bool ConnectorSuppliesPower(const UFGPowerConnectionComponent* Component);
 
-	static bool HiddenLinkNeedsCircuitRepair(
-		UFGPowerConnectionComponent* A,
-		UFGPowerConnectionComponent* B);
+  static bool HiddenLinkNeedsCircuitRepair(UFGPowerConnectionComponent* A,
+                                           UFGPowerConnectionComponent* B);
 
-	static void PromoteCircuitLink(
-		UFGPowerConnectionComponent* A,
-		UFGPowerConnectionComponent* B,
-		ELogVerbosity::Type PromoteVerbosity = ELogVerbosity::Log);
+  static void PromoteCircuitLink(UFGPowerConnectionComponent* A, UFGPowerConnectionComponent* B,
+                                 ELogVerbosity::Type PromoteVerbosity = ELogVerbosity::Log);
 
-	static void DemoteHiddenCircuitLink(
-		UFGPowerConnectionComponent* A,
-		UFGPowerConnectionComponent* B);
+  static void DemoteHiddenCircuitLink(UFGPowerConnectionComponent* A,
+                                      UFGPowerConnectionComponent* B);
 };

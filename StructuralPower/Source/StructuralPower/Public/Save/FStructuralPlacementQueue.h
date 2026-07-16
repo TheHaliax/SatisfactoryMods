@@ -9,53 +9,43 @@
 class AFGBuildable;
 
 UENUM()
-enum class EStructuralPlacementJobType : uint8
-{
-	Structure,
-	Outlet
-};
+enum class EStructuralPlacementJobType : uint8 { Structure, Outlet };
 
-class STRUCTURALPOWER_API FStructuralPlacementQueue
-{
-public:
-	bool EnqueueBuildable(
-		AFGBuildable* Buildable,
-		EStructuralPlacementJobType JobType);
+class STRUCTURALPOWER_API FStructuralPlacementQueue {
+ public:
+  bool EnqueueBuildable(AFGBuildable* Buildable, EStructuralPlacementJobType JobType);
 
-	bool EnqueueLightweight(const FStructuralLightweightKey& Key);
+  bool EnqueueLightweight(const FStructuralLightweightKey& Key);
 
-	int32 GetPendingCount() const;
+  int32 GetPendingCount() const;
 
-	bool IsBuildablePending(AFGBuildable* Buildable, EStructuralPlacementJobType JobType) const;
+  bool IsBuildablePending(AFGBuildable* Buildable, EStructuralPlacementJobType JobType) const;
 
-	bool IsAnyBuildableJobPending(AFGBuildable* Buildable) const;
+  bool IsAnyBuildableJobPending(AFGBuildable* Buildable) const;
 
-	bool IsLightweightPending(const FStructuralLightweightKey& Key) const;
+  bool IsLightweightPending(const FStructuralLightweightKey& Key) const;
 
-	void Tick(
-		int32 MaxJobs,
-		bool bBulkLoadDrainActive,
-		TFunctionRef<void(AFGBuildable*, EStructuralPlacementJobType)> ProcessBuildableJob,
-		TFunctionRef<void(const FStructuralLightweightKey&)> ProcessLightweightJob,
-		TFunctionRef<void()> OnQueuesIdle);
+  void Tick(int32 MaxJobs, bool bBulkLoadDrainActive,
+            TFunctionRef<void(AFGBuildable*, EStructuralPlacementJobType)> ProcessBuildableJob,
+            TFunctionRef<void(const FStructuralLightweightKey&)> ProcessLightweightJob,
+            TFunctionRef<void()> OnQueuesIdle);
 
-	void RemoveBuildable(AFGBuildable* Buildable);
+  void RemoveBuildable(AFGBuildable* Buildable);
 
-	void RemoveLightweight(const FStructuralLightweightKey& Key);
+  void RemoveLightweight(const FStructuralLightweightKey& Key);
 
-	void ForEachPendingOutletBuildable(TFunctionRef<void(AFGBuildable*)> Visitor) const;
+  void ForEachPendingOutletBuildable(TFunctionRef<void(AFGBuildable*)> Visitor) const;
 
-private:
-	struct FDeferredPlacementJob
-	{
-		TWeakObjectPtr<AFGBuildable> Buildable;
-		EStructuralPlacementJobType JobType = EStructuralPlacementJobType::Structure;
-	};
+ private:
+  struct FDeferredPlacementJob {
+    TWeakObjectPtr<AFGBuildable> Buildable;
+    EStructuralPlacementJobType JobType = EStructuralPlacementJobType::Structure;
+  };
 
-	void Compact();
+  void Compact();
 
-	TArray<FDeferredPlacementJob> PendingJobs;
-	TArray<FStructuralLightweightKey> PendingLightweightJobs;
-	int32 PendingJobsHead = 0;
-	int32 PendingLightweightJobsHead = 0;
+  TArray<FDeferredPlacementJob> PendingJobs;
+  TArray<FStructuralLightweightKey> PendingLightweightJobs;
+  int32 PendingJobsHead = 0;
+  int32 PendingLightweightJobsHead = 0;
 };

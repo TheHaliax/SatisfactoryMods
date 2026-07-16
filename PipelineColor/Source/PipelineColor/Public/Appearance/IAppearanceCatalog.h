@@ -3,18 +3,15 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Appearance/FPCAppearanceSpec.h"
+#include "CoreMinimal.h"
 #include "Resources/FGItemDescriptor.h"
 #include "Templates/SubclassOf.h"
 
-class IAppearanceCatalog
-{
-public:
-	virtual ~IAppearanceCatalog() = default;
+class IAppearanceCatalog {
+ public:
+  virtual ~IAppearanceCatalog() = default;
 
-	virtual bool Resolve(
-		TSubclassOf<UFGItemDescriptor> FluidDescriptor,
-		bool bEmpty,
-		FPCAppearanceSpec& OutSpec) const = 0;
+  virtual bool Resolve(TSubclassOf<UFGItemDescriptor> FluidDescriptor, bool bEmpty,
+                       FPCAppearanceSpec& OutSpec) const = 0;
 };

@@ -5,13 +5,15 @@
 
 #include "CoreMinimal.h"
 
+class AFGBuildable;
 class AFGBuildableGenerator;
 struct FStructuralPowerContext;
 
-class STRUCTURALPOWER_API FStructuralPowerGeneratorProcessor
-{
-public:
-	static void Process(FStructuralPowerContext& Ctx, AFGBuildableGenerator* Generator);
+class STRUCTURALPOWER_API FStructuralPowerGeneratorProcessor {
+ public:
+  static void Process(FStructuralPowerContext& Ctx, AFGBuildableGenerator* Generator);
+  static void ProcessFactoryHost(FStructuralPowerContext& Ctx, AFGBuildable* Host);
 
-	static void TearDown(FStructuralPowerContext& Ctx, AFGBuildableGenerator* Generator);
+  static void TearDown(FStructuralPowerContext& Ctx, AFGBuildableGenerator* Generator);
+  static void TearDownFactoryHost(FStructuralPowerContext& Ctx, AFGBuildable* Host);
 };

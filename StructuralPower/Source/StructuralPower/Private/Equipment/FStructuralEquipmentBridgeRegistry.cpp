@@ -6,59 +6,41 @@
 #include "Core/FStructuralGraphSession.h"
 #include "Equipment/FStructuralHoverpackEquipmentBridge.h"
 
-FStructuralEquipmentBridgeRegistry& FStructuralEquipmentBridgeRegistry::Get()
-{
-	static FStructuralEquipmentBridgeRegistry Instance;
-	return Instance;
+FStructuralEquipmentBridgeRegistry& FStructuralEquipmentBridgeRegistry::Get() {
+  static FStructuralEquipmentBridgeRegistry Instance;
+  return Instance;
 }
 
-void FStructuralEquipmentBridgeRegistry::Initialize()
-{
-	if (Bridges.Num() > 0)
-	{
-		return;
-	}
+void FStructuralEquipmentBridgeRegistry::Initialize() {
+  if (Bridges.Num() > 0) {
+    return;
+  }
 
-	Register(MakeUnique<FStructuralHoverpackEquipmentBridge>());
+  Register(MakeUnique<FStructuralHoverpackEquipmentBridge>());
 
-	for (const TUniquePtr<IStructuralPowerEquipmentBridge>& Bridge : Bridges)
-	{
-		if (Bridge)
-		{
-			Bridge->RegisterHooks();
-		}
-	}
+  for (const TUniquePtr<IStructuralPowerEquipmentBridge>& Bridge : Bridges) {
+    if (Bridge) {
+      Bridge->RegisterHooks();
+    }
+  }
 }
 
 bool FStructuralEquipmentBridgeRegistry::QueryHoverpackStructuralAnchor(
-	FStructuralGraphSession& Session,
-	const FVector& QueryLoc,
-	float MaxHorizontal,
-	float MaxVertical,
-	FStructuralHoverpackAnchorQuery& Out) const
-{
-	for (const TUniquePtr<IStructuralPowerEquipmentBridge>& Bridge : Bridges)
-	{
-		if (Bridge
-			&& Bridge->QueryHoverpackStructuralAnchor(
-				Session,
-				QueryLoc,
-				MaxHorizontal,
-				MaxVertical,
-				Out))
-		{
-			return true;
-		}
-	}
+    FStructuralGraphSession& Session, const FVector& QueryLoc, float MaxHorizontal,
+    float MaxVertical, FStructuralHoverpackAnchorQuery& Out) const {
+  for (const TUniquePtr<IStructuralPowerEquipmentBridge>& Bridge : Bridges) {
+    if (Bridge && Bridge->QueryHoverpackStructuralAnchor(Session, QueryLoc, MaxHorizontal,
+                                                         MaxVertical, Out)) {
+      return true;
+    }
+  }
 
-	return false;
+  return false;
 }
 
 void FStructuralEquipmentBridgeRegistry::Register(
-	TUniquePtr<IStructuralPowerEquipmentBridge> Bridge)
-{
-	if (Bridge)
-	{
-		Bridges.Add(MoveTemp(Bridge));
-	}
+    TUniquePtr<IStructuralPowerEquipmentBridge> Bridge) {
+  if (Bridge) {
+    Bridges.Add(MoveTemp(Bridge));
+  }
 }

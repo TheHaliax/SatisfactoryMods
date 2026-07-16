@@ -3,7 +3,6 @@
 
 #include "Session/FStructuralPowerSessionSettings.h"
 
-bool FStructuralPowerSessionSettings::IsPropagationEnabled()
-{
-	return true;
+bool FStructuralPowerSessionSettings::IsPropagationEnabled() {
+  return true;
 }

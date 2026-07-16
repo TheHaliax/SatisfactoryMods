@@ -8,82 +8,66 @@
 #include "Components/NamedSlot.h"
 #include "Components/PanelWidget.h"
 
-void FStructuralPowerIdWidgetTreeUtil::WalkWidgetTree(
-	UWidget* Widget,
-	TFunctionRef<void(UWidget*)> Visitor)
-{
-	if (!IsValid(Widget))
-	{
-		return;
-	}
+void FStructuralPowerIdWidgetTreeUtil::WalkWidgetTree(UWidget* Widget,
+                                                      TFunctionRef<void(UWidget*)> Visitor) {
+  if (!IsValid(Widget)) {
+    return;
+  }
 
-	Visitor(Widget);
+  Visitor(Widget);
 
-	if (UPanelWidget* Panel = Cast<UPanelWidget>(Widget))
-	{
-		const int32 Count = Panel->GetChildrenCount();
-		for (int32 Index = 0; Index < Count; ++Index)
-		{
-			WalkWidgetTree(Panel->GetChildAt(Index), Visitor);
-		}
-	}
+  if (UPanelWidget* Panel = Cast<UPanelWidget>(Widget)) {
+    const int32 Count = Panel->GetChildrenCount();
+    for (int32 Index = 0; Index < Count; ++Index) {
+      WalkWidgetTree(Panel->GetChildAt(Index), Visitor);
+    }
+  }
 }
 
-bool FStructuralPowerIdWidgetTreeUtil::MountWidgetInHost(UWidget* Host, UWidget* Child)
-{
-	if (!IsValid(Host) || !IsValid(Child))
-	{
-		return false;
-	}
+bool FStructuralPowerIdWidgetTreeUtil::MountWidgetInHost(UWidget* Host, UWidget* Child) {
+  if (!IsValid(Host) || !IsValid(Child)) {
+    return false;
+  }
 
-	if (UNamedSlot* NamedSlot = Cast<UNamedSlot>(Host))
-	{
-		NamedSlot->SetContent(Child);
-		return true;
-	}
+  if (UNamedSlot* NamedSlot = Cast<UNamedSlot>(Host)) {
+    NamedSlot->SetContent(Child);
+    return true;
+  }
 
-	if (UPanelWidget* Panel = Cast<UPanelWidget>(Host))
-	{
-		Panel->AddChild(Child);
-		return true;
-	}
+  if (UPanelWidget* Panel = Cast<UPanelWidget>(Host)) {
+    Panel->AddChild(Child);
+    return true;
+  }
 
-	return false;
+  return false;
 }
 
-UPanelWidget* FStructuralPowerIdWidgetTreeUtil::FindWindowBodyPanel(UUserWidget* Window)
-{
-	if (!IsValid(Window) || !IsValid(Window->WidgetTree))
-	{
-		return nullptr;
-	}
+UPanelWidget* FStructuralPowerIdWidgetTreeUtil::FindWindowBodyPanel(UUserWidget* Window) {
+  if (!IsValid(Window) || !IsValid(Window->WidgetTree)) {
+    return nullptr;
+  }
 
-	UPanelWidget* NamedSlotBody = nullptr;
-	UPanelWidget* NamedPanelBody = nullptr;
-	WalkWidgetTree(Window->WidgetTree->RootWidget, [&](UWidget* Widget)
-	{
-		const FString Name = Widget->GetName();
-		const bool bNameMatch = Name.Contains(TEXT("WindowBody"), ESearchCase::IgnoreCase)
-			|| Name.Contains(TEXT("Window_Body"), ESearchCase::IgnoreCase)
-			|| Name.Contains(TEXT("WindowContent"), ESearchCase::IgnoreCase)
-			|| Name.Equals(TEXT("Body"), ESearchCase::IgnoreCase);
+  UPanelWidget* NamedSlotBody = nullptr;
+  UPanelWidget* NamedPanelBody = nullptr;
+  WalkWidgetTree(Window->WidgetTree->RootWidget, [&](UWidget* Widget) {
+    const FString Name = Widget->GetName();
+    const bool bNameMatch = Name.Contains(TEXT("WindowBody"), ESearchCase::IgnoreCase) ||
+                            Name.Contains(TEXT("Window_Body"), ESearchCase::IgnoreCase) ||
+                            Name.Contains(TEXT("WindowContent"), ESearchCase::IgnoreCase) ||
+                            Name.Equals(TEXT("Body"), ESearchCase::IgnoreCase);
 
-		if (UNamedSlot* NamedSlot = Cast<UNamedSlot>(Widget))
-		{
-			if (bNameMatch)
-			{
-				NamedSlotBody = NamedSlot;
-			}
-		}
+    if (UNamedSlot* NamedSlot = Cast<UNamedSlot>(Widget)) {
+      if (bNameMatch) {
+        NamedSlotBody = NamedSlot;
+      }
+    }
 
-		if (UPanelWidget* Panel = Cast<UPanelWidget>(Widget))
-		{
-			if (bNameMatch)
-			{
-				NamedPanelBody = Panel;
-			}
-		}
-	});
+    if (UPanelWidget* Panel = Cast<UPanelWidget>(Widget)) {
+      if (bNameMatch) {
+        NamedPanelBody = Panel;
+      }
+    }
+  });
 
-	return NamedSlotBody ? NamedSlotBody : NamedPanelBody;
+  return NamedSlotBody ? NamedSlotBody : NamedPanelBody;
 }

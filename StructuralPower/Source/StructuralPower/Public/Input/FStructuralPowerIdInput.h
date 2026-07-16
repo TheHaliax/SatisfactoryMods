@@ -9,25 +9,22 @@ class AFGCharacterPlayer;
 class AFGPlayerController;
 class UInputComponent;
 
-class STRUCTURALPOWER_API FStructuralPowerIdInput
-{
-public:
-	static void Register();
-	static void Unregister();
-	static void OpenIdPanelForController(AFGPlayerController* PlayerController);
-	static void NotifyPanelOpened(AFGPlayerController* PlayerController);
-	static void NotifyPanelClosed(AFGPlayerController* PlayerController);
-	static void EnsureGameInputUnblocked(AFGPlayerController* PlayerController);
-	static void EnsureInputReady(AFGPlayerController* PlayerController);
-	static void RecoverAfterVanillaUiClosed(AFGPlayerController* PlayerController);
+class STRUCTURALPOWER_API FStructuralPowerIdInput {
+ public:
+  static void Register();
+  static void Unregister();
+  static void OpenIdPanelForController(AFGPlayerController* PlayerController);
+  static void NotifyPanelOpened(AFGPlayerController* PlayerController);
+  static void NotifyPanelClosed(AFGPlayerController* PlayerController);
+  static void EnsureGameInputUnblocked(AFGPlayerController* PlayerController);
+  static void EnsureInputReady(AFGPlayerController* PlayerController);
+  static void RecoverAfterVanillaUiClosed(AFGPlayerController* PlayerController);
 
-private:
-	static void EnsureHotkeyProcessorRegistered();
-	static void UnregisterHotkeyProcessor();
-	static void OnPlayerInputInitialized(
-		AFGCharacterPlayer* Player,
-		UInputComponent* InputComponent);
+ private:
+  static void EnsureHotkeyProcessorRegistered();
+  static void UnregisterHotkeyProcessor();
+  static void OnPlayerInputInitialized(AFGCharacterPlayer* Player, UInputComponent* InputComponent);
 
-	static FDelegateHandle InputInitHandle;
-	static TSharedPtr<class IInputProcessor> HotkeyInputProcessor;
+  static FDelegateHandle InputInitHandle;
+  static TSharedPtr<class IInputProcessor> HotkeyInputProcessor;
 };

@@ -9,11 +9,10 @@
 class AFGBuildable;
 class AFGPlayerController;
 
-class STRUCTURALPOWER_API FStructuralIdConfigTarget
-{
-public:
-	static constexpr float TraceDistanceCm = 10000.0f;
+class STRUCTURALPOWER_API FStructuralIdConfigTarget {
+ public:
+  static constexpr float TraceDistanceCm = 10000.0f;
 
-	static bool PickFromView(AFGPlayerController* PlayerController, AFGBuildable*& OutBuildable);
-	static EStructuralChannel GetTargetChannel(const AFGBuildable* Buildable);
+  static bool PickFromView(AFGPlayerController* PlayerController, AFGBuildable*& OutBuildable);
+  static EStructuralChannel GetTargetChannel(const AFGBuildable* Buildable);
 };

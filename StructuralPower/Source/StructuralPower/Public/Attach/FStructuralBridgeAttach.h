@@ -12,30 +12,24 @@ class FStructuralGraphSession;
 class UFGStructuralPowerConnectionComponent;
 struct FStructuralPowerContext;
 
-struct FStructuralBridgeAttachRequest
-{
-	AFGBuildable* Host = nullptr;
-	EStructuralEndpointKind Kind = EStructuralEndpointKind::Pole;
-	bool bUsePoleRootResolver = false;
+struct FStructuralBridgeAttachRequest {
+  AFGBuildable* Host = nullptr;
+  EStructuralEndpointKind Kind = EStructuralEndpointKind::Pole;
+  bool bUsePoleRootResolver = false;
 };
 
-struct FStructuralBridgeAttachOutcome
-{
-	bool bAttached = false;
-	bool bSiteNotReady = false;
-	FStructuralSiteContext Site;
-	UFGStructuralPowerConnectionComponent* OutletBus = nullptr;
+struct FStructuralBridgeAttachOutcome {
+  bool bAttached = false;
+  bool bSiteNotReady = false;
+  FStructuralSiteContext Site;
+  UFGStructuralPowerConnectionComponent* OutletBus = nullptr;
 };
 
-class STRUCTURALPOWER_API FStructuralBridgeAttach
-{
-public:
-	static bool HasPlacementMembership(
-		FStructuralGraphSession& Session,
-		AFGBuildable* Host,
-		EStructuralEndpointKind ExpectedKind);
+class STRUCTURALPOWER_API FStructuralBridgeAttach {
+ public:
+  static bool HasPlacementMembership(FStructuralGraphSession& Session, AFGBuildable* Host,
+                                     EStructuralEndpointKind ExpectedKind);
 
-	static FStructuralBridgeAttachOutcome AttachOnPlace(
-		FStructuralPowerContext& Ctx,
-		const FStructuralBridgeAttachRequest& Request);
+  static FStructuralBridgeAttachOutcome AttachOnPlace(
+      FStructuralPowerContext& Ctx, const FStructuralBridgeAttachRequest& Request);
 };

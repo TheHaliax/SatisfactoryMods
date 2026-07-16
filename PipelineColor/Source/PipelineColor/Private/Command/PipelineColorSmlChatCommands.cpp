@@ -9,89 +9,67 @@
 #include "Config/FPCPipelineColorModConfig.h"
 #include "FGPlayerController.h"
 
-namespace
-{
-bool RunBangFromSender(UCommandSender* Sender, const FString& CommandLine)
-{
-	if (!Sender || !Sender->IsPlayerSender())
-	{
-		return false;
-	}
+namespace {
+bool RunBangFromSender(UCommandSender* Sender, const FString& CommandLine) {
+  if (!Sender || !Sender->IsPlayerSender()) {
+    return false;
+  }
 
-	AFGPlayerController* Player = Sender->GetPlayer();
-	if (!IsValid(Player))
-	{
-		return false;
-	}
+  AFGPlayerController* Player = Sender->GetPlayer();
+  if (!IsValid(Player)) {
+    return false;
+  }
 
-	FPCBangCommands::Execute(Player, CommandLine);
-	return true;
+  FPCBangCommands::Execute(Player, CommandLine);
+  return true;
 }
-} // namespace
+}  // namespace
 
-void FPipelineColorSmlChatCommands::RegisterWithWorld(UWorld* World)
-{
-	if (!IsValid(World) || World->GetNetMode() == NM_Client)
-	{
-		return;
-	}
+void FPipelineColorSmlChatCommands::RegisterWithWorld(UWorld* World) {
+  if (!IsValid(World) || World->GetNetMode() == NM_Client) {
+    return;
+  }
 
-	AChatCommandSubsystem* Chat = AChatCommandSubsystem::Get(World);
-	if (!IsValid(Chat))
-	{
-		return;
-	}
+  AChatCommandSubsystem* Chat = AChatCommandSubsystem::Get(World);
+  if (!IsValid(Chat)) {
+    return;
+  }
 
-	const FString ModRef = FPCPipelineColorModConfig::ModReference;
-	Chat->RegisterCommand(ModRef, APCMetallicChatCommand::StaticClass());
-	Chat->RegisterCommand(ModRef, APCPchelpChatCommand::StaticClass());
+  const FString ModRef = FPCPipelineColorModConfig::ModReference;
+  Chat->RegisterCommand(ModRef, APCMetallicChatCommand::StaticClass());
+  Chat->RegisterCommand(ModRef, APCPchelpChatCommand::StaticClass());
 }
 
-APCMetallicChatCommand::APCMetallicChatCommand()
-{
-	bOnlyUsableByPlayer = true;
-	MinNumberOfArguments = 1;
-	CommandName = TEXT("Metallic");
-	Usage = NSLOCTEXT(
-		"PipelineColor",
-		"ChatCmd.Metallic",
-		"!Metallic <fluid> | all on | all off | default");
+APCMetallicChatCommand::APCMetallicChatCommand() {
+  bOnlyUsableByPlayer = true;
+  MinNumberOfArguments = 1;
+  CommandName = TEXT("Metallic");
+  Usage = NSLOCTEXT("PipelineColor", "ChatCmd.Metallic",
+                    "!Metallic <fluid> | all on | all off | default");
 }
 
 EExecutionStatus APCMetallicChatCommand::ExecuteCommand_Implementation(
-	UCommandSender* Sender,
-	const TArray<FString>& Arguments,
-	const FString& /*Label*/)
-{
-	if (Arguments.Num() < 1)
-	{
-		PrintCommandUsage(Sender);
-		return EExecutionStatus::BAD_ARGUMENTS;
-	}
+    UCommandSender* Sender, const TArray<FString>& Arguments, const FString& /*Label*/) {
+  if (Arguments.Num() < 1) {
+    PrintCommandUsage(Sender);
+    return EExecutionStatus::BAD_ARGUMENTS;
+  }
 
-	const FString FluidQuery = FString::Join(Arguments, TEXT(" "));
-	const FString CommandLine = FString::Printf(TEXT("Metallic %s"), *FluidQuery);
-	return RunBangFromSender(Sender, CommandLine)
-		? EExecutionStatus::COMPLETED
-		: EExecutionStatus::UNCOMPLETED;
+  const FString FluidQuery = FString::Join(Arguments, TEXT(" "));
+  const FString CommandLine = FString::Printf(TEXT("Metallic %s"), *FluidQuery);
+  return RunBangFromSender(Sender, CommandLine) ? EExecutionStatus::COMPLETED
+                                                : EExecutionStatus::UNCOMPLETED;
 }
 
-APCPchelpChatCommand::APCPchelpChatCommand()
-{
-	bOnlyUsableByPlayer = true;
-	CommandName = TEXT("pchelp");
-	Usage = NSLOCTEXT(
-		"PipelineColor",
-		"ChatCmd.PcHelp",
-		"!pchelp — list Pipeline Color chat commands");
+APCPchelpChatCommand::APCPchelpChatCommand() {
+  bOnlyUsableByPlayer = true;
+  CommandName = TEXT("pchelp");
+  Usage =
+      NSLOCTEXT("PipelineColor", "ChatCmd.PcHelp", "!pchelp — list Pipeline Color chat commands");
 }
 
 EExecutionStatus APCPchelpChatCommand::ExecuteCommand_Implementation(
-	UCommandSender* Sender,
-	const TArray<FString>& /*Arguments*/,
-	const FString& /*Label*/)
-{
-	return RunBangFromSender(Sender, TEXT("pchelp"))
-		? EExecutionStatus::COMPLETED
-		: EExecutionStatus::UNCOMPLETED;
+    UCommandSender* Sender, const TArray<FString>& /*Arguments*/, const FString& /*Label*/) {
+  return RunBangFromSender(Sender, TEXT("pchelp")) ? EExecutionStatus::COMPLETED
+                                                   : EExecutionStatus::UNCOMPLETED;
 }

@@ -7,9 +7,8 @@
 
 class AFGPlayerController;
 
-class PIPELINECOLOR_API FPCBangCommands
-{
-public:
-	static void RegisterChatHook();
-	static void Execute(AFGPlayerController* PlayerController, const FString& CommandLine);
+class PIPELINECOLOR_API FPCBangCommands {
+ public:
+  static void RegisterChatHook();
+  static void Execute(AFGPlayerController* PlayerController, const FString& CommandLine);
 };

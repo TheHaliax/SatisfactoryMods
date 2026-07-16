@@ -25,24 +25,24 @@ Upload the **big** `StructuralPower.zip`. SMR unpacks it and serves per-platform
 
 Mod page: [ficsit.app/mod/StructuralPower](https://ficsit.app/mod/StructuralPower)
 
-## Release checklist (3.0.0)
+## Release checklist (3.1.0)
 
-1. **Version fields** in `StructuralPower.uplugin` — `SemVersion` / `VersionName` **3.0.0**, `RemoteVersionRange` **^3.0.0**, `Version` integer **3** (major), `GameVersion` **>=491125**, SML **^3.12.0**.
-2. **Icons** — pack scripts auto-run `tools/Invoke-ModIcons.ps1` (or manual same). Reads `.uplugin` → badge **V3.0** on `Icon1024/512/128.png`. Commit `StructuralPower/Resources/`.
+1. **Version fields** in `StructuralPower.uplugin` — `SemVersion` / `VersionName` **3.1.0**, `RemoteVersionRange` **^3.0.0**, `Version` integer **3** (major), `GameVersion` **>=491125**, SML **^3.12.0**.
+2. **Icons** — pack scripts auto-run `tools/Invoke-ModIcons.ps1` (or manual same). Reads `.uplugin` → badge **V3.1** on `Icon1024/512/128.png`. Commit `StructuralPower/Resources/`.
 3. **Version guard** — `powershell -File scripts/check-version.ps1`
 4. **Docs** — `CHANGELOG.md`, root `README.md` (version table), `StructuralPower/README.md`, evergreen `Documentation/*` (player-guide, commands, troubleshooting). Icons in same commit as version bump.
 5. **Alpakit Release** — cook client + Windows Server + Linux Server. Output:
    ```
    StarterProject/Saved/ArchivedPlugins/StructuralPower/StructuralPower.zip
    ```
-6. **ficsit.app** → StructuralPower → **New Version** → upload `StructuralPower.zip`, changelog from `CHANGELOG.md` **3.0.0** (product welcome-back prose lives in `README.md`, not the changelog), compatibility **Works** (tested 495413 stable SP). Upload refreshed **mod icon** from `Resources/Icon512.png` if the SMR form asks. Merge `development` → `main` before announce so GitHub README/icon align. Gameplay screenshot in `StructuralPower/README.md` uses `refs/heads/main/.../Screenshots/...` — updates on `main` only.
+6. **ficsit.app** → StructuralPower → **New Version** → upload `StructuralPower.zip`, changelog from `CHANGELOG.md` **3.1.0** (product welcome-back prose lives in `README.md`, not the changelog), compatibility **Works** (tested 495413 stable SP). Upload refreshed **mod icon** from `Resources/Icon512.png` if the SMR form asks. Merge `development` → `main` before announce so GitHub README/icon align. Gameplay screenshot in `StructuralPower/README.md` uses `refs/heads/main/.../Screenshots/...` — updates on `main` only.
 7. **Deploy test servers** — follow [Internal test deploy](#internal-test-deploy-haliax) above (our zips). Optional SMR parity: copy version ID after approval if you want laptop script to `fetch_smr` StructuralPower instead of `STRUCTURAL_POWER_ZIP`:
    ```powershell
    curl -sL "https://api.ficsit.app/v1/mod/5W9LAp72Xzuwjn/versions"
    ```
    Store as env `SAT_STRUCTURAL_POWER_VERSION=<id>` for laptop deploy scripts if used. Not required for routine testing.
-8. **Verify** — Mod Manager / ficsit profile installs StructuralPower **3.0.0**; join test server with same mod set.
-9. **Smoke test** — load legacy save (pre-v3.0); lights/switches/panels; **I** key; `!lighting`; save/reload; switch subnet ON/OFF; hoverpack tether.
+8. **Verify** — Mod Manager / ficsit profile installs StructuralPower **3.1.0**; join test server with same mod set.
+9. **Smoke test** — load legacy save; `!Generation` gen on foundation; `!Resources` miner; lights/switches/panels; **I** key; `!lighting`; save/reload; switch subnet ON/OFF; hoverpack tether; mass foundation remove (no long hitch).
 
 ## Updating a release
 

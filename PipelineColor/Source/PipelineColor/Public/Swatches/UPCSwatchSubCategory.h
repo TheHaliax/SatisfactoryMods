@@ -8,10 +8,9 @@
 #include "UPCSwatchSubCategory.generated.h"
 
 UCLASS()
-class PIPELINECOLOR_API UPCSwatchSubCategory : public UFGCustomizerSubCategory
-{
-	GENERATED_BODY()
+class PIPELINECOLOR_API UPCSwatchSubCategory : public UFGCustomizerSubCategory {
+  GENERATED_BODY()
 
-public:
-	UPCSwatchSubCategory();
+ public:
+  UPCSwatchSubCategory();
 };

@@ -6,15 +6,21 @@ Commands are swallowed from public chat (other mods' `!` commands are unaffected
 
 On join, the server prints: **Hal: Structural Power loaded.**
 
-The same four commands are also registered with **SML** (`AChatCommandSubsystem::RegisterCommand`) so **Chat Mk 2** expandable help and `/help` can list them alongside other mods.
+The same commands are also registered with **SML** (`AChatCommandSubsystem::RegisterCommand`) so **Chat Mk 2** expandable help and `/help` can list them alongside other mods.
 
 ## Available commands
 
-`[]` — required argument.
+`[]` — required argument. All group toggles default **off** and persist to `Configs/StructuralPower.cfg`.
 
-- `!lighting` — toggle **structural lighting** (default off; saved to `Configs/StructuralPower.cfg`)
-- `!HoverH [1-10]` — set hoverpack **horizontal** reach multiplier (clamped 1.0–10.0; saved to cfg)
-- `!HoverV [1-10]` — set hoverpack **vertical** reach multiplier (clamped 1.0–10.0; saved to cfg)
+- `!lighting` — toggle **structural lighting**
+- `!Generation` — toggle **generators + power storage** on structure
+- `!Resources` — toggle **miners / extractors**
+- `!Production` — toggle **manufacturers / radar / sink**
+- `!Transport` — toggle **wired transport** consumers (stub — no track topology)
+- `!Pipes` — toggle **pipeline pumps** (stub — no pipe-run topology)
+- `!Belts` — toggle **belts** group (no attach yet)
+- `!HoverH [1-10]` — set hoverpack **horizontal** reach multiplier (clamped 1.0–10.0)
+- `!HoverV [1-10]` — set hoverpack **vertical** reach multiplier (clamped 1.0–10.0)
 - `!pwrhelp` — list commands (same list as this section)
 
 Trace and extended debug are **console-only** (`StructuralPower.Trace`, `StructuralPower.ExtendedDebug`) — not exposed in chat.
@@ -22,6 +28,8 @@ Trace and extended debug are **console-only** (`StructuralPower.Trace`, `Structu
 ## Examples
 
 ```
+!Generation
+!Resources
 !lighting
 !HoverH 2
 !HoverV 1.2
@@ -33,6 +41,7 @@ Trace and extended debug are **console-only** (`StructuralPower.Trace`, `Structu
 Feedback uses the **Hal:** sender with short readable lines, for example:
 
 - `Structural lighting enabled.`
+- `Structural generation enabled.`
 - `Hoverpack horizontal reach multiplier set to 2.0.`
 
 ## Related settings

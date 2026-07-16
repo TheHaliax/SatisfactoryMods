@@ -3,42 +3,37 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Command/ChatCommandInstance.h"
+#include "CoreMinimal.h"
 #include "PipelineColorSmlChatCommands.generated.h"
 
 class UWorld;
 
-class PIPELINECOLOR_API FPipelineColorSmlChatCommands
-{
-public:
-	static void RegisterWithWorld(UWorld* World);
+class PIPELINECOLOR_API FPipelineColorSmlChatCommands {
+ public:
+  static void RegisterWithWorld(UWorld* World);
 };
 
 UCLASS(NotPlaceable)
-class APCMetallicChatCommand : public AChatCommandInstance
-{
-	GENERATED_BODY()
+class APCMetallicChatCommand : public AChatCommandInstance {
+  GENERATED_BODY()
 
-public:
-	APCMetallicChatCommand();
+ public:
+  APCMetallicChatCommand();
 
-	virtual EExecutionStatus ExecuteCommand_Implementation(
-		UCommandSender* Sender,
-		const TArray<FString>& Arguments,
-		const FString& Label) override;
+  virtual EExecutionStatus ExecuteCommand_Implementation(UCommandSender* Sender,
+                                                         const TArray<FString>& Arguments,
+                                                         const FString& Label) override;
 };
 
 UCLASS(NotPlaceable)
-class APCPchelpChatCommand : public AChatCommandInstance
-{
-	GENERATED_BODY()
+class APCPchelpChatCommand : public AChatCommandInstance {
+  GENERATED_BODY()
 
-public:
-	APCPchelpChatCommand();
+ public:
+  APCPchelpChatCommand();
 
-	virtual EExecutionStatus ExecuteCommand_Implementation(
-		UCommandSender* Sender,
-		const TArray<FString>& Arguments,
-		const FString& Label) override;
+  virtual EExecutionStatus ExecuteCommand_Implementation(UCommandSender* Sender,
+                                                         const TArray<FString>& Arguments,
+                                                         const FString& Label) override;
 };
