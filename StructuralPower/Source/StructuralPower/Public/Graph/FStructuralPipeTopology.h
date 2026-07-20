@@ -16,13 +16,14 @@ class FStructuralGraphSession;
 class STRUCTURALPOWER_API FStructuralPipeTopology {
  public:
   static constexpr int32 MaxConductorHops = 4096;
+  static constexpr int32 MaxComponentMembers = 16384;
   static constexpr int32 MaxNeighborPorts = 32;
   static constexpr int32 MaxEnqueuePumps = 256;
   static constexpr float SupportTouchRadiusUu = 50.f;
 
   void Reset();
 
-  void RemoveBuildable(AFGBuildable* Buildable);
+  void RemoveBuildable(AFGBuildable* Buildable, FStructuralGraphSession& Session);
 
   /** Add conductor (pipeline / attachment) and union connection neighbors (bounded BFS). */
   bool IntegrateConductor(AFGBuildable* Buildable, FStructuralGraphSession& Session);

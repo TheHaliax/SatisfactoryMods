@@ -42,10 +42,27 @@ class STRUCTURALPOWER_API FStructuralPlacementQueue {
     EStructuralPlacementJobType JobType = EStructuralPlacementJobType::Structure;
   };
 
+  struct FPendingBuildableKey {
+    TWeakObjectPtr<AFGBuildable> Buildable;
+    EStructuralPlacementJobType JobType = EStructuralPlacementJobType::Structure;
+
+    friend uint32 GetTypeHash(const FPendingBuildableKey& Key) {
+      return HashCombine(GetTypeHash(Key.Buildable), GetTypeHash(static_cast<uint8>(Key.JobType)));
+    }
+
+    bool operator==(const FPendingBuildableKey& Other) const {
+      return JobType == Other.JobType && Buildable == Other.Buildable;
+    }
+  };
+
   void Compact();
+  void NoteBuildableDequeued(const FDeferredPlacementJob& Job);
+  void NoteLightweightDequeued(const FStructuralLightweightKey& Key);
 
   TArray<FDeferredPlacementJob> PendingJobs;
   TArray<FStructuralLightweightKey> PendingLightweightJobs;
+  TSet<FPendingBuildableKey> PendingBuildableKeys;
+  TSet<FStructuralLightweightKey> PendingLightweightKeys;
   int32 PendingJobsHead = 0;
   int32 PendingLightweightJobsHead = 0;
 };

@@ -17,6 +17,7 @@
 #include "Lightweight/FStructuralLightweightTypes.h"
 #include "Rules/FStructuralEligibilityRules.h"
 #include "Save/FStructuralPlacementQueue.h"
+#include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
 
 void FStructuralGraphStructureIngress::Bind(FStructuralGraphSession* InSession) {
@@ -154,6 +155,64 @@ void FStructuralGraphStructureIngress::MarkOrphanMountEndpointsAwaiting(
   }
 }
 
+namespace {
+bool IsStructureSplitConsumerKind(const EStructuralEndpointKind Kind) {
+  return Kind == EStructuralEndpointKind::Extractor ||
+         Kind == EStructuralEndpointKind::Manufacturer ||
+         Kind == EStructuralEndpointKind::Transport || Kind == EStructuralEndpointKind::PipePump ||
+         Kind == EStructuralEndpointKind::Light || Kind == EStructuralEndpointKind::Panel;
+}
+}  // namespace
+
+void FStructuralGraphStructureIngress::RequeueConsumersAfterStructureSplit(
+    const TSet<int32>& AffectedRoots) {
+  if (!Session) {
+    return;
+  }
+
+  const bool bScoped = AffectedRoots.Num() > 0;
+  int32 Requeued = 0;
+  bool bHitCap = false;
+
+  for (TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Session->TrackedEndpoints()) {
+    if (Requeued >= StructuralPowerConstants::MaxStructureSplitConsumerRequeue) {
+      bHitCap = true;
+      break;
+    }
+
+    if (!IsStructureSplitConsumerKind(Pair.Value.Kind)) {
+      continue;
+    }
+
+    AFGBuildable* Host = Pair.Value.Actor.Get();
+    if (!IsValid(Host)) {
+      continue;
+    }
+
+    const int32 SelfRoot = Pair.Value.MountParentId.IsValid()
+                               ? Session->StructureGraph().FindRoot(Pair.Value.MountParentId)
+                               : INDEX_NONE;
+    if (bScoped && SelfRoot != INDEX_NONE && !AffectedRoots.Contains(SelfRoot)) {
+      continue;
+    }
+
+    Session->DispatchTeardown(Host);
+    Pair.Value.bStructuralPowerTransferActive = false;
+    Pair.Value.bAwaitingStructuralSite = true;
+
+    if (!Session->IsBuildablePlacementPending(Host)) {
+      Session->EnqueuePlacement(Host, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
+    }
+    ++Requeued;
+  }
+
+  if (Requeued > 0 || bHitCap) {
+    UE_LOG(LogStructuralPower, Log,
+           TEXT("[HALSP] structure split consumerRequeue=%d capped=%d"), Requeued,
+           bHitCap ? 1 : 0);
+  }
+}
+
 void FStructuralGraphStructureIngress::ReconcileAfterStructureSplit(
     const TSet<int32>& AffectedRoots) {
   if (!Session) {
@@ -162,6 +221,7 @@ void FStructuralGraphStructureIngress::ReconcileAfterStructureSplit(
 
   Session->Circuit().PruneBridgePeerMeshForRoots(AffectedRoots);
   MarkOrphanMountEndpointsAwaiting(AffectedRoots);
+  RequeueConsumersAfterStructureSplit(AffectedRoots);
 
   if (AffectedRoots.Num() > 0) {
     Session->BridgeRootIndex().RekeyEndpointIndexForRoots(AffectedRoots);

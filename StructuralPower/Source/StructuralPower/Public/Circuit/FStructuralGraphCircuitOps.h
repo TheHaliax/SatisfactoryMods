@@ -84,5 +84,7 @@ class STRUCTURALPOWER_API FStructuralGraphCircuitOps {
   bool DoesSiteStructuralBusCarryPower(int32 ComponentRoot) const;
 
  private:
+  void PromoteImmediateHiddenLinks(UFGPowerConnectionComponent* Seed);
+
   FStructuralGraphSession* Session = nullptr;
 };

@@ -153,6 +153,36 @@ void FStructuralGraphCircuitOps::PromoteStructuralMeshFrom(UFGPowerConnectionCom
   PromoteDirectHiddenLinks(Seed);
 }
 
+void FStructuralGraphCircuitOps::PromoteImmediateHiddenLinks(UFGPowerConnectionComponent* Seed) {
+  if (!IsValid(Seed)) {
+    return;
+  }
+
+  FStructuralCircuitPromotionScope PromotionScope(&Session->Owner());
+
+  TArray<UFGCircuitConnectionComponent*> HiddenLinks;
+  Seed->GetHiddenConnections(HiddenLinks);
+
+  int32 Repaired = 0;
+  for (UFGCircuitConnectionComponent* OtherRaw : HiddenLinks) {
+    UFGPowerConnectionComponent* Other = Cast<UFGPowerConnectionComponent>(OtherRaw);
+    if (!IsValid(Other)) {
+      continue;
+    }
+
+    if (FStructuralCircuitPromotionUtil::HiddenLinkNeedsCircuitRepair(Seed, Other)) {
+      FStructuralCircuitPromotionUtil::PromoteCircuitLink(Seed, Other, ELogVerbosity::Verbose);
+      ++Repaired;
+    }
+  }
+
+  if (Repaired > 0) {
+    UE_LOG(LogStructuralPower, Verbose,
+           TEXT("[HALSP] hidden mesh repair immediate from %s repaired=%d"), *Seed->GetName(),
+           Repaired);
+  }
+}
+
 void FStructuralGraphCircuitOps::PromoteDirectHiddenLinks(UFGPowerConnectionComponent* Seed) {
   if (!IsValid(Seed)) {
     return;
@@ -233,9 +263,12 @@ void FStructuralGraphCircuitOps::PromotePanelSupplyConnection(
   }
 
   if (Seed) {
-    PromoteDirectHiddenLinks(Seed);
+    if (bLocalPromoteOnly) {
+      PromoteImmediateHiddenLinks(Seed);
+    } else {
+      PromoteDirectHiddenLinks(Seed);
+    }
   }
-  (void)bLocalPromoteOnly;
 }
 
 void FStructuralGraphCircuitOps::PromoteOutletBusIfPowered(
@@ -252,8 +285,11 @@ void FStructuralGraphCircuitOps::PromoteOutletBusIfPowered(
     return;
   }
 
-  PromoteDirectHiddenLinks(Seed);
-  (void)bLocalPromoteOnly;
+  if (bLocalPromoteOnly) {
+    PromoteImmediateHiddenLinks(Seed);
+  } else {
+    PromoteDirectHiddenLinks(Seed);
+  }
 }
 
 void FStructuralGraphCircuitOps::ApplyLocalBridgeBusAttach(

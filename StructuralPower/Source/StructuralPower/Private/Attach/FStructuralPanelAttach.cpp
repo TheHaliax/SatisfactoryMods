@@ -286,7 +286,7 @@ AFGBuildableLightsControlPanel* FStructuralPanelAttach::FindPanelForDownstreamLi
 void FStructuralPanelAttach::RestitchDownstream(FStructuralGraphSession& Session,
                                                 AFGBuildableLightsControlPanel* Panel,
                                                 const FStructuralPanelPorts& Ports,
-                                                int32 ComponentRoot, FName PanelControl) {
+                                                int32 ComponentRoot) {
   UFGPowerConnectionComponent* Downstream =
       FStructuralPanelPortResolver::AsPowerConnection(Ports.Downstream);
   if (!IsValid(Panel) || !IsValid(Downstream) || ComponentRoot == INDEX_NONE) {
@@ -316,14 +316,11 @@ void FStructuralPanelAttach::RestitchDownstream(FStructuralGraphSession& Session
         TryLinkLightToControlBus(Session, Panel, Light);
       });
 
-  (void)PanelControl;
-  (void)EffectiveControl;
   FStructuralPanelControlledSync::ApplyKeyedSubnet(Session, Panel);
 }
 
 void FStructuralPanelAttach::PromotePanelDownstreamSubnet(FStructuralGraphSession& Session,
                                                           AFGBuildableLightsControlPanel* Panel,
-                                                          const FStructuralPanelPorts& Ports,
                                                           UFGPowerConnectionComponent* InputPower) {
   if (!IsValid(Panel) || !IsValid(InputPower) ||
       !FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower)) {
@@ -336,5 +333,4 @@ void FStructuralPanelAttach::PromotePanelDownstreamSubnet(FStructuralGraphSessio
   if (IsValid(ControlBus) && FStructuralCircuitPromotionUtil::ComponentOnCircuit(ControlBus)) {
     Session.Circuit().PromoteStructuralMeshFrom(ControlBus);
   }
-  (void)Ports;
 }

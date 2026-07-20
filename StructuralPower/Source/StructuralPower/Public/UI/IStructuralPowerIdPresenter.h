@@ -29,4 +29,22 @@ class STRUCTURALPOWER_API IStructuralPowerIdPresenter {
   virtual void RequestComponentIdList(AFGBuildable* Target) = 0;
   virtual void ApplyEndpointIds(AFGBuildable* Target, FName Source, FName Control,
                                 bool bClearSource, bool bClearControl) = 0;
+
+  virtual void ForceReleaseModalState(AFGPlayerController* /*PlayerController*/,
+                                      bool /*bRestoreGameInputMode*/) {
+  }
+
+  virtual void ReleaseForVanillaInteract(AFGPlayerController* /*PlayerController*/) {
+  }
+
+  virtual void NormalizeModalState() {
+  }
+
+  virtual AFGBuildable* GetOpenTarget() const {
+    return nullptr;
+  }
+
+  virtual bool IsAnyPanelVisible() const {
+    return false;
+  }
 };

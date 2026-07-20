@@ -81,7 +81,7 @@ void FStructuralGraphRemoval::OnBuildableRemoved(AFGBuildable* Buildable) {
 
   Session->ControlIdGangIndex().RemoveNode(NodeId);
   Session->UnregisterBuildableActor(NodeId);
-  Session->PipeTopology().RemoveBuildable(Buildable);
+  Session->PipeTopology().RemoveBuildable(Buildable, *Session);
 
   if (FTrackedEndpoint* Tracked = Session->TrackedEndpoints().Find(NodeId)) {
     if (AFGBuildable* Host = Tracked->Actor.Get()) {

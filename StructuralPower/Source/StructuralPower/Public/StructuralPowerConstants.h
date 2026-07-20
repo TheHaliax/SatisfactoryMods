@@ -23,6 +23,8 @@ inline constexpr int32 MaxHiddenConnectionLinks = 255;
 inline constexpr int32 DeferredPlacementsPerTick = 15;
 inline constexpr int32 BulkDeferredPlacementsMaxJobs = 65536;
 inline constexpr double BulkLoadDrainTickBudgetSec = 0.050;
+inline constexpr uint8 MaxPipeInjectResolveAttempts = 32;
+inline constexpr int32 MaxStructureSplitConsumerRequeue = 512;
 
 inline const FName OutletBusConnectorName = TEXT("StructuralPowerOutletBus");
 // Panel control bus must never mesh the outlet bus — vanilla E on panel bleeds power both ways.

@@ -23,5 +23,7 @@ class STRUCTURALPOWER_API FStructuralGraphStructureIngress {
   void ReconcileAfterStructureSplit(const TSet<int32>& AffectedRoots);
 
  private:
+  void RequeueConsumersAfterStructureSplit(const TSet<int32>& AffectedRoots);
+
   class FStructuralGraphSession* Session = nullptr;
 };

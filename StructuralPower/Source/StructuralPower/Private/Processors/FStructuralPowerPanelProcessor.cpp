@@ -186,8 +186,7 @@ void FStructuralPowerPanelProcessor::Process(FStructuralPowerContext& Ctx,
           Tracked.bDownstreamLinksReady && Tracked.CachedDownstreamControl == EffectiveControl;
       if (Root != INDEX_NONE && !EffectiveControl.IsNone()) {
         if (!bDownstreamUnchanged) {
-          FStructuralPanelAttach::RestitchDownstream(Ctx.Session(), Panel, Ports, Root,
-                                                     EffectiveControl);
+          FStructuralPanelAttach::RestitchDownstream(Ctx.Session(), Panel, Ports, Root);
         } else {
           FStructuralPanelControlledSync::ApplyKeyedSubnet(Ctx.Session(), Panel);
         }
@@ -250,8 +249,7 @@ void FStructuralPowerPanelProcessor::Process(FStructuralPowerContext& Ctx,
     const bool bDownstreamUnchanged =
         Tracked.bDownstreamLinksReady && Tracked.CachedDownstreamControl == EffectiveControl;
     if (!bDownstreamUnchanged) {
-      FStructuralPanelAttach::RestitchDownstream(Ctx.Session(), Panel, Ports, Root,
-                                                 EffectiveControl);
+      FStructuralPanelAttach::RestitchDownstream(Ctx.Session(), Panel, Ports, Root);
     } else {
       FStructuralPanelControlledSync::ApplyKeyedSubnet(Ctx.Session(), Panel);
     }
@@ -266,7 +264,7 @@ void FStructuralPowerPanelProcessor::Process(FStructuralPowerContext& Ctx,
   }
 
   if (!bLocalPromoteOnly && bSupplyReady && IsValid(InputPower)) {
-    FStructuralPanelAttach::PromotePanelDownstreamSubnet(Ctx.Session(), Panel, Ports, InputPower);
+    FStructuralPanelAttach::PromotePanelDownstreamSubnet(Ctx.Session(), Panel, InputPower);
   }
 
   Tracked.CachedPanelKey = ChannelKey;

@@ -19,6 +19,7 @@
 #include "Network/UStructuralPowerMachineWireListener.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "Save/FStructuralPlacementQueue.h"
+#include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
 
 namespace {
@@ -144,6 +145,21 @@ void FStructuralPowerMachineConsumerProcessor::Process(FStructuralPowerContext& 
     Tracked.bAwaitingStructuralSite = true;
     FStructuralPowerTrace::LogPlacementSkip(Device, TEXT("machine_no_component"),
                                             ELogVerbosity::Log);
+
+    if (Kind == EStructuralEndpointKind::PipePump) {
+      if (Tracked.PipeInjectResolveAttempts <
+              StructuralPowerConstants::MaxPipeInjectResolveAttempts &&
+          !Ctx.Session().IsBuildablePlacementPending(Device)) {
+        ++Tracked.PipeInjectResolveAttempts;
+        Ctx.Session().EnqueuePlacement(Device, EStructuralPlacementJobType::Outlet,
+                                       /*bDefer=*/true);
+      } else if (Tracked.PipeInjectResolveAttempts ==
+                 StructuralPowerConstants::MaxPipeInjectResolveAttempts) {
+        FStructuralPowerTrace::LogPlacementSkip(Device, TEXT("machine_no_component_exhausted"),
+                                                ELogVerbosity::Log);
+        ++Tracked.PipeInjectResolveAttempts;
+      }
+    }
     return;
   }
 
@@ -158,6 +174,7 @@ void FStructuralPowerMachineConsumerProcessor::Process(FStructuralPowerContext& 
   if (bAttached) {
     Tracked.bStructuralPowerTransferActive = true;
     Tracked.bAwaitingStructuralSite = false;
+    Tracked.PipeInjectResolveAttempts = 0;
     Ctx.Session().Circuit().PromoteDirectHiddenLinks(Plug);
 
     if (Kind != EStructuralEndpointKind::PipePump &&

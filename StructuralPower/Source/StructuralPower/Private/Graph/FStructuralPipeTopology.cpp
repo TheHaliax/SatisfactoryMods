@@ -25,7 +25,8 @@ void FStructuralPipeTopology::Reset() {
   InjectStructureRootByPipeRoot.Reset();
 }
 
-void FStructuralPipeTopology::RemoveBuildable(AFGBuildable* Buildable) {
+void FStructuralPipeTopology::RemoveBuildable(AFGBuildable* Buildable,
+                                              FStructuralGraphSession& Session) {
   if (!IsValid(Buildable)) {
     return;
   }
@@ -36,11 +37,61 @@ void FStructuralPipeTopology::RemoveBuildable(AFGBuildable* Buildable) {
   }
 
   const FStructuralNodeId OldRoot = FindRootMutable(Id);
+  TArray<FStructuralNodeId> Survivors;
+  CollectComponentMembers(OldRoot, Survivors);
+  Survivors.Remove(Id);
+
   InjectStructureRootByPipeRoot.Remove(OldRoot);
   Parent.Remove(Id);
   Rank.Remove(Id);
   Actors.Remove(Id);
 
+  for (const FStructuralNodeId& SurvivorId : Survivors) {
+    if (!Parent.Contains(SurvivorId)) {
+      continue;
+    }
+    Parent.Add(SurvivorId, SurvivorId);
+    Rank.Add(SurvivorId, 0);
+  }
+
+  TArray<AFGBuildable*> Neighbors;
+  for (const FStructuralNodeId& SurvivorId : Survivors) {
+    const TWeakObjectPtr<AFGBuildable>* Weak = Actors.Find(SurvivorId);
+    AFGBuildable* Conductor = Weak ? Weak->Get() : nullptr;
+    if (!IsValid(Conductor)) {
+      continue;
+    }
+
+    CollectConnectedConductors(Conductor, Neighbors);
+    for (AFGBuildable* Neighbor : Neighbors) {
+      if (!IsValid(Neighbor)) {
+        continue;
+      }
+      const FStructuralNodeId NeighborId = AStructuralPowerGraphSubsystem::MakeNodeId(Neighbor);
+      if (!Parent.Contains(NeighborId)) {
+        continue;
+      }
+      Union(SurvivorId, NeighborId);
+    }
+  }
+
+  TSet<FStructuralNodeId> NewRoots;
+  for (const FStructuralNodeId& SurvivorId : Survivors) {
+    if (!Parent.Contains(SurvivorId)) {
+      continue;
+    }
+    const FStructuralNodeId Root = FindRootMutable(SurvivorId);
+    if (Root.IsValid()) {
+      NewRoots.Add(Root);
+    }
+  }
+
+  for (const FStructuralNodeId& Root : NewRoots) {
+    const int32 InjectRoot = DiscoverInjectOnComponent(Root, Session);
+    if (InjectRoot != INDEX_NONE) {
+      InjectStructureRootByPipeRoot.Add(Root, InjectRoot);
+    }
+  }
 }
 
 FStructuralNodeId FStructuralPipeTopology::FindRoot(const FStructuralNodeId& Id) const {
@@ -221,7 +272,7 @@ void FStructuralPipeTopology::CollectComponentMembers(const FStructuralNodeId& P
   for (const TPair<FStructuralNodeId, FStructuralNodeId>& Pair : Parent) {
     if (FindRoot(Pair.Key) == PipeRoot) {
       Out.Add(Pair.Key);
-      if (Out.Num() >= MaxConductorHops) {
+      if (Out.Num() >= MaxComponentMembers) {
         break;
       }
     }

@@ -32,8 +32,7 @@ class STRUCTURALPOWER_API FStructuralPanelAttach {
 
   static void RestitchDownstream(FStructuralGraphSession& Session,
                                  AFGBuildableLightsControlPanel* Panel,
-                                 const FStructuralPanelPorts& Ports, int32 ComponentRoot,
-                                 FName PanelControl);
+                                 const FStructuralPanelPorts& Ports, int32 ComponentRoot);
 
   static bool TryLinkLightToControlBus(FStructuralGraphSession& Session,
                                        AFGBuildableLightsControlPanel* Panel,
@@ -49,6 +48,5 @@ class STRUCTURALPOWER_API FStructuralPanelAttach {
 
   static void PromotePanelDownstreamSubnet(FStructuralGraphSession& Session,
                                            AFGBuildableLightsControlPanel* Panel,
-                                           const FStructuralPanelPorts& Ports,
                                            UFGPowerConnectionComponent* InputPower);
 };

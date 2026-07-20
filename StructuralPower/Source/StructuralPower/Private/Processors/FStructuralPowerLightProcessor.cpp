@@ -152,10 +152,9 @@ void FStructuralPowerLightProcessor::Process(FStructuralPowerContext& Ctx,
 
   if (bAttached) {
     Tracked.bStructuralPowerTransferActive = true;
-    Ctx.Session().Circuit().PromoteDirectHiddenLinks(Plug);
   }
 
-  if (bPanelFed && IsValid(Plug)) {
+  if (!bLocalPromoteOnly && IsValid(Plug) && (bAttached || bPanelFed)) {
     Ctx.Session().Circuit().PromoteDirectHiddenLinks(Plug);
   }
 
@@ -163,6 +162,4 @@ void FStructuralPowerLightProcessor::Process(FStructuralPowerContext& Ctx,
       bPanelFed ? TEXT("panel_downstream") : (bAttached ? TEXT("direct") : TEXT("-"));
   FStructuralPowerTrace::LogLightConsumer(Light, Root, ParentAnchor.IsValid(), ChannelKey, Plug,
                                           PathLabel, PanelSupplyReady, PanelDownstreamFed);
-
-  (void)bLocalPromoteOnly;
 }

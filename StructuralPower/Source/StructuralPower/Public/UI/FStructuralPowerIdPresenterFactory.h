@@ -11,7 +11,6 @@ class AFGPlayerController;
 class STRUCTURALPOWER_API FStructuralPowerIdPresenterFactory {
  public:
   static IStructuralPowerIdPresenter& Get();
-  static void SetImplementation(TUniquePtr<IStructuralPowerIdPresenter> Impl);
 
   static void ResetForMapTravel();
   static void CloseActive();

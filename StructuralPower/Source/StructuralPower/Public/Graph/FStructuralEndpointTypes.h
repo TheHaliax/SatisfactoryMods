@@ -40,6 +40,8 @@ struct FTrackedEndpoint {
 
   bool bStructuralPowerTransferActive = false;
   bool bAwaitingStructuralSite = false;
+  /** PipePump only — bounded deferred inject resolve after place race. */
+  uint8 PipeInjectResolveAttempts = 0;
 
   class AFGBuildableCircuitSwitch* GetSwitch() const;
   class AFGBuildablePowerPole* GetPole() const;

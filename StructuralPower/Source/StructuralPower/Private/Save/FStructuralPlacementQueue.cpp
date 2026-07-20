@@ -13,7 +13,8 @@ bool FStructuralPlacementQueue::EnqueueBuildable(AFGBuildable* Buildable,
     return false;
   }
 
-  if (IsBuildablePending(Buildable, JobType)) {
+  const FPendingBuildableKey Key{Buildable, JobType};
+  if (PendingBuildableKeys.Contains(Key)) {
     return false;
   }
 
@@ -21,15 +22,17 @@ bool FStructuralPlacementQueue::EnqueueBuildable(AFGBuildable* Buildable,
   Job.Buildable = Buildable;
   Job.JobType = JobType;
   PendingJobs.Add(Job);
+  PendingBuildableKeys.Add(Key);
   return true;
 }
 
 bool FStructuralPlacementQueue::EnqueueLightweight(const FStructuralLightweightKey& Key) {
-  if (!Key.IsValid() || IsLightweightPending(Key)) {
+  if (!Key.IsValid() || PendingLightweightKeys.Contains(Key)) {
     return false;
   }
 
   PendingLightweightJobs.Add(Key);
+  PendingLightweightKeys.Add(Key);
   return true;
 }
 
@@ -40,14 +43,10 @@ int32 FStructuralPlacementQueue::GetPendingCount() const {
 
 bool FStructuralPlacementQueue::IsBuildablePending(AFGBuildable* Buildable,
                                                    EStructuralPlacementJobType JobType) const {
-  for (int32 Index = PendingJobsHead; Index < PendingJobs.Num(); ++Index) {
-    const FDeferredPlacementJob& Job = PendingJobs[Index];
-    if (Job.JobType == JobType && Job.Buildable.Get() == Buildable) {
-      return true;
-    }
+  if (!IsValid(Buildable)) {
+    return false;
   }
-
-  return false;
+  return PendingBuildableKeys.Contains(FPendingBuildableKey{Buildable, JobType});
 }
 
 bool FStructuralPlacementQueue::IsAnyBuildableJobPending(AFGBuildable* Buildable) const {
@@ -57,13 +56,15 @@ bool FStructuralPlacementQueue::IsAnyBuildableJobPending(AFGBuildable* Buildable
 }
 
 bool FStructuralPlacementQueue::IsLightweightPending(const FStructuralLightweightKey& Key) const {
-  for (int32 Index = PendingLightweightJobsHead; Index < PendingLightweightJobs.Num(); ++Index) {
-    if (PendingLightweightJobs[Index] == Key) {
-      return true;
-    }
-  }
+  return PendingLightweightKeys.Contains(Key);
+}
 
-  return false;
+void FStructuralPlacementQueue::NoteBuildableDequeued(const FDeferredPlacementJob& Job) {
+  PendingBuildableKeys.Remove(FPendingBuildableKey{Job.Buildable, Job.JobType});
+}
+
+void FStructuralPlacementQueue::NoteLightweightDequeued(const FStructuralLightweightKey& Key) {
+  PendingLightweightKeys.Remove(Key);
 }
 
 void FStructuralPlacementQueue::Tick(
@@ -94,6 +95,7 @@ void FStructuralPlacementQueue::Tick(
 
     if (bPreferLightweight && bHasLightweight) {
       const FStructuralLightweightKey Key = PendingLightweightJobs[PendingLightweightJobsHead++];
+      NoteLightweightDequeued(Key);
       ProcessLightweightJob(Key);
       bPreferLightweight = !bPreferLightweight;
       ++Processed;
@@ -102,6 +104,7 @@ void FStructuralPlacementQueue::Tick(
 
     if (bHasActor) {
       const FDeferredPlacementJob Job = PendingJobs[PendingJobsHead++];
+      NoteBuildableDequeued(Job);
       if (AFGBuildable* Buildable = Job.Buildable.Get()) {
         ProcessBuildableJob(Buildable, Job.JobType);
         bPreferLightweight = !bPreferLightweight;
@@ -113,6 +116,7 @@ void FStructuralPlacementQueue::Tick(
 
     if (bHasLightweight) {
       const FStructuralLightweightKey Key = PendingLightweightJobs[PendingLightweightJobsHead++];
+      NoteLightweightDequeued(Key);
       ProcessLightweightJob(Key);
       bPreferLightweight = !bPreferLightweight;
       ++Processed;
@@ -135,12 +139,18 @@ void FStructuralPlacementQueue::Tick(
 
 void FStructuralPlacementQueue::RemoveBuildable(AFGBuildable* Buildable) {
   Compact();
-  PendingJobs.RemoveAll(
-      [Buildable](const FDeferredPlacementJob& Job) { return Job.Buildable.Get() == Buildable; });
+  PendingJobs.RemoveAll([this, Buildable](const FDeferredPlacementJob& Job) {
+    if (Job.Buildable.Get() != Buildable) {
+      return false;
+    }
+    PendingBuildableKeys.Remove(FPendingBuildableKey{Job.Buildable, Job.JobType});
+    return true;
+  });
 }
 
 void FStructuralPlacementQueue::RemoveLightweight(const FStructuralLightweightKey& Key) {
   Compact();
+  PendingLightweightKeys.Remove(Key);
   PendingLightweightJobs.RemoveAll(
       [&Key](const FStructuralLightweightKey& Pending) { return Pending == Key; });
 }

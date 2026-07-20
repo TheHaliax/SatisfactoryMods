@@ -314,23 +314,21 @@ void UPCWorldSubsystem::ScanWorld() {
 }
 
 void UPCWorldSubsystem::DrainDirty(int32 MaxCount) {
-  int32 Done = 0;
-  TArray<TWeakObjectPtr<AFGBuildable>> Snapshot;
-  Snapshot.Reserve(Dirty.Num());
-  for (const TWeakObjectPtr<AFGBuildable>& Entry : Dirty) {
-    Snapshot.Add(Entry);
+  if (MaxCount <= 0 || Dirty.Num() == 0) {
+    return;
   }
-  Dirty.Reset();
 
-  for (const TWeakObjectPtr<AFGBuildable>& Weak : Snapshot) {
-    if (Done >= MaxCount) {
-      Dirty.Add(Weak);
-      continue;
-    }
+  TArray<TWeakObjectPtr<AFGBuildable>, TInlineAllocator<64>> Batch;
+  Batch.Reserve(FMath::Min(MaxCount, Dirty.Num()));
 
+  for (auto It = Dirty.CreateIterator(); It && Batch.Num() < MaxCount; ++It) {
+    Batch.Add(*It);
+    It.RemoveCurrent();
+  }
+
+  for (const TWeakObjectPtr<AFGBuildable>& Weak : Batch) {
     if (AFGBuildable* Buildable = Weak.Get()) {
       ProcessNow(Buildable);
-      ++Done;
     }
   }
 }
