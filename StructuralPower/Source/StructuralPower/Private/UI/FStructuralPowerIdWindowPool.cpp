@@ -57,6 +57,7 @@ void FStructuralPowerIdWindowPool::ResetForMapLoad() {
   ActiveInstance.Reset();
   CachedWindow = nullptr;
   FStructuralPowerIdModalHost::UnregisterEscapeInputProcessor();
+  FStructuralPowerIdModalHost::ClearInputOwnership();
 }
 
 void FStructuralPowerIdWindowPool::CloseActivePanel() {
@@ -78,6 +79,7 @@ void FStructuralPowerIdWindowPool::ReleaseForVanillaInteract(AFGPlayerController
     return;
   }
 
+  const bool bHadActivePanel = ActiveInstance.IsValid();
   if (UStructuralPowerIdConfigWidget* Widget = ActiveInstance.Get()) {
     FStructuralPowerIdModalHost::DetachFromViewport(Widget);
     Widget->bModalActive = false;
@@ -85,10 +87,14 @@ void FStructuralPowerIdWindowPool::ReleaseForVanillaInteract(AFGPlayerController
       SetActiveWidget(nullptr);
     }
   } else if (UStructuralPowerIdConfigWidget* Window = CachedWindow.Get()) {
-    if (IsValid(Window)) {
+    if (IsValid(Window) && Window->IsPanelVisible()) {
       FStructuralPowerIdModalHost::DetachFromViewport(Window);
       Window->bModalActive = false;
     }
+  }
+
+  if (!FStructuralPowerIdModalHost::OwnsPlayerInput() && !bHadActivePanel) {
+    return;
   }
 
   FStructuralPowerIdModalHost::ForceReleaseAllModalState(PC, /*bRestoreGameInputMode=*/false);

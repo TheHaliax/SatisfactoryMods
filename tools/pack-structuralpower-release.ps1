@@ -2,18 +2,33 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Alpakit Release via CLI: cooks the SMR upload zip (client + Windows server + Linux server,
-# merged). Mirrors the UAT command SML's build.yml runs. Machine paths are params.
+# merged). Mirrors the UAT command SML's build.yml runs.
+# Paths: -ProjectPath / -UeCssRoot, or SAT_PROJECT_PATH / UE_CSS_ROOT, or tools/local-paths.ps1.
 param(
-    [string]$ProjectPath = 'E:\Modding\Satisfactory\StarterProject\FactoryGame.uproject',
+    [string]$ProjectPath = '',
     [string]$ModName = 'StructuralPower',
-    [string]$UeCssRoot = 'C:\Program',
+    [string]$UeCssRoot = '',
     [switch]$SkipIcons
 )
 
 $ErrorActionPreference = 'Stop'
 
+$LocalPathsFile = Join-Path $PSScriptRoot 'local-paths.ps1'
+if (Test-Path -LiteralPath $LocalPathsFile) { . $LocalPathsFile }
+if ([string]::IsNullOrWhiteSpace($ProjectPath) -and $LocalProjectPath) { $ProjectPath = $LocalProjectPath }
+if ([string]::IsNullOrWhiteSpace($UeCssRoot) -and $LocalUeCssRoot) { $UeCssRoot = $LocalUeCssRoot }
+if ([string]::IsNullOrWhiteSpace($ProjectPath)) { $ProjectPath = $env:SAT_PROJECT_PATH }
+if ([string]::IsNullOrWhiteSpace($UeCssRoot)) { $UeCssRoot = $env:UE_CSS_ROOT }
+if ([string]::IsNullOrWhiteSpace($ProjectPath)) {
+    throw 'Pass -ProjectPath, set SAT_PROJECT_PATH, or define $LocalProjectPath in tools/local-paths.ps1'
+}
+if ([string]::IsNullOrWhiteSpace($UeCssRoot)) {
+    throw 'Pass -UeCssRoot, set UE_CSS_ROOT, or define $LocalUeCssRoot in tools/local-paths.ps1'
+}
+
 $RunUat = Join-Path $UeCssRoot 'Engine\Build\BatchFiles\RunUAT.bat'
-$LogFile = 'E:\Modding\Satisfactory\logs\pack-structuralpower-release.log'
+$LogDir = if ($LocalLogDir) { $LocalLogDir } else { $env:TEMP }
+$LogFile = Join-Path $LogDir "pack-$($ModName.ToLowerInvariant())-release.log"
 New-Item -ItemType Directory -Force -Path (Split-Path $LogFile) | Out-Null
 
 if (-not (Test-Path $RunUat)) {

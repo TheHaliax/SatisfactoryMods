@@ -86,7 +86,6 @@ static bool ShouldAnnounceLoadToPlayer(AFGPlayerController* PlayerController, UW
     return PlayerController->IsLocalController();
   }
 
-  // Dedicated server process: skip headless local PC.
   if (NetMode == NM_DedicatedServer && PlayerController->IsLocalController()) {
     return false;
   }
@@ -123,7 +122,6 @@ static void ScheduleLoadAnnouncement(AFGPlayerController* PlayerController) {
     return;
   }
 
-  // BegunPlay fires before the client can reliably receive Client_SendChatMessage on dedicated.
   FTimerHandle Handle;
   World->GetTimerManager().SetTimer(
       Handle,

@@ -60,7 +60,6 @@ void FStructuralGraphBootstrap::OnWorldReady(UWorld* World) {
   const bool bSeedTransport = FStructuralPowerModConfig::IsGroupTransportEnabled();
   const bool bSeedPipes = FStructuralPowerModConfig::IsGroupPipesEnabled();
   if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World)) {
-    // Pipe membership before pump outlets — injects ready for consumer attach.
     for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef()) {
       if (!IsValid(Buildable) || !Buildable->HasAuthority()) {
         continue;
@@ -87,7 +86,6 @@ void FStructuralGraphBootstrap::OnWorldReady(UWorld* World) {
         Session->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
         ++SeededStorage;
       } else if (bSeedLighting && Buildable->IsA<AFGBuildableLightsControlPanel>()) {
-        // Seed before remesh/reconcile — BeginPlay next-tick alone races post-load.
         Session->EnqueuePlacement(Buildable, EStructuralPlacementJobType::Outlet, /*bDefer=*/true);
         ++SeededPanels;
       } else if (bSeedLighting &&
@@ -165,7 +163,6 @@ void FStructuralGraphBootstrap::TickLoadPhases() {
     }
   }
 
-  // Remesh done — machines supply before lights consume.
   if (Session->PendingPostLoadMachineReconcile()) {
     Session->BulkLoadDrainActive() = false;
     Session->Reconcile().RunPostLoadMachineWorkers();

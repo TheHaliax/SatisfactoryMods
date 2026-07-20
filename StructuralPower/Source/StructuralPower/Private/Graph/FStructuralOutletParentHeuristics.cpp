@@ -20,7 +20,6 @@ static bool IsWallMountedSwitch(const AFGBuildable* Outlet) {
     return false;
   }
 
-  // Satisfactory wall-snapped buildables carry a mostly horizontal face normal.
   return FMath::Abs(Switch->GetActorUpVector().Z) < 0.5f;
 }
 
@@ -173,8 +172,6 @@ bool PrefersFoundationAnchor(const AFGBuildable* Outlet) {
     return true;
   }
 
-  // Miners / constructors sit tall — actor center fails outlet-near-foundation
-  // checks. Footprint resolve matches ground poles.
   if (FStructuralEligibilityRules::PrefersFoundationMount(Outlet)) {
     return true;
   }

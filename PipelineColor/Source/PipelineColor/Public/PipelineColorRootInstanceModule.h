@@ -27,7 +27,6 @@ class PIPELINECOLOR_API UPipelineColorRootInstanceModule : public UGameInstanceM
 
   static void UnregisterGlobalDelegates();
 
-  // AccessTransformer Friend.
   static void InjectSwatchIntoCollection(
       UFGFactoryCustomizationCollection* Collection,
       TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);

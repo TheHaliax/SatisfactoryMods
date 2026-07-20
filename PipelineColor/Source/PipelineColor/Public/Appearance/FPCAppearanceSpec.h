@@ -14,7 +14,6 @@ struct FPCAppearanceSpec {
   FLinearColor SecondaryColor = FLinearColor(0.15f, 0.15f, 0.15f, 1.f);
   TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> PaintFinish;
   FName CatalogKey = NAME_None;
-  // Shared MetallicColor finish CDO — stamp Roughness before each paint.
   float RoughnessValue = 0.4f;
   bool bOverrideRoughness = false;
 

@@ -432,8 +432,6 @@ static FPipePumpEndpointProcessor GPipePumpProcessor;
 }  // namespace
 
 void FStructuralEndpointProcessors::RegisterAll(FStructuralEndpointCatalog& Catalog) {
-  // New endpoint kinds = catalog descriptor + RunStrategy leaf + SiteMembership only.
-  // Never new Session forwarders / never dual place-wire engines.
   Catalog.RegisterProcessor(GPoleProcessor);
   Catalog.RegisterProcessor(GStorageProcessor);
   Catalog.RegisterProcessor(GSwitchProcessor);

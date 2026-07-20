@@ -12,6 +12,7 @@
 #include "StructuralPowerLog.h"
 #include "UI/FGGameUI.h"
 #include "UI/FStructuralIdConfigTarget.h"
+#include "UI/FStructuralPowerIdModalHost.h"
 #include "UI/FStructuralPowerIdPresenterFactory.h"
 
 FDelegateHandle FStructuralPowerIdInput::InputInitHandle;
@@ -158,6 +159,10 @@ void FStructuralPowerIdInput::RecoverAfterVanillaUiClosed(AFGPlayerController* P
   }
 
   if (FStructuralPowerIdPresenterFactory::IsAnyPanelVisible()) {
+    return;
+  }
+
+  if (!FStructuralPowerIdModalHost::OwnsPlayerInput()) {
     return;
   }
 

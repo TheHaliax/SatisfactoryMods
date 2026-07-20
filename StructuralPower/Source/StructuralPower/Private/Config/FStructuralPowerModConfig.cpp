@@ -307,7 +307,6 @@ void FStructuralPowerModConfig::RequestGroupPipesReconcile(UWorld* World) {
 }
 
 void FStructuralPowerModConfig::RequestGroupBeltsReconcile(UWorld* /*World*/) {
-  // Belts group: toggle persistence only — no attach reconcile.
 }
 
 bool FStructuralPowerModConfig::TryApplySetCommand(const TArray<FString>& Args, UWorld* World) {

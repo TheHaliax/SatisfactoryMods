@@ -67,8 +67,7 @@ void FStructuralGraphCircuitOps::Bind(FStructuralGraphSession* InSession) {
 }
 
 void FStructuralGraphCircuitOps::BeginCircuitPromotion() {
-  // ConnectComponents fires circuit-changed mid-promotion — defer switch refresh until depth hits
-  // 0.
+  // ConnectComponents fires circuit-changed mid-promotion — defer switch refresh until depth 0.
   ++Session->CircuitPromotionDepth();
 }
 
@@ -98,9 +97,8 @@ bool LinkHiddenPairImpl(FStructuralGraphSession* Session, UFGPowerConnectionComp
     return false;
   }
 
-  // Same circuit ID ≠ durable mesh edge. HUB integrated gens (and any daisy-chain)
-  // briefly share a circuit via a visible wire; skipping AddHiddenConnection here left
-  // the sibling at circuit=-1 after FG DisconnectComponents tore that wire path.
+  // Same circuit ID = durable mesh. HUB gens briefly share via visible wire; skipping
+  // AddHiddenConnection left sibling at circuit=-1 after FG DisconnectComponents tore that path.
   const int32 CircuitA = A->GetCircuitID();
   const int32 CircuitB = B->GetCircuitID();
   const bool bSameCircuit = CircuitA != INDEX_NONE && CircuitA == CircuitB;
@@ -129,8 +127,7 @@ bool LinkHiddenPairImpl(FStructuralGraphSession* Session, UFGPowerConnectionComp
 
   FStructuralPowerTrace::LogLinkOp(TEXT("link"), A, B, bAdded, Path);
 
-  // FG UFGCircuitConnectionComponent::AddHiddenConnection — "Connects both ends … and the
-  // circuits." No explicit ConnectComponents here (avoids double merge).
+  // FG AddHiddenConnection already merges circuits — no ConnectComponents (avoids double merge).
   (void)bPromoteCircuit;
   (void)PromoteVerbosity;
   (void)Session;
@@ -286,7 +283,6 @@ bool FStructuralGraphCircuitOps::TryMeshPeerBusOnComponent(
   const bool bPromoteCircuit = !bMeshOnlyLinks;
 
   auto AttemptMesh = [&]() -> bool {
-    // Caller must Refresh when index dirty — hot remesh must not rebuild every call.
     if (Session->BridgeEndpointRootIndexDirty()) {
       Session->BridgeRootIndex().RefreshBridgeEndpointRootIndex();
     }
@@ -347,7 +343,6 @@ bool FStructuralGraphCircuitOps::TryMeshPeerBusOnComponent(
         return;
       }
 
-      // Prefer powered sibling on this root; else first linkable peer (star-mesh).
       const bool bPeerPowered =
           FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(SiblingBus) ||
           FStructuralCircuitPromotionUtil::ComponentCarriesPower(SiblingBus);
@@ -386,8 +381,6 @@ bool FStructuralGraphCircuitOps::TryMeshPeerBusOnComponent(
     return true;
   }
 
-  // Structure append can leave ByRoot keyed under pre-union roots — one index
-  // rebuild, not full site bus remesh.
   Session->BridgeRootIndex().MarkBridgeEndpointRootIndexDirty();
   return FinishMesh(AttemptMesh());
 }
@@ -589,7 +582,6 @@ int32 FStructuralGraphCircuitOps::PruneBridgePeerMeshForRoots(const TSet<int32>&
         }
       }
 
-      // Keep mesh inside one structure component — only cut severed sections.
       if (SelfRoot != INDEX_NONE && SelfRoot == PeerRoot) {
         continue;
       }
@@ -743,8 +735,6 @@ UFGCircuitConnectionComponent* FStructuralGraphCircuitOps::GetComponentSourceCon
     return CachedEntry->Get();
   }
 
-  // Last resort: any bridge bus on the root so machines/gens can mesh before the
-  // site carries power (place onto structure that poles haven't energized yet).
   UFGStructuralPowerConnectionComponent* AnyBus = nullptr;
   Session->EndpointIndex().ForEachOnRoot(ComponentRoot, [&](const FStructuralNodeId& NodeId) {
     if (AnyBus) {

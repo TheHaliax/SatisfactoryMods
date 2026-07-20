@@ -2,21 +2,44 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Iterative dev build: PipelineColor runtime module → local Satisfactory Mods.
+# Paths: -ProjectPath / -GamePath / -UeCssRoot, or SAT_PROJECT_PATH / SAT_GAME_PATH /
+# UE_CSS_ROOT, or tools/local-paths.ps1 (gitignored).
 param(
     [ValidateSet('Shipping', 'Development')]
     [string]$Config = 'Shipping',
     [switch]$NoCopy,
     [switch]$Clean,
     [switch]$SkipIcons,
-    [string]$ProjectPath = 'E:\Modding\Satisfactory\StarterProject\FactoryGame.uproject',
+    [string]$ProjectPath = '',
     [string]$ModRoot = '',
-    [string]$StarterModLink = 'E:\Modding\Satisfactory\StarterProject\Mods\PipelineColor',
-    [string]$GamePath = 'E:\SteamLibrary\steamapps\common\Satisfactory',
-    [string]$UeCssRoot = 'C:\Program'
+    [string]$StarterModLink = '',
+    [string]$GamePath = '',
+    [string]$UeCssRoot = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $ModName = 'PipelineColor'
+
+$LocalPathsFile = Join-Path $PSScriptRoot 'local-paths.ps1'
+if (Test-Path -LiteralPath $LocalPathsFile) { . $LocalPathsFile }
+if ([string]::IsNullOrWhiteSpace($ProjectPath) -and $LocalProjectPath) { $ProjectPath = $LocalProjectPath }
+if ([string]::IsNullOrWhiteSpace($GamePath) -and $LocalGamePath) { $GamePath = $LocalGamePath }
+if ([string]::IsNullOrWhiteSpace($UeCssRoot) -and $LocalUeCssRoot) { $UeCssRoot = $LocalUeCssRoot }
+if ([string]::IsNullOrWhiteSpace($ProjectPath)) { $ProjectPath = $env:SAT_PROJECT_PATH }
+if ([string]::IsNullOrWhiteSpace($GamePath)) { $GamePath = $env:SAT_GAME_PATH }
+if ([string]::IsNullOrWhiteSpace($UeCssRoot)) { $UeCssRoot = $env:UE_CSS_ROOT }
+if ([string]::IsNullOrWhiteSpace($ProjectPath)) {
+    throw 'Pass -ProjectPath, set SAT_PROJECT_PATH, or define $LocalProjectPath in tools/local-paths.ps1'
+}
+if ([string]::IsNullOrWhiteSpace($GamePath)) {
+    throw 'Pass -GamePath, set SAT_GAME_PATH, or define $LocalGamePath in tools/local-paths.ps1'
+}
+if ([string]::IsNullOrWhiteSpace($UeCssRoot)) {
+    throw 'Pass -UeCssRoot, set UE_CSS_ROOT, or define $LocalUeCssRoot in tools/local-paths.ps1'
+}
+if ([string]::IsNullOrWhiteSpace($StarterModLink)) {
+    $StarterModLink = Join-Path (Split-Path -Parent $ProjectPath) "Mods\$ModName"
+}
 
 function Resolve-PipelineColorModRoot {
     param([string]$ExplicitModRoot, [string]$ScriptRoot, [string]$LinkPath)
@@ -64,7 +87,8 @@ function Stop-StaleUbtProcesses {
 }
 
 $Ubt = Join-Path $UeCssRoot 'Engine\Binaries\DotNET\UnrealBuildTool\UnrealBuildTool.dll'
-$LogFile = 'E:\Modding\Satisfactory\logs\pack-pipelinecolor.log'
+$LogDir = if ($LocalLogDir) { $LocalLogDir } else { $env:TEMP }
+$LogFile = Join-Path $LogDir 'pack-pipelinecolor.log'
 New-Item -ItemType Directory -Force -Path (Split-Path $LogFile) | Out-Null
 
 if (-not (Test-Path -LiteralPath $Ubt)) {

@@ -30,7 +30,6 @@ bool FStructuralCircuitPromotionUtil::ComponentCarriesPower(
 
 bool FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(
     const UFGPowerConnectionComponent* Component) {
-  // FG: HasPower() reflects live production on the connector's circuit.
   return IsValid(Component) && ComponentOnCircuit(Component) && Component->HasPower();
 }
 

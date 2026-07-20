@@ -35,6 +35,18 @@ class STRUCTURALPOWER_API FStructuralPanelAttach {
                                  const FStructuralPanelPorts& Ports, int32 ComponentRoot,
                                  FName PanelControl);
 
+  static bool TryLinkLightToControlBus(FStructuralGraphSession& Session,
+                                       AFGBuildableLightsControlPanel* Panel,
+                                       AFGBuildableLightSource* Light);
+
+  static bool AreKeyedLightsLinkedToControlBus(FStructuralGraphSession& Session,
+                                               AFGBuildableLightsControlPanel* Panel,
+                                               int32 ComponentRoot);
+
+  static AFGBuildableLightsControlPanel* FindPanelForDownstreamLight(
+      FStructuralGraphSession& Session, int32 ComponentRoot,
+      const FStructuralChannelKey& LightKey);
+
   static void PromotePanelDownstreamSubnet(FStructuralGraphSession& Session,
                                            AFGBuildableLightsControlPanel* Panel,
                                            const FStructuralPanelPorts& Ports,

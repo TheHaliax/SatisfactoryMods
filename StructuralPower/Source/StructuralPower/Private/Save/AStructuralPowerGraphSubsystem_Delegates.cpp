@@ -303,8 +303,8 @@ void AStructuralPowerGraphSubsystem::ScheduleStructureSplitReconcile() {
     return;
   }
 
-  // Stay true until RunStructureSplitReconcile finishes so RemoveHiddenConnection
-  // cannot fan-out switch OnCircuitsRebuilt mid-batch.
+  // Hold until RunStructureSplitReconcile finishes — else RemoveHidden fans OnCircuitsRebuilt
+  // mid-batch.
   bPendingStructureSplitReconcile = true;
   NotifyDeferredWorkRegistered();
 

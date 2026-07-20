@@ -181,8 +181,7 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindSwitc
 }
 
 void AStructuralPowerGraphSubsystem::StripPersistedEndpointModComponents(AFGBuildable* Host) {
-  // Saved outlet/panel buses still reference torn mesh — strip before live restitch or load
-  // asserts.
+  // Saved buses still reference torn mesh — strip before live restitch or load asserts.
   if (!IsValid(Host) || !Host->HasAuthority()) {
     return;
   }
@@ -288,7 +287,6 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCrea
   const bool bPole = Host->IsA<AFGBuildablePowerPole>();
   const bool bSwitch = Host->IsA<AFGBuildableCircuitSwitch>();
   const bool bStorage = Host->IsA<AFGBuildablePowerStorage>();
-  // Generators (incl. wind/booster) host a site bus so solo foundation pads work.
   const bool bGenerator = FStructuralEligibilityRules::IsStructuralGenerator(Host);
   if (!bPole && !bSwitch && !bStorage && !bGenerator) {
     return nullptr;

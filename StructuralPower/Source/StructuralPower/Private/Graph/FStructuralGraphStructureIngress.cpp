@@ -40,8 +40,6 @@ void FStructuralGraphStructureIngress::ProcessStructure(AFGBuildable* Buildable)
     return;
   }
 
-  // Neighbor join / multi-root fuse changes FindRoot for mounts — invalidate
-  // bridge index only (not bus RemeshQueue). Place mesh then sees peers.
   if (MergedRoots.Num() > 0) {
     Session->BridgeRootIndex().MarkBridgeEndpointRootIndexDirty();
   }
@@ -87,8 +85,6 @@ void FStructuralGraphStructureIngress::ProcessLightweightStructure(
 }
 
 void FStructuralGraphStructureIngress::RetryAwaitingStructuralSiteEndpoints() {
-  // Only endpoints still waiting on a site — never reaffirm/enqueue the whole world
-  // on every foundation place (that path melted tiny legacy saves).
   for (TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Session->TrackedEndpoints()) {
     if (!Pair.Value.bAwaitingStructuralSite) {
       continue;
@@ -147,7 +143,6 @@ void FStructuralGraphStructureIngress::MarkOrphanMountEndpointsAwaiting(
       continue;
     }
 
-    // Mount still valid — skip endpoints outside the split set.
     if (bScoped && !AffectedRoots.Contains(Root)) {
       continue;
     }
@@ -165,7 +160,6 @@ void FStructuralGraphStructureIngress::ReconcileAfterStructureSplit(
     return;
   }
 
-  // Cut only severed-section bridge links; keep powered same-root mesh intact.
   Session->Circuit().PruneBridgePeerMeshForRoots(AffectedRoots);
   MarkOrphanMountEndpointsAwaiting(AffectedRoots);
 

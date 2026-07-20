@@ -17,10 +17,11 @@ Each mod has its own folder and README with features, requirements, and roadmap.
 | **Added** | 2026-06-30 |
 | **Published** | 2026-07-02 |
 | **Updated** | 2026-07-16 |
-| **Version** | 3.1.0 |
-| **Next** | **3.2** — [Belt topology](StructuralPower/README.md#v32--belt-topology-next) ([roadmap](StructuralPower/README.md#roadmap)) |
+| **Previous** | **3.0** — [Foundation rewrite](StructuralPower/README.md#v300--foundation-rewrite-previous) |
+| **Version** | **3.1.0** *(current)* — [Machines + pipes](StructuralPower/README.md#v310--machines--pipes-current) |
+| **In development** | **3.2** — [Belt topology](StructuralPower/README.md#v32--belt-topology-in-development) ([roadmap](StructuralPower/README.md#roadmap)) |
 
-Hidden structural power bus for foundations, walls, ramps, and bridge poles. Retroactive — existing builds are wired on load. **v3.1:** opt-in machines + pipe topology (gen/storage/resources/production, supports→pumps). **v3.0:** vanilla-first rewrite, lighting, Id panel, switches, hoverpack. Config via cfg / console / `!` chat.
+Hidden structural power bus for foundations, walls, ramps, and bridge poles. Retroactive — existing builds are wired on load. **v3.0:** vanilla-first rewrite, lighting, Id panel, switches, hoverpack. **v3.1:** opt-in machines + pipe topology (gen/storage/resources/production, supports→pumps). **v3.2 (in development):** belt topology. Config via cfg / console / `!` chat.
 
 Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 

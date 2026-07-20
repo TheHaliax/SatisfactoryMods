@@ -121,8 +121,6 @@ bool FStructuralEndpointDispatcher::ShouldSkipOutletDuringBulkLoad(
   if (const IStructuralEndpointProcessor* Processor =
           FStructuralEndpointCatalog::Get().Classify(Buildable)) {
     const FStructuralEndpointDescriptor& Descriptor = Processor->GetDescriptor();
-    // Lights/panels/machines wait for remesh. Mid-bulk gen attach fails
-    // (no source connector yet) — post-load machine workers retry (lights pattern).
     return Descriptor.Kind == EStructuralEndpointKind::Light ||
            Descriptor.Kind == EStructuralEndpointKind::Panel ||
            Descriptor.Kind == EStructuralEndpointKind::Generator ||

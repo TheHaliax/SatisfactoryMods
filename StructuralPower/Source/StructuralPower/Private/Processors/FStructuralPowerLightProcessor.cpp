@@ -4,8 +4,10 @@
 #include "Processors/FStructuralPowerLightProcessor.h"
 
 #include "Attach/FStructuralDeviceAttach.h"
+#include "Attach/FStructuralPanelAttach.h"
 #include "Attach/FStructuralPowerTransferGate.h"
 #include "Buildables/FGBuildableLightSource.h"
+#include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
 #include "Circuit/FStructuralGraphCircuitOps.h"
 #include "Config/FStructuralPowerModConfig.h"
@@ -16,6 +18,7 @@
 #include "FGCircuitConnectionComponent.h"
 #include "FGPowerConnectionComponent.h"
 #include "Graph/FStructuralEndpointTypes.h"
+#include "Panel/FStructuralPanelPortResolver.h"
 #include "Routing/EStructuralChannel.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerConstants.h"
@@ -101,20 +104,52 @@ void FStructuralPowerLightProcessor::Process(FStructuralPowerContext& Ctx,
     FStructuralDeviceAttach::TearDownConsumerLinks(Plug);
   }
 
-  const bool bAttached =
-      FStructuralDeviceAttach::TryAttachConsumer(Ctx.Session(), Light, Plug, Root, ChannelKey);
-  if (!bAttached) {
-    if (Ctx.Session().Reconcile().IsDirectSwitchFedLight(Root, ChannelKey) &&
-        Ctx.Session().Reconcile().IsSwitchFeedOpen(Root, ChannelKey.Source)) {
-      FStructuralPowerTrace::LogPlacementSkip(Light, TEXT("light_switch_open"),
-                                              ELogVerbosity::Verbose);
-    } else if (bPanelFed) {
+  bool bAttached = false;
+  int32 PanelSupplyReady = -1;
+  int32 PanelDownstreamFed = -1;
+
+  if (bPanelFed) {
+    AFGBuildableLightsControlPanel* Panel = FStructuralPanelAttach::FindPanelForDownstreamLight(
+        Ctx.Session(), Root, ChannelKey);
+    if (IsValid(Panel)) {
+      bAttached = FStructuralPanelAttach::TryLinkLightToControlBus(Ctx.Session(), Panel, Light);
+
+      FStructuralPanelPorts Ports;
+      if (FStructuralPanelPortResolver::Resolve(Panel, Ports)) {
+        UFGPowerConnectionComponent* InputPower =
+            FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
+        UFGPowerConnectionComponent* Downstream =
+            FStructuralPanelPortResolver::AsPowerConnection(Ports.Downstream);
+        PanelSupplyReady = IsValid(InputPower) &&
+                                   FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower)
+                               ? 1
+                               : 0;
+        PanelDownstreamFed =
+            IsValid(Downstream) &&
+                    FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(Downstream)
+                ? 1
+                : 0;
+      }
+    }
+
+    if (!bAttached) {
       FStructuralPowerTrace::LogPlacementSkip(Light, TEXT("light_panel_fed"),
                                               ELogVerbosity::Verbose);
-    } else {
-      FStructuralPowerTrace::LogPlacementSkip(Light, TEXT("light_attach_failed"));
+    }
+  } else {
+    bAttached =
+        FStructuralDeviceAttach::TryAttachConsumer(Ctx.Session(), Light, Plug, Root, ChannelKey);
+    if (!bAttached) {
+      if (Ctx.Session().Reconcile().IsDirectSwitchFedLight(Root, ChannelKey) &&
+          Ctx.Session().Reconcile().IsSwitchFeedOpen(Root, ChannelKey.Source)) {
+        FStructuralPowerTrace::LogPlacementSkip(Light, TEXT("light_switch_open"),
+                                                ELogVerbosity::Verbose);
+      } else {
+        FStructuralPowerTrace::LogPlacementSkip(Light, TEXT("light_attach_failed"));
+      }
     }
   }
+
   if (bAttached) {
     Tracked.bStructuralPowerTransferActive = true;
     Ctx.Session().Circuit().PromoteDirectHiddenLinks(Plug);
@@ -127,5 +162,7 @@ void FStructuralPowerLightProcessor::Process(FStructuralPowerContext& Ctx,
   const TCHAR* PathLabel =
       bPanelFed ? TEXT("panel_downstream") : (bAttached ? TEXT("direct") : TEXT("-"));
   FStructuralPowerTrace::LogLightConsumer(Light, Root, ParentAnchor.IsValid(), ChannelKey, Plug,
-                                          PathLabel);
+                                          PathLabel, PanelSupplyReady, PanelDownstreamFed);
+
+  (void)bLocalPromoteOnly;
 }

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Id panel / input** — stop stomping vanilla Q/F when the Id panel never owned input
+  (ownership latch on modal acquire/release; no GameOnly / flush on every interact close)
+
 ## 3.1.0 — 2026-07-16
 
 Opt-in machine groups and **pipe topology** on the structural bus (default **off**). Generators and power storage host a site bus on foundations; resource and production consumers attach to the same structure root. Fluid pipe runs inject from supports and machine pipe ports; inline pumps draw from the bus. Transport is a wired-consumer stub; belts are toggle-only.

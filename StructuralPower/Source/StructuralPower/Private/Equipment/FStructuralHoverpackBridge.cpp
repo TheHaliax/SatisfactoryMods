@@ -1024,7 +1024,6 @@ bool FStructuralHoverpackBridge::ResolvePublishedTether(
     OutMaxHorizontal = Radius;
     OutMaxVertical = Radius;
   } else {
-    // Dedicated client: pack connection component never gets anchor — mirror from RCO.
     const bool bHasClientMirror =
         IsLocallyOwnedHoverpack(Pack) &&
         TryGetClientTetherMirror(OutAnchor, OutMaxHorizontal, OutMaxVertical);

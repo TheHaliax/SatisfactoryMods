@@ -334,7 +334,6 @@ bool FStructuralGraphIdOps::CollectIdsOnComponent(const FStructuralComponentKey&
       }
     }
 
-    // Poles/storage: overrides already harvested — skip Resolve* (MakeCanonical).
     if (!bIsLight && !bIsPanel && !bIsSwitch && !bIsGenerator) {
       return;
     }
@@ -390,7 +389,6 @@ bool FStructuralGraphIdOps::CollectIdsOnComponent(const FStructuralComponentKey&
             return;
           }
 
-          // Orphan override: one resolve max (not whole foundation registry).
           const FStructuralComponentKey BuildableKey = MakeComponentKeyForBuildable(Buildable);
           if (BuildableKey.IsValid() &&
               Session->StructureGraph().FindRoot(BuildableKey.CanonicalNodeId) == TargetRoot) {

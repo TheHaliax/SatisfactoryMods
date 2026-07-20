@@ -38,7 +38,6 @@ int32 CompareNodeId(const FStructuralNodeId& A, const FStructuralNodeId& B) {
 }
 
 namespace {
-// Hash query misses gap-boundary pairs without padding the search box.
 constexpr float NeighborQueryMarginCm = 200.0f;
 
 FStructuralNodeId MakeActorNodeId(const AFGBuildable* Buildable) {
@@ -147,7 +146,6 @@ void FStructuralConnectivityGraph::Union(int32 A, int32 B) {
     Swap(A, B);
   }
 
-  // O(|component B|) — keep member lists for CollectComponent without full scans.
   if (Members.IsValidIndex(A) && Members.IsValidIndex(B)) {
     Members[A].Append(Members[B]);
     Members[B].Reset();
@@ -260,7 +258,6 @@ void FStructuralConnectivityGraph::CollectComponent(int32 StartIndex, TArray<int
     }
   }
 
-  // Fallback if member lists drifted — O(N) scan.
   Out.Reserve(NumValid);
   for (int32 Index = 0; Index < Nodes.Num(); ++Index) {
     if (!Nodes[Index].bValid) {
@@ -437,7 +434,6 @@ void FStructuralConnectivityGraph::RemoveNodesBatched(const TArray<FStructuralNo
     return;
   }
 
-  // One component gather per touched root — not per deleted pad.
   TSet<int32> ComponentSlots;
   for (int32 Root : SeedRoots) {
     TArray<int32> Part;

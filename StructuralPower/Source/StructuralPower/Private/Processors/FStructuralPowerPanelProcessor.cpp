@@ -102,7 +102,6 @@ void FStructuralPowerPanelProcessor::Process(FStructuralPowerContext& Ctx,
     return;
   }
 
-  // Pre-unify OnWireDelta short-paths — keep inside Process for WireDelta/Toggle funnel.
   if (AttachContext == EAttachContext::WireDelta || AttachContext == EAttachContext::Toggle) {
     if (AttachContext != EAttachContext::Toggle &&
         Ctx.Session().CircuitEcho().ShouldSkipPanelCircuitEcho(Panel)) {
@@ -189,11 +188,14 @@ void FStructuralPowerPanelProcessor::Process(FStructuralPowerContext& Ctx,
         if (!bDownstreamUnchanged) {
           FStructuralPanelAttach::RestitchDownstream(Ctx.Session(), Panel, Ports, Root,
                                                      EffectiveControl);
-          Tracked.bDownstreamLinksReady = true;
-          Tracked.CachedDownstreamControl = EffectiveControl;
         } else {
           FStructuralPanelControlledSync::ApplyKeyedSubnet(Ctx.Session(), Panel);
         }
+
+        const bool bLightsLinked = FStructuralPanelAttach::AreKeyedLightsLinkedToControlBus(
+            Ctx.Session(), Panel, Root);
+        Tracked.bDownstreamLinksReady = bLightsLinked;
+        Tracked.CachedDownstreamControl = bLightsLinked ? EffectiveControl : NAME_None;
       }
 
       return;
@@ -254,8 +256,10 @@ void FStructuralPowerPanelProcessor::Process(FStructuralPowerContext& Ctx,
       FStructuralPanelControlledSync::ApplyKeyedSubnet(Ctx.Session(), Panel);
     }
 
-    Tracked.bDownstreamLinksReady = true;
-    Tracked.CachedDownstreamControl = EffectiveControl;
+    const bool bLightsLinked =
+        FStructuralPanelAttach::AreKeyedLightsLinkedToControlBus(Ctx.Session(), Panel, Root);
+    Tracked.bDownstreamLinksReady = bLightsLinked;
+    Tracked.CachedDownstreamControl = bLightsLinked ? EffectiveControl : NAME_None;
   } else {
     Tracked.bDownstreamLinksReady = false;
     Tracked.CachedDownstreamControl = NAME_None;
@@ -291,6 +295,5 @@ void FStructuralPowerPanelProcessor::OnWireDelta(FStructuralPowerContext& Ctx,
       AttachContext != EAttachContext::RuntimePlace || IsBulkLoadAttachContext(AttachContext) ||
       AttachContext == EAttachContext::WireDelta || AttachContext == EAttachContext::Toggle;
 
-  // Short-circuits live in Process for WireDelta/Toggle attach funnel.
   Process(Ctx, Panel, bLocalPromoteOnly);
 }

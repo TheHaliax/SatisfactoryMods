@@ -30,7 +30,6 @@ void FPipeFluidKeyResolver::Resolve(AFGBuildable* Buildable,
   if (AFGBuildablePipeline* Pipe = Cast<AFGBuildablePipeline>(Buildable)) {
     OutFluid = Pipe->GetFluidDescriptor();
     if (!OutFluid) {
-      // NoIndicator: ContentPct stays 0 — fluid lives on pipe connections.
       if (UFGPipeConnectionComponent* C0 = Pipe->GetPipeConnection0()) {
         OutFluid = C0->GetFluidDescriptor();
       }
@@ -40,7 +39,6 @@ void FPipeFluidKeyResolver::Resolve(AFGBuildable* Buildable,
         }
       }
     }
-    // Never use indicator content % (NoIndicator → false Neutral).
     bOutEmpty = !OutFluid;
     return;
   }

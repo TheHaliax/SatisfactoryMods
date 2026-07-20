@@ -51,7 +51,6 @@ void FStructuralGraphRemoval::RunStructureSplitReconcile() {
     return;
   }
 
-  // Mass dismantle: one UF re-union for all queued pads (not per RemoveByInstanceIndex).
   TArray<FStructuralNodeId> PendingNodes = MoveTemp(Session->PendingStructureNodeRemovals());
   if (PendingNodes.Num() > 0) {
     TArray<int32> BatchedAffected;
@@ -63,7 +62,6 @@ void FStructuralGraphRemoval::RunStructureSplitReconcile() {
 
   TSet<int32> Roots = MoveTemp(Session->PendingStructureSplitAffectedRoots());
 
-  // Keep circuit-echo defer + promotion depth through prune (RemoveHidden → OnCircuitsRebuilt).
   FStructuralCircuitPromotionScope PromotionScope(&Session->Owner());
   Session->PendingStructureSplitReconcile() = true;
   Session->StructureIngress().ReconcileAfterStructureSplit(Roots);

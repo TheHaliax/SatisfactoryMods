@@ -21,7 +21,6 @@ TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> LoadCustomSwatch() {
   return Cached;
 }
 
-// Stamp finish CDO roughness for SetCustomizationData duration only.
 struct FScopedFinishRoughnessStamp {
   UFGFactoryCustomizationDescriptor_PaintFinish* CDO = nullptr;
   float SavedRoughness = 0.f;
@@ -73,7 +72,6 @@ bool FCustomizationApplicator::ApplyIfChanged(AFGBuildable* Buildable,
     return false;
   }
 
-  // SwatchDesc alone does not drive spline Primary/Finish — Custom + Override.
   TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> PaintSwatch = LoadCustomSwatch();
   if (!PaintSwatch) {
     PaintSwatch = Spec.SwatchDesc;

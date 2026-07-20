@@ -322,7 +322,7 @@ void UPipelineColorRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase Ph
   if (Phase == ELifecyclePhase::POST_INITIALIZATION) {
     FPCPipelineColorModConfig::LoadRuntimeConfig();
 #if !WITH_EDITOR
-    UE_LOG(LogPipelineColor, Display, TEXT("PipelineColor v1.0.0 — fluid-driven pipe swatches"));
+    UE_LOG(LogPipelineColor, Display, TEXT("PipelineColor v1.1.0 — fluid-driven pipe swatches"));
 #endif
   }
 
@@ -354,7 +354,6 @@ void UPipelineColorRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase Ph
       [](AFGBuildablePipeline* Pipe) {
         UPipelineColorRootInstanceModule::HandleBuildableBuilt(Pipe);
 
-        // Flow meter actor may spawn after first paint; LastApplied would skip reapply.
         if (!IsValid(Pipe) || !Pipe->HasAuthority()) {
           return;
         }
@@ -369,7 +368,8 @@ void UPipelineColorRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase Ph
                 return;
               }
 
-              // DummyHeaders GetFlowIndicator stubs null — UPROPERTY fallback.
+              // Flow meter may spawn after first paint; DummyHeaders GetFlowIndicator stubs null —
+              // UPROPERTY fallback.
               AFGBuildablePipelineFlowIndicator* Ind = PipePtr->GetFlowIndicator();
               if (!Ind) {
                 static FObjectProperty* Prop = FindFProperty<FObjectProperty>(

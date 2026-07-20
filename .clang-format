@@ -1,8 +1,5 @@
-# Google C++ style with NASA Power of 10 overrides (readable control flow).
-# UE naming (U/A/F prefixes) is out of scope for clang-format.
 Language: Cpp
 Standard: c++20
-BasedOnStyle: Google
 ColumnLimit: 100
 IndentWidth: 2
 TabWidth: 2
@@ -15,7 +12,7 @@ AllowShortFunctionsOnASingleLine: None
 AllowShortCaseLabelsOnASingleLine: false
 AllowShortBlocksOnASingleLine: Never
 KeepEmptyLinesAtTheStartOfBlocks: false
-# UE requires Foo.generated.h as the LAST include — never reorder headers.
+# *.generated.h must remain last — do not enable SortIncludes.
 SortIncludes: Never
 IncludeBlocks: Preserve
 FixNamespaceComments: false

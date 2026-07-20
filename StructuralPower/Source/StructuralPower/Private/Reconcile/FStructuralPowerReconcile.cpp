@@ -59,7 +59,6 @@ void FStructuralPowerReconcile::RunPostLoadMachineWorkers() {
 
   UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] Post-load machine workers — after remesh"));
 
-  // ReconcileGroup* scans world when ON — same path as bang toggle.
   if (FStructuralPowerModConfig::IsGroupGenerationEnabled()) {
     ReconcileGroupGenerationState();
   }
@@ -146,7 +145,11 @@ bool FStructuralPowerReconcile::PanelNeedsLightingReconcileRetry(
 
   const UFGPowerConnectionComponent* InputPower =
       FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
-  return !FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower);
+  if (!FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower)) {
+    return true;
+  }
+
+  return !FStructuralPanelAttach::AreKeyedLightsLinkedToControlBus(*Session, Panel, Root);
 }
 
 bool FStructuralPowerReconcile::LightingReconcileNeedsRetry() {
@@ -267,7 +270,6 @@ bool FStructuralPowerReconcile::IsPanelDownstreamLight(int32 Root,
     return true;
   }
 
-  // BeginPlay / seed race: panels may not be tracked yet on first post-load pass.
   if (UWorld* World = Session->GetWorld()) {
     if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World)) {
       for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef()) {
@@ -314,7 +316,6 @@ bool FStructuralPowerReconcile::IsSwitchFeedOpen(int32 Root, FName SwitchControl
     }
   }
 
-  // Global Control gang: switches on other sites with the same Control gate this feed.
   for (const FStructuralNodeId& NodeId :
        Session->ControlIdGangIndex().GetGlobalGangMembers(SwitchControlId)) {
     if (const FTrackedEndpoint* Tracked = Session->TrackedEndpoints().Find(NodeId)) {
@@ -720,7 +721,6 @@ void FStructuralPowerReconcile::ReconcileGroupGenerationState() {
     return;
   }
 
-  // Toggle-ON path: pick up hosts placed while group was OFF (never tracked).
   UWorld* World = Session->GetWorld();
   if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World)) {
     for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef()) {
@@ -821,7 +821,6 @@ void FStructuralPowerReconcile::ReconcileGroupPipesState() {
     return;
   }
 
-  // Rebuild pipe membership + support injects before pump consumer attach.
   Session->PipeTopology().Reset();
   UWorld* World = Session->GetWorld();
   if (AFGBuildableSubsystem* BuildableSubsystem = AFGBuildableSubsystem::Get(World)) {

@@ -20,6 +20,10 @@ class STRUCTURALPOWER_API FStructuralPowerIdModalHost {
 
   static void ForceReleaseAllModalState(AFGPlayerController* PC, bool bRestoreGameInputMode = true);
 
+  static bool OwnsPlayerInput();
+
+  static void ClearInputOwnership();
+
   static void RegisterEscapeInputProcessor();
 
   static void UnregisterEscapeInputProcessor();
@@ -32,4 +36,5 @@ class STRUCTURALPOWER_API FStructuralPowerIdModalHost {
 
  private:
   static TSharedPtr<class IInputProcessor> EscapeInputProcessor;
+  static bool bOwnsPlayerInput;
 };

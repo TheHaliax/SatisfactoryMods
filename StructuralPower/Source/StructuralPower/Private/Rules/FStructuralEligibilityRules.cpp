@@ -60,7 +60,6 @@ bool FStructuralEligibilityRules::IsBusMember(const AFGBuildable* Buildable) {
     return false;
   }
 
-  // Mod structural packs often inherit factory building without UFGPowerInfoComponent.
   return Buildable->IsA<AFGBuildableFactoryBuilding>() ||
          Buildable->IsA<AFGBuildableFoundation>() || Buildable->IsA<AFGBuildableRamp>() ||
          Buildable->IsA<AFGBuildableStair>() || Buildable->IsA<AFGBuildableWalkway>() ||
@@ -82,7 +81,6 @@ bool FStructuralEligibilityRules::IsStructuralGenerator(const AFGBuildable* Buil
     return false;
   }
 
-  // Wind / booster are AFGBuildableFactory — not AFGBuildableGenerator (header-verified).
   return Buildable->IsA<AFGBuildableGenerator>() || Buildable->IsA<AFGBuildableWindTurbine>() ||
          Buildable->IsA<AFGBuildablePowerBooster>();
 }

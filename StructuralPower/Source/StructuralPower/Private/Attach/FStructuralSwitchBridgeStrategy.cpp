@@ -335,7 +335,6 @@ void FStructuralSwitchBridgeStrategy::RemeshUnmeshedBridgesAfterBulkLoad(
   FStructuralGraphSession& Session = Ctx.Session();
   Session.BridgeRootIndex().RefreshBridgeEndpointRootIndex();
 
-  // Poles/storage/gens before switches so hub is not a bare switch bus.
   TArray<const TPair<FStructuralNodeId, FTrackedEndpoint>*> Ordered;
   Ordered.Reserve(Session.TrackedEndpoints().Num());
   for (const TPair<FStructuralNodeId, FTrackedEndpoint>& Pair : Session.TrackedEndpoints()) {

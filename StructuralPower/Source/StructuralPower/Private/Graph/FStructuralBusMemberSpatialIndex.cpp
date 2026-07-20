@@ -112,7 +112,6 @@ void FStructuralBusMemberSpatialIndex::UnregisterMember(AFGBuildable* Buildable)
 
   const int32 LastIndex = Members.Num() - 1;
   if (RemoveIndex != LastIndex) {
-    // Stale LastIndex in cells after swap-remove — reindex survivor at RemoveIndex.
     UnindexMemberCells(LastIndex, Members[LastIndex].WorldBounds);
     Members.Swap(RemoveIndex, LastIndex);
     Members.SetNum(LastIndex);

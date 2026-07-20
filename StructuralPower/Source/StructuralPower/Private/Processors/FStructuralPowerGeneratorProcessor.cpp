@@ -92,7 +92,6 @@ void ProcessGenerationHost(FStructuralPowerContext& Ctx, AFGBuildable* Host) {
     return;
   }
 
-  // Own OutletBus + peer mesh — solo foundation pad has no pole host yet.
   FStructuralBridgeAttachRequest Request;
   Request.Host = Host;
   Request.Kind = EStructuralEndpointKind::Generator;

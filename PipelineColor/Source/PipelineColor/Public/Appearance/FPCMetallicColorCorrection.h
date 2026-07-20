@@ -10,12 +10,10 @@
 namespace FPCMetallicColorCorrection {
 constexpr float AlphaMin = 0.15f;
 constexpr float AlphaMax = 0.45f;
-// Neutral: metallic uses legal max sheen; matte/color uses high rough.
 constexpr float NeutralMetallicRoughness = 1.0f;
 constexpr float NeutralMatteRoughness = 4.0f;
 constexpr float SatSoftLo = 0.05f;
 constexpr float SatSoftHi = 0.22f;
-// Neutral silver rail: remap catalog Y → burnished..chrome (Alumina tops out white).
 constexpr float Burnished = 0.28f;
 constexpr float Chrome = 1.0f;
 constexpr float YRailLo = 0.08f;
@@ -51,7 +49,6 @@ inline FLinearColor SilverRail(float Y) {
   return FLinearColor(V, V, V, 1.f);
 }
 
-// One path: chromatic → keep pigment; neutral → silver by Y; mid → blend.
 inline FLinearColor CorrectBaseColor(const FLinearColor& C) {
   const float Y = LuminanceRec709(C);
   const float W = NeutralWeight(Saturation(C));

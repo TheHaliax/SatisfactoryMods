@@ -2,15 +2,6 @@
 
 Contributor notes for the StructuralPower sources in this repository.
 
-## Code comments vs documentation
-
-| Surface | Role |
-|---------|------|
-| **`Source/`** | Default **no comments** — only non-obvious engine traps (FG circuit side-effects, load ordering, MP authority). Prefer clear code; put teaching prose in `Documentation/`. |
-| **`Documentation/`** | Player + contributor **what / why / how** for the mod |
-
-No design-resolution ids, wave numbers, or milestone notes in `Source/`. SPDX headers stay.
-
 ## Repository layout
 
 ```

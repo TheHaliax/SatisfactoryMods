@@ -11,12 +11,14 @@ Runnable tooling for building, packaging, and shipping the mods in this repo.
 | `make-icons.py` | Icon compositor (base + mask + font + uplugin badge) |
 | `../scripts/check-version.ps1` | Pre-release guard: uplugin ↔ changelog version drift |
 
-Machine paths (engine root, StarterProject, Steam install) are script parameters with defaults
-for the author's layout — override them for yours. Defaults:
+Machine paths — pass script parameters, set env vars, or add gitignored
+`tools/local-paths.ps1` (`$LocalProjectPath`, `$LocalUeCssRoot`, `$LocalGamePath`, `$LocalLogDir`):
 
-- `ProjectPath` = `E:\Modding\Satisfactory\StarterProject\FactoryGame.uproject`
-- `UeCssRoot` = `C:\Program` (Unreal CSS engine root)
-- `GamePath` = `E:\SteamLibrary\steamapps\common\Satisfactory`
+| Param | Env |
+|-------|-----|
+| `-ProjectPath` | `SAT_PROJECT_PATH` |
+| `-UeCssRoot` | `UE_CSS_ROOT` |
+| `-GamePath` | `SAT_GAME_PATH` |
 
 ## Iterative development
 
@@ -52,17 +54,15 @@ no path juggling is needed inside the repo.
 4. Upload that single zip on [ficsit.app](https://ficsit.app/mod/StructuralPower) → New Version.
    SMR unpacks it and serves per-platform `.smod` downloads.
 
-See `StructuralPower/Documentation/release.md` for the full checklist and server-deploy steps.
+See `StructuralPower/Documentation/release.md` for the full checklist.
 
 ## Icons
-
-Bundled assets (do not swap palettes casually — defaults are the locked look):
 
 | File | Role |
 |------|------|
 | `BaseIcon1024.png` | Background |
-| `Mask1024.png` | Blue lineart · red name box · green version box |
-| `UnispaceBd.ttf` | Badge font (copy of Windows Unispace Bold) |
+| `Mask1024.png` | Lineart / name / version boxes |
+| `UnispaceBd.ttf` | Badge font |
 
 ```powershell
 pip install -r tools/requirements.txt   # once
@@ -71,13 +71,10 @@ powershell -File tools/Invoke-ModIcons.ps1 -ModRoot StructuralPower
 python tools/make-icons.py --uplugin PipelineColor/PipelineColor.uplugin --out-dir PipelineColor/Resources
 ```
 
-`FriendlyName` + `SemVersion` → badge **V\<major.minor\>**. Fill/shadow CLI flags exist for
-experiments; pack scripts never pass them — script defaults only.
+`FriendlyName` + `SemVersion` → badge **V\<major.minor\>**.
 
-## Why the release script builds the editor module first
+## Editor module before release cook
 
-Alpakit Release cooks through `UnrealEditor-Cmd`, which must load the plugin's **editor**
-module. A `-Module=` build doesn't emit the `.modules` manifest the loader needs, and a prior
-`git clean` wipes untracked plugin binaries. The release script rebuilds the editor module and
-rewrites its manifest (with the project's `BuildId`) before cooking — otherwise the cook fails
-with `module 'StructuralPower' could not be found`.
+Alpakit Release loads the plugin **editor** module via `UnrealEditor-Cmd`. The release script
+builds that module and writes `UnrealEditor.modules` (project `BuildId`) before cooking so the
+cook does not fail with `module could not be found`.

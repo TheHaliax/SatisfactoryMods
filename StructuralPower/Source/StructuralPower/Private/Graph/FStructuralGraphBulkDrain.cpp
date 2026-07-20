@@ -61,7 +61,6 @@ void FStructuralGraphBulkDrain::PrepareRemeshQueue() {
   RemeshHubByRoot.Reset();
   RemeshHead = 0;
 
-  // Poles / storage / gens before switches — hub must not be bare switch bus.
   TArray<FStructuralNodeId> Poles;
   TArray<FStructuralNodeId> Storage;
   TArray<FStructuralNodeId> Generators;

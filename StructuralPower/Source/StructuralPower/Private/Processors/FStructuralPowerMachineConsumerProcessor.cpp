@@ -77,7 +77,6 @@ void FStructuralPowerMachineConsumerProcessor::Process(FStructuralPowerContext& 
     return;
   }
 
-  // Parent/root before ChannelKey — ResolveChannelKey needs MountParentId for Source.
   const EAttachContext AttachContext = Ctx.GetAttachContext();
   const FStructuralWallAnchor ParentAnchor =
       Ctx.Session().BridgeRootIndex().ResolveOutletAnchor(Device);
@@ -85,7 +84,6 @@ void FStructuralPowerMachineConsumerProcessor::Process(FStructuralPowerContext& 
   int32 Root =
       Ctx.Session().BridgeRootIndex().ResolveEndpointComponentRoot(Device, ParentAnchor, ParentId);
 
-  // Pipe pumps: prefer structure site injected via pipe topology (support / machine).
   if (Kind == EStructuralEndpointKind::PipePump &&
       FStructuralPowerModConfig::IsGroupPipesEnabled()) {
     const int32 Injected =
@@ -155,8 +153,6 @@ void FStructuralPowerMachineConsumerProcessor::Process(FStructuralPowerContext& 
     FStructuralDeviceAttach::TearDownConsumerLinks(Plug);
   }
 
-  // Attach even if the bus isn't carrying power yet — GetComponentSourceConnector falls
-  // back to any bridge bus. Power arrives when gens/poles energize the same root.
   const bool bAttached =
       FStructuralDeviceAttach::TryAttachConsumer(Ctx.Session(), Device, Plug, Root, ChannelKey);
   if (bAttached) {
@@ -180,7 +176,6 @@ void FStructuralPowerMachineConsumerProcessor::Process(FStructuralPowerContext& 
       Device, bFeed ? TEXT("machine_attach_failed") : TEXT("machine_no_bridge_bus"),
       ELogVerbosity::Log);
 
-  // One deferred retry after first fail (index/feed race); no enqueue loop.
   if (bFirstFail && !Ctx.Session().IsBuildablePlacementPending(Device)) {
     Ctx.Session().EnqueuePlacement(Device, EStructuralPlacementJobType::Outlet,
                                    /*bDefer=*/true);

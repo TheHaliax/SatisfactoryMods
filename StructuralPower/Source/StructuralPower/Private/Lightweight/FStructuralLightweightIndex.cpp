@@ -153,7 +153,6 @@ void FStructuralLightweightIndex::UnregisterMember(const FStructuralLightweightK
     return;
   }
 
-  // O(cells for this member) — never rebuild whole grid (mass dismantle stutter).
   const int32 RemoveIndex = *MemberIndexPtr;
   UnindexMemberCells(RemoveIndex, Members[RemoveIndex].WorldBounds);
   KeyToIndex.Remove(Key);

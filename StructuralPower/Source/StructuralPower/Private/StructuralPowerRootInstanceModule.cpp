@@ -106,7 +106,6 @@ bool UStructuralPowerRootInstanceModule::TryEnqueueBuildable(AFGBuildable* Build
 }
 
 static bool ShouldUseBulkBeginPlayLog(UWorld* World) {
-  // BeginPlay fires before PostLoad rebuild / bulk drain flag — Log spam = hitch.
   if (!IsValid(World)) {
     return true;
   }
@@ -290,8 +289,8 @@ static void HandleFactoryMachineBeginPlay(AFGBuildableFactory* Factory) {
     return;
   }
 
-  // OnBuildEffectFinished sometimes skips factories (miners). Next-tick enqueue
-  // mirrors poles — never sync Process in BeginPlay (GetOrCreate AV risk).
+  // OnBuildEffectFinished can skip factories — next-tick enqueue; never sync Process in BeginPlay
+  // (GetOrCreate AV risk).
   if (!FStructuralEligibilityRules::IsStructuralGenerator(Factory) &&
       !FStructuralEligibilityRules::IsStructuralExtractor(Factory) &&
       !FStructuralEligibilityRules::IsStructuralManufacturer(Factory) &&

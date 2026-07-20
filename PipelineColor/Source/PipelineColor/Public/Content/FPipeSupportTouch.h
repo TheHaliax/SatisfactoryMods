@@ -8,7 +8,6 @@
 class AFGBuildable;
 class AFGBuildablePipeline;
 
-// Soft-IsA fluid support parents only — bare PolePipe is shared with hypertube.
 namespace FPipeSupportTouch {
 bool IsPipeSupport(const AFGBuildable* Buildable);
 

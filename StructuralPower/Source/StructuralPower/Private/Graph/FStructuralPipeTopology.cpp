@@ -41,7 +41,6 @@ void FStructuralPipeTopology::RemoveBuildable(AFGBuildable* Buildable) {
   Rank.Remove(Id);
   Actors.Remove(Id);
 
-  // Survivors: leave orphaned; next Integrate rebuilds edges. No CollectComponent remesh.
 }
 
 FStructuralNodeId FStructuralPipeTopology::FindRoot(const FStructuralNodeId& Id) const {
@@ -50,7 +49,6 @@ FStructuralNodeId FStructuralPipeTopology::FindRoot(const FStructuralNodeId& Id)
   }
 
   FStructuralNodeId Cur = Id;
-  // Iterative path climb — no recursion (NASA #1). Cap hops.
   for (int32 Hop = 0; Hop < MaxConductorHops; ++Hop) {
     const FStructuralNodeId* P = Parent.Find(Cur);
     if (!P || *P == Cur) {

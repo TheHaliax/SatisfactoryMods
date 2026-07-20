@@ -1,16 +1,13 @@
-# Contributing (SatisfactoryMods)
+# Contributing
 
-## C++ style
+## C++ format
 
-- **clang-format:** [`.clang-format`](.clang-format) — Google base, NASA Power of 10
-  overrides for short-form control flow (`AllowShort* = Never/None`, column 100).
-  `SortIncludes: Never` — UE requires `*.generated.h` as the **last** include.
-- Run: `powershell -File tools/clang-format-first-party.ps1`
-- CI: `.github/workflows/clang-format.yml` fails PRs that drift.
+- Style file: [`.clang-format`](.clang-format) (column 100; short if/loop/function forms off).
+  `SortIncludes: Never` — Unreal requires `*.generated.h` as the **last** include.
+- Format first-party sources: `powershell -File tools/clang-format-first-party.ps1`
+- CI: [`.github/workflows/clang-format.yml`](.github/workflows/clang-format.yml) fails PRs that drift.
 
-## NASA Power of 10 (review / lint — not auto-rewritten)
-
-clang-format cannot enforce these; keep them in reviews:
+## Review expectations (not auto-rewritten by clang-format)
 
 1. No `goto` / `setjmp` / `longjmp` in game-mod code.
 2. Prefer non-recursive algorithms on hot paths; document any intentional recursion.
@@ -24,4 +21,4 @@ clang-format cannot enforce these; keep them in reviews:
 
 ## First-party modules
 
-`StructuralPower`, `PipelineColor`. Do not format Engine / third-party trees.
+`StructuralPower`, `PipelineColor`. Do not format Engine or third-party trees.

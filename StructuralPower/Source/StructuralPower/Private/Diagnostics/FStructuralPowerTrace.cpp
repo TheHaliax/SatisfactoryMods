@@ -156,8 +156,6 @@ void FStructuralPowerTrace::LogLinkOp(const TCHAR* Op, UFGCircuitConnectionCompo
     return;
   }
 
-  // Hot path: never touch subsystem / KeyForBuildable or Log-level I/O here.
-  // ExtendedDebug adds connector detail; otherwise skip (scopes cover timing).
   if (!IsExtendedDebugEnabled()) {
     return;
   }

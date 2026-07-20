@@ -2,15 +2,6 @@
 
 Contributor notes for PipelineColor sources in this repository.
 
-## Code comments vs documentation
-
-| Surface | Role |
-|---------|------|
-| **`Source/`** | Prefer clear code; comment non-obvious engine/replication traps. Player-facing “how it works” goes in `Documentation/`. |
-| **`Documentation/`** | Player + contributor guides |
-
-SPDX headers stay on source files.
-
 ## Repository layout
 
 ```text

@@ -43,6 +43,15 @@ class FStructuralPowerIdEscapeProcessor : public IInputProcessor {
 }
 
 TSharedPtr<IInputProcessor> FStructuralPowerIdModalHost::EscapeInputProcessor;
+bool FStructuralPowerIdModalHost::bOwnsPlayerInput = false;
+
+bool FStructuralPowerIdModalHost::OwnsPlayerInput() {
+  return bOwnsPlayerInput;
+}
+
+void FStructuralPowerIdModalHost::ClearInputOwnership() {
+  bOwnsPlayerInput = false;
+}
 
 void FStructuralPowerIdModalHost::NormalizeModalState(UStructuralPowerIdConfigWidget* Widget) {
   if (!IsValid(Widget)) {
@@ -92,12 +101,15 @@ void FStructuralPowerIdModalHost::ApplyModalInputMode(UStructuralPowerIdConfigWi
     return;
   }
 
-  if (APawn* Pawn = PC->GetPawn()) {
-    Pawn->DisableInput(PC);
+  if (!bOwnsPlayerInput) {
+    if (APawn* Pawn = PC->GetPawn()) {
+      Pawn->DisableInput(PC);
+    }
+
+    PC->SetIgnoreLookInput(true);
+    PC->SetIgnoreMoveInput(true);
   }
 
-  PC->SetIgnoreLookInput(true);
-  PC->SetIgnoreMoveInput(true);
   PC->bShowMouseCursor = true;
   PC->bEnableClickEvents = true;
   PC->bEnableMouseOverEvents = true;
@@ -129,6 +141,8 @@ void FStructuralPowerIdModalHost::ApplyModalInputMode(UStructuralPowerIdConfigWi
     HUD->SetShowCrossHair(false);
   }
 
+  bOwnsPlayerInput = true;
+
   UE_LOG(LogStructuralPower, Verbose,
          TEXT("[HALSP] Id panel input=UIOnly cursor=%d slateFocus=%d inViewport=%d"),
          PC->bShowMouseCursor ? 1 : 0, SlateWidget.IsValid() ? 1 : 0,
@@ -157,6 +171,10 @@ void FStructuralPowerIdModalHost::ForceReleaseAllModalState(AFGPlayerController*
     return;
   }
 
+  if (!bOwnsPlayerInput) {
+    return;
+  }
+
   UnregisterEscapeInputProcessor();
 
   PC->ResetIgnoreMoveInput();
@@ -165,6 +183,8 @@ void FStructuralPowerIdModalHost::ForceReleaseAllModalState(AFGPlayerController*
   if (APawn* Pawn = PC->GetPawn()) {
     Pawn->EnableInput(PC);
   }
+
+  bOwnsPlayerInput = false;
 
   if (!bRestoreGameInputMode) {
     UE_LOG(LogStructuralPower, Verbose,

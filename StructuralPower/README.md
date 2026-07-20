@@ -8,7 +8,7 @@ Structural Power adds a hidden power network through structural pieces — found
 
 **I'm sorry.** **v2.1.0** added switches and hoverpack tether, but the save-load path change **broke legacy support** so badly on many existing bases that first-time use failed entirely. That was never the intent — and it is why the full rework exists. **v2.0.0** had already introduced retroactive wiring (no rebuild). There was **no public v2.2 release**; the next shipped line was **v3.0.0**, now **v3.1.0** with machines and pipe topology.
 
-**v3.0+** rebuilds the stack: session/attach funnel, budgeted remesh on load, and reconcile against FactoryGame circuits — aimed at being **extreme lean at runtime** and **compatible with megabases**, while restoring **full legacy / retroactive support**. Existing structures still wire on load; you do not need to rebuild your factory to use the mod again.
+**v3.0+** reworks attach and load on vanilla circuit APIs — aimed at being lean at runtime and workable on large bases, while restoring full legacy / retroactive support. Existing structures still wire on load; you do not need to rebuild your factory to use the mod again.
 
 **Honest testing note:** my heaviest internal check so far is a save around **~20 MB**. I have not claimed unlimited megabase coverage beyond that. On **legacy / large saves**, expect:
 
@@ -53,6 +53,14 @@ Settings persist to `Configs/StructuralPower.cfg` on the server/host. Change via
 
 Feature releases after the v3.0 foundation. Stages are **opt-in** on servers (off until you enable them).
 
+### v3.0.0 — Foundation rewrite *(previous)*
+
+- Vanilla-first reconcile — processors, transfer-gated bridges, rebuild-from-geometry
+- Stable retroactive load after v2.1 save pain
+- Structural lighting, I-key Id config, switch subnets, hoverpack tether
+- Faster / more stable load remesh on large saves
+- Server config via cfg / console / chat only
+
 ### v3.1.0 — Machines + pipes *(current)*
 
 - **Generators** — coal, fuel, nuclear, geothermal, wind, alien booster, HUB biomass
@@ -63,15 +71,7 @@ Feature releases after the v3.0 foundation. Stages are **opt-in** on servers (of
 - **Transport** — wired-power stub (stations, elevators)
 - **Belts** — toggle only (no attach)
 
-### v3.0.0 — Foundation rewrite *(prior)*
-
-- Vanilla-first reconcile — processors, transfer-gated bridges, rebuild-from-geometry
-- Stable retroactive load after v2.1 save pain
-- Structural lighting, I-key Id config, switch subnets, hoverpack tether
-- Session/attach funnel + budgeted load remesh
-- Server config via cfg / console / chat only
-
-### v3.2 — Belt topology *(next)*
+### v3.2 — Belt topology *(in development)*
 
 - Conveyor runs to remote miners
 

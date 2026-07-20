@@ -252,7 +252,6 @@ void FStructuralPowerSwitchProcessor::Process(FStructuralPowerContext& Ctx,
   const EAttachContext AttachContext = Ctx.GetAttachContext();
   const FStructuralNodeId SwitchId = Session.MakeNodeId(Switch);
 
-  // Order lock: Flip (advanced) → IntegrateSwitch → ApplyMembership → wire/keyed → listener.
   const bool bAdvancedWork = FStructuralSwitchPredicates::NeedsAdvancedWork(Ctx, Switch);
   if (bAdvancedWork) {
     FStructuralPowerTransferGate::FlipBridgeGate(Ctx, Switch, Switch->IsBridgeActive());

@@ -141,7 +141,6 @@ void FStructuralSiteMembership::IntegrateOnPlace(
 
   if (Site.bAnchored && Site.SiteRoot != INDEX_NONE &&
       !Session.Circuit().HasBridgeBusPeerMesh(OutletBus) && !Session.IsBulkLoadDrainActive()) {
-    // TryMeshPeerBus wakes inactive machine consumers on this root when mesh forms.
     Session.Circuit().TryMeshPeerBusOnComponent(Host, OutletBus, Site.SiteRoot, EndpointId,
                                                 Params.bBridgePeersOnly, Params.bMeshOnlyLinks);
   }
