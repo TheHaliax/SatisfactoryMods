@@ -8,16 +8,20 @@
 class AFGBuildable;
 struct FStructuralLightweightKey;
 
-class STRUCTURALPOWER_API FStructuralGraphRemoval
-{
-public:
-	FStructuralGraphRemoval() = default;
+class STRUCTURALPOWER_API FStructuralGraphRemoval {
+ public:
+  FStructuralGraphRemoval() = default;
 
-	void Bind(class FStructuralGraphSession* InSession);
+  void Bind(class FStructuralGraphSession* InSession);
 
-	void OnBuildableRemoved(AFGBuildable* Buildable);
-	void OnLightweightRemoved(const FStructuralLightweightKey& Key);
+  void OnBuildableRemoved(AFGBuildable* Buildable);
+  void OnLightweightRemoved(const FStructuralLightweightKey& Key);
 
-private:
-	class FStructuralGraphSession* Session = nullptr;
+  void ScheduleStructureSplitReconcile();
+  void RunStructureSplitReconcile();
+
+ private:
+  void AfterStructureNodeRemoved(const TArray<int32>& AffectedRoots, const TCHAR* Reason);
+
+  class FStructuralGraphSession* Session = nullptr;
 };

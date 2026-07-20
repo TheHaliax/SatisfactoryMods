@@ -4,11 +4,11 @@
 
 Structural Power injects a **hidden structural bus** into eligible buildables. Power travels through connected foundations, walls, ramps, stairs, walkways, beams, pillars, and bridge poles — without visible cables between those pieces.
 
-You still use normal power poles and cables where the mod does not apply (machines, generators, legacy geometry).
+**v3.1** adds opt-in **machine groups** and **pipe topology** (`!Pipes` / `!pipe`). You still use normal power poles and cables where a group is off or the mod does not apply.
 
-The mod rewrites attach and reconcile on vanilla circuit APIs — **stable retroactive load** after earlier save-load pain. Shipped today: opt-in **structural lighting**, **I-key Id config**, **power-switch gating**, and **hoverpack structural tether**.
+The mod rewrites attach and reconcile on vanilla circuit APIs — **stable retroactive load** after earlier save-load pain. Also shipped: opt-in **structural lighting**, **I-key Id config**, **power-switch gating**, and **hoverpack structural tether**.
 
-> **Welcome back if an older version put you off:** see the [README](../README.md) v2.1 note. Short version: retroactive wiring is **kept**; v3.0 is worth retrying if you left on v2.1.
+> **Welcome back if an older version put you off:** see the [README](../README.md) v2.1 note. Short version: retroactive wiring is **kept**; v3.0+ is worth retrying if you left on v2.1.
 
 ## What gets wired
 
@@ -19,24 +19,45 @@ The mod rewrites attach and reconcile on vanilla circuit APIs — **stable retro
 - Beams and pillars
 - Mod structural packs that inherit factory building without their own power component
 
-**Bridge poles** (connect visible grid to the hidden bus):
+**Bridge hosts** (connect visible grid / machines to the hidden bus):
 
-- Ground power poles
-- Wall outlets (single and double)
-- Power towers
+- Ground power poles, wall outlets, power towers
+- Power storage (when **Generation** is on)
+- Generators (when **Generation** is on) — host a site bus on the foundation they sit on
 
 ## Retroactive on load
 
 The mod **rebuilds its connectivity from world geometry** every time the save loads, so existing foundations, walls, ramps, and poles are tracked automatically — no rebuild or re-placement required after installing or updating.
-
-Pieces the mod does not recognise (machines, generators) keep working with normal Satisfactory wiring.
 
 ## Typical workflow
 
 1. Install the mod and load your save — existing structure and poles are wired on load.
 2. Connect one point on the bus to your generator grid with a **visible cable** — the rest of the connected mesh shares that circuit.
 3. Extend with new foundations or walls; they link to adjacent tracked structure when placed.
-4. Snap a bridge pole to powered structure; the pole's outlet bus merges with the structural mesh.
+4. Snap a bridge pole (or place a generator with **Generation** on) to powered structure; the outlet bus merges with the structural mesh.
+
+## Machines (opt-in)
+
+**All machine groups default off.** Enable on the host with chat (`!Generation`, `!Resources`, …), console `StructuralPower.Set Group* 1`, or cfg. See [chat-commands.md](chat-commands.md).
+
+| Group | Chat | What attaches |
+|-------|------|----------------|
+| **Generation** | `!Generation` | Generators + power storage as site bus hosts on structure |
+| **Resources** | `!Resources` | Miners, water/oil extractors, fracking, geysers (consumers) |
+| **Production** | `!Production` | Manufacturers, radar tower, AWESOME Sink (consumers) |
+| **Transport** | `!Transport` | Wired stations / elevators / etc. — **stub** (no track topology) |
+| **Pipes** | `!Pipes` / `!pipe` | Fluid pipe supports + machine pipe ports inject structure power into runs; **inline pumps** consume from the bus (not hypertubes) |
+| **Belts** | `!Belts` | Toggle only — **no attach** |
+
+Consumers need a **bus host** on the same structure island (pole, storage, or generator). An isolated pad with only a miner and no gen/pole stays unattached until a host appears.
+
+Vanilla wires still win: if a machine has a normal cable, structural attach yields to vanilla.
+
+### Generator daisy chains (legacy saves)
+
+When converting a save that wired generators in a chain (generator → generator → … → pole), removing wires while Generation is on can trip the fuse if several gens drop onto the bus in one jolt.
+
+**Workaround:** start at the **far end** of the daisy chain (the last generator, farthest from the pole / grid) and unwire **one gen at a time**, working back toward the feed point. That lets each machine join the structural bus before the next release. HUB integrated biomass gens often share a short wire between siblings — same tip.
 
 ## Structural lighting
 
@@ -108,7 +129,7 @@ Device **Source/Control** overrides (lights, switches, panels) are stored in the
 | Where | What |
 |-------|------|
 | `Configs/StructuralPower.cfg` | Server-persisted mod settings (JSON) |
-| Chat `!` commands | `!lighting`, `!HoverH`, `!HoverV`, `!pwrhelp` |
+| Chat `!` commands | Groups, hover, `!pwrhelp` — [chat-commands.md](chat-commands.md) |
 | Console | `StructuralPower.Set` — [console-commands.md](console-commands.md) |
 
 Per-device ids (lights, switches, panels) are **not** in `.cfg` — use **I** key or building tag.

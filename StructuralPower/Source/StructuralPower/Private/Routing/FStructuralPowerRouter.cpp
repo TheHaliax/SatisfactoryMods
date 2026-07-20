@@ -7,144 +7,122 @@
 #include "Config/FStructuralPowerModConfig.h"
 #include "StructuralPowerConstants.h"
 
-bool FStructuralPowerRouter::UsesSourceControlModel(EStructuralChannel Tag)
-{
-	return Tag == EStructuralChannel::Light
-		|| Tag == EStructuralChannel::Switch
-		|| Tag == EStructuralChannel::Generator;
+bool FStructuralPowerRouter::UsesSourceControlModel(EStructuralChannel Tag) {
+  return Tag == EStructuralChannel::Light || Tag == EStructuralChannel::Switch ||
+         Tag == EStructuralChannel::Generator;
 }
 
-bool FStructuralPowerRouter::IsStructuralGeneratorRoutingEnabled()
-{
-	return FStructuralPowerModConfig::IsGroupGenerationEnabled();
+bool FStructuralPowerRouter::IsStructuralGeneratorRoutingEnabled() {
+  return FStructuralPowerModConfig::IsGroupGenerationEnabled();
 }
 
-bool FStructuralPowerRouter::IsGeneratorChannel(const EStructuralChannel Tag)
-{
-	return Tag == EStructuralChannel::Generator;
+bool FStructuralPowerRouter::IsGeneratorChannel(const EStructuralChannel Tag) {
+  return Tag == EStructuralChannel::Generator;
 }
 
-bool FStructuralPowerRouter::UsesLegacyEffectiveIdModel(const EStructuralChannel Tag)
-{
-	if (Tag == EStructuralChannel::Structure || UsesSourceControlModel(Tag))
-	{
-		return false;
-	}
+bool FStructuralPowerRouter::UsesLegacyEffectiveIdModel(const EStructuralChannel Tag) {
+  if (Tag == EStructuralChannel::Structure || UsesSourceControlModel(Tag)) {
+    return false;
+  }
 
-	if (IsGeneratorChannel(Tag))
-	{
-		return IsStructuralGeneratorRoutingEnabled();
-	}
+  if (Tag == EStructuralChannel::Extractor) {
+    return FStructuralPowerModConfig::IsGroupResourcesEnabled();
+  }
 
-	return Tag == EStructuralChannel::Extractor
-		|| Tag == EStructuralChannel::Manufacturer
-		|| Tag == EStructuralChannel::Transport
-		|| Tag == EStructuralChannel::Misc;
+  if (Tag == EStructuralChannel::Manufacturer) {
+    return FStructuralPowerModConfig::IsGroupProductionEnabled();
+  }
+
+  if (Tag == EStructuralChannel::Transport) {
+    return FStructuralPowerModConfig::IsGroupTransportEnabled();
+  }
+
+  if (Tag == EStructuralChannel::Misc) {
+    return FStructuralPowerModConfig::IsGroupPipesEnabled() ||
+           FStructuralPowerModConfig::IsGroupBeltsEnabled();
+  }
+
+  return false;
 }
 
-bool FStructuralPowerRouter::IsReservedSentinel(FName Id)
-{
-	return Id == StructuralPowerConstants::ControlUnconfigured;
+bool FStructuralPowerRouter::IsReservedSentinel(FName Id) {
+  return Id == StructuralPowerConstants::ControlUnconfigured;
 }
 
-bool FStructuralPowerRouter::IsPlayerChosenIdValid(FName Id)
-{
-	return !Id.IsNone() && !IsReservedSentinel(Id);
+bool FStructuralPowerRouter::IsPlayerChosenIdValid(FName Id) {
+  return !Id.IsNone() && !IsReservedSentinel(Id);
 }
 
-bool FStructuralPowerRouter::IsAssignedControl(FName Control)
-{
-	return IsPlayerChosenIdValid(Control);
+bool FStructuralPowerRouter::IsAssignedControl(FName Control) {
+  return IsPlayerChosenIdValid(Control);
 }
 
-bool FStructuralPowerRouter::ShouldRouteChannelLink(
-	const FStructuralChannelKey& A,
-	const FStructuralChannelKey& B,
-	const FStructuralComponentKey& ComponentA,
-	const FStructuralComponentKey& ComponentB)
-{
-	if (!ComponentA.IsValid() || !ComponentB.IsValid() || ComponentA != ComponentB)
-	{
-		return false;
-	}
+bool FStructuralPowerRouter::ShouldRouteChannelLink(const FStructuralChannelKey& A,
+                                                    const FStructuralChannelKey& B,
+                                                    const FStructuralComponentKey& ComponentA,
+                                                    const FStructuralComponentKey& ComponentB) {
+  if (!ComponentA.IsValid() || !ComponentB.IsValid() || ComponentA != ComponentB) {
+    return false;
+  }
 
-	if (A.Tag != B.Tag || A.Tag == EStructuralChannel::Structure)
-	{
-		return false;
-	}
+  if (A.Tag != B.Tag || A.Tag == EStructuralChannel::Structure) {
+    return false;
+  }
 
-	if (UsesSourceControlModel(A.Tag))
-	{
-		return !A.Source.IsNone() && A.Source == B.Source;
-	}
+  if (UsesSourceControlModel(A.Tag)) {
+    return !A.Source.IsNone() && A.Source == B.Source;
+  }
 
-	if (UsesLegacyEffectiveIdModel(A.Tag))
-	{
-		return !A.EffectiveId.IsNone() && A.EffectiveId == B.EffectiveId;
-	}
+  if (UsesLegacyEffectiveIdModel(A.Tag)) {
+    return !A.EffectiveId.IsNone() && A.EffectiveId == B.EffectiveId;
+  }
 
-	return !A.EffectiveId.IsNone() && A.EffectiveId == B.EffectiveId;
+  return !A.EffectiveId.IsNone() && A.EffectiveId == B.EffectiveId;
 }
 
-bool FStructuralPowerRouter::ShouldRouteKeyedJoin(
-	FName PublisherControl,
-	FName JoinerSource,
-	const FStructuralComponentKey& ComponentA,
-	const FStructuralComponentKey& ComponentB)
-{
-	if (!ComponentA.IsValid()
-		|| ComponentA != ComponentB
-		|| !IsAssignedControl(PublisherControl)
-		|| JoinerSource.IsNone())
-	{
-		return false;
-	}
+bool FStructuralPowerRouter::ShouldRouteKeyedJoin(FName PublisherControl, FName JoinerSource,
+                                                  const FStructuralComponentKey& ComponentA,
+                                                  const FStructuralComponentKey& ComponentB) {
+  if (!ComponentA.IsValid() || ComponentA != ComponentB || !IsAssignedControl(PublisherControl) ||
+      JoinerSource.IsNone()) {
+    return false;
+  }
 
-	return PublisherControl == JoinerSource;
+  return PublisherControl == JoinerSource;
 }
 
-bool FStructuralPowerRouter::ShouldRouteSwitchGate(
-	FName SwitchControl,
-	FName DeviceSource,
-	const FStructuralComponentKey& ComponentA,
-	const FStructuralComponentKey& ComponentB)
-{
-	return ShouldRouteKeyedJoin(SwitchControl, DeviceSource, ComponentA, ComponentB);
+bool FStructuralPowerRouter::ShouldRouteSwitchGate(FName SwitchControl, FName DeviceSource,
+                                                   const FStructuralComponentKey& ComponentA,
+                                                   const FStructuralComponentKey& ComponentB) {
+  return ShouldRouteKeyedJoin(SwitchControl, DeviceSource, ComponentA, ComponentB);
 }
 
-FName FStructuralPowerRouter::ResolveSwitchControlFromTag(const AFGBuildableCircuitSwitch* Switch)
-{
-	if (!IsValid(Switch) || !Switch->HasBuildingTag_Implementation())
-	{
-		return NAME_None;
-	}
+FName FStructuralPowerRouter::ResolveSwitchControlFromTag(const AFGBuildableCircuitSwitch* Switch) {
+  if (!IsValid(Switch) || !Switch->HasBuildingTag_Implementation()) {
+    return NAME_None;
+  }
 
-	const FString Tag = Switch->GetBuildingTag_Implementation();
-	if (Tag.IsEmpty())
-	{
-		return NAME_None;
-	}
+  const FString Tag = Switch->GetBuildingTag_Implementation();
+  if (Tag.IsEmpty()) {
+    return NAME_None;
+  }
 
-	return FName(*Tag);
+  return FName(*Tag);
 }
 
-FName FStructuralPowerRouter::MakeStructureDefaultIdName(const int32 StructureIndex)
-{
-	if (StructureIndex < 1)
-	{
-		return NAME_None;
-	}
+FName FStructuralPowerRouter::MakeStructureDefaultIdName(const int32 StructureIndex) {
+  if (StructureIndex < 1) {
+    return NAME_None;
+  }
 
-	return FName(*FString::Printf(TEXT("Structure %d"), StructureIndex));
+  return FName(*FString::Printf(TEXT("Structure %d"), StructureIndex));
 }
 
-bool FStructuralPowerRouter::IsLegacyStructureDefaultId(const FName Id)
-{
-	if (Id.IsNone())
-	{
-		return false;
-	}
+bool FStructuralPowerRouter::IsLegacyStructureDefaultId(const FName Id) {
+  if (Id.IsNone()) {
+    return false;
+  }
 
-	const FString AsString = Id.ToString();
-	return AsString.StartsWith(TEXT("SP_"), ESearchCase::CaseSensitive);
+  const FString AsString = Id.ToString();
+  return AsString.StartsWith(TEXT("SP_"), ESearchCase::CaseSensitive);
 }

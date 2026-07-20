@@ -9,16 +9,14 @@
 
 class AFGPlayerController;
 
-class FPCSwatchSlotDispatch
-{
-public:
-	static void RegisterHooks();
+class FPCSwatchSlotDispatch {
+ public:
+  static void RegisterHooks();
 
-	static TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> GetActivePcDesc(
-		AFGPlayerController* PlayerController);
-	static void SetActivePcDesc(
-		AFGPlayerController* PlayerController,
-		TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
+  static TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>
+  GetActivePcDesc(AFGPlayerController* PlayerController);
+  static void SetActivePcDesc(AFGPlayerController* PlayerController,
+                              TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
 
-	static AFGPlayerController* ResolvePlayerController(UObject* WorldContext);
+  static AFGPlayerController* ResolvePlayerController(UObject* WorldContext);
 };

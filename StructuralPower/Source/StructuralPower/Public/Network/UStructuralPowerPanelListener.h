@@ -3,36 +3,33 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "CoreMinimal.h"
 #include "UStructuralPowerPanelListener.generated.h"
 
 class AFGBuildableLightsControlPanel;
 class AStructuralPowerGraphSubsystem;
 
 UCLASS()
-class STRUCTURALPOWER_API UStructuralPowerPanelListener : public UActorComponent
-{
-	GENERATED_BODY()
+class STRUCTURALPOWER_API UStructuralPowerPanelListener : public UActorComponent {
+  GENERATED_BODY()
 
-public:
-	void BindSubsystem(
-		AStructuralPowerGraphSubsystem* Graph,
-		AFGBuildableLightsControlPanel* Panel);
+ public:
+  void BindSubsystem(AStructuralPowerGraphSubsystem* Graph, AFGBuildableLightsControlPanel* Panel);
 
-protected:
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+ protected:
+  virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-private:
-	UFUNCTION()
-	void HandleControlledBuildablesChanged();
+ private:
+  UFUNCTION()
+  void HandleControlledBuildablesChanged();
 
-	UFUNCTION()
-	void HandleLightControlPanelStateChanged(bool bIsEnabled);
+  UFUNCTION()
+  void HandleLightControlPanelStateChanged(bool bIsEnabled);
 
-	UPROPERTY()
-	TWeakObjectPtr<AStructuralPowerGraphSubsystem> GraphSubsystem;
+  UPROPERTY()
+  TWeakObjectPtr<AStructuralPowerGraphSubsystem> GraphSubsystem;
 
-	UPROPERTY()
-	TWeakObjectPtr<AFGBuildableLightsControlPanel> BoundPanel;
+  UPROPERTY()
+  TWeakObjectPtr<AFGBuildableLightsControlPanel> BoundPanel;
 };

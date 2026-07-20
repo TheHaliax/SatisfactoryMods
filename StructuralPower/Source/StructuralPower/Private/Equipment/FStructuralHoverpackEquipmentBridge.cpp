@@ -11,52 +11,39 @@
 #include "FGPowerConnectionComponent.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
-FName FStructuralHoverpackEquipmentBridge::GetKind() const
-{
-	return TEXT("Hoverpack");
+FName FStructuralHoverpackEquipmentBridge::GetKind() const {
+  return TEXT("Hoverpack");
 }
 
-void FStructuralHoverpackEquipmentBridge::RegisterHooks()
-{
-	FStructuralHoverpackBridge::RegisterHooks();
+void FStructuralHoverpackEquipmentBridge::RegisterHooks() {
+  FStructuralHoverpackBridge::RegisterHooks();
 }
 
 bool FStructuralHoverpackEquipmentBridge::QueryHoverpackStructuralAnchor(
-	FStructuralGraphSession& Session,
-	const FVector& QueryLoc,
-	float MaxHorizontal,
-	float MaxVertical,
-	FStructuralHoverpackAnchorQuery& Out) const
-{
-	Out = FStructuralHoverpackAnchorQuery{};
+    FStructuralGraphSession& Session, const FVector& QueryLoc, float MaxHorizontal,
+    float MaxVertical, FStructuralHoverpackAnchorQuery& Out) const {
+  Out = FStructuralHoverpackAnchorQuery{};
 
-	if (MaxHorizontal <= 0.0f || MaxVertical <= 0.0f)
-	{
-		return false;
-	}
+  if (MaxHorizontal <= 0.0f || MaxVertical <= 0.0f) {
+    return false;
+  }
 
-	int32 ComponentRoot = INDEX_NONE;
-	if (!Session.FindNearestStructureAnchorForEquipment(
-			QueryLoc,
-			MaxHorizontal,
-			MaxVertical,
-			Out.Anchor,
-			ComponentRoot))
-	{
-		return false;
-	}
+  int32 ComponentRoot = INDEX_NONE;
+  if (!Session.FindNearestStructureAnchorForEquipment(QueryLoc, MaxHorizontal, MaxVertical,
+                                                      Out.Anchor, ComponentRoot)) {
+    return false;
+  }
 
-	Out.ComponentRoot = ComponentRoot;
+  Out.ComponentRoot = ComponentRoot;
 
-	if (UFGCircuitConnectionComponent* Source = Session.Circuit().GetComponentSourceConnector(ComponentRoot, nullptr))
-	{
-		if (UFGPowerConnectionComponent* Feed = Cast<UFGPowerConnectionComponent>(Source))
-		{
-			Out.FeedConnector = Feed;
-			Out.bPowered = FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(Feed);
-		}
-	}
+  if (UFGCircuitConnectionComponent* Source =
+          Session.Circuit().GetComponentSourceConnector(ComponentRoot, nullptr)) {
+    if (UFGPowerConnectionComponent* Feed = Cast<UFGPowerConnectionComponent>(Source)) {
+      Out.FeedConnector = Feed;
+      Out.bPowered = FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(Feed);
+    }
+  }
 
-	Out.bFound = true;
-	return true;
+  Out.bFound = true;
+  return true;
 }

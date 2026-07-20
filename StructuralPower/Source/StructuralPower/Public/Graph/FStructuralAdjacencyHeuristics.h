@@ -3,20 +3,17 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Buildables/FGBuildable.h"
+#include "CoreMinimal.h"
 
 class AFGBuildable;
 
-namespace FStructuralAdjacencyHeuristics
-{
+namespace FStructuralAdjacencyHeuristics {
 bool IsBeamBuildable(const AFGBuildable* Buildable);
 bool IsBeamClass(TSubclassOf<AFGBuildable> BuildableClass);
 FBox GetActorAdjacencyBounds(const AFGBuildable* Buildable);
 float GetStructuralGapCm(TSubclassOf<AFGBuildable> ClassA, TSubclassOf<AFGBuildable> ClassB);
-bool AreAdjacencyBoundsConnected(
-	const FBox& BoundsA,
-	const FBox& BoundsB,
-	TSubclassOf<AFGBuildable> ClassA,
-	TSubclassOf<AFGBuildable> ClassB);
+bool AreAdjacencyBoundsConnected(const FBox& BoundsA, const FBox& BoundsB,
+                                 TSubclassOf<AFGBuildable> ClassA,
+                                 TSubclassOf<AFGBuildable> ClassB);
 }

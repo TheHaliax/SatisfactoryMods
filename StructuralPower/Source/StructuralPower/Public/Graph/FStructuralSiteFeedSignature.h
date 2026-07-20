@@ -5,25 +5,19 @@
 
 #include "CoreMinimal.h"
 
-struct FStructuralSiteFeedSignature
-{
-	bool bPowered = false;
-	int32 CircuitId = INDEX_NONE;
+struct FStructuralSiteFeedSignature {
+  bool bPowered = false;
+  int32 CircuitId = INDEX_NONE;
 
-	bool operator==(const FStructuralSiteFeedSignature& Other) const
-	{
-		return bPowered == Other.bPowered && CircuitId == Other.CircuitId;
-	}
+  bool operator==(const FStructuralSiteFeedSignature& Other) const {
+    return bPowered == Other.bPowered && CircuitId == Other.CircuitId;
+  }
 
-	bool operator!=(const FStructuralSiteFeedSignature& Other) const
-	{
-		return !(*this == Other);
-	}
+  bool operator!=(const FStructuralSiteFeedSignature& Other) const {
+    return !(*this == Other);
+  }
 
-	friend uint32 GetTypeHash(const FStructuralSiteFeedSignature& Signature)
-	{
-		return HashCombine(
-			GetTypeHash(Signature.bPowered),
-			GetTypeHash(Signature.CircuitId));
-	}
+  friend uint32 GetTypeHash(const FStructuralSiteFeedSignature& Signature) {
+    return HashCombine(GetTypeHash(Signature.bPowered), GetTypeHash(Signature.CircuitId));
+  }
 };

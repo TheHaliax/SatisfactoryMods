@@ -5,21 +5,17 @@
 
 #include "Engine/World.h"
 
-namespace FPCWorldGate
-{
-bool IsMenuWorld(const UWorld* World)
-{
-	if (!IsValid(World))
-	{
-		return true;
-	}
+namespace FPCWorldGate {
+bool IsMenuWorld(const UWorld* World) {
+  if (!IsValid(World)) {
+    return true;
+  }
 
-	const FString MapName = World->GetMapName();
-	return MapName.Contains(TEXT("Menu"), ESearchCase::IgnoreCase);
+  const FString MapName = World->GetMapName();
+  return MapName.Contains(TEXT("Menu"), ESearchCase::IgnoreCase);
 }
 
-bool IsGameplayWorld(const UWorld* World)
-{
-	return IsValid(World) && World->IsGameWorld() && !IsMenuWorld(World);
+bool IsGameplayWorld(const UWorld* World) {
+  return IsValid(World) && World->IsGameWorld() && !IsMenuWorld(World);
 }
 }

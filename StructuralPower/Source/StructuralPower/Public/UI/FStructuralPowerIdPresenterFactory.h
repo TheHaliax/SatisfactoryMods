@@ -8,25 +8,22 @@
 
 class AFGPlayerController;
 
-class STRUCTURALPOWER_API FStructuralPowerIdPresenterFactory
-{
-public:
-	static IStructuralPowerIdPresenter& Get();
-	static void SetImplementation(TUniquePtr<IStructuralPowerIdPresenter> Impl);
+class STRUCTURALPOWER_API FStructuralPowerIdPresenterFactory {
+ public:
+  static IStructuralPowerIdPresenter& Get();
 
-	static void ResetForMapTravel();
-	static void CloseActive();
-	static void ForceReleaseModalState(
-		AFGPlayerController* PlayerController,
-		bool bRestoreGameInputMode = true);
-	static void ReleaseForVanillaInteract(AFGPlayerController* PlayerController);
-	static void PrepareWindowForController(AFGPlayerController* PlayerController);
-	static void NormalizeModalState();
-	static AFGBuildable* GetOpenTarget();
-	static bool IsAnyPanelVisible();
-	static bool IsTextFieldFocused();
+  static void ResetForMapTravel();
+  static void CloseActive();
+  static void ForceReleaseModalState(AFGPlayerController* PlayerController,
+                                     bool bRestoreGameInputMode = true);
+  static void ReleaseForVanillaInteract(AFGPlayerController* PlayerController);
+  static void PrepareWindowForController(AFGPlayerController* PlayerController);
+  static void NormalizeModalState();
+  static AFGBuildable* GetOpenTarget();
+  static bool IsAnyPanelVisible();
+  static bool IsTextFieldFocused();
 
-private:
-	static void EnsureDefaultImplementation();
-	static TUniquePtr<IStructuralPowerIdPresenter> ActivePresenter;
+ private:
+  static void EnsureDefaultImplementation();
+  static TUniquePtr<IStructuralPowerIdPresenter> ActivePresenter;
 };

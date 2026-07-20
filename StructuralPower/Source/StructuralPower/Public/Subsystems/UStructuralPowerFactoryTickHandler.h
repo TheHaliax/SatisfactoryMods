@@ -10,20 +10,21 @@
 class AFGBuildableSubsystem;
 
 UCLASS()
-class STRUCTURALPOWER_API UStructuralPowerFactoryTickHandler : public UObject, public IFGFactoryTickHandlerInterface
-{
-	GENERATED_BODY()
+class STRUCTURALPOWER_API UStructuralPowerFactoryTickHandler
+    : public UObject,
+      public IFGFactoryTickHandlerInterface {
+  GENERATED_BODY()
 
-public:
-	static void RegisterForWorld(UWorld* World);
-	static void UnregisterForWorld(UWorld* World);
-	static void UnregisterGlobalDelegates();
+ public:
+  static void RegisterForWorld(UWorld* World);
+  static void UnregisterForWorld(UWorld* World);
+  static void UnregisterGlobalDelegates();
 
-	virtual void PostFactoryTick(AFGBuildableSubsystem* Subsystem, float DeltaTime) override;
+  virtual void PostFactoryTick(AFGBuildableSubsystem* Subsystem, float DeltaTime) override;
 
-private:
-	static void HandleWorldCleanup(UWorld* World, bool bSessionEnded, bool bCleanupResources);
+ private:
+  static void HandleWorldCleanup(UWorld* World, bool bSessionEnded, bool bCleanupResources);
 
-	static TMap<TWeakObjectPtr<UWorld>, TObjectPtr<UStructuralPowerFactoryTickHandler>> Handlers;
-	static FDelegateHandle WorldCleanupHandle;
+  static TMap<TWeakObjectPtr<UWorld>, TObjectPtr<UStructuralPowerFactoryTickHandler>> Handlers;
+  static FDelegateHandle WorldCleanupHandle;
 };

@@ -1,0 +1,23 @@
+name: clang-format
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+
+      - name: Check first-party C++
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find StructuralPower/Source PipelineColor/Source \
+            \( -name '*.cpp' -o -name '*.h' \) -type f | sort)
+          echo "Checking ${#files[@]} files"
+          clang-format --dry-run -Werror --style=file "${files[@]}"

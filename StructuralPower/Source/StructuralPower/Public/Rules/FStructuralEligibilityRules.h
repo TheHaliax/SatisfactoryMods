@@ -7,18 +7,26 @@
 #include "Routing/EStructuralChannel.h"
 
 class AFGBuildable;
-class AFGBuildableFactoryBuilding;
 
-class STRUCTURALPOWER_API FStructuralEligibilityRules
-{
-public:
-	static bool IsBusMember(const AFGBuildable* Buildable);
-	static bool IsPowerBridgePole(const AFGBuildable* Buildable);
-	static bool IsPowerBridgeSwitch(const AFGBuildable* Buildable);
-	static bool IsPowerStorage(const AFGBuildable* Buildable);
-	static bool IsStructuralLightConsumer(const AFGBuildable* Buildable);
-	static bool IsStructuralGenerator(const AFGBuildable* Buildable);
-	static bool IsIdConfigTarget(const AFGBuildable* Buildable);
-	static bool IsValidOutletParent(const AFGBuildable* Parent);
-	static EStructuralChannel ClassifyBuildable(const AFGBuildable* Buildable);
+class STRUCTURALPOWER_API FStructuralEligibilityRules {
+ public:
+  static bool IsBusMember(const AFGBuildable* Buildable);
+  static bool IsPowerBridgePole(const AFGBuildable* Buildable);
+  static bool IsPowerBridgeSwitch(const AFGBuildable* Buildable);
+  static bool IsPowerStorage(const AFGBuildable* Buildable);
+  static bool IsStructuralLightConsumer(const AFGBuildable* Buildable);
+  static bool IsStructuralGenerator(const AFGBuildable* Buildable);
+  static bool IsStructuralExtractor(const AFGBuildable* Buildable);
+  static bool IsStructuralManufacturer(const AFGBuildable* Buildable);
+  static bool IsStructuralTransport(const AFGBuildable* Buildable);
+  static bool IsStructuralPipelinePump(const AFGBuildable* Buildable);
+  /** Fluid pipeline, attachment, or pipe reservoir — not hypertube. */
+  static bool IsFluidPipeConductor(const AFGBuildable* Buildable);
+  /** Floor/stackable/wall/wall-hole fluid pipe supports (soft class parents). */
+  static bool IsFluidPipeSupport(const AFGBuildable* Buildable);
+  /** Gen/res/prod/transport/pump — resolve mount via foundation footprint, not actor center. */
+  static bool PrefersFoundationMount(const AFGBuildable* Buildable);
+  static bool IsIdConfigTarget(const AFGBuildable* Buildable);
+  static bool IsValidOutletParent(const AFGBuildable* Parent);
+  static EStructuralChannel ClassifyBuildable(const AFGBuildable* Buildable);
 };

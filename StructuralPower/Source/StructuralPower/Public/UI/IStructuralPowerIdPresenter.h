@@ -9,28 +9,42 @@
 class AFGBuildable;
 class AFGPlayerController;
 
-class STRUCTURALPOWER_API IStructuralPowerIdPresenter
-{
-public:
-	virtual ~IStructuralPowerIdPresenter() = default;
+class STRUCTURALPOWER_API IStructuralPowerIdPresenter {
+ public:
+  virtual ~IStructuralPowerIdPresenter() = default;
 
-	virtual void PrepareForController(AFGPlayerController* PlayerController) {}
+  virtual void PrepareForController(AFGPlayerController* PlayerController) {
+  }
 
-	virtual void OpenForTarget(AFGBuildable* Target) = 0;
-	virtual void RetargetTo(AFGBuildable* Target) = 0;
-	virtual void Close() = 0;
-	virtual void ResetForMapTravel() = 0;
+  virtual void OpenForTarget(AFGBuildable* Target) = 0;
+  virtual void RetargetTo(AFGBuildable* Target) = 0;
+  virtual void Close() = 0;
+  virtual void ResetForMapTravel() = 0;
 
-	virtual bool IsOpen() const = 0;
-	virtual bool IsTextFieldFocused() const = 0;
+  virtual bool IsOpen() const = 0;
+  virtual bool IsTextFieldFocused() const = 0;
 
-	virtual void ApplyComponentIdList(const FStructuralComponentIdList& List) = 0;
+  virtual void ApplyComponentIdList(const FStructuralComponentIdList& List) = 0;
 
-	virtual void RequestComponentIdList(AFGBuildable* Target) = 0;
-	virtual void ApplyEndpointIds(
-		AFGBuildable* Target,
-		FName Source,
-		FName Control,
-		bool bClearSource,
-		bool bClearControl) = 0;
+  virtual void RequestComponentIdList(AFGBuildable* Target) = 0;
+  virtual void ApplyEndpointIds(AFGBuildable* Target, FName Source, FName Control,
+                                bool bClearSource, bool bClearControl) = 0;
+
+  virtual void ForceReleaseModalState(AFGPlayerController* /*PlayerController*/,
+                                      bool /*bRestoreGameInputMode*/) {
+  }
+
+  virtual void ReleaseForVanillaInteract(AFGPlayerController* /*PlayerController*/) {
+  }
+
+  virtual void NormalizeModalState() {
+  }
+
+  virtual AFGBuildable* GetOpenTarget() const {
+    return nullptr;
+  }
+
+  virtual bool IsAnyPanelVisible() const {
+    return false;
+  }
 };

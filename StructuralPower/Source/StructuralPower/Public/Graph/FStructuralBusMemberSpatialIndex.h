@@ -8,31 +8,29 @@
 
 class AFGBuildable;
 
-class FStructuralBusMemberSpatialIndex
-{
-public:
-	void Reset();
+class FStructuralBusMemberSpatialIndex {
+ public:
+  void Reset();
 
-	void RebuildFromWorld(class UWorld* World);
-	void RegisterMember(AFGBuildable* Buildable);
-	void UnregisterMember(AFGBuildable* Buildable);
+  void RebuildFromWorld(class UWorld* World);
+  void RegisterMember(AFGBuildable* Buildable);
+  void UnregisterMember(AFGBuildable* Buildable);
 
-	FStructuralWallAnchor FindParentForOutlet(AFGBuildable* Outlet) const;
+  FStructuralWallAnchor FindParentForOutlet(AFGBuildable* Outlet) const;
 
-private:
-	struct FIndexedMember
-	{
-		TWeakObjectPtr<AFGBuildable> Buildable;
-		FBox WorldBounds;
-		TSubclassOf<AFGBuildable> BuildableClass;
-	};
+ private:
+  struct FIndexedMember {
+    TWeakObjectPtr<AFGBuildable> Buildable;
+    FBox WorldBounds;
+    TSubclassOf<AFGBuildable> BuildableClass;
+  };
 
-	static FIntVector ToCell(const FVector& Location);
-	void IndexMemberCells(int32 MemberIndex, const FBox& WorldBounds);
-	void UnindexMemberCells(int32 MemberIndex, const FBox& WorldBounds);
-	static FBox GetActorBounds(AFGBuildable* Buildable);
+  static FIntVector ToCell(const FVector& Location);
+  void IndexMemberCells(int32 MemberIndex, const FBox& WorldBounds);
+  void UnindexMemberCells(int32 MemberIndex, const FBox& WorldBounds);
+  static FBox GetActorBounds(AFGBuildable* Buildable);
 
-	TArray<FIndexedMember> Members;
-	TMap<AFGBuildable*, int32> ActorToIndex;
-	TMap<FIntVector, TArray<int32>> CellToIndices;
+  TArray<FIndexedMember> Members;
+  TMap<AFGBuildable*, int32> ActorToIndex;
+  TMap<FIntVector, TArray<int32>> CellToIndices;
 };

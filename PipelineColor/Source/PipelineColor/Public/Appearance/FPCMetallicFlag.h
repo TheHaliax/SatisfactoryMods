@@ -6,20 +6,16 @@
 #include "CoreMinimal.h"
 #include "UObject/SoftObjectPath.h"
 
-namespace FPCMetallicStyle
-{
-inline FSoftClassPath MetallicFinishPath()
-{
-	return FSoftClassPath(TEXT("/Script/PipelineColor.UPCFinish_MetallicColor"));
+namespace FPCMetallicStyle {
+inline FSoftClassPath MetallicFinishPath() {
+  return FSoftClassPath(TEXT("/Script/PipelineColor.UPCFinish_MetallicColor"));
 }
 
-inline bool IsMetallicFinishPath(const FSoftClassPath& Path)
-{
-	if (!Path.IsValid())
-	{
-		return false;
-	}
-	const FString Asset = Path.GetAssetName();
-	return Asset.Contains(TEXT("MetallicColor"), ESearchCase::IgnoreCase);
+inline bool IsMetallicFinishPath(const FSoftClassPath& Path) {
+  if (!Path.IsValid()) {
+    return false;
+  }
+  const FString Asset = Path.GetAssetName();
+  return Asset.Contains(TEXT("MetallicColor"), ESearchCase::IgnoreCase);
 }
 } // namespace FPCMetallicStyle

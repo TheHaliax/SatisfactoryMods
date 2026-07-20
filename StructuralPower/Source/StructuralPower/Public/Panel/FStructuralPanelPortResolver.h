@@ -9,15 +9,13 @@ class AFGBuildableControlPanelHost;
 class UFGCircuitConnectionComponent;
 class UFGPowerConnectionComponent;
 
-struct FStructuralPanelPorts
-{
-	UFGCircuitConnectionComponent* Downstream = nullptr;
-	UFGCircuitConnectionComponent* Input = nullptr;
+struct FStructuralPanelPorts {
+  UFGCircuitConnectionComponent* Downstream = nullptr;
+  UFGCircuitConnectionComponent* Input = nullptr;
 };
 
-class STRUCTURALPOWER_API FStructuralPanelPortResolver
-{
-public:
-	static bool Resolve(AFGBuildableControlPanelHost* Panel, FStructuralPanelPorts& Out);
-	static UFGPowerConnectionComponent* AsPowerConnection(UFGCircuitConnectionComponent* Conn);
+class STRUCTURALPOWER_API FStructuralPanelPortResolver {
+ public:
+  static bool Resolve(AFGBuildableControlPanelHost* Panel, FStructuralPanelPorts& Out);
+  static UFGPowerConnectionComponent* AsPowerConnection(UFGCircuitConnectionComponent* Conn);
 };

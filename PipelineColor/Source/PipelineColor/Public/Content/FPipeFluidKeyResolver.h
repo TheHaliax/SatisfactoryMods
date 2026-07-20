@@ -3,17 +3,14 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Content/IContentKeyResolver.h"
+#include "CoreMinimal.h"
 
-class FPipeFluidKeyResolver final : public IContentKeyResolver
-{
-public:
-	virtual bool Supports(AFGBuildable* Buildable) const override;
-	virtual void Resolve(
-		AFGBuildable* Buildable,
-		TSubclassOf<UFGItemDescriptor>& OutFluid,
-		bool& bOutEmpty) const override;
+class FPipeFluidKeyResolver final : public IContentKeyResolver {
+ public:
+  virtual bool Supports(AFGBuildable* Buildable) const override;
+  virtual void Resolve(AFGBuildable* Buildable, TSubclassOf<UFGItemDescriptor>& OutFluid,
+                       bool& bOutEmpty) const override;
 
-	static bool IsPipeColorTarget(AFGBuildable* Buildable);
+  static bool IsPipeColorTarget(AFGBuildable* Buildable);
 };

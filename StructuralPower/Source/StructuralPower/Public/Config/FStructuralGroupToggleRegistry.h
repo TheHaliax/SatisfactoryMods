@@ -8,26 +8,24 @@
 
 class UWorld;
 
-struct STRUCTURALPOWER_API FStructuralGroupToggleDef
-{
-	FName ConfigKey;
-	EStructuralChannel Channel = EStructuralChannel::Structure;
-	bool (*IsEnabled)() = nullptr;
-	void (*RequestReconcile)(UWorld*) = nullptr;
+struct STRUCTURALPOWER_API FStructuralGroupToggleDef {
+  FName ConfigKey;
+  EStructuralChannel Channel = EStructuralChannel::Structure;
+  bool (*IsEnabled)() = nullptr;
+  void (*RequestReconcile)(UWorld*) = nullptr;
 };
 
-class STRUCTURALPOWER_API FStructuralGroupToggleRegistry
-{
-public:
-	static FStructuralGroupToggleRegistry& Get();
+class STRUCTURALPOWER_API FStructuralGroupToggleRegistry {
+ public:
+  static FStructuralGroupToggleRegistry& Get();
 
-	void Initialize();
+  void Initialize();
 
-	bool IsChannelRoutingEnabled(EStructuralChannel Channel) const;
-	const FStructuralGroupToggleDef* FindByKey(FName ConfigKey) const;
-	void ForEach(const TFunctionRef<void(const FStructuralGroupToggleDef&)> Visitor) const;
+  bool IsChannelRoutingEnabled(EStructuralChannel Channel) const;
+  const FStructuralGroupToggleDef* FindByKey(FName ConfigKey) const;
+  void ForEach(const TFunctionRef<void(const FStructuralGroupToggleDef&)> Visitor) const;
 
-private:
-	TArray<FStructuralGroupToggleDef> Definitions;
-	bool bInitialized = false;
+ private:
+  TArray<FStructuralGroupToggleDef> Definitions;
+  bool bInitialized = false;
 };

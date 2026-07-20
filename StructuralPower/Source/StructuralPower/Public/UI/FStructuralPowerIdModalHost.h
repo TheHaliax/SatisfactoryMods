@@ -8,31 +8,33 @@
 class AFGPlayerController;
 class UStructuralPowerIdConfigWidget;
 
-class STRUCTURALPOWER_API FStructuralPowerIdModalHost
-{
-public:
-	static void NormalizeModalState(UStructuralPowerIdConfigWidget* Widget);
+class STRUCTURALPOWER_API FStructuralPowerIdModalHost {
+ public:
+  static void NormalizeModalState(UStructuralPowerIdConfigWidget* Widget);
 
-	static void DetachFromViewport(UStructuralPowerIdConfigWidget* Widget);
+  static void DetachFromViewport(UStructuralPowerIdConfigWidget* Widget);
 
-	static void ApplyModalInputMode(UStructuralPowerIdConfigWidget* Widget);
+  static void ApplyModalInputMode(UStructuralPowerIdConfigWidget* Widget);
 
-	static void ScheduleModalInputModeRefresh(UStructuralPowerIdConfigWidget* Widget);
+  static void ScheduleModalInputModeRefresh(UStructuralPowerIdConfigWidget* Widget);
 
-	static void ForceReleaseAllModalState(
-		AFGPlayerController* PC,
-		bool bRestoreGameInputMode = true);
+  static void ForceReleaseAllModalState(AFGPlayerController* PC, bool bRestoreGameInputMode = true);
 
-	static void RegisterEscapeInputProcessor();
+  static bool OwnsPlayerInput();
 
-	static void UnregisterEscapeInputProcessor();
+  static void ClearInputOwnership();
 
-	static void DismissBlockingGameMessages(AFGPlayerController* PC);
+  static void RegisterEscapeInputProcessor();
 
-	static void OnPanelOpened(UStructuralPowerIdConfigWidget* Widget, AFGPlayerController* PC);
+  static void UnregisterEscapeInputProcessor();
 
-	static void OnPanelClosed(UStructuralPowerIdConfigWidget* Widget, AFGPlayerController* PC);
+  static void DismissBlockingGameMessages(AFGPlayerController* PC);
 
-private:
-	static TSharedPtr<class IInputProcessor> EscapeInputProcessor;
+  static void OnPanelOpened(UStructuralPowerIdConfigWidget* Widget, AFGPlayerController* PC);
+
+  static void OnPanelClosed(UStructuralPowerIdConfigWidget* Widget, AFGPlayerController* PC);
+
+ private:
+  static TSharedPtr<class IInputProcessor> EscapeInputProcessor;
+  static bool bOwnsPlayerInput;
 };

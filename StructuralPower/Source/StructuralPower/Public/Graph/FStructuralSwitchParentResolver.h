@@ -7,37 +7,33 @@
 #include "Graph/FStructuralOutletParentResolver.h"
 #include "Lightweight/FStructuralLightweightIndex.h"
 
-struct FStructuralSwitchParentResolveResult
-{
-	FStructuralWallAnchor Anchor;
-	int32 WirePortIndex = INDEX_NONE;
+struct FStructuralSwitchParentResolveResult {
+  FStructuralWallAnchor Anchor;
+  int32 WirePortIndex = INDEX_NONE;
 
-	bool IsValid() const { return Anchor.IsValid(); }
+  bool IsValid() const {
+    return Anchor.IsValid();
+  }
 };
 
-class STRUCTURALPOWER_API FStructuralSwitchParentResolver
-{
-public:
-	static FStructuralSwitchParentResolveResult Resolve(
-		AFGBuildableCircuitSwitch* Switch,
-		UWorld* World,
-		const FStructuralConnectivityGraph& Graph,
-		const FStructuralLightweightIndex& LightweightIndex,
-		bool bPreferWirePort = false,
-		const FStructuralOutletParentResolveParams* ParentResolveParams = nullptr);
+class STRUCTURALPOWER_API FStructuralSwitchParentResolver {
+ public:
+  static FStructuralSwitchParentResolveResult
+  Resolve(AFGBuildableCircuitSwitch* Switch, UWorld* World,
+          const FStructuralConnectivityGraph& Graph,
+          const FStructuralLightweightIndex& LightweightIndex, bool bPreferWirePort = false,
+          const FStructuralOutletParentResolveParams* ParentResolveParams = nullptr);
 
-	static bool IsWiredToStructureSide(
-		AFGBuildableCircuitSwitch* Switch,
-		int32* OutWirePortIndex = nullptr);
+  static bool IsWiredToStructureSide(AFGBuildableCircuitSwitch* Switch,
+                                     int32* OutWirePortIndex = nullptr);
 
-	static int32 CountWiredVanillaPorts(AFGBuildableCircuitSwitch* Switch);
+  static int32 CountWiredVanillaPorts(AFGBuildableCircuitSwitch* Switch);
 
-	static bool HasAnyVanillaWire(AFGBuildableCircuitSwitch* Switch);
+  static bool HasAnyVanillaWire(AFGBuildableCircuitSwitch* Switch);
 
-	static void ForEachWiredStructureSideAnchor(
-		AFGBuildableCircuitSwitch* Switch,
-		UWorld* World,
-		const FStructuralLightweightIndex& LightweightIndex,
-		const FStructuralOutletParentResolveParams* ParentResolveParams,
-		TFunctionRef<void(const FStructuralWallAnchor& Anchor)> Visitor);
+  static void
+  ForEachWiredStructureSideAnchor(AFGBuildableCircuitSwitch* Switch, UWorld* World,
+                                  const FStructuralLightweightIndex& LightweightIndex,
+                                  const FStructuralOutletParentResolveParams* ParentResolveParams,
+                                  TFunctionRef<void(const FStructuralWallAnchor& Anchor)> Visitor);
 };

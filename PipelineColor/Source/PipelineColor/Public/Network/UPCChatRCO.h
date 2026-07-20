@@ -4,32 +4,29 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "FGRemoteCallObject.h"
 #include "FGFactoryColoringTypes.h"
+#include "FGRemoteCallObject.h"
 #include "UPCChatRCO.generated.h"
 
 UCLASS()
-class PIPELINECOLOR_API UPCChatRCO : public UFGRemoteCallObject
-{
-	GENERATED_BODY()
+class PIPELINECOLOR_API UPCChatRCO : public UFGRemoteCallObject {
+  GENERATED_BODY()
 
-public:
-	virtual void GetLifetimeReplicatedProps(
-		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+ public:
+  virtual void
+  GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	UFUNCTION(Server, Reliable)
-	void Server_RunBangCommand(const FString& CommandLine);
+  UFUNCTION(Server, Reliable)
+  void Server_RunBangCommand(const FString& CommandLine);
 
-	UFUNCTION(Server, Reliable)
-	void Server_SetActivePcSwatch(
-		TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
+  UFUNCTION(Server, Reliable)
+  void Server_SetActivePcSwatch(TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
 
-	UFUNCTION(Server, Reliable)
-	void Server_SetPcSwatchColors(
-		TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch,
-		FFactoryCustomizationColorSlot ColorData);
+  UFUNCTION(Server, Reliable)
+  void Server_SetPcSwatchColors(TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch,
+                                FFactoryCustomizationColorSlot ColorData);
 
-private:
-	UPROPERTY(Replicated, Meta = (NoAutoJson))
-	bool mForceNetField_UPCChatRCO = false;
+ private:
+  UPROPERTY(Replicated, Meta = (NoAutoJson))
+  bool mForceNetField_UPCChatRCO = false;
 };

@@ -13,40 +13,40 @@ class UFGPowerConnectionComponent;
 struct FStructuralChannelKey;
 struct FStructuralPanelPorts;
 
-class STRUCTURALPOWER_API FStructuralPanelAttach
-{
-public:
-	static void TearDownLinks(AFGBuildableControlPanelHost* Panel, const FStructuralPanelPorts& Ports);
+class STRUCTURALPOWER_API FStructuralPanelAttach {
+ public:
+  static void TearDownLinks(AFGBuildableControlPanelHost* Panel,
+                            const FStructuralPanelPorts& Ports);
 
-	static void TearDownDownstreamLinks(
-		AFGBuildableControlPanelHost* Panel,
-		const FStructuralPanelPorts& Ports);
+  static void TearDownDownstreamLinks(AFGBuildableControlPanelHost* Panel,
+                                      const FStructuralPanelPorts& Ports);
 
-	static bool SupplyAlreadyLinked(
-		FStructuralGraphSession& Session,
-		AFGBuildableLightsControlPanel* Panel,
-		const FStructuralPanelPorts& Ports,
-		int32 ComponentRoot,
-		const FStructuralChannelKey& PanelKey);
+  static bool SupplyAlreadyLinked(FStructuralGraphSession& Session,
+                                  AFGBuildableLightsControlPanel* Panel,
+                                  const FStructuralPanelPorts& Ports, int32 ComponentRoot,
+                                  const FStructuralChannelKey& PanelKey);
 
-	static bool TryLinkSupply(
-		FStructuralGraphSession& Session,
-		AFGBuildableLightsControlPanel* Panel,
-		const FStructuralPanelPorts& Ports,
-		int32 ComponentRoot,
-		const FStructuralChannelKey& PanelKey,
-		bool bMeshOnlyLinks = false);
+  static bool TryLinkSupply(FStructuralGraphSession& Session, AFGBuildableLightsControlPanel* Panel,
+                            const FStructuralPanelPorts& Ports, int32 ComponentRoot,
+                            const FStructuralChannelKey& PanelKey, bool bMeshOnlyLinks = false);
 
-	static void RestitchDownstream(
-		FStructuralGraphSession& Session,
-		AFGBuildableLightsControlPanel* Panel,
-		const FStructuralPanelPorts& Ports,
-		int32 ComponentRoot,
-		FName PanelControl);
+  static void RestitchDownstream(FStructuralGraphSession& Session,
+                                 AFGBuildableLightsControlPanel* Panel,
+                                 const FStructuralPanelPorts& Ports, int32 ComponentRoot);
 
-	static void PromotePanelDownstreamSubnet(
-		FStructuralGraphSession& Session,
-		AFGBuildableLightsControlPanel* Panel,
-		const FStructuralPanelPorts& Ports,
-		UFGPowerConnectionComponent* InputPower);
+  static bool TryLinkLightToControlBus(FStructuralGraphSession& Session,
+                                       AFGBuildableLightsControlPanel* Panel,
+                                       AFGBuildableLightSource* Light);
+
+  static bool AreKeyedLightsLinkedToControlBus(FStructuralGraphSession& Session,
+                                               AFGBuildableLightsControlPanel* Panel,
+                                               int32 ComponentRoot);
+
+  static AFGBuildableLightsControlPanel*
+  FindPanelForDownstreamLight(FStructuralGraphSession& Session, int32 ComponentRoot,
+                              const FStructuralChannelKey& LightKey);
+
+  static void PromotePanelDownstreamSubnet(FStructuralGraphSession& Session,
+                                           AFGBuildableLightsControlPanel* Panel,
+                                           UFGPowerConnectionComponent* InputPower);
 };

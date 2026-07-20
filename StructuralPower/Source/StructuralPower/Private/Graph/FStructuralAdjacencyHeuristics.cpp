@@ -6,82 +6,66 @@
 #include "FGBuildableBeam.h"
 #include "StructuralPowerConstants.h"
 
-namespace FStructuralAdjacencyHeuristics
-{
-bool IsBeamClass(TSubclassOf<AFGBuildable> BuildableClass)
-{
-	if (!BuildableClass)
-	{
-		return false;
-	}
+namespace FStructuralAdjacencyHeuristics {
+bool IsBeamClass(TSubclassOf<AFGBuildable> BuildableClass) {
+  if (!BuildableClass) {
+    return false;
+  }
 
-	const AFGBuildable* CDO = BuildableClass->GetDefaultObject<AFGBuildable>();
-	return IsBeamBuildable(CDO);
+  const AFGBuildable* CDO = BuildableClass->GetDefaultObject<AFGBuildable>();
+  return IsBeamBuildable(CDO);
 }
 
-bool IsBeamBuildable(const AFGBuildable* Buildable)
-{
-	if (!IsValid(Buildable))
-	{
-		return false;
-	}
+bool IsBeamBuildable(const AFGBuildable* Buildable) {
+  if (!IsValid(Buildable)) {
+    return false;
+  }
 
-	if (Buildable->IsA<AFGBuildableBeam>())
-	{
-		return true;
-	}
+  if (Buildable->IsA<AFGBuildableBeam>()) {
+    return true;
+  }
 
-	return Buildable->GetClass()->GetName().Contains(TEXT("SteelBeam"), ESearchCase::IgnoreCase);
+  return Buildable->GetClass()->GetName().Contains(TEXT("SteelBeam"), ESearchCase::IgnoreCase);
 }
 
-FBox GetActorAdjacencyBounds(const AFGBuildable* Buildable)
-{
-	if (!IsValid(Buildable))
-	{
-		return FBox(ForceInit);
-	}
+FBox GetActorAdjacencyBounds(const AFGBuildable* Buildable) {
+  if (!IsValid(Buildable)) {
+    return FBox(ForceInit);
+  }
 
-	FVector Origin;
-	FVector Extent;
-	const_cast<AFGBuildable*>(Buildable)->GetActorBounds(false, Origin, Extent);
+  FVector Origin;
+  FVector Extent;
+  const_cast<AFGBuildable*>(Buildable)->GetActorBounds(false, Origin, Extent);
 
-	const float Padding = IsBeamBuildable(Buildable)
-		? StructuralPowerConstants::BeamOverlapPaddingCm
-		: StructuralPowerConstants::OverlapPaddingCm;
+  const float Padding = IsBeamBuildable(Buildable) ? StructuralPowerConstants::BeamOverlapPaddingCm
+                                                   : StructuralPowerConstants::OverlapPaddingCm;
 
-	return FBox(Origin - Extent - Padding, Origin + Extent + Padding);
+  return FBox(Origin - Extent - Padding, Origin + Extent + Padding);
 }
 
-float GetStructuralGapCm(TSubclassOf<AFGBuildable> ClassA, TSubclassOf<AFGBuildable> ClassB)
-{
-	if (IsBeamClass(ClassA) || IsBeamClass(ClassB))
-	{
-		return StructuralPowerConstants::BeamStructuralGapCm;
-	}
+float GetStructuralGapCm(TSubclassOf<AFGBuildable> ClassA, TSubclassOf<AFGBuildable> ClassB) {
+  if (IsBeamClass(ClassA) || IsBeamClass(ClassB)) {
+    return StructuralPowerConstants::BeamStructuralGapCm;
+  }
 
-	return StructuralPowerConstants::StructuralConnectivityGapCm;
+  return StructuralPowerConstants::StructuralConnectivityGapCm;
 }
 
-bool AreAdjacencyBoundsConnected(
-	const FBox& BoundsA,
-	const FBox& BoundsB,
-	TSubclassOf<AFGBuildable> ClassA,
-	TSubclassOf<AFGBuildable> ClassB)
-{
-	if (!BoundsA.IsValid || !BoundsB.IsValid)
-	{
-		return false;
-	}
+bool AreAdjacencyBoundsConnected(const FBox& BoundsA, const FBox& BoundsB,
+                                 TSubclassOf<AFGBuildable> ClassA,
+                                 TSubclassOf<AFGBuildable> ClassB) {
+  if (!BoundsA.IsValid || !BoundsB.IsValid) {
+    return false;
+  }
 
-	const float Gap = GetStructuralGapCm(ClassA, ClassB);
-	const FBox ExpandedA = BoundsA.ExpandBy(Gap);
-	const FBox ExpandedB = BoundsB.ExpandBy(Gap);
+  const float Gap = GetStructuralGapCm(ClassA, ClassB);
+  const FBox ExpandedA = BoundsA.ExpandBy(Gap);
+  const FBox ExpandedB = BoundsB.ExpandBy(Gap);
 
-	if (ExpandedA.Intersect(ExpandedB))
-	{
-		return true;
-	}
+  if (ExpandedA.Intersect(ExpandedB)) {
+    return true;
+  }
 
-	return ExpandedA.ComputeSquaredDistanceToBox(BoundsB) <= Gap * Gap;
+  return ExpandedA.ComputeSquaredDistanceToBox(BoundsB) <= Gap * Gap;
 }
 }

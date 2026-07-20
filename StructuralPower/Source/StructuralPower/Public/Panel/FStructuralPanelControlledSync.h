@@ -8,21 +8,16 @@
 class AFGBuildableLightsControlPanel;
 class FStructuralGraphSession;
 
-struct FStructuralPanelControlledSync
-{
-	static void ApplyKeyedSubnet(
-		FStructuralGraphSession& Session,
-		AFGBuildableLightsControlPanel* Panel);
+struct FStructuralPanelControlledSync {
+  static void ApplyKeyedSubnet(FStructuralGraphSession& Session,
+                               AFGBuildableLightsControlPanel* Panel);
 
-	static void MirrorSharedControlState(
-		FStructuralGraphSession& Session,
-		AFGBuildableLightsControlPanel* Panel);
+  static void MirrorSharedControlState(FStructuralGraphSession& Session,
+                                       AFGBuildableLightsControlPanel* Panel);
 
-	static void ReleaseIntegratedSubnet(
-		FStructuralGraphSession& Session,
-		AFGBuildableLightsControlPanel* Panel);
+  static void ReleaseIntegratedSubnet(FStructuralGraphSession& Session,
+                                      AFGBuildableLightsControlPanel* Panel);
 
-	static FName ResolveEffectiveLightControl(
-		FStructuralGraphSession& Session,
-		AFGBuildableLightsControlPanel* Panel);
+  static FName ResolveEffectiveLightControl(FStructuralGraphSession& Session,
+                                            AFGBuildableLightsControlPanel* Panel);
 };

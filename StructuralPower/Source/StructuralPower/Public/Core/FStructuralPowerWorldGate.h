@@ -7,8 +7,7 @@
 
 class UWorld;
 
-namespace FStructuralPowerWorldGate
-{
+namespace FStructuralPowerWorldGate {
 STRUCTURALPOWER_API bool IsMenuWorld(const UWorld* World);
 
 STRUCTURALPOWER_API bool IsGameplayWorld(const UWorld* World);

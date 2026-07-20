@@ -9,20 +9,16 @@
 class AFGBuildable;
 class FStructuralGraphSession;
 
-class STRUCTURALPOWER_API FStructuralPowerRestitch
-{
-public:
-	FStructuralPowerRestitch() = default;
+class STRUCTURALPOWER_API FStructuralPowerRestitch {
+ public:
+  FStructuralPowerRestitch() = default;
 
-	void Bind(FStructuralGraphSession* InSession);
+  void Bind(FStructuralGraphSession* InSession);
 
-	bool ShouldEndpointParticipateInRestitch(AFGBuildable* Host, EStructuralEndpointKind Kind);
+  bool ShouldEndpointParticipateInRestitch(AFGBuildable* Host, EStructuralEndpointKind Kind);
 
-	bool ShouldMeshEndpoints(
-		AFGBuildable* HostA,
-		AFGBuildable* HostB,
-		int32 ComponentRoot) const;
+  bool ShouldMeshEndpoints(AFGBuildable* HostA, AFGBuildable* HostB, int32 ComponentRoot) const;
 
-private:
-	FStructuralGraphSession* Session = nullptr;
+ private:
+  FStructuralGraphSession* Session = nullptr;
 };

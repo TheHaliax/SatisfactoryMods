@@ -9,17 +9,13 @@
 
 class AFGBuildable;
 
-class STRUCTURALPOWER_API FStructuralHostAttachAdapter
-{
-public:
-	static EStructuralHostKind ClassifyHost(const FStructuralWallAnchor& Anchor);
+class STRUCTURALPOWER_API FStructuralHostAttachAdapter {
+ public:
+  static EStructuralHostKind ClassifyHost(const FStructuralWallAnchor& Anchor);
 
-	static bool ConfirmSiteAttach(
-		const FStructuralOutletParentResolveResult& ParentResolve,
-		AFGBuildable* Endpoint);
+  static bool ConfirmSiteAttach(const FStructuralOutletParentResolveResult& ParentResolve,
+                                AFGBuildable* Endpoint);
 
-	static FBox ExpandHostBounds(
-		const FBox& Bounds,
-		TSubclassOf<AFGBuildable> HostClass,
-		EStructuralHostKind HostKind);
+  static FBox ExpandHostBounds(const FBox& Bounds, TSubclassOf<AFGBuildable> HostClass,
+                               EStructuralHostKind HostKind);
 };

@@ -7,15 +7,16 @@
 
 class AFGBuildable;
 
-class FBuildableColorTarget
-{
-public:
-	explicit FBuildableColorTarget(AFGBuildable* InBuildable);
+class FBuildableColorTarget {
+ public:
+  explicit FBuildableColorTarget(AFGBuildable* InBuildable);
 
-	bool IsValid() const;
-	AFGBuildable* Get() const { return Buildable; }
-	bool Apply(const FPCAppearanceSpec& Spec) const;
+  bool IsValid() const;
+  AFGBuildable* Get() const {
+    return Buildable;
+  }
+  bool Apply(const FPCAppearanceSpec& Spec) const;
 
-private:
-	AFGBuildable* Buildable = nullptr;
+ private:
+  AFGBuildable* Buildable = nullptr;
 };

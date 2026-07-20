@@ -2,15 +2,6 @@
 
 Contributor notes for the StructuralPower sources in this repository.
 
-## Code comments vs documentation
-
-| Surface | Role |
-|---------|------|
-| **`Source/`** | Default **no comments** — only non-obvious engine traps (FG circuit side-effects, load ordering, MP authority). Prefer clear code; put teaching prose in `Documentation/`. |
-| **`Documentation/`** | Player + contributor **what / why / how** for the mod |
-
-No design-resolution ids, wave numbers, or milestone notes in `Source/`. SPDX headers stay.
-
 ## Repository layout
 
 ```
@@ -82,12 +73,18 @@ Roadmap: [../README.md#roadmap](../README.md#roadmap). Player behavior: [player-
 | Kind | Place / load | Config gate |
 |------|--------------|-------------|
 | Pole | `FStructuralBridgeAttach::AttachOnPlace` | always on |
-| Storage | same bridge attach | `GroupGeneration` (stub) |
+| Storage | same bridge attach (OutletBus host) | `GroupGeneration` |
+| Generator | `FStructuralPowerGeneratorProcessor` → bridge attach (OutletBus host) | `GroupGeneration` |
+| Extractor | `FStructuralPowerMachineConsumerProcessor` | `GroupResources` |
+| Manufacturer | same consumer processor | `GroupProduction` |
+| Transport | same consumer processor (stub) | `GroupTransport` |
+| Pipe pump | `FStructuralPipeTopology` inject + consumer processor | `GroupPipes` |
+| Belts | toggle registry only — no attach | `GroupBelts` |
 | Switch | `FStructuralPowerSwitchProcessor` + `FStructuralSwitchBridgeStrategy` | always on |
 | Panel | `FStructuralPanelAttach` | `GroupLighting` |
 | Light | `FStructuralDeviceAttach::TryAttachConsumer` | `GroupLighting` |
 
-Structure integration goes through `FStructuralSiteMembership` (mount → site → register → strategy). Mount identity is durable **`MountParentId`**; site root is derived via the structure graph. Default structure Ids use human-readable **`Structure N`**.
+Structure integration goes through `FStructuralSiteMembership` (mount → site → register → strategy). Mount identity is durable **`MountParentId`**; site root is derived via the structure graph. Default structure Ids use human-readable **`Structure N`**. Generators and storage participate in bridge peer mesh like poles.
 
 ### Transfer-gated switch path
 

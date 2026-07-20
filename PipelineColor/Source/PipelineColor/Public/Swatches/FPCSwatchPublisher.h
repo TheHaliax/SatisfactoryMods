@@ -7,9 +7,8 @@
 
 class UWorld;
 
-class FPCSwatchPublisher
-{
-public:
-	static void RegisterForceRecipeHook();
-	static void PublishForWorld(UWorld* World);
+class FPCSwatchPublisher {
+ public:
+  static void RegisterForceRecipeHook();
+  static void PublishForWorld(UWorld* World);
 };

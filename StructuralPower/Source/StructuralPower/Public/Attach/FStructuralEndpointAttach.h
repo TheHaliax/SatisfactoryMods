@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Core/EAttachContext.h"
+#include "CoreMinimal.h"
 #include "Graph/FStructuralEndpointDescriptor.h"
 
 class AFGBuildable;
@@ -12,20 +12,17 @@ struct FStructuralBridgeAttachOutcome;
 struct FStructuralBridgeAttachRequest;
 struct FStructuralPowerContext;
 
-class STRUCTURALPOWER_API FStructuralEndpointAttach
-{
-public:
-	static FStructuralBridgeAttachOutcome AttachOnPlace(
-		FStructuralPowerContext& Ctx,
-		const FStructuralBridgeAttachRequest& Request);
+class STRUCTURALPOWER_API FStructuralEndpointAttach {
+ public:
+  static FStructuralBridgeAttachOutcome
+  AttachOnPlace(FStructuralPowerContext& Ctx, const FStructuralBridgeAttachRequest& Request);
 
-	static bool AttachConsumer(FStructuralPowerContext& Ctx, AFGBuildable* Host, bool bLocalPromoteOnly);
-	static bool AttachRouter(FStructuralPowerContext& Ctx, AFGBuildable* Host, bool bLocalPromoteOnly);
-	static bool AttachToggleBridge(FStructuralPowerContext& Ctx, AFGBuildable* Host);
+  static bool AttachConsumer(FStructuralPowerContext& Ctx, AFGBuildable* Host,
+                             bool bLocalPromoteOnly);
+  static bool AttachRouter(FStructuralPowerContext& Ctx, AFGBuildable* Host,
+                           bool bLocalPromoteOnly);
+  static bool AttachToggleBridge(FStructuralPowerContext& Ctx, AFGBuildable* Host);
 
-	static bool RunStrategy(
-		FStructuralPowerContext& Ctx,
-		AFGBuildable* Host,
-		EStructuralAttachStrategy Strategy,
-		bool bLocalPromoteOnly = false);
+  static bool RunStrategy(FStructuralPowerContext& Ctx, AFGBuildable* Host,
+                          EStructuralAttachStrategy Strategy, bool bLocalPromoteOnly = false);
 };

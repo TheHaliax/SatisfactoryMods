@@ -8,17 +8,22 @@
 class AFGBuildable;
 struct FStructuralLightweightKey;
 
-class STRUCTURALPOWER_API FStructuralGraphStructureIngress
-{
-public:
-	FStructuralGraphStructureIngress() = default;
+class STRUCTURALPOWER_API FStructuralGraphStructureIngress {
+ public:
+  FStructuralGraphStructureIngress() = default;
 
-	void Bind(class FStructuralGraphSession* InSession);
+  void Bind(class FStructuralGraphSession* InSession);
 
-	void ProcessStructure(AFGBuildable* Buildable);
-	void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
-	void RetryAwaitingStructuralSiteEndpoints();
+  void ProcessStructure(AFGBuildable* Buildable);
+  void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
+  void RetryAwaitingStructuralSiteEndpoints();
 
-private:
-	class FStructuralGraphSession* Session = nullptr;
+  /** After UF remove/split: remount endpoints whose MountParent left the graph. */
+  void MarkOrphanMountEndpointsAwaiting(const TSet<int32>& AffectedRoots);
+  void ReconcileAfterStructureSplit(const TSet<int32>& AffectedRoots);
+
+ private:
+  void RequeueConsumersAfterStructureSplit(const TSet<int32>& AffectedRoots);
+
+  class FStructuralGraphSession* Session = nullptr;
 };

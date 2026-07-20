@@ -7,9 +7,8 @@
 
 class AFGPlayerController;
 
-class STRUCTURALPOWER_API FStructuralPowerBangCommands
-{
-public:
-	static void RegisterChatHook();
-	static void Execute(AFGPlayerController* PlayerController, const FString& CommandLine);
+class STRUCTURALPOWER_API FStructuralPowerBangCommands {
+ public:
+  static void RegisterChatHook();
+  static void Execute(AFGPlayerController* PlayerController, const FString& CommandLine);
 };

@@ -7,37 +7,31 @@
 #include "Graph/FStructuralOutletParentResolver.h"
 #include "Lightweight/FStructuralLightweightTypes.h"
 
-struct FStructuralComponentResolveResult
-{
-	int32 ComponentRoot = INDEX_NONE;
-	FStructuralNodeId NodeId;
+struct FStructuralComponentResolveResult {
+  int32 ComponentRoot = INDEX_NONE;
+  FStructuralNodeId NodeId;
 
-	bool IsValid() const { return ComponentRoot != INDEX_NONE; }
+  bool IsValid() const {
+    return ComponentRoot != INDEX_NONE;
+  }
 };
 
-class STRUCTURALPOWER_API FStructuralAttachmentResolver
-{
-public:
-	static FStructuralWallAnchor ResolveStructuralParent(
-		AFGBuildable* Buildable,
-		UWorld* World,
-		const FStructuralLightweightIndex& LightweightIndex);
+class STRUCTURALPOWER_API FStructuralAttachmentResolver {
+ public:
+  static FStructuralWallAnchor
+  ResolveStructuralParent(AFGBuildable* Buildable, UWorld* World,
+                          const FStructuralLightweightIndex& LightweightIndex);
 
-	static FStructuralWallAnchor ResolveStructuralParent(
-		AFGBuildable* Buildable,
-		UWorld* World,
-		const FStructuralOutletParentResolveParams& Params);
+  static FStructuralWallAnchor
+  ResolveStructuralParent(AFGBuildable* Buildable, UWorld* World,
+                          const FStructuralOutletParentResolveParams& Params);
 
-	static FStructuralComponentResolveResult ResolveStructuralComponent(
-		const FStructuralConnectivityGraph& Graph,
-		const FVector& WorldLoc,
-		float QueryRadiusCm,
-		TSubclassOf<AFGBuildable> ClassHint = nullptr);
+  static FStructuralComponentResolveResult
+  ResolveStructuralComponent(const FStructuralConnectivityGraph& Graph, const FVector& WorldLoc,
+                             float QueryRadiusCm, TSubclassOf<AFGBuildable> ClassHint = nullptr);
 
-	static int32 ResolveComponentRootForBuildable(
-		AFGBuildable* Buildable,
-		const FStructuralConnectivityGraph& Graph,
-		const FStructuralLightweightIndex& LightweightIndex,
-		UWorld* World,
-		FStructuralNodeId& OutParentId);
+  static int32 ResolveComponentRootForBuildable(AFGBuildable* Buildable,
+                                                const FStructuralConnectivityGraph& Graph,
+                                                const FStructuralLightweightIndex& LightweightIndex,
+                                                UWorld* World, FStructuralNodeId& OutParentId);
 };

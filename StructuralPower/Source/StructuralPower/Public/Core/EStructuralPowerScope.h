@@ -5,10 +5,9 @@
 
 #include "CoreMinimal.h"
 
-enum class EStructuralPowerScope : uint8
-{
-	Site,
-	CrossSite,
+enum class EStructuralPowerScope : uint8 {
+  Site,
+  CrossSite,
 };
 
 STRUCTURALPOWER_API const TCHAR* StructuralPowerScopeToString(EStructuralPowerScope Scope);

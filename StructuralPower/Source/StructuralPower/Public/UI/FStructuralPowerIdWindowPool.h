@@ -8,26 +8,25 @@
 class AFGPlayerController;
 class UStructuralPowerIdConfigWidget;
 
-class STRUCTURALPOWER_API FStructuralPowerIdWindowPool
-{
-public:
-	static UStructuralPowerIdConfigWidget* GetActiveWidget();
+class STRUCTURALPOWER_API FStructuralPowerIdWindowPool {
+ public:
+  static UStructuralPowerIdConfigWidget* GetActiveWidget();
 
-	static UStructuralPowerIdConfigWidget* GetPooledWindow();
+  static UStructuralPowerIdConfigWidget* GetPooledWindow();
 
-	static UStructuralPowerIdConfigWidget* GetOrCreateWindow(AFGPlayerController* PC);
+  static UStructuralPowerIdConfigWidget* GetOrCreateWindow(AFGPlayerController* PC);
 
-	static void SetActiveWidget(UStructuralPowerIdConfigWidget* Widget);
+  static void SetActiveWidget(UStructuralPowerIdConfigWidget* Widget);
 
-	static void ResetForMapLoad();
+  static void ResetForMapLoad();
 
-	static void CloseActivePanel();
+  static void CloseActivePanel();
 
-	static void ReleaseForVanillaInteract(AFGPlayerController* PC);
+  static void ReleaseForVanillaInteract(AFGPlayerController* PC);
 
-	static void NotifyWindowDestroyed(UStructuralPowerIdConfigWidget* Widget);
+  static void NotifyWindowDestroyed(UStructuralPowerIdConfigWidget* Widget);
 
-private:
-	static TWeakObjectPtr<UStructuralPowerIdConfigWidget> ActiveInstance;
-	static TObjectPtr<UStructuralPowerIdConfigWidget> CachedWindow;
+ private:
+  static TWeakObjectPtr<UStructuralPowerIdConfigWidget> ActiveInstance;
+  static TObjectPtr<UStructuralPowerIdConfigWidget> CachedWindow;
 };

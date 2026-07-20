@@ -9,60 +9,46 @@
 #include "FGPowerConnectionComponent.h"
 #include "UObject/UnrealType.h"
 
-UFGCircuitConnectionComponent* ResolveDownstreamProperty(AFGBuildableControlPanelHost* Panel)
-{
-	if (!IsValid(Panel))
-	{
-		return nullptr;
-	}
+UFGCircuitConnectionComponent* ResolveDownstreamProperty(AFGBuildableControlPanelHost* Panel) {
+  if (!IsValid(Panel)) {
+    return nullptr;
+  }
 
-	const FObjectProperty* Prop = FindFProperty<FObjectProperty>(
-		AFGBuildableControlPanelHost::StaticClass(),
-		TEXT("mDownstreamConnection"));
-	if (!Prop)
-	{
-		return nullptr;
-	}
+  const FObjectProperty* Prop = FindFProperty<FObjectProperty>(
+      AFGBuildableControlPanelHost::StaticClass(), TEXT("mDownstreamConnection"));
+  if (!Prop) {
+    return nullptr;
+  }
 
-	return Cast<UFGCircuitConnectionComponent>(Prop->GetObjectPropertyValue_InContainer(Panel));
+  return Cast<UFGCircuitConnectionComponent>(Prop->GetObjectPropertyValue_InContainer(Panel));
 }
 
-bool FStructuralPanelPortResolver::Resolve(
-	AFGBuildableControlPanelHost* Panel,
-	FStructuralPanelPorts& Out)
-{
-	Out = {};
-	if (!IsValid(Panel))
-	{
-		return false;
-	}
+bool FStructuralPanelPortResolver::Resolve(AFGBuildableControlPanelHost* Panel,
+                                           FStructuralPanelPorts& Out) {
+  Out = {};
+  if (!IsValid(Panel)) {
+    return false;
+  }
 
-	Out.Downstream = ResolveDownstreamProperty(Panel);
-	if (!IsValid(Out.Downstream))
-	{
-		return false;
-	}
+  Out.Downstream = ResolveDownstreamProperty(Panel);
+  if (!IsValid(Out.Downstream)) {
+    return false;
+  }
 
-	UFGCircuitConnectionComponent* Conn0 = Panel->GetConnection0();
-	UFGCircuitConnectionComponent* Conn1 = Panel->GetConnection1();
-	if (Conn0 == Out.Downstream)
-	{
-		Out.Input = Conn1;
-	}
-	else if (Conn1 == Out.Downstream)
-	{
-		Out.Input = Conn0;
-	}
-	else
-	{
-		Out.Input = Conn0;
-	}
+  UFGCircuitConnectionComponent* Conn0 = Panel->GetConnection0();
+  UFGCircuitConnectionComponent* Conn1 = Panel->GetConnection1();
+  if (Conn0 == Out.Downstream) {
+    Out.Input = Conn1;
+  } else if (Conn1 == Out.Downstream) {
+    Out.Input = Conn0;
+  } else {
+    Out.Input = Conn0;
+  }
 
-	return IsValid(Out.Input);
+  return IsValid(Out.Input);
 }
 
-UFGPowerConnectionComponent* FStructuralPanelPortResolver::AsPowerConnection(
-	UFGCircuitConnectionComponent* Conn)
-{
-	return Cast<UFGPowerConnectionComponent>(Conn);
+UFGPowerConnectionComponent*
+FStructuralPanelPortResolver::AsPowerConnection(UFGCircuitConnectionComponent* Conn) {
+  return Cast<UFGPowerConnectionComponent>(Conn);
 }

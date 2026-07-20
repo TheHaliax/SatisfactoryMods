@@ -43,9 +43,19 @@ For switch/panel toggle debugging with trace on: grep `switch restitch_off_settl
 | No tether | Stand near **powered** structure within reach |
 | Short reach | Raise `!HoverH` / `!HoverV` (max 10× per axis) or edit cfg multipliers |
 
+## Machines not attaching
+
+| Symptom | Check |
+|---------|--------|
+| Gen / miner stays wired-only | Group toggle off — enable `!Generation` / `!Resources` / `!Production` |
+| Miner / mfg on foundation, no power | Need a **bus host** on same structure island (pole, storage, or generator with Generation on) |
+| Log `machine_no_bridge_bus` | Same — no OutletBus peer on that root yet |
+| Log `gen_attach_failed` / `gen_bus_create_failed` | Update to **3.1.0+** (gens create their own bus); confirm Generation on and foundation parent resolves |
+| Vanilla cable present | Structural attach yields to vanilla wires |
+
 ## Save / reload issues
 
-v3.0.0 strips persisted mod bus components before circuit bridge BeginPlay and rebuilds topology from geometry. If an older v2.1 build failed on load, update to **3.0.0** and retry. Report with `FactoryGame.log` from load if it persists.
+v3.0+ strips persisted mod bus components before circuit bridge BeginPlay and rebuilds topology from geometry. If an older v2.1 build failed on load, update to **3.1.0** and retry. Report with `FactoryGame.log` from load if it persists.
 
 ## No LogStructuralPower lines during gameplay
 
@@ -59,9 +69,9 @@ Automatic diagnostics skip menu worlds (`Map_Menu_*`). Load a save or run `Struc
 
 Include:
 
-- StructuralPower version (3.0.0)
+- StructuralPower version (**3.1.0**)
 - SML version
 - Single-player, listen host, or dedicated server
-- Group Lighting on/off
+- Which group toggles on (`!Generation`, `!Resources`, `!lighting`, …)
 - Relevant `LogStructuralPower` / `[HALSP]` lines (with trace enabled if possible)
-- Whether switches / lighting / hoverpack involved
+- Whether switches / lighting / hoverpack / machines involved

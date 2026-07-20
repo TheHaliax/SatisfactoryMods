@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Core/FStructuralNodeId.h"
+#include "CoreMinimal.h"
 #include "Routing/EStructuralChannel.h"
 
 class AFGBuildable;
@@ -14,36 +14,31 @@ struct FStructuralComponentIdList;
 struct FStructuralComponentKey;
 struct FStructuralEndpointOverrides;
 
-class STRUCTURALPOWER_API FStructuralGraphIdOps
-{
-public:
-	FStructuralGraphIdOps() = default;
+class STRUCTURALPOWER_API FStructuralGraphIdOps {
+ public:
+  FStructuralGraphIdOps() = default;
 
-	void Bind(FStructuralGraphSession* InSession);
+  void Bind(FStructuralGraphSession* InSession);
 
-	FStructuralComponentKey MakeComponentKeyForRoot(int32 ComponentRoot) const;
-	FStructuralComponentKey MakeComponentKeyForParent(const FStructuralNodeId& ParentId) const;
-	FStructuralComponentKey MakeComponentKeyForBuildable(const AFGBuildable* Buildable) const;
+  FStructuralComponentKey MakeComponentKeyForRoot(int32 ComponentRoot) const;
+  FStructuralComponentKey MakeComponentKeyForParent(const FStructuralNodeId& ParentId) const;
+  FStructuralComponentKey MakeComponentKeyForBuildable(const AFGBuildable* Buildable) const;
 
-	bool GetEndpointOverrides(const AFGBuildable* Buildable, FStructuralEndpointOverrides& Out) const;
-	FName GetOrCreateComponentDefaultId(const FStructuralComponentKey& ComponentKey);
-	FName ResolveSource(AFGBuildable* Buildable, EStructuralChannel Tag);
-	FName ResolveControl(AFGBuildable* Buildable, EStructuralChannel Tag);
-	FStructuralChannelKey ResolveChannelKeyForBuildable(AFGBuildable* Buildable);
+  bool GetEndpointOverrides(const AFGBuildable* Buildable, FStructuralEndpointOverrides& Out) const;
+  FName GetOrCreateComponentDefaultId(const FStructuralComponentKey& ComponentKey);
+  FName ResolveSource(AFGBuildable* Buildable, EStructuralChannel Tag);
+  FName ResolveControl(AFGBuildable* Buildable, EStructuralChannel Tag);
+  FStructuralChannelKey ResolveChannelKeyForBuildable(AFGBuildable* Buildable);
 
-	void SetEndpointIds(
-		AFGBuildable* Buildable,
-		FName Source,
-		FName Control,
-		bool bClearSource,
-		bool bClearControl,
-		bool bGlobalControl = false,
-		bool bTouchGlobalControl = false);
+  void SetEndpointIds(AFGBuildable* Buildable, FName Source, FName Control, bool bClearSource,
+                      bool bClearControl, bool bGlobalControl = false,
+                      bool bTouchGlobalControl = false);
 
-	bool CollectIdsOnComponent(const FStructuralComponentKey& Key, FStructuralComponentIdList& Out) const;
+  bool CollectIdsOnComponent(const FStructuralComponentKey& Key,
+                             FStructuralComponentIdList& Out) const;
 
-	void RebuildControlIdGangsForRoot(int32 ComponentRoot);
+  void RebuildControlIdGangsForRoot(int32 ComponentRoot);
 
-private:
-	FStructuralGraphSession* Session = nullptr;
+ private:
+  FStructuralGraphSession* Session = nullptr;
 };

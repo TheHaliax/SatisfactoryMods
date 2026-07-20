@@ -7,8 +7,7 @@
 
 class AFGBuildablePowerPole;
 
-class STRUCTURALPOWER_API FStructuralPoleWireUtil
-{
-public:
-	static bool HasVanillaWire(AFGBuildablePowerPole* Pole);
+class STRUCTURALPOWER_API FStructuralPoleWireUtil {
+ public:
+  static bool HasVanillaWire(AFGBuildablePowerPole* Pole);
 };

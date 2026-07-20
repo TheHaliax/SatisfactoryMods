@@ -5,12 +5,12 @@
 
 #include "CoreMinimal.h"
 
-enum class EStructuralAttachStrategy : uint8
-{
-	Bridge,
-	ToggleBridge,
-	Consumer,
-	Router,
+enum class EStructuralAttachStrategy : uint8 {
+  Bridge,
+  ToggleBridge,
+  Consumer,
+  Router,
 };
 
-STRUCTURALPOWER_API const TCHAR* StructuralAttachStrategyToString(EStructuralAttachStrategy Strategy);
+STRUCTURALPOWER_API const TCHAR*
+StructuralAttachStrategyToString(EStructuralAttachStrategy Strategy);

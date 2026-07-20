@@ -6,17 +6,15 @@
 #include "CoreMinimal.h"
 #include "Equipment/IStructuralPowerEquipmentBridge.h"
 
-class STRUCTURALPOWER_API FStructuralHoverpackEquipmentBridge : public IStructuralPowerEquipmentBridge
-{
-public:
-	virtual FName GetKind() const override;
+class STRUCTURALPOWER_API FStructuralHoverpackEquipmentBridge
+    : public IStructuralPowerEquipmentBridge {
+ public:
+  virtual FName GetKind() const override;
 
-	virtual void RegisterHooks() override;
+  virtual void RegisterHooks() override;
 
-	virtual bool QueryHoverpackStructuralAnchor(
-		FStructuralGraphSession& Session,
-		const FVector& QueryLoc,
-		float MaxHorizontal,
-		float MaxVertical,
-		FStructuralHoverpackAnchorQuery& Out) const override;
+  virtual bool QueryHoverpackStructuralAnchor(FStructuralGraphSession& Session,
+                                              const FVector& QueryLoc, float MaxHorizontal,
+                                              float MaxVertical,
+                                              FStructuralHoverpackAnchorQuery& Out) const override;
 };

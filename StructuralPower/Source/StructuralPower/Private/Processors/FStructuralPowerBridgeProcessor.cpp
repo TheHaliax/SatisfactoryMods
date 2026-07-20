@@ -9,77 +9,56 @@
 #include "Core/EAttachContext.h"
 #include "Core/EStructuralPowerRole.h"
 #include "Core/EStructuralPowerScope.h"
-#include "Graph/FStructuralCrossSiteGraph.h"
-#include "Graph/FStructuralEndpointTypes.h"
 #include "Core/FStructuralGraphSession.h"
 #include "Core/FStructuralPowerContext.h"
+#include "Graph/FStructuralCrossSiteGraph.h"
+#include "Graph/FStructuralEndpointTypes.h"
 #include "Processors/FStructuralPowerPanelProcessor.h"
 #include "Processors/FStructuralPowerSwitchProcessor.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 #include "StructuralPowerLog.h"
 
 void FStructuralPowerBridgeProcessor::PropagateCrossSiteFeedChange(
-	FStructuralPowerContext& Ctx,
-	AFGBuildableCircuitSwitch* Switch,
-	int32 LocalRoot)
-{
-	if (!IsValid(Switch) || LocalRoot == INDEX_NONE)
-	{
-		return;
-	}
+    FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch, int32 LocalRoot) {
+  if (!IsValid(Switch) || LocalRoot == INDEX_NONE) {
+    return;
+  }
 
-	Ctx.Session().CrossSite().RefreshCouplingsFromWiredSwitch(Ctx.Session(), Switch, LocalRoot);
+  Ctx.Session().CrossSite().RefreshCouplingsFromWiredSwitch(Ctx.Session(), Switch, LocalRoot);
 
-	TArray<int32> AffectedRoots;
-	Ctx.Session().CrossSite().TraceFeedAffected(
-		Ctx.Session(),
-		Switch,
-		LocalRoot,
-		AffectedRoots);
+  TArray<int32> AffectedRoots;
+  Ctx.Session().CrossSite().TraceFeedAffected(Ctx.Session(), Switch, LocalRoot, AffectedRoots);
 
-	if (AffectedRoots.Num() == 0)
-	{
-		return;
-	}
+  if (AffectedRoots.Num() == 0) {
+    return;
+  }
 
-	UE_LOG(LogStructuralPower, Log,
-		TEXT("[HALSP] wired switch %s kind=%s scope=%s site=%d role=%s path=wire_bridge"
-			" localRoot=%d feedAffected=%d"),
-		*Switch->GetName(),
-		StructuralEndpointKindToString(EStructuralEndpointKind::Switch),
-		StructuralPowerScopeToString(EStructuralPowerScope::CrossSite),
-		LocalRoot,
-		StructuralPowerRoleToString(EStructuralPowerRole::Gateway),
-		LocalRoot,
-		AffectedRoots.Num());
+  UE_LOG(LogStructuralPower, Log,
+         TEXT("[HALSP] wired switch %s kind=%s scope=%s site=%d role=%s path=wire_bridge"
+              " localRoot=%d feedAffected=%d"),
+         *Switch->GetName(), StructuralEndpointKindToString(EStructuralEndpointKind::Switch),
+         StructuralPowerScopeToString(EStructuralPowerScope::CrossSite), LocalRoot,
+         StructuralPowerRoleToString(EStructuralPowerRole::Gateway), LocalRoot,
+         AffectedRoots.Num());
 }
 
 void FStructuralPowerBridgeProcessor::ApplyLocalAttachForSwitch(
-	FStructuralPowerContext& Ctx,
-	AFGBuildableCircuitSwitch* Switch,
-	UFGStructuralPowerConnectionComponent* /*OutletBus*/,
-	int32 /*Root*/,
-	const FStructuralNodeId& /*SwitchNodeId*/,
-	EAttachContext AttachContext,
-	bool /*bKeyedSubnet*/)
-{
-	if (!IsValid(Switch))
-	{
-		return;
-	}
+    FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch,
+    UFGStructuralPowerConnectionComponent* /*OutletBus*/, int32 /*Root*/,
+    const FStructuralNodeId& /*SwitchNodeId*/, EAttachContext AttachContext,
+    bool /*bKeyedSubnet*/) {
+  if (!IsValid(Switch)) {
+    return;
+  }
 
-	FStructuralPowerSwitchProcessor::OnWireDelta(Ctx, Switch);
+  FStructuralPowerSwitchProcessor::OnWireDelta(Ctx, Switch);
 }
 
 void FStructuralPowerBridgeProcessor::ApplyLocalAttachForPanel(
-	FStructuralPowerContext& Ctx,
-	AFGBuildableLightsControlPanel* Panel,
-	bool bLocalPromoteOnly)
-{
-	if (!IsValid(Panel) || !FStructuralPowerModConfig::IsGroupLightingEnabled())
-	{
-		return;
-	}
+    FStructuralPowerContext& Ctx, AFGBuildableLightsControlPanel* Panel, bool bLocalPromoteOnly) {
+  if (!IsValid(Panel) || !FStructuralPowerModConfig::IsGroupLightingEnabled()) {
+    return;
+  }
 
-	FStructuralPowerPanelProcessor::Process(Ctx, Panel, bLocalPromoteOnly);
+  FStructuralPowerPanelProcessor::Process(Ctx, Panel, bLocalPromoteOnly);
 }

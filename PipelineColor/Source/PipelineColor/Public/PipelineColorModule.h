@@ -6,9 +6,8 @@
 #include "CoreMinimal.h"
 #include "Modules/ModuleManager.h"
 
-class FPipelineColorModule : public IModuleInterface
-{
-public:
-	virtual void StartupModule() override;
-	virtual void ShutdownModule() override;
+class FPipelineColorModule : public IModuleInterface {
+ public:
+  virtual void StartupModule() override;
+  virtual void ShutdownModule() override;
 };

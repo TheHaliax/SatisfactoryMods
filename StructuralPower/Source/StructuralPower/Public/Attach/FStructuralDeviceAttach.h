@@ -11,17 +11,20 @@ class AFGBuildableLightSource;
 class FStructuralGraphSession;
 class UFGPowerConnectionComponent;
 
-class STRUCTURALPOWER_API FStructuralDeviceAttach
-{
-public:
-	static UFGPowerConnectionComponent* FindLightWireConnection(const AFGBuildableLightSource* Light);
+class STRUCTURALPOWER_API FStructuralDeviceAttach {
+ public:
+  /** DR-007: match GetPowerInfo() to first power info, visible-plug fallback. */
+  static UFGPowerConnectionComponent* FindFactoryWireConnection(const AFGBuildable* Host);
 
-	static bool TryAttachConsumer(
-		FStructuralGraphSession& Session,
-		AFGBuildable* Device,
-		UFGPowerConnectionComponent* DevicePlug,
-		int32 ComponentRoot,
-		const FStructuralChannelKey& DeviceKey);
+  static UFGPowerConnectionComponent* FindLightWireConnection(const AFGBuildableLightSource* Light);
 
-	static void TearDownConsumerLinks(UFGPowerConnectionComponent* DevicePlug);
+  static bool TryAttachConsumer(FStructuralGraphSession& Session, AFGBuildable* Device,
+                                UFGPowerConnectionComponent* DevicePlug, int32 ComponentRoot,
+                                const FStructuralChannelKey& DeviceKey);
+
+  /** Source-role supply inject — default component bus feed (gen Control is gang key). */
+  static bool TryAttachSourceSupply(FStructuralGraphSession& Session, AFGBuildable* Device,
+                                    UFGPowerConnectionComponent* DevicePlug, int32 ComponentRoot);
+
+  static void TearDownConsumerLinks(UFGPowerConnectionComponent* DevicePlug);
 };

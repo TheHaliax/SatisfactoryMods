@@ -7,27 +7,22 @@
 #include "Buildables/FGBuildableWire.h"
 #include "FGPowerConnectionComponent.h"
 
-bool FStructuralPoleWireUtil::HasVanillaWire(AFGBuildablePowerPole* Pole)
-{
-	if (!IsValid(Pole))
-	{
-		return false;
-	}
+bool FStructuralPoleWireUtil::HasVanillaWire(AFGBuildablePowerPole* Pole) {
+  if (!IsValid(Pole)) {
+    return false;
+  }
 
-	for (UFGPowerConnectionComponent* Visible : Pole->GetPowerConnections())
-	{
-		if (!IsValid(Visible) || Visible->IsHidden())
-		{
-			continue;
-		}
+  for (UFGPowerConnectionComponent* Visible : Pole->GetPowerConnections()) {
+    if (!IsValid(Visible) || Visible->IsHidden()) {
+      continue;
+    }
 
-		TArray<AFGBuildableWire*> Wires;
-		Visible->GetWires(Wires);
-		if (Wires.Num() > 0)
-		{
-			return true;
-		}
-	}
+    TArray<AFGBuildableWire*> Wires;
+    Visible->GetWires(Wires);
+    if (Wires.Num() > 0) {
+      return true;
+    }
+  }
 
-	return false;
+  return false;
 }

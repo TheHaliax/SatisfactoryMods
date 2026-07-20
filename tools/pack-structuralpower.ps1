@@ -3,22 +3,47 @@
 #
 # Iterative dev build: compiles the StructuralPower runtime module and deploys the DLL into a
 # local Satisfactory install. UBT '-Module=' builds skip the '.modules' manifest, so the
-# loader can't map the module to its DLL — this hand-writes it. Machine paths are params;
-# override them for your layout.
+# loader can't map the module to its DLL — this hand-writes it.
+#
+# Paths: pass -ProjectPath / -GamePath / -UeCssRoot, or set SAT_PROJECT_PATH / SAT_GAME_PATH /
+# UE_CSS_ROOT, or create tools/local-paths.ps1 (gitignored) with $LocalProjectPath etc.
 param(
     [ValidateSet('Shipping', 'Development')]
     [string]$Config = 'Shipping',
     [switch]$NoCopy,
     [switch]$Clean,
     [switch]$SkipIcons,
-    [string]$ProjectPath = 'E:\Modding\Satisfactory\StarterProject\FactoryGame.uproject',
+    [string]$ProjectPath = '',
     [string]$ModRoot = '',
-    [string]$StarterModLink = 'E:\Modding\Satisfactory\StarterProject\Mods\StructuralPower',
-    [string]$GamePath = 'E:\SteamLibrary\steamapps\common\Satisfactory',
-    [string]$UeCssRoot = 'C:\Program'
+    [string]$StarterModLink = '',
+    [string]$GamePath = '',
+    [string]$UeCssRoot = ''
 )
 
 $ErrorActionPreference = 'Stop'
+
+$LocalPathsFile = Join-Path $PSScriptRoot 'local-paths.ps1'
+if (Test-Path -LiteralPath $LocalPathsFile) { . $LocalPathsFile }
+if ([string]::IsNullOrWhiteSpace($ProjectPath) -and $LocalProjectPath) { $ProjectPath = $LocalProjectPath }
+if ([string]::IsNullOrWhiteSpace($GamePath) -and $LocalGamePath) { $GamePath = $LocalGamePath }
+if ([string]::IsNullOrWhiteSpace($UeCssRoot) -and $LocalUeCssRoot) { $UeCssRoot = $LocalUeCssRoot }
+if ([string]::IsNullOrWhiteSpace($ProjectPath)) {
+    $ProjectPath = $env:SAT_PROJECT_PATH
+}
+if ([string]::IsNullOrWhiteSpace($GamePath)) { $GamePath = $env:SAT_GAME_PATH }
+if ([string]::IsNullOrWhiteSpace($UeCssRoot)) { $UeCssRoot = $env:UE_CSS_ROOT }
+if ([string]::IsNullOrWhiteSpace($ProjectPath)) {
+    throw 'Pass -ProjectPath, set SAT_PROJECT_PATH, or define $LocalProjectPath in tools/local-paths.ps1'
+}
+if ([string]::IsNullOrWhiteSpace($GamePath)) {
+    throw 'Pass -GamePath, set SAT_GAME_PATH, or define $LocalGamePath in tools/local-paths.ps1'
+}
+if ([string]::IsNullOrWhiteSpace($UeCssRoot)) {
+    throw 'Pass -UeCssRoot, set UE_CSS_ROOT, or define $LocalUeCssRoot in tools/local-paths.ps1'
+}
+if ([string]::IsNullOrWhiteSpace($StarterModLink)) {
+    $StarterModLink = Join-Path (Split-Path -Parent $ProjectPath) 'Mods\StructuralPower'
+}
 
 function Resolve-StructuralPowerModRoot {
     param(
@@ -114,7 +139,8 @@ function Invoke-Ubt {
 }
 
 $Ubt = Join-Path $UeCssRoot 'Engine\Binaries\DotNET\UnrealBuildTool\UnrealBuildTool.dll'
-$LogFile = 'E:\Modding\Satisfactory\logs\pack-structuralpower.log'
+$LogDir = if ($LocalLogDir) { $LocalLogDir } else { $env:TEMP }
+$LogFile = Join-Path $LogDir 'pack-structuralpower.log'
 New-Item -ItemType Directory -Force -Path (Split-Path $LogFile) | Out-Null
 
 if (-not (Test-Path -LiteralPath $Ubt)) {

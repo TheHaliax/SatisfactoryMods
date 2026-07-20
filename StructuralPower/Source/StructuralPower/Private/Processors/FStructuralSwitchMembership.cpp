@@ -5,9 +5,7 @@
 
 #include "Processors/FStructuralPowerSwitchProcessor.h"
 
-void FStructuralSwitchMembership::Apply(
-	FStructuralPowerContext& Ctx,
-	AFGBuildableCircuitSwitch* Switch)
-{
-	FStructuralPowerSwitchProcessor::ApplyStructureMembership(Ctx, Switch);
+void FStructuralSwitchMembership::Apply(FStructuralPowerContext& Ctx,
+                                        AFGBuildableCircuitSwitch* Switch) {
+  FStructuralPowerSwitchProcessor::ApplyStructureMembership(Ctx, Switch);
 }

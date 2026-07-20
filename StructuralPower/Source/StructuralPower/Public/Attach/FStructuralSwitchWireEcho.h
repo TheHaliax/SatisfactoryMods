@@ -8,9 +8,8 @@
 class AFGBuildableCircuitSwitch;
 struct FStructuralPowerContext;
 
-class STRUCTURALPOWER_API FStructuralSwitchWireEcho
-{
-public:
-	static uint8 BuildWireSignature(AFGBuildableCircuitSwitch* Switch);
-	static void OnCircuitsRebuilt(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
+class STRUCTURALPOWER_API FStructuralSwitchWireEcho {
+ public:
+  static uint8 BuildWireSignature(AFGBuildableCircuitSwitch* Switch);
+  static void OnCircuitsRebuilt(FStructuralPowerContext& Ctx, AFGBuildableCircuitSwitch* Switch);
 };

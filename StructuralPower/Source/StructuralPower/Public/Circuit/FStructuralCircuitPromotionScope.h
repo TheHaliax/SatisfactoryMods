@@ -7,14 +7,13 @@
 
 class AStructuralPowerGraphSubsystem;
 
-struct FStructuralCircuitPromotionScope
-{
-	AStructuralPowerGraphSubsystem* Graph = nullptr;
+struct FStructuralCircuitPromotionScope {
+  AStructuralPowerGraphSubsystem* Graph = nullptr;
 
-	explicit FStructuralCircuitPromotionScope(AStructuralPowerGraphSubsystem* InGraph);
+  explicit FStructuralCircuitPromotionScope(AStructuralPowerGraphSubsystem* InGraph);
 
-	~FStructuralCircuitPromotionScope();
+  ~FStructuralCircuitPromotionScope();
 
-	FStructuralCircuitPromotionScope(const FStructuralCircuitPromotionScope&) = delete;
-	FStructuralCircuitPromotionScope& operator=(const FStructuralCircuitPromotionScope&) = delete;
+  FStructuralCircuitPromotionScope(const FStructuralCircuitPromotionScope&) = delete;
+  FStructuralCircuitPromotionScope& operator=(const FStructuralCircuitPromotionScope&) = delete;
 };

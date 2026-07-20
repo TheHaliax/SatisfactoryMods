@@ -8,55 +8,46 @@
 #include "FGPlayerController.h"
 #include "Rules/FStructuralEligibilityRules.h"
 
-bool FStructuralIdConfigTarget::PickFromView(
-	AFGPlayerController* PlayerController,
-	AFGBuildable*& OutBuildable)
-{
-	OutBuildable = nullptr;
-	if (!IsValid(PlayerController))
-	{
-		return false;
-	}
+bool FStructuralIdConfigTarget::PickFromView(AFGPlayerController* PlayerController,
+                                             AFGBuildable*& OutBuildable) {
+  OutBuildable = nullptr;
+  if (!IsValid(PlayerController)) {
+    return false;
+  }
 
-	APlayerCameraManager* Camera = PlayerController->PlayerCameraManager;
-	if (!IsValid(Camera))
-	{
-		return false;
-	}
+  APlayerCameraManager* Camera = PlayerController->PlayerCameraManager;
+  if (!IsValid(Camera)) {
+    return false;
+  }
 
-	const FVector Start = Camera->GetCameraLocation();
-	const FVector End = Start + Camera->GetCameraRotation().Vector() * TraceDistanceCm;
+  const FVector Start = Camera->GetCameraLocation();
+  const FVector End = Start + Camera->GetCameraRotation().Vector() * TraceDistanceCm;
 
-	FHitResult Hit;
-	FCollisionQueryParams Params(SCENE_QUERY_STAT(StructuralIdConfigTrace), /*bTraceComplex=*/true);
-	Params.AddIgnoredActor(PlayerController->GetPawn());
+  FHitResult Hit;
+  FCollisionQueryParams Params(SCENE_QUERY_STAT(StructuralIdConfigTrace), /*bTraceComplex=*/true);
+  Params.AddIgnoredActor(PlayerController->GetPawn());
 
-	UWorld* World = PlayerController->GetWorld();
-	if (!IsValid(World)
-		|| !World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
-	{
-		return false;
-	}
+  UWorld* World = PlayerController->GetWorld();
+  if (!IsValid(World) ||
+      !World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params)) {
+    return false;
+  }
 
-	AActor* HitActor = Hit.GetActor();
-	while (IsValid(HitActor))
-	{
-		if (AFGBuildable* Buildable = Cast<AFGBuildable>(HitActor))
-		{
-			if (FStructuralEligibilityRules::IsIdConfigTarget(Buildable))
-			{
-				OutBuildable = Buildable;
-				return true;
-			}
-		}
+  AActor* HitActor = Hit.GetActor();
+  while (IsValid(HitActor)) {
+    if (AFGBuildable* Buildable = Cast<AFGBuildable>(HitActor)) {
+      if (FStructuralEligibilityRules::IsIdConfigTarget(Buildable)) {
+        OutBuildable = Buildable;
+        return true;
+      }
+    }
 
-		HitActor = HitActor->GetAttachParentActor();
-	}
+    HitActor = HitActor->GetAttachParentActor();
+  }
 
-	return false;
+  return false;
 }
 
-EStructuralChannel FStructuralIdConfigTarget::GetTargetChannel(const AFGBuildable* Buildable)
-{
-	return FStructuralEligibilityRules::ClassifyBuildable(Buildable);
+EStructuralChannel FStructuralIdConfigTarget::GetTargetChannel(const AFGBuildable* Buildable) {
+  return FStructuralEligibilityRules::ClassifyBuildable(Buildable);
 }
