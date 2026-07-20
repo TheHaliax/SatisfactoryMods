@@ -132,13 +132,12 @@ AFGBuildablePipelineFlowIndicator* ResolveFlowIndicator(AFGBuildablePipeline* Pi
     return Ind;
   }
 
-  static FObjectProperty* Prop = FindFProperty<FObjectProperty>(
-      AFGBuildablePipeline::StaticClass(), TEXT("mFlowIndicator"));
+  static FObjectProperty* Prop =
+      FindFProperty<FObjectProperty>(AFGBuildablePipeline::StaticClass(), TEXT("mFlowIndicator"));
   if (!Prop) {
     return nullptr;
   }
-  return Cast<AFGBuildablePipelineFlowIndicator>(
-      Prop->GetObjectPropertyValue_InContainer(Pipe));
+  return Cast<AFGBuildablePipelineFlowIndicator>(Prop->GetObjectPropertyValue_InContainer(Pipe));
 }
 
 void FinalizePaintFinishSpec(FPCAppearanceSpec& Spec) {
@@ -191,7 +190,7 @@ void PaintSupportsMatchingPipe(AFGBuildablePipeline* Pipe, const FPCAppearanceSp
     }
   }
 }
-}  // namespace
+} // namespace
 
 bool UPCWorldSubsystem::IsTickable() const {
   return bAuthority && FPCWorldGate::IsGameplayWorld(GetWorld());

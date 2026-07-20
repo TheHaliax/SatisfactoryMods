@@ -71,14 +71,15 @@ class STRUCTURALPOWER_API FStructuralGraphCircuitOps {
    * (or rootless). Empty set falls back to full prune. */
   int32 PruneBridgePeerMeshForRoots(const TSet<int32>& Roots);
 
-  UFGCircuitConnectionComponent* GetComponentSourceConnector(
-      int32 ComponentRoot, const AFGBuildable* ExcludeHost = nullptr);
+  UFGCircuitConnectionComponent*
+  GetComponentSourceConnector(int32 ComponentRoot, const AFGBuildable* ExcludeHost = nullptr);
 
   UFGPowerConnectionComponent* ResolveSubnetFeedConnector(int32 ComponentRoot,
                                                           const FStructuralChannelKey& DeviceKey);
 
-  UFGStructuralPowerConnectionComponent* FindPoweredHiddenReachable(
-      UFGStructuralPowerConnectionComponent* StartHidden, int32 MaxHiddenHops = 512) const;
+  UFGStructuralPowerConnectionComponent*
+  FindPoweredHiddenReachable(UFGStructuralPowerConnectionComponent* StartHidden,
+                             int32 MaxHiddenHops = 512) const;
 
   bool DoesComponentRootCarryPower(int32 ComponentRoot) const;
   bool DoesSiteStructuralBusCarryPower(int32 ComponentRoot) const;

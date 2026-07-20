@@ -53,8 +53,9 @@ bool TryIdleSkip(FStructuralGraphSession& Session, AFGBuildable* Host, EStructur
   return true;
 }
 
-FStructuralBridgeAttachOutcome RefreshWireDeltaMembership(
-    FStructuralPowerContext& Ctx, const FStructuralBridgeAttachRequest& Request) {
+FStructuralBridgeAttachOutcome
+RefreshWireDeltaMembership(FStructuralPowerContext& Ctx,
+                           const FStructuralBridgeAttachRequest& Request) {
   FStructuralBridgeAttachOutcome Outcome;
   AFGBuildable* Host = Request.Host;
   FStructuralGraphSession& Session = Ctx.Session();
@@ -106,10 +107,11 @@ FStructuralBridgeAttachOutcome RefreshWireDeltaMembership(
 
   return Outcome;
 }
-}  // namespace
+} // namespace
 
-FStructuralBridgeAttachOutcome FStructuralBridgeAttach::AttachOnPlace(
-    FStructuralPowerContext& Ctx, const FStructuralBridgeAttachRequest& Request) {
+FStructuralBridgeAttachOutcome
+FStructuralBridgeAttach::AttachOnPlace(FStructuralPowerContext& Ctx,
+                                       const FStructuralBridgeAttachRequest& Request) {
   FStructuralBridgeAttachOutcome Outcome;
   AFGBuildable* Host = Request.Host;
   if (!IsValid(Host)) {

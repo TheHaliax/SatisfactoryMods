@@ -19,8 +19,8 @@ UStructuralPowerIdConfigWidget* FStructuralPowerIdWindowPool::GetPooledWindow() 
   return CachedWindow.Get();
 }
 
-UStructuralPowerIdConfigWidget* FStructuralPowerIdWindowPool::GetOrCreateWindow(
-    AFGPlayerController* PC) {
+UStructuralPowerIdConfigWidget*
+FStructuralPowerIdWindowPool::GetOrCreateWindow(AFGPlayerController* PC) {
   if (!IsValid(PC)) {
     return nullptr;
   }

@@ -15,13 +15,15 @@
 #include "Serialization/JsonWriter.h"
 
 namespace {
-static TAutoConsoleVariable<int32> CVarDefaultGasMetallic(
-    TEXT("PipelineColor.DefaultGasMetallic"), 1,
-    TEXT("1 = gases metallic by default when no per-key override"), ECVF_Default);
+static TAutoConsoleVariable<int32>
+    CVarDefaultGasMetallic(TEXT("PipelineColor.DefaultGasMetallic"), 1,
+                           TEXT("1 = gases metallic by default when no per-key override"),
+                           ECVF_Default);
 
-static TAutoConsoleVariable<int32> CVarDefaultLiquidMetallic(
-    TEXT("PipelineColor.DefaultLiquidMetallic"), 0,
-    TEXT("1 = liquids metallic by default when no per-key override"), ECVF_Default);
+static TAutoConsoleVariable<int32>
+    CVarDefaultLiquidMetallic(TEXT("PipelineColor.DefaultLiquidMetallic"), 0,
+                              TEXT("1 = liquids metallic by default when no per-key override"),
+                              ECVF_Default);
 
 static TMap<FName, bool> GMetallicOverrides;
 static FPCPipelineColorConfigChanged GConfigChanged;
@@ -87,7 +89,7 @@ static TSharedRef<FJsonObject> BuildJsonFromCvars() {
   Root->SetObjectField(TEXT("MetallicOverrides"), Overrides);
   return Root;
 }
-}  // namespace
+} // namespace
 
 void FPCPipelineColorModConfig::RegisterConsoleVariables() {
   CVarDefaultGasMetallic.AsVariable();

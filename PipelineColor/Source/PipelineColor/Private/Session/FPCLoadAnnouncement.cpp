@@ -101,7 +101,7 @@ void Schedule(AFGPlayerController* PC) {
           PC, [Weak = TWeakObjectPtr<AFGPlayerController>(PC)]() { Announce(Weak.Get()); }),
       2.0f, false);
 }
-}  // namespace
+} // namespace
 
 void FPCLoadAnnouncement::Register() {
   if (GLoadAnnounceHandle.IsValid()) {

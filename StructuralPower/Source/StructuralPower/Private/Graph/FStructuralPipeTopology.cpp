@@ -279,8 +279,8 @@ void FStructuralPipeTopology::CollectComponentMembers(const FStructuralNodeId& P
   }
 }
 
-int32 FStructuralPipeTopology::DiscoverInjectOnComponent(
-    const FStructuralNodeId& PipeRoot, FStructuralGraphSession& Session) const {
+int32 FStructuralPipeTopology::DiscoverInjectOnComponent(const FStructuralNodeId& PipeRoot,
+                                                         FStructuralGraphSession& Session) const {
   if (const int32* Cached = InjectStructureRootByPipeRoot.Find(PipeRoot)) {
     if (*Cached != INDEX_NONE) {
       return *Cached;
@@ -470,9 +470,8 @@ void FStructuralPipeTopology::ProcessSupport(AFGBuildable* Support,
   const FStructuralNodeId PipeRoot = FindRootMutable(PipeId);
   EnqueuePumpsOnRoot(Session, PipeRoot);
 
-  UE_LOG(LogStructuralPower, Log,
-         TEXT("[HALSP] pipe support inject %s → pipe=%s structureRoot=%d"), *Support->GetName(),
-         *Pipe->GetName(), StructureRoot);
+  UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] pipe support inject %s → pipe=%s structureRoot=%d"),
+         *Support->GetName(), *Pipe->GetName(), StructureRoot);
 }
 
 int32 FStructuralPipeTopology::ResolveInjectedStructureRoot(AFGBuildable* PipeActor,

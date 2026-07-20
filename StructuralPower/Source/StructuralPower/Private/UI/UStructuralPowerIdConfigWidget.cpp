@@ -81,8 +81,8 @@ void UStructuralPowerIdConfigWidget::NormalizeModalState() {
   FStructuralPowerIdModalHost::NormalizeModalState(this);
 }
 
-UStructuralPowerIdConfigWidget* UStructuralPowerIdConfigWidget::GetOrCreateWindow(
-    AFGPlayerController* PC) {
+UStructuralPowerIdConfigWidget*
+UStructuralPowerIdConfigWidget::GetOrCreateWindow(AFGPlayerController* PC) {
   return FStructuralPowerIdWindowPool::GetOrCreateWindow(PC);
 }
 

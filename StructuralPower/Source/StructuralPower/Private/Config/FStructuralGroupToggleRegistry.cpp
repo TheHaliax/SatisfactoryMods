@@ -75,8 +75,8 @@ bool FStructuralGroupToggleRegistry::IsChannelRoutingEnabled(
   return true;
 }
 
-const FStructuralGroupToggleDef* FStructuralGroupToggleRegistry::FindByKey(
-    const FName ConfigKey) const {
+const FStructuralGroupToggleDef*
+FStructuralGroupToggleRegistry::FindByKey(const FName ConfigKey) const {
   for (const FStructuralGroupToggleDef& Def : Definitions) {
     if (Def.ConfigKey == ConfigKey) {
       return &Def;

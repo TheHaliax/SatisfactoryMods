@@ -37,8 +37,8 @@ class FPCFluidAppearanceCatalog final : public IAppearanceCatalog {
 
   bool ResolveByKey(FName CatalogKey, FPCAppearanceSpec& OutSpec) const;
 
-  TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> GetFinishClass(
-      EPCPaintFinishKind Kind) const;
+  TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish>
+  GetFinishClass(EPCPaintFinishKind Kind) const;
 
  private:
   FPCFluidAppearanceCatalog() = default;
@@ -46,8 +46,8 @@ class FPCFluidAppearanceCatalog final : public IAppearanceCatalog {
   void BuildEntries();
   static FLinearColor HexRgb(uint8 R, uint8 G, uint8 B);
   static TSubclassOf<UFGItemDescriptor> LoadFluidDesc(const TCHAR* SoftPath);
-  static TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> LoadFinish(
-      const TCHAR* SoftPath, const TCHAR* Label);
+  static TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish>
+  LoadFinish(const TCHAR* SoftPath, const TCHAR* Label);
 
   bool bBuilt = false;
   FPCAppearanceSpec NeutralSpec;

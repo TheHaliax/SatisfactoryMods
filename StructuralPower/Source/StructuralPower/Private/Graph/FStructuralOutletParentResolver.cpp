@@ -123,8 +123,9 @@ static FStructuralWallAnchor TryResolveAttachedLightweightParent(AFGBuildable* O
   return Best;
 }
 
-static FStructuralWallAnchor FindParentFromLiveBusMembers(
-    AFGBuildable* Outlet, const FStructuralBusMemberSpatialIndex* BusMemberIndex) {
+static FStructuralWallAnchor
+FindParentFromLiveBusMembers(AFGBuildable* Outlet,
+                             const FStructuralBusMemberSpatialIndex* BusMemberIndex) {
   if (!IsValid(Outlet)) {
     return {};
   }
@@ -180,9 +181,9 @@ static FStructuralWallAnchor FindParentFromLiveBusMembers(
   return {};
 }
 
-static FStructuralWallAnchor TryResolveFromStructureGraph(
-    AFGBuildable* Outlet, const FStructuralConnectivityGraph* Graph,
-    const FStructuralOutletParentResolveParams& Params) {
+static FStructuralWallAnchor
+TryResolveFromStructureGraph(AFGBuildable* Outlet, const FStructuralConnectivityGraph* Graph,
+                             const FStructuralOutletParentResolveParams& Params) {
   if (!IsValid(Outlet) || !Graph) {
     return {};
   }
@@ -353,30 +354,32 @@ bool FStructuralOutletParentResolver::IsStructurallyAnchored(
   return FStructuralHostAttachAdapter::ConfirmSiteAttach(Result, Outlet);
 }
 
-const TCHAR* FStructuralOutletParentResolver::FormatParentMethod(
-    const EStructuralOutletParentMethod Method) {
+const TCHAR*
+FStructuralOutletParentResolver::FormatParentMethod(const EStructuralOutletParentMethod Method) {
   switch (Method) {
-    case EStructuralOutletParentMethod::ActorParent:
-      return TEXT("actor_parent");
-    case EStructuralOutletParentMethod::LightweightFaceAttach:
-      return TEXT("lw_face_attach");
-    case EStructuralOutletParentMethod::LightweightIndex:
-      return TEXT("lw_index");
-    case EStructuralOutletParentMethod::StructureGraph:
-      return TEXT("structure_graph");
-    case EStructuralOutletParentMethod::LiveScan:
-      return TEXT("live_scan");
-    default:
-      return TEXT("none");
+  case EStructuralOutletParentMethod::ActorParent:
+    return TEXT("actor_parent");
+  case EStructuralOutletParentMethod::LightweightFaceAttach:
+    return TEXT("lw_face_attach");
+  case EStructuralOutletParentMethod::LightweightIndex:
+    return TEXT("lw_index");
+  case EStructuralOutletParentMethod::StructureGraph:
+    return TEXT("structure_graph");
+  case EStructuralOutletParentMethod::LiveScan:
+    return TEXT("live_scan");
+  default:
+    return TEXT("none");
   }
 }
 
-FStructuralWallAnchor FStructuralOutletParentResolver::Resolve(
-    AFGBuildable* Outlet, UWorld* World, const FStructuralLightweightIndex& LightweightIndex) {
+FStructuralWallAnchor
+FStructuralOutletParentResolver::Resolve(AFGBuildable* Outlet, UWorld* World,
+                                         const FStructuralLightweightIndex& LightweightIndex) {
   return ResolveDetailed(Outlet, World, LightweightIndex).Anchor;
 }
 
-FStructuralWallAnchor FStructuralOutletParentResolver::Resolve(
-    AFGBuildable* Outlet, UWorld* World, const FStructuralOutletParentResolveParams& Params) {
+FStructuralWallAnchor
+FStructuralOutletParentResolver::Resolve(AFGBuildable* Outlet, UWorld* World,
+                                         const FStructuralOutletParentResolveParams& Params) {
   return ResolveDetailed(Outlet, World, Params).Anchor;
 }

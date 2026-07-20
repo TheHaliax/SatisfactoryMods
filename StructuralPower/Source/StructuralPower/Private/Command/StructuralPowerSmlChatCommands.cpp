@@ -28,7 +28,7 @@ EExecutionStatus RunGroupToggle(UCommandSender* Sender, const TCHAR* Verb) {
   return RunBangFromSender(Sender, Verb) ? EExecutionStatus::COMPLETED
                                          : EExecutionStatus::UNCOMPLETED;
 }
-}  // namespace
+} // namespace
 
 void FStructuralPowerSmlChatCommands::RegisterWithWorld(UWorld* World) {
   if (!IsValid(World) || World->GetNetMode() == NM_Client) {
@@ -117,8 +117,8 @@ EExecutionStatus AStructuralPowerTransportChatCommand::ExecuteCommand_Implementa
 AStructuralPowerPipesChatCommand::AStructuralPowerPipesChatCommand() {
   bOnlyUsableByPlayer = true;
   CommandName = TEXT("pipes");
-  Usage =
-      NSLOCTEXT("StructuralPower", "ChatCmd.Pipes", "!pipes - toggle structural pipe bus (supports/machines -> pumps)");
+  Usage = NSLOCTEXT("StructuralPower", "ChatCmd.Pipes",
+                    "!pipes - toggle structural pipe bus (supports/machines -> pumps)");
 }
 
 EExecutionStatus AStructuralPowerPipesChatCommand::ExecuteCommand_Implementation(

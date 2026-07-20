@@ -42,7 +42,7 @@ FStructuralPowerContext MakePlacementContext(FStructuralGraphSession& Session,
 
   return Session.GetProcessorContext();
 }
-}  // namespace
+} // namespace
 
 void FStructuralEndpointDispatcher::RunPlacement(FStructuralGraphSession& Session,
                                                  IStructuralEndpointProcessor& Processor,

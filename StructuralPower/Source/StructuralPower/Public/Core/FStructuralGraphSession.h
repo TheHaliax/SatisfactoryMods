@@ -123,10 +123,10 @@ class STRUCTURALPOWER_API FStructuralGraphSession {
   FStructuralNodeId MakeNodeId(const AFGBuildable* Buildable) const;
   UFGStructuralPowerConnectionComponent* FindBusConnector(const AFGBuildable* Host) const;
   UFGStructuralPowerConnectionComponent* GetOrCreateBusConnector(AFGBuildable* Host);
-  UFGStructuralPowerConnectionComponent* GetOrCreateSwitchControlBus(
-      AFGBuildableCircuitSwitch* Switch);
-  UFGStructuralPowerConnectionComponent* GetOrCreatePanelControlBus(
-      AFGBuildableLightsControlPanel* Panel);
+  UFGStructuralPowerConnectionComponent*
+  GetOrCreateSwitchControlBus(AFGBuildableCircuitSwitch* Switch);
+  UFGStructuralPowerConnectionComponent*
+  GetOrCreatePanelControlBus(AFGBuildableLightsControlPanel* Panel);
 
   void RegisterBuildableActor(AFGBuildable* Buildable);
   void UnregisterBuildableActor(const FStructuralNodeId& NodeId);

@@ -27,12 +27,12 @@ class PIPELINECOLOR_API UPipelineColorRootInstanceModule : public UGameInstanceM
 
   static void UnregisterGlobalDelegates();
 
-  static void InjectSwatchIntoCollection(
-      UFGFactoryCustomizationCollection* Collection,
-      TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
+  static void
+  InjectSwatchIntoCollection(UFGFactoryCustomizationCollection* Collection,
+                             TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
 
-  static void ApplyDefaultOrganization(
-      TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
+  static void
+  ApplyDefaultOrganization(TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
 
   static TSubclassOf<UFGCustomizerCategory> GetOrCreatePipelineColorCategory();
   static TSubclassOf<UFGCustomizerSubCategory> GetOrCreatePipelineColorSubCategory();

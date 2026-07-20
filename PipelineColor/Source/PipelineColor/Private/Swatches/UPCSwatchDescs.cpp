@@ -18,7 +18,7 @@ void InitSwatch(UPCSwatchDescBase* Self, const FText& Name, FName Key) {
   Self->CatalogKey = Key;
   Self->mValidBuildables.Reset();
 }
-}  // namespace
+} // namespace
 
 UPCSwatchDescBase::UPCSwatchDescBase() {
   mUseDisplayNameAndDescription = true;

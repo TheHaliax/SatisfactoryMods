@@ -169,8 +169,8 @@ void FStructuralLightweightIndex::UnregisterMember(const FStructuralLightweightK
   }
 }
 
-FStructuralWallAnchor FStructuralLightweightIndex::FindParentWallForOutlet(
-    AFGBuildable* Outlet) const {
+FStructuralWallAnchor
+FStructuralLightweightIndex::FindParentWallForOutlet(AFGBuildable* Outlet) const {
   if (!IsValid(Outlet) || Members.Num() == 0) {
     return {};
   }

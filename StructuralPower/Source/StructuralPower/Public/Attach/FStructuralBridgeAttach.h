@@ -30,6 +30,6 @@ class STRUCTURALPOWER_API FStructuralBridgeAttach {
   static bool HasPlacementMembership(FStructuralGraphSession& Session, AFGBuildable* Host,
                                      EStructuralEndpointKind ExpectedKind);
 
-  static FStructuralBridgeAttachOutcome AttachOnPlace(
-      FStructuralPowerContext& Ctx, const FStructuralBridgeAttachRequest& Request);
+  static FStructuralBridgeAttachOutcome
+  AttachOnPlace(FStructuralPowerContext& Ctx, const FStructuralBridgeAttachRequest& Request);
 };

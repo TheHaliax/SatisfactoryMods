@@ -126,8 +126,8 @@ FStructuralNodeId AStructuralPowerGraphSubsystem::MakeNodeId(const AFGBuildable*
   return Id;
 }
 
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindBusConnector(
-    const AFGBuildable* Host) {
+UFGStructuralPowerConnectionComponent*
+AStructuralPowerGraphSubsystem::FindBusConnector(const AFGBuildable* Host) {
   if (!IsValid(Host)) {
     return nullptr;
   }
@@ -144,8 +144,8 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindBusCo
   return nullptr;
 }
 
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindPanelControlBus(
-    const AFGBuildable* Host) {
+UFGStructuralPowerConnectionComponent*
+AStructuralPowerGraphSubsystem::FindPanelControlBus(const AFGBuildable* Host) {
   if (!IsValid(Host)) {
     return nullptr;
   }
@@ -162,8 +162,8 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindPanel
   return nullptr;
 }
 
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindSwitchControlBus(
-    const AFGBuildable* Host) {
+UFGStructuralPowerConnectionComponent*
+AStructuralPowerGraphSubsystem::FindSwitchControlBus(const AFGBuildable* Host) {
   if (!IsValid(Host)) {
     return nullptr;
   }
@@ -273,13 +273,13 @@ void AStructuralPowerGraphSubsystem::StripPersistedEndpointModComponents(AFGBuil
   }
 }
 
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindOutletBusConnector(
-    const AFGBuildablePowerPole* Outlet) {
+UFGStructuralPowerConnectionComponent*
+AStructuralPowerGraphSubsystem::FindOutletBusConnector(const AFGBuildablePowerPole* Outlet) {
   return FindBusConnector(Outlet);
 }
 
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCreateBusConnector(
-    AFGBuildable* Host) {
+UFGStructuralPowerConnectionComponent*
+AStructuralPowerGraphSubsystem::GetOrCreateBusConnector(AFGBuildable* Host) {
   if (!IsValid(Host)) {
     return nullptr;
   }
@@ -309,8 +309,8 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCrea
   return Connector;
 }
 
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCreatePanelControlBus(
-    AFGBuildableLightsControlPanel* Panel) {
+UFGStructuralPowerConnectionComponent*
+AStructuralPowerGraphSubsystem::GetOrCreatePanelControlBus(AFGBuildableLightsControlPanel* Panel) {
   if (!IsValid(Panel)) {
     return nullptr;
   }
@@ -332,8 +332,8 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCrea
   return Connector;
 }
 
-UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::GetOrCreateSwitchControlBus(
-    AFGBuildableCircuitSwitch* Switch) {
+UFGStructuralPowerConnectionComponent*
+AStructuralPowerGraphSubsystem::GetOrCreateSwitchControlBus(AFGBuildableCircuitSwitch* Switch) {
   if (!IsValid(Switch)) {
     return nullptr;
   }
@@ -360,14 +360,14 @@ AStructuralPowerGraphSubsystem::GetOrCreateOutletBusConnector(AFGBuildablePowerP
   return GetOrCreateBusConnector(Outlet);
 }
 
-FStructuralWallAnchor AStructuralPowerGraphSubsystem::ResolveOutletAnchor(
-    AFGBuildable* Outlet) const {
+FStructuralWallAnchor
+AStructuralPowerGraphSubsystem::ResolveOutletAnchor(AFGBuildable* Outlet) const {
   return const_cast<AStructuralPowerGraphSubsystem*>(this)->BridgeRootIndex.ResolveOutletAnchor(
       Outlet);
 }
 
-FStructuralOutletParentResolveParams AStructuralPowerGraphSubsystem::MakeOutletParentResolveParams()
-    const {
+FStructuralOutletParentResolveParams
+AStructuralPowerGraphSubsystem::MakeOutletParentResolveParams() const {
   return const_cast<AStructuralPowerGraphSubsystem*>(this)
       ->BridgeRootIndex.MakeOutletParentResolveParams();
 }
@@ -378,8 +378,8 @@ FStructuralComponentResolveResult AStructuralPowerGraphSubsystem::ResolveStructu
                                                                    QueryRadiusCm, ClassHint);
 }
 
-FStructuralNodeId AStructuralPowerGraphSubsystem::MakeParentNodeId(
-    const FStructuralWallAnchor& Anchor) {
+FStructuralNodeId
+AStructuralPowerGraphSubsystem::MakeParentNodeId(const FStructuralWallAnchor& Anchor) {
   if (IsValid(Anchor.Actor)) {
     return MakeNodeId(Anchor.Actor);
   }

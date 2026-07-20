@@ -13,8 +13,8 @@ class FPCSwatchSlotDispatch {
  public:
   static void RegisterHooks();
 
-  static TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> GetActivePcDesc(
-      AFGPlayerController* PlayerController);
+  static TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>
+  GetActivePcDesc(AFGPlayerController* PlayerController);
   static void SetActivePcDesc(AFGPlayerController* PlayerController,
                               TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
 

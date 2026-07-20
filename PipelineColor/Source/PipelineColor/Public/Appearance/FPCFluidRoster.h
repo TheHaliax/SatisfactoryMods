@@ -24,4 +24,4 @@ namespace FPCFluidRoster {
 const TArray<FPCFluidRosterRow>& FluidRows();
 void AppendAllSwatchClasses(TArray<TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>>& Out);
 void AppendAllRecipeClasses(TArray<TSubclassOf<UFGCustomizationRecipe>>& Out);
-}  // namespace FPCFluidRoster
+} // namespace FPCFluidRoster

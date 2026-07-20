@@ -38,7 +38,7 @@ void InjectOne(UFGFactoryCustomizationCollection* Collection,
   UPipelineColorRootInstanceModule::ApplyDefaultOrganization(Swatch);
   UPipelineColorRootInstanceModule::InjectSwatchIntoCollection(Collection, Swatch);
 }
-}  // namespace
+} // namespace
 
 void FPCSwatchPublisher::RegisterForceRecipeHook() {
   if (GForceRecipeHookRegistered) {

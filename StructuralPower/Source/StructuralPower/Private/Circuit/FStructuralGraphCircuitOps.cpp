@@ -60,7 +60,7 @@ static bool IsBridgeEndpointOutletBus(const UFGStructuralPowerConnectionComponen
 
   return FStructuralEligibilityRules::IsStructuralGenerator(Buildable);
 }
-}  // namespace
+} // namespace
 
 void FStructuralGraphCircuitOps::Bind(FStructuralGraphSession* InSession) {
   Session = InSession;
@@ -134,7 +134,7 @@ bool LinkHiddenPairImpl(FStructuralGraphSession* Session, UFGPowerConnectionComp
 
   return bAdded;
 }
-}  // namespace
+} // namespace
 
 bool FStructuralGraphCircuitOps::LinkHiddenPair(UFGPowerConnectionComponent* A,
                                                 UFGPowerConnectionComponent* B,
@@ -679,8 +679,9 @@ UFGStructuralPowerConnectionComponent* FStructuralGraphCircuitOps::FindPoweredHi
   return nullptr;
 }
 
-UFGCircuitConnectionComponent* FStructuralGraphCircuitOps::GetComponentSourceConnector(
-    int32 ComponentRoot, const AFGBuildable* ExcludeHost) {
+UFGCircuitConnectionComponent*
+FStructuralGraphCircuitOps::GetComponentSourceConnector(int32 ComponentRoot,
+                                                        const AFGBuildable* ExcludeHost) {
   if (ComponentRoot == INDEX_NONE) {
     return nullptr;
   }
@@ -801,8 +802,8 @@ UFGCircuitConnectionComponent* FStructuralGraphCircuitOps::GetComponentSourceCon
   return nullptr;
 }
 
-static UFGPowerConnectionComponent* RedirectFeedToHiddenBus(
-    UFGPowerConnectionComponent* SourcePower) {
+static UFGPowerConnectionComponent*
+RedirectFeedToHiddenBus(UFGPowerConnectionComponent* SourcePower) {
   if (!IsValid(SourcePower) || SourcePower->IsHidden()) {
     return SourcePower;
   }
@@ -825,8 +826,9 @@ static UFGPowerConnectionComponent* RedirectFeedToHiddenBus(
   return SourcePower;
 }
 
-UFGPowerConnectionComponent* FStructuralGraphCircuitOps::ResolveSubnetFeedConnector(
-    int32 ComponentRoot, const FStructuralChannelKey& DeviceKey) {
+UFGPowerConnectionComponent*
+FStructuralGraphCircuitOps::ResolveSubnetFeedConnector(int32 ComponentRoot,
+                                                       const FStructuralChannelKey& DeviceKey) {
   if (ComponentRoot == INDEX_NONE || DeviceKey.Source.IsNone()) {
     return nullptr;
   }

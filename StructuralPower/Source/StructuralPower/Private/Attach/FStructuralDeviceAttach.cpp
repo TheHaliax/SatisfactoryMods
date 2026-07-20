@@ -16,8 +16,8 @@
 #include "Routing/FStructuralPowerRouter.h"
 #include "Save/AStructuralPowerGraphSubsystem.h"
 
-UFGPowerConnectionComponent* FStructuralDeviceAttach::FindFactoryWireConnection(
-    const AFGBuildable* Host) {
+UFGPowerConnectionComponent*
+FStructuralDeviceAttach::FindFactoryWireConnection(const AFGBuildable* Host) {
   if (!IsValid(Host)) {
     return nullptr;
   }
@@ -45,8 +45,8 @@ UFGPowerConnectionComponent* FStructuralDeviceAttach::FindFactoryWireConnection(
   return nullptr;
 }
 
-UFGPowerConnectionComponent* FStructuralDeviceAttach::FindLightWireConnection(
-    const AFGBuildableLightSource* Light) {
+UFGPowerConnectionComponent*
+FStructuralDeviceAttach::FindLightWireConnection(const AFGBuildableLightSource* Light) {
   return FindFactoryWireConnection(Light);
 }
 

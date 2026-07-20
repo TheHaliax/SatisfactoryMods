@@ -43,7 +43,7 @@ static TSet<int32> CollectBridgeRoots(FStructuralGraphSession& Session) {
 
   return Roots;
 }
-}  // namespace
+} // namespace
 
 void FStructuralGraphBulkDrain::Bind(FStructuralGraphSession* InSession) {
   Session = InSession;

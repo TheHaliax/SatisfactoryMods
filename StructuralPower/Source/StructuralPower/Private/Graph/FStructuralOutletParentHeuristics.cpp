@@ -122,7 +122,7 @@ static FBox ExpandBoundsForClass(const FBox& Bounds, TSubclassOf<AFGBuildable> B
 
   return Expanded;
 }
-}  // namespace
+} // namespace
 
 namespace FStructuralOutletParentHeuristics {
 bool IsFactoryBuildingClass(const AFGBuildable* Buildable) {
@@ -182,11 +182,11 @@ bool PrefersFoundationAnchor(const AFGBuildable* Outlet) {
   }
 
   switch (Pole->GetPowerPoleType()) {
-    case EPowerPoleType::PPT_POLE:
-    case EPowerPoleType::PPT_TOWER:
-      return true;
-    default:
-      return false;
+  case EPowerPoleType::PPT_POLE:
+  case EPowerPoleType::PPT_TOWER:
+    return true;
+  default:
+    return false;
   }
 }
 
@@ -201,11 +201,11 @@ bool IsWallOutlet(const AFGBuildable* Outlet) {
   }
 
   switch (Pole->GetPowerPoleType()) {
-    case EPowerPoleType::PPT_WALL:
-    case EPowerPoleType::PPT_WALL_DOUBLE:
-      return true;
-    default:
-      return false;
+  case EPowerPoleType::PPT_WALL:
+  case EPowerPoleType::PPT_WALL_DOUBLE:
+    return true;
+  default:
+    return false;
   }
 }
 

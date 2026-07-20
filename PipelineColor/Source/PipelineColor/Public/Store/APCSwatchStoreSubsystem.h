@@ -18,8 +18,8 @@ class PIPELINECOLOR_API APCSwatchStoreSubsystem : public AInfo, public IFGSaveIn
  public:
   APCSwatchStoreSubsystem();
 
-  virtual void GetLifetimeReplicatedProps(
-      TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+  virtual void
+  GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
   static APCSwatchStoreSubsystem* Find(UWorld* World);
   static APCSwatchStoreSubsystem* GetOrCreate(UWorld* World);

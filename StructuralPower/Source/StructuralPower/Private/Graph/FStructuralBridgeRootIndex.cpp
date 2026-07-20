@@ -148,12 +148,12 @@ bool FStructuralBridgeRootIndex::EnsureParentRegisteredInGraph(const FStructural
 
   if (Session->StructureGraph().FindRoot(ParentId) != INDEX_NONE) {
     OutParentId = ParentId;
-    UE_LOG(
-        LogStructuralPower, Verbose,
-        TEXT("[HALSP] parent ingested into structure graph actor=%s lw=%s[%d]"),
-        IsValid(Anchor.Actor) ? *Anchor.Actor->GetName() : TEXT("null"),
-        Anchor.Lightweight.IsValid() ? *Anchor.Lightweight.BuildableClass->GetName() : TEXT("null"),
-        Anchor.Lightweight.IsValid() ? Anchor.Lightweight.Index : INDEX_NONE);
+    UE_LOG(LogStructuralPower, Verbose,
+           TEXT("[HALSP] parent ingested into structure graph actor=%s lw=%s[%d]"),
+           IsValid(Anchor.Actor) ? *Anchor.Actor->GetName() : TEXT("null"),
+           Anchor.Lightweight.IsValid() ? *Anchor.Lightweight.BuildableClass->GetName()
+                                        : TEXT("null"),
+           Anchor.Lightweight.IsValid() ? Anchor.Lightweight.Index : INDEX_NONE);
     return true;
   }
 
@@ -207,8 +207,8 @@ int32 FStructuralBridgeRootIndex::GetEndpointComponentRoot(AFGBuildable* Endpoin
   return ResolveEndpointComponentRoot(Endpoint, Anchor, ParentId);
 }
 
-FStructuralOutletParentResolveParams FStructuralBridgeRootIndex::MakeOutletParentResolveParams()
-    const {
+FStructuralOutletParentResolveParams
+FStructuralBridgeRootIndex::MakeOutletParentResolveParams() const {
   FStructuralOutletParentResolveParams Params;
   Params.LightweightIndex = &Session->LightweightIndex();
   Params.BusMemberIndex = &Session->BusMemberSpatialIndex();
@@ -228,8 +228,8 @@ FStructuralWallAnchor FStructuralBridgeRootIndex::ResolveOutletAnchor(AFGBuildab
                                                                 MakeOutletParentResolveParams());
 }
 
-FStructuralNodeId FStructuralBridgeRootIndex::MakeParentNodeId(
-    const FStructuralWallAnchor& Anchor) const {
+FStructuralNodeId
+FStructuralBridgeRootIndex::MakeParentNodeId(const FStructuralWallAnchor& Anchor) const {
   if (IsValid(Anchor.Actor)) {
     return Session->MakeNodeId(Anchor.Actor);
   }

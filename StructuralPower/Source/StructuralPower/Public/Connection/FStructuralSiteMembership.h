@@ -53,9 +53,9 @@ class STRUCTURALPOWER_API FStructuralSiteMembership {
       const FStructuralSiteMembershipParams& Params = FStructuralSiteMembershipParams());
 
   /** Switch site bus/mesh template — kind bridge strategy stays outside. */
-  static FStructuralSwitchMembershipResult IntegrateSwitchOnPlace(
-      FStructuralGraphSession& Session, AFGBuildableCircuitSwitch* Switch,
-      const FStructuralSwitchMembershipParams& Params);
+  static FStructuralSwitchMembershipResult
+  IntegrateSwitchOnPlace(FStructuralGraphSession& Session, AFGBuildableCircuitSwitch* Switch,
+                         const FStructuralSwitchMembershipParams& Params);
 
   static bool ReaffirmMountParent(FStructuralGraphSession& Session, AFGBuildable* Host,
                                   FTrackedEndpoint& Tracked, bool bUsePoleRootResolver = false);

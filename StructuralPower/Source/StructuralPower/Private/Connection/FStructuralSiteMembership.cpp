@@ -46,7 +46,7 @@ static void StripSwitchVanillaPortHiddenLinks(AFGBuildableCircuitSwitch* Switch,
   OpenLeg(Switch->GetConnection0());
   OpenLeg(Switch->GetConnection1());
 }
-}  // namespace
+} // namespace
 
 bool FStructuralSiteMembership::ResolveSiteContext(FStructuralGraphSession& Session,
                                                    AFGBuildable* Endpoint,
@@ -176,9 +176,10 @@ void FStructuralSiteMembership::IntegrateOnPlace(
   }
 }
 
-FStructuralSwitchMembershipResult FStructuralSiteMembership::IntegrateSwitchOnPlace(
-    FStructuralGraphSession& Session, AFGBuildableCircuitSwitch* Switch,
-    const FStructuralSwitchMembershipParams& Params) {
+FStructuralSwitchMembershipResult
+FStructuralSiteMembership::IntegrateSwitchOnPlace(FStructuralGraphSession& Session,
+                                                  AFGBuildableCircuitSwitch* Switch,
+                                                  const FStructuralSwitchMembershipParams& Params) {
   FStructuralSwitchMembershipResult Result;
   if (!IsValid(Switch)) {
     Result.bDone = true;

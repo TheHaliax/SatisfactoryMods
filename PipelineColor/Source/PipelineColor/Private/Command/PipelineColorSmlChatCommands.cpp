@@ -23,7 +23,7 @@ bool RunBangFromSender(UCommandSender* Sender, const FString& CommandLine) {
   FPCBangCommands::Execute(Player, CommandLine);
   return true;
 }
-}  // namespace
+} // namespace
 
 void FPipelineColorSmlChatCommands::RegisterWithWorld(UWorld* World) {
   if (!IsValid(World) || World->GetNetMode() == NM_Client) {

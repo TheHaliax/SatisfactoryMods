@@ -140,8 +140,8 @@ void FStructuralBusMemberSpatialIndex::RebuildFromWorld(UWorld* World) {
   }
 }
 
-FStructuralWallAnchor FStructuralBusMemberSpatialIndex::FindParentForOutlet(
-    AFGBuildable* Outlet) const {
+FStructuralWallAnchor
+FStructuralBusMemberSpatialIndex::FindParentForOutlet(AFGBuildable* Outlet) const {
   if (!IsValid(Outlet) || Members.Num() == 0) {
     return {};
   }

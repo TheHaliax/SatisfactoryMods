@@ -54,9 +54,9 @@ void FStructuralPanelAttach::TearDownDownstreamLinks(AFGBuildableControlPanelHos
   }
 }
 
-static UFGPowerConnectionComponent* ResolvePanelFeedConnector(
-    FStructuralGraphSession& Session, AFGBuildable* Panel, int32 ComponentRoot,
-    const FStructuralChannelKey& PanelKey) {
+static UFGPowerConnectionComponent*
+ResolvePanelFeedConnector(FStructuralGraphSession& Session, AFGBuildable* Panel,
+                          int32 ComponentRoot, const FStructuralChannelKey& PanelKey) {
   return Session.Circuit().ResolveSubnetFeedConnector(ComponentRoot, PanelKey);
 }
 
@@ -168,8 +168,7 @@ bool FStructuralPanelAttach::TryLinkLightToControlBus(FStructuralGraphSession& S
            *Panel->GetName(), *Light->GetName(),
            StructuralEndpointKindToString(EStructuralEndpointKind::Light),
            StructuralPowerScopeToString(EStructuralPowerScope::Site), Root,
-           StructuralPowerRoleToString(EStructuralPowerRole::Host),
-           *EffectiveControl.ToString());
+           StructuralPowerRoleToString(EStructuralPowerRole::Host), *EffectiveControl.ToString());
     FStructuralPowerTrace::LogConnector(TEXT("panel_control_bus"), Panel, ControlBus);
     FStructuralPowerTrace::LogConnector(TEXT("light_plug"), Light, Plug);
   }
@@ -177,9 +176,9 @@ bool FStructuralPanelAttach::TryLinkLightToControlBus(FStructuralGraphSession& S
   return true;
 }
 
-bool FStructuralPanelAttach::AreKeyedLightsLinkedToControlBus(
-    FStructuralGraphSession& Session, AFGBuildableLightsControlPanel* Panel,
-    int32 ComponentRoot) {
+bool FStructuralPanelAttach::AreKeyedLightsLinkedToControlBus(FStructuralGraphSession& Session,
+                                                              AFGBuildableLightsControlPanel* Panel,
+                                                              int32 ComponentRoot) {
   if (!IsValid(Panel) || ComponentRoot == INDEX_NONE) {
     return false;
   }
@@ -221,8 +220,7 @@ bool FStructuralPanelAttach::AreKeyedLightsLinkedToControlBus(
         }
 
         bSawKeyedLight = true;
-        UFGPowerConnectionComponent* Plug =
-            FStructuralDeviceAttach::FindLightWireConnection(Light);
+        UFGPowerConnectionComponent* Plug = FStructuralDeviceAttach::FindLightWireConnection(Light);
         if (!IsValid(Plug) || !ControlBus->HasHiddenConnection(Plug)) {
           bAllLinked = false;
         }
@@ -232,8 +230,7 @@ bool FStructuralPanelAttach::AreKeyedLightsLinkedToControlBus(
 }
 
 AFGBuildableLightsControlPanel* FStructuralPanelAttach::FindPanelForDownstreamLight(
-    FStructuralGraphSession& Session, int32 ComponentRoot,
-    const FStructuralChannelKey& LightKey) {
+    FStructuralGraphSession& Session, int32 ComponentRoot, const FStructuralChannelKey& LightKey) {
   if (ComponentRoot == INDEX_NONE || LightKey.Source.IsNone()) {
     return nullptr;
   }
@@ -312,9 +309,8 @@ void FStructuralPanelAttach::RestitchDownstream(FStructuralGraphSession& Session
   }
 
   Session.Reconcile().EnumerateTrackedLightsOnRoot(
-      ComponentRoot, [&](AFGBuildableLightSource* Light) {
-        TryLinkLightToControlBus(Session, Panel, Light);
-      });
+      ComponentRoot,
+      [&](AFGBuildableLightSource* Light) { TryLinkLightToControlBus(Session, Panel, Light); });
 
   FStructuralPanelControlledSync::ApplyKeyedSubnet(Session, Panel);
 }

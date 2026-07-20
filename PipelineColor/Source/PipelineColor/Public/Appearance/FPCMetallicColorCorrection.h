@@ -68,4 +68,4 @@ inline void Apply(FPCAppearanceSpec& Spec) {
   Spec.bOverrideRoughness = true;
   Spec.PrimaryColor = CorrectBaseColor(Spec.PrimaryColor);
 }
-}  // namespace FPCMetallicColorCorrection
+} // namespace FPCMetallicColorCorrection

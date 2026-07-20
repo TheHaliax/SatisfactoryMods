@@ -48,7 +48,7 @@ bool FStructuralPanelPortResolver::Resolve(AFGBuildableControlPanelHost* Panel,
   return IsValid(Out.Input);
 }
 
-UFGPowerConnectionComponent* FStructuralPanelPortResolver::AsPowerConnection(
-    UFGCircuitConnectionComponent* Conn) {
+UFGPowerConnectionComponent*
+FStructuralPanelPortResolver::AsPowerConnection(UFGCircuitConnectionComponent* Conn) {
   return Cast<UFGPowerConnectionComponent>(Conn);
 }

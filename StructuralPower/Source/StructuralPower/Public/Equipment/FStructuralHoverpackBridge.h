@@ -69,8 +69,8 @@ class STRUCTURALPOWER_API FStructuralHoverpackBridge {
 
   static bool IsStructuralPathEnabled(const AFGHoverPack* Pack);
   static float GetBaseSearchRadius(const AFGHoverPack* Pack);
-  static FStructuralHoverpackAxisLimits GetSessionAxisLimits(
-      EStructuralHoverpackTetherSource Source, float BaseSearchRadius);
+  static FStructuralHoverpackAxisLimits
+  GetSessionAxisLimits(EStructuralHoverpackTetherSource Source, float BaseSearchRadius);
   static float GetReconnectCooldownSeconds(const AFGHoverPack* Pack);
   static FVector GetOwnerLocation(const AFGHoverPack* Pack);
 

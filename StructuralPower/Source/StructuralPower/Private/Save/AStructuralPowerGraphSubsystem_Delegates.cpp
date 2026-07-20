@@ -131,8 +131,9 @@ EAttachContext AStructuralPowerGraphSubsystem::GetCurrentAttachContext() const {
   return AttachContextFromBulkDrain(bBulkLoadDrainActive);
 }
 
-FStructuralPowerContext AStructuralPowerGraphSubsystem::MakeProcessorContext(
-    EAttachContext AttachContext, int32 SiteRoot) const {
+FStructuralPowerContext
+AStructuralPowerGraphSubsystem::MakeProcessorContext(EAttachContext AttachContext,
+                                                     int32 SiteRoot) const {
   return GetGraphSession().MakeProcessorContext(AttachContext, SiteRoot);
 }
 
@@ -151,13 +152,13 @@ UFGStructuralPowerConnectionComponent* AStructuralPowerGraphSubsystem::FindPower
   return CircuitOps.FindPoweredHiddenReachable(StartHidden, MaxHiddenHops);
 }
 
-FStructuralComponentKey AStructuralPowerGraphSubsystem::MakeComponentKeyForRoot(
-    int32 ComponentRoot) const {
+FStructuralComponentKey
+AStructuralPowerGraphSubsystem::MakeComponentKeyForRoot(int32 ComponentRoot) const {
   return IdOps.MakeComponentKeyForRoot(ComponentRoot);
 }
 
-FStructuralComponentKey AStructuralPowerGraphSubsystem::MakeComponentKeyForBuildable(
-    const AFGBuildable* Buildable) const {
+FStructuralComponentKey
+AStructuralPowerGraphSubsystem::MakeComponentKeyForBuildable(const AFGBuildable* Buildable) const {
   return IdOps.MakeComponentKeyForBuildable(Buildable);
 }
 
@@ -181,8 +182,8 @@ FName AStructuralPowerGraphSubsystem::ResolveControl(AFGBuildable* Buildable,
   return IdOps.ResolveControl(Buildable, Tag);
 }
 
-FStructuralChannelKey AStructuralPowerGraphSubsystem::ResolveChannelKeyForBuildable(
-    AFGBuildable* Buildable) {
+FStructuralChannelKey
+AStructuralPowerGraphSubsystem::ResolveChannelKeyForBuildable(AFGBuildable* Buildable) {
   return IdOps.ResolveChannelKeyForBuildable(Buildable);
 }
 
@@ -254,8 +255,9 @@ void AStructuralPowerGraphSubsystem::RebuildControlIdGangsForRoot(const int32 Co
   }
 }
 
-TArray<FStructuralNodeId> AStructuralPowerGraphSubsystem::GetControlIdGangMembers(
-    const FStructuralComponentKey& ComponentKey, const FName ControlId) const {
+TArray<FStructuralNodeId>
+AStructuralPowerGraphSubsystem::GetControlIdGangMembers(const FStructuralComponentKey& ComponentKey,
+                                                        const FName ControlId) const {
   return ControlIdGangIndex.GetGangMembers(ComponentKey, ControlId);
 }
 
@@ -364,13 +366,15 @@ bool AStructuralPowerGraphSubsystem::HasBridgeBusPeerMesh(
   return CircuitOps.HasBridgeBusPeerMesh(Bus);
 }
 
-UFGCircuitConnectionComponent* AStructuralPowerGraphSubsystem::GetComponentSourceConnector(
-    int32 ComponentRoot, const AFGBuildable* ExcludeHost) {
+UFGCircuitConnectionComponent*
+AStructuralPowerGraphSubsystem::GetComponentSourceConnector(int32 ComponentRoot,
+                                                            const AFGBuildable* ExcludeHost) {
   return CircuitOps.GetComponentSourceConnector(ComponentRoot, ExcludeHost);
 }
 
-UFGPowerConnectionComponent* AStructuralPowerGraphSubsystem::ResolveSubnetFeedConnector(
-    int32 ComponentRoot, const FStructuralChannelKey& DeviceKey) {
+UFGPowerConnectionComponent*
+AStructuralPowerGraphSubsystem::ResolveSubnetFeedConnector(int32 ComponentRoot,
+                                                           const FStructuralChannelKey& DeviceKey) {
   return CircuitOps.ResolveSubnetFeedConnector(ComponentRoot, DeviceKey);
 }
 

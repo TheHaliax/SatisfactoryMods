@@ -189,13 +189,13 @@ bool FStructuralEligibilityRules::IsPowerBridgePole(const AFGBuildable* Buildabl
   }
 
   switch (Pole->GetPowerPoleType()) {
-    case EPowerPoleType::PPT_WALL:
-    case EPowerPoleType::PPT_WALL_DOUBLE:
-    case EPowerPoleType::PPT_POLE:
-    case EPowerPoleType::PPT_TOWER:
-      return true;
-    default:
-      return false;
+  case EPowerPoleType::PPT_WALL:
+  case EPowerPoleType::PPT_WALL_DOUBLE:
+  case EPowerPoleType::PPT_POLE:
+  case EPowerPoleType::PPT_TOWER:
+    return true;
+  default:
+    return false;
   }
 }
 

@@ -50,12 +50,10 @@ bool GateGroupPipes() {
   return FStructuralPowerModConfig::IsGroupPipesEnabled();
 }
 
-FStructuralEndpointDescriptor MakeDescriptor(const EStructuralEndpointKind Kind,
-                                             const EStructuralChannel Channel,
-                                             const EStructuralPowerRole Role,
-                                             const EStructuralAttachStrategy AttachStrategy,
-                                             bool (*Classifier)(const AFGBuildable*),
-                                             bool (*GroupGate)()) {
+FStructuralEndpointDescriptor
+MakeDescriptor(const EStructuralEndpointKind Kind, const EStructuralChannel Channel,
+               const EStructuralPowerRole Role, const EStructuralAttachStrategy AttachStrategy,
+               bool (*Classifier)(const AFGBuildable*), bool (*GroupGate)()) {
   FStructuralEndpointDescriptor Descriptor;
   Descriptor.Kind = Kind;
   Descriptor.Channel = Channel;
@@ -429,7 +427,7 @@ static FManufacturerEndpointProcessor GManufacturerProcessor;
 static FTransportEndpointProcessor GTransportProcessor;
 static FPipePumpEndpointProcessor GPipePumpProcessor;
 
-}  // namespace
+} // namespace
 
 void FStructuralEndpointProcessors::RegisterAll(FStructuralEndpointCatalog& Catalog) {
   Catalog.RegisterProcessor(GPoleProcessor);

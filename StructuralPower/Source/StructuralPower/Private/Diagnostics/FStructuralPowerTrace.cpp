@@ -20,8 +20,8 @@
 #include "StructuralPowerConstants.h"
 #include "StructuralPowerLog.h"
 
-FStructuralConnectorPowerSnapshot FStructuralConnectorPowerSnapshot::From(
-    const UFGCircuitConnectionComponent* Connector) {
+FStructuralConnectorPowerSnapshot
+FStructuralConnectorPowerSnapshot::From(const UFGCircuitConnectionComponent* Connector) {
   FStructuralConnectorPowerSnapshot Snap;
   if (!IsValid(Connector)) {
     return Snap;
@@ -134,18 +134,18 @@ void FStructuralPowerTrace::LogPlacementSkip(AFGBuildable* Buildable, const TCHA
   const TCHAR* ReasonText = Reason ? Reason : TEXT("?");
 
   switch (Verbosity) {
-    case ELogVerbosity::Verbose:
-      UE_LOG(LogStructuralPower, Verbose, TEXT("[HALSP] skip %s class=%s reason=%s"),
-             *Buildable->GetName(), *Buildable->GetClass()->GetName(), ReasonText);
-      break;
-    case ELogVerbosity::Log:
-      UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] skip %s class=%s reason=%s"),
-             *Buildable->GetName(), *Buildable->GetClass()->GetName(), ReasonText);
-      break;
-    default:
-      UE_LOG(LogStructuralPower, Verbose, TEXT("[HALSP] skip %s class=%s reason=%s"),
-             *Buildable->GetName(), *Buildable->GetClass()->GetName(), ReasonText);
-      break;
+  case ELogVerbosity::Verbose:
+    UE_LOG(LogStructuralPower, Verbose, TEXT("[HALSP] skip %s class=%s reason=%s"),
+           *Buildable->GetName(), *Buildable->GetClass()->GetName(), ReasonText);
+    break;
+  case ELogVerbosity::Log:
+    UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] skip %s class=%s reason=%s"),
+           *Buildable->GetName(), *Buildable->GetClass()->GetName(), ReasonText);
+    break;
+  default:
+    UE_LOG(LogStructuralPower, Verbose, TEXT("[HALSP] skip %s class=%s reason=%s"),
+           *Buildable->GetName(), *Buildable->GetClass()->GetName(), ReasonText);
+    break;
   }
 }
 

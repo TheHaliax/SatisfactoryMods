@@ -10,7 +10,7 @@
 
 namespace {
 thread_local int32 GTraceScopeDepth = 0;
-}  // namespace
+} // namespace
 
 FStructuralPowerTraceScope::FStructuralPowerTraceScope(const TCHAR* InDomain, const TCHAR* InOp,
                                                        const FString& InDetail)

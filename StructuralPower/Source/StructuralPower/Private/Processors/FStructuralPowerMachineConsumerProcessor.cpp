@@ -28,7 +28,7 @@ bool IsMachineConsumerKind(const EStructuralEndpointKind Kind) {
          Kind == EStructuralEndpointKind::Manufacturer ||
          Kind == EStructuralEndpointKind::Transport || Kind == EStructuralEndpointKind::PipePump;
 }
-}  // namespace
+} // namespace
 
 void FStructuralPowerMachineConsumerProcessor::EnqueueInactiveConsumersOnRoot(
     FStructuralGraphSession& Session, const int32 Root) {

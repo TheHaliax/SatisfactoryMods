@@ -42,9 +42,9 @@ class STRUCTURALPOWER_API FStructuralPanelAttach {
                                                AFGBuildableLightsControlPanel* Panel,
                                                int32 ComponentRoot);
 
-  static AFGBuildableLightsControlPanel* FindPanelForDownstreamLight(
-      FStructuralGraphSession& Session, int32 ComponentRoot,
-      const FStructuralChannelKey& LightKey);
+  static AFGBuildableLightsControlPanel*
+  FindPanelForDownstreamLight(FStructuralGraphSession& Session, int32 ComponentRoot,
+                              const FStructuralChannelKey& LightKey);
 
   static void PromotePanelDownstreamSubnet(FStructuralGraphSession& Session,
                                            AFGBuildableLightsControlPanel* Panel,

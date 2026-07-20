@@ -13,28 +13,28 @@
 
 const TCHAR* StructuralEndpointKindToString(const EStructuralEndpointKind Kind) {
   switch (Kind) {
-    case EStructuralEndpointKind::Pole:
-      return TEXT("pole");
-    case EStructuralEndpointKind::Switch:
-      return TEXT("switch");
-    case EStructuralEndpointKind::Light:
-      return TEXT("light");
-    case EStructuralEndpointKind::Panel:
-      return TEXT("panel");
-    case EStructuralEndpointKind::Storage:
-      return TEXT("storage");
-    case EStructuralEndpointKind::Generator:
-      return TEXT("generator");
-    case EStructuralEndpointKind::Extractor:
-      return TEXT("extractor");
-    case EStructuralEndpointKind::Manufacturer:
-      return TEXT("manufacturer");
-    case EStructuralEndpointKind::Transport:
-      return TEXT("transport");
-    case EStructuralEndpointKind::PipePump:
-      return TEXT("pipe_pump");
-    default:
-      return TEXT("?");
+  case EStructuralEndpointKind::Pole:
+    return TEXT("pole");
+  case EStructuralEndpointKind::Switch:
+    return TEXT("switch");
+  case EStructuralEndpointKind::Light:
+    return TEXT("light");
+  case EStructuralEndpointKind::Panel:
+    return TEXT("panel");
+  case EStructuralEndpointKind::Storage:
+    return TEXT("storage");
+  case EStructuralEndpointKind::Generator:
+    return TEXT("generator");
+  case EStructuralEndpointKind::Extractor:
+    return TEXT("extractor");
+  case EStructuralEndpointKind::Manufacturer:
+    return TEXT("manufacturer");
+  case EStructuralEndpointKind::Transport:
+    return TEXT("transport");
+  case EStructuralEndpointKind::PipePump:
+    return TEXT("pipe_pump");
+  default:
+    return TEXT("?");
   }
 }
 

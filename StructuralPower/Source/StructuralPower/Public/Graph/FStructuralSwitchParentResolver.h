@@ -18,10 +18,11 @@ struct FStructuralSwitchParentResolveResult {
 
 class STRUCTURALPOWER_API FStructuralSwitchParentResolver {
  public:
-  static FStructuralSwitchParentResolveResult Resolve(
-      AFGBuildableCircuitSwitch* Switch, UWorld* World, const FStructuralConnectivityGraph& Graph,
-      const FStructuralLightweightIndex& LightweightIndex, bool bPreferWirePort = false,
-      const FStructuralOutletParentResolveParams* ParentResolveParams = nullptr);
+  static FStructuralSwitchParentResolveResult
+  Resolve(AFGBuildableCircuitSwitch* Switch, UWorld* World,
+          const FStructuralConnectivityGraph& Graph,
+          const FStructuralLightweightIndex& LightweightIndex, bool bPreferWirePort = false,
+          const FStructuralOutletParentResolveParams* ParentResolveParams = nullptr);
 
   static bool IsWiredToStructureSide(AFGBuildableCircuitSwitch* Switch,
                                      int32* OutWirePortIndex = nullptr);
@@ -30,9 +31,9 @@ class STRUCTURALPOWER_API FStructuralSwitchParentResolver {
 
   static bool HasAnyVanillaWire(AFGBuildableCircuitSwitch* Switch);
 
-  static void ForEachWiredStructureSideAnchor(
-      AFGBuildableCircuitSwitch* Switch, UWorld* World,
-      const FStructuralLightweightIndex& LightweightIndex,
-      const FStructuralOutletParentResolveParams* ParentResolveParams,
-      TFunctionRef<void(const FStructuralWallAnchor& Anchor)> Visitor);
+  static void
+  ForEachWiredStructureSideAnchor(AFGBuildableCircuitSwitch* Switch, UWorld* World,
+                                  const FStructuralLightweightIndex& LightweightIndex,
+                                  const FStructuralOutletParentResolveParams* ParentResolveParams,
+                                  TFunctionRef<void(const FStructuralWallAnchor& Anchor)> Visitor);
 };

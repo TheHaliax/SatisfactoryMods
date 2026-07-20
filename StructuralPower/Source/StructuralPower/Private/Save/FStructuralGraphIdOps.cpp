@@ -35,13 +35,13 @@ FStructuralComponentKey FStructuralGraphIdOps::MakeComponentKeyForRoot(int32 Com
   return Key;
 }
 
-FStructuralComponentKey FStructuralGraphIdOps::MakeComponentKeyForParent(
-    const FStructuralNodeId& ParentId) const {
+FStructuralComponentKey
+FStructuralGraphIdOps::MakeComponentKeyForParent(const FStructuralNodeId& ParentId) const {
   return MakeComponentKeyForRoot(Session->StructureGraph().FindRoot(ParentId));
 }
 
-FStructuralComponentKey FStructuralGraphIdOps::MakeComponentKeyForBuildable(
-    const AFGBuildable* Buildable) const {
+FStructuralComponentKey
+FStructuralGraphIdOps::MakeComponentKeyForBuildable(const AFGBuildable* Buildable) const {
   if (!IsValid(Buildable)) {
     return {};
   }
@@ -179,8 +179,8 @@ FName FStructuralGraphIdOps::ResolveControl(AFGBuildable* Buildable, EStructural
   return NAME_None;
 }
 
-FStructuralChannelKey FStructuralGraphIdOps::ResolveChannelKeyForBuildable(
-    AFGBuildable* Buildable) {
+FStructuralChannelKey
+FStructuralGraphIdOps::ResolveChannelKeyForBuildable(AFGBuildable* Buildable) {
   FStructuralChannelKey Key;
   if (!IsValid(Buildable)) {
     return Key;

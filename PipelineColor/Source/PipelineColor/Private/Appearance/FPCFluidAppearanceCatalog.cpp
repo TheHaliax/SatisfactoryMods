@@ -28,8 +28,8 @@ TSubclassOf<UFGItemDescriptor> FPCFluidAppearanceCatalog::LoadFluidDesc(const TC
   return Loaded;
 }
 
-TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> FPCFluidAppearanceCatalog::LoadFinish(
-    const TCHAR* SoftPath, const TCHAR* Label) {
+TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish>
+FPCFluidAppearanceCatalog::LoadFinish(const TCHAR* SoftPath, const TCHAR* Label) {
   const FSoftClassPath Path(SoftPath);
   UClass* Loaded = Path.TryLoadClass<UFGFactoryCustomizationDescriptor_PaintFinish>();
   if (!Loaded) {

@@ -29,8 +29,8 @@ class STRUCTURALPOWER_API FStructuralPowerTraceScope {
   bool bActive = false;
 };
 
-#define HALSP_TRACE_SCOPE(DomainLiteral, OpLiteral) \
+#define HALSP_TRACE_SCOPE(DomainLiteral, OpLiteral)                                                \
   FStructuralPowerTraceScope ANONYMOUS_VARIABLE(HALSP_Scope_)(DomainLiteral, OpLiteral)
 
-#define HALSP_TRACE_SCOPE_DETAIL(DomainLiteral, OpLiteral, DetailExpr) \
+#define HALSP_TRACE_SCOPE_DETAIL(DomainLiteral, OpLiteral, DetailExpr)                             \
   FStructuralPowerTraceScope ANONYMOUS_VARIABLE(HALSP_Scope_)(DomainLiteral, OpLiteral, DetailExpr)

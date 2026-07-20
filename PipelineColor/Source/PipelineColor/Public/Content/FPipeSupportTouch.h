@@ -17,4 +17,4 @@ AFGBuildablePipeline* FindTouchedPipe(AFGBuildable* Support);
 
 void RememberLink(AFGBuildablePipeline* Pipe, AFGBuildable* Support);
 void InvalidateBuildable(AFGBuildable* Buildable);
-}  // namespace FPipeSupportTouch
+} // namespace FPipeSupportTouch

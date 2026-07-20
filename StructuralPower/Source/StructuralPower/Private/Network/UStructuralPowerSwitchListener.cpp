@@ -17,7 +17,7 @@ static bool SwitchNeedsToggleSubscription(AStructuralPowerGraphSubsystem& Graph,
 
   return true;
 }
-}  // namespace
+} // namespace
 
 void UStructuralPowerSwitchListener::BindSubsystem(AStructuralPowerGraphSubsystem* Graph,
                                                    AFGBuildableCircuitSwitch* Switch) {

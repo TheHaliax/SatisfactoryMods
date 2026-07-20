@@ -773,20 +773,20 @@ void FStructuralPowerReconcile::ReconcileGroupKindState(const EStructuralEndpoin
   for (AFGBuildable* Buildable : BuildableSubsystem->GetAllBuildablesRef()) {
     bool bMatch = false;
     switch (Kind) {
-      case EStructuralEndpointKind::Extractor:
-        bMatch = FStructuralEligibilityRules::IsStructuralExtractor(Buildable);
-        break;
-      case EStructuralEndpointKind::Manufacturer:
-        bMatch = FStructuralEligibilityRules::IsStructuralManufacturer(Buildable);
-        break;
-      case EStructuralEndpointKind::Transport:
-        bMatch = FStructuralEligibilityRules::IsStructuralTransport(Buildable);
-        break;
-      case EStructuralEndpointKind::PipePump:
-        bMatch = FStructuralEligibilityRules::IsStructuralPipelinePump(Buildable);
-        break;
-      default:
-        break;
+    case EStructuralEndpointKind::Extractor:
+      bMatch = FStructuralEligibilityRules::IsStructuralExtractor(Buildable);
+      break;
+    case EStructuralEndpointKind::Manufacturer:
+      bMatch = FStructuralEligibilityRules::IsStructuralManufacturer(Buildable);
+      break;
+    case EStructuralEndpointKind::Transport:
+      bMatch = FStructuralEligibilityRules::IsStructuralTransport(Buildable);
+      break;
+    case EStructuralEndpointKind::PipePump:
+      bMatch = FStructuralEligibilityRules::IsStructuralPipelinePump(Buildable);
+      break;
+    default:
+      break;
     }
 
     if (bMatch) {

@@ -25,8 +25,8 @@ void FStructuralEndpointCatalog::RegisterProcessor(IStructuralEndpointProcessor&
   ByKind.Add(Processor.GetBuildableKind(), &Processor);
 }
 
-const IStructuralEndpointProcessor* FStructuralEndpointCatalog::Classify(
-    const AFGBuildable* Buildable) const {
+const IStructuralEndpointProcessor*
+FStructuralEndpointCatalog::Classify(const AFGBuildable* Buildable) const {
   if (!IsValid(Buildable)) {
     return nullptr;
   }
@@ -41,16 +41,16 @@ const IStructuralEndpointProcessor* FStructuralEndpointCatalog::Classify(
   return nullptr;
 }
 
-const IStructuralEndpointProcessor* FStructuralEndpointCatalog::Find(
-    const EStructuralEndpointKind Kind) const {
+const IStructuralEndpointProcessor*
+FStructuralEndpointCatalog::Find(const EStructuralEndpointKind Kind) const {
   if (const IStructuralEndpointProcessor* const* Found = ByKind.Find(Kind)) {
     return *Found;
   }
   return nullptr;
 }
 
-IStructuralEndpointProcessor* FStructuralEndpointCatalog::FindMutable(
-    const EStructuralEndpointKind Kind) {
+IStructuralEndpointProcessor*
+FStructuralEndpointCatalog::FindMutable(const EStructuralEndpointKind Kind) {
   if (IStructuralEndpointProcessor** Found = ByKind.Find(Kind)) {
     return *Found;
   }

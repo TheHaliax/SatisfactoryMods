@@ -18,8 +18,9 @@ class STRUCTURALPOWER_API FStructuralPowerPoleProcessor {
   static void OnWireDelta(FStructuralPowerContext& Ctx, AFGBuildablePowerPole* Pole);
 
  private:
-  static void ResolvePoleStructuralSite(
-      FStructuralGraphSession& Session, AFGBuildablePowerPole* Pole, FStructuralNodeId& OutParentId,
-      int32& OutRoot, bool& bStructurallyAnchored,
-      FStructuralOutletParentResolveResult* OutParentResolve = nullptr);
+  static void
+  ResolvePoleStructuralSite(FStructuralGraphSession& Session, AFGBuildablePowerPole* Pole,
+                            FStructuralNodeId& OutParentId, int32& OutRoot,
+                            bool& bStructurallyAnchored,
+                            FStructuralOutletParentResolveResult* OutParentResolve = nullptr);
 };

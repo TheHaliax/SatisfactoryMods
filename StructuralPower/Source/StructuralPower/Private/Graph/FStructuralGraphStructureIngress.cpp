@@ -162,7 +162,7 @@ bool IsStructureSplitConsumerKind(const EStructuralEndpointKind Kind) {
          Kind == EStructuralEndpointKind::Transport || Kind == EStructuralEndpointKind::PipePump ||
          Kind == EStructuralEndpointKind::Light || Kind == EStructuralEndpointKind::Panel;
 }
-}  // namespace
+} // namespace
 
 void FStructuralGraphStructureIngress::RequeueConsumersAfterStructureSplit(
     const TSet<int32>& AffectedRoots) {
@@ -207,9 +207,8 @@ void FStructuralGraphStructureIngress::RequeueConsumersAfterStructureSplit(
   }
 
   if (Requeued > 0 || bHitCap) {
-    UE_LOG(LogStructuralPower, Log,
-           TEXT("[HALSP] structure split consumerRequeue=%d capped=%d"), Requeued,
-           bHitCap ? 1 : 0);
+    UE_LOG(LogStructuralPower, Log, TEXT("[HALSP] structure split consumerRequeue=%d capped=%d"),
+           Requeued, bHitCap ? 1 : 0);
   }
 }
 

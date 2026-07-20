@@ -5,15 +5,15 @@
 
 const TCHAR* StructuralAttachStrategyToString(const EStructuralAttachStrategy Strategy) {
   switch (Strategy) {
-    case EStructuralAttachStrategy::Bridge:
-      return TEXT("bridge");
-    case EStructuralAttachStrategy::ToggleBridge:
-      return TEXT("toggle_bridge");
-    case EStructuralAttachStrategy::Consumer:
-      return TEXT("consumer");
-    case EStructuralAttachStrategy::Router:
-      return TEXT("router");
-    default:
-      return TEXT("unknown");
+  case EStructuralAttachStrategy::Bridge:
+    return TEXT("bridge");
+  case EStructuralAttachStrategy::ToggleBridge:
+    return TEXT("toggle_bridge");
+  case EStructuralAttachStrategy::Consumer:
+    return TEXT("consumer");
+  case EStructuralAttachStrategy::Router:
+    return TEXT("router");
+  default:
+    return TEXT("unknown");
   }
 }

@@ -14,8 +14,8 @@ struct FStructuralPowerContext;
 
 class STRUCTURALPOWER_API FStructuralEndpointAttach {
  public:
-  static FStructuralBridgeAttachOutcome AttachOnPlace(
-      FStructuralPowerContext& Ctx, const FStructuralBridgeAttachRequest& Request);
+  static FStructuralBridgeAttachOutcome
+  AttachOnPlace(FStructuralPowerContext& Ctx, const FStructuralBridgeAttachRequest& Request);
 
   static bool AttachConsumer(FStructuralPowerContext& Ctx, AFGBuildable* Host,
                              bool bLocalPromoteOnly);

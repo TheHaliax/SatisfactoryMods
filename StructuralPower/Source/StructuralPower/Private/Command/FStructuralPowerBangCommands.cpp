@@ -162,7 +162,8 @@ static void SendHelp(AFGPlayerController* PlayerController) {
   SendSystemChat(PlayerController,
                  TEXT("!lighting !generation !resources !production — group toggles (default off)"),
                  FLinearColor::Yellow);
-  SendSystemChat(PlayerController, TEXT("!transport !pipe/!pipes !belts — group toggles (default off)"),
+  SendSystemChat(PlayerController,
+                 TEXT("!transport !pipe/!pipes !belts — group toggles (default off)"),
                  FLinearColor::Yellow);
 }
 }

@@ -105,4 +105,4 @@ void AppendAllRecipeClasses(TArray<TSubclassOf<UFGCustomizationRecipe>>& Out) {
   }
   Out.Add(UPCSwatchRecipe_Fallback::StaticClass());
 }
-}  // namespace FPCFluidRoster
+} // namespace FPCFluidRoster

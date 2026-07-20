@@ -210,8 +210,9 @@ EAttachContext FStructuralGraphSession::GetCurrentAttachContext() const {
   return Owner().GetCurrentAttachContext();
 }
 
-FStructuralPowerContext FStructuralGraphSession::MakeProcessorContext(
-    const EAttachContext AttachContext, const int32 SiteRoot) const {
+FStructuralPowerContext
+FStructuralGraphSession::MakeProcessorContext(const EAttachContext AttachContext,
+                                              const int32 SiteRoot) const {
   return FStructuralPowerContext(*const_cast<FStructuralGraphSession*>(this), AttachContext,
                                  SiteRoot);
 }
@@ -246,23 +247,23 @@ FStructuralNodeId FStructuralGraphSession::MakeNodeId(const AFGBuildable* Builda
   return Owner().MakeNodeId(Buildable);
 }
 
-UFGStructuralPowerConnectionComponent* FStructuralGraphSession::FindBusConnector(
-    const AFGBuildable* Host) const {
+UFGStructuralPowerConnectionComponent*
+FStructuralGraphSession::FindBusConnector(const AFGBuildable* Host) const {
   return Owner().FindBusConnector(Host);
 }
 
-UFGStructuralPowerConnectionComponent* FStructuralGraphSession::GetOrCreateBusConnector(
-    AFGBuildable* Host) {
+UFGStructuralPowerConnectionComponent*
+FStructuralGraphSession::GetOrCreateBusConnector(AFGBuildable* Host) {
   return Owner().GetOrCreateBusConnector(Host);
 }
 
-UFGStructuralPowerConnectionComponent* FStructuralGraphSession::GetOrCreateSwitchControlBus(
-    AFGBuildableCircuitSwitch* Switch) {
+UFGStructuralPowerConnectionComponent*
+FStructuralGraphSession::GetOrCreateSwitchControlBus(AFGBuildableCircuitSwitch* Switch) {
   return Owner().GetOrCreateSwitchControlBus(Switch);
 }
 
-UFGStructuralPowerConnectionComponent* FStructuralGraphSession::GetOrCreatePanelControlBus(
-    AFGBuildableLightsControlPanel* Panel) {
+UFGStructuralPowerConnectionComponent*
+FStructuralGraphSession::GetOrCreatePanelControlBus(AFGBuildableLightsControlPanel* Panel) {
   return Owner().GetOrCreatePanelControlBus(Panel);
 }
 

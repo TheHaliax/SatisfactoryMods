@@ -140,7 +140,7 @@ bool HandleCustomSlotWrite(UObject* WorldContext, uint8 SlotIdx,
   UE_LOG(LogPipelineColor, Log, TEXT("%s custom slot → RCO/store"), PIPELINECOLOR_LOG_PREFIX);
   return true;
 }
-}  // namespace
+} // namespace
 
 AFGPlayerController* FPCSwatchSlotDispatch::ResolvePlayerController(UObject* WorldContext) {
   if (!IsValid(WorldContext)) {
@@ -195,8 +195,8 @@ void FPCSwatchSlotDispatch::SetActivePcDesc(
   }
 }
 
-TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> FPCSwatchSlotDispatch::GetActivePcDesc(
-    AFGPlayerController* PlayerController) {
+TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>
+FPCSwatchSlotDispatch::GetActivePcDesc(AFGPlayerController* PlayerController) {
   PruneDeadActiveEntries();
   if (!IsValid(PlayerController)) {
     return nullptr;

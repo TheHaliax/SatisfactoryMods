@@ -43,11 +43,13 @@ class STRUCTURALPOWER_API FStructuralOutletParentResolver {
   static FStructuralWallAnchor Resolve(AFGBuildable* Outlet, UWorld* World,
                                        const FStructuralOutletParentResolveParams& Params);
 
-  static FStructuralOutletParentResolveResult ResolveDetailed(
-      AFGBuildable* Outlet, UWorld* World, const FStructuralLightweightIndex& LightweightIndex);
+  static FStructuralOutletParentResolveResult
+  ResolveDetailed(AFGBuildable* Outlet, UWorld* World,
+                  const FStructuralLightweightIndex& LightweightIndex);
 
-  static FStructuralOutletParentResolveResult ResolveDetailed(
-      AFGBuildable* Outlet, UWorld* World, const FStructuralOutletParentResolveParams& Params);
+  static FStructuralOutletParentResolveResult
+  ResolveDetailed(AFGBuildable* Outlet, UWorld* World,
+                  const FStructuralOutletParentResolveParams& Params);
 
   static bool IsStructurallyAnchored(const FStructuralOutletParentResolveResult& Result,
                                      AFGBuildable* Outlet);

@@ -66,10 +66,10 @@ FString PairDetail(const TCHAR* LabelA, const UFGCircuitConnectionComponent* A, 
                          *FStructuralVanillaPowerTrace::FormatConnector(A), LabelB,
                          *FStructuralVanillaPowerTrace::FormatConnector(B));
 }
-}  // namespace
+} // namespace
 
-FString FStructuralVanillaPowerTrace::FormatConnector(
-    const UFGCircuitConnectionComponent* Connector) {
+FString
+FStructuralVanillaPowerTrace::FormatConnector(const UFGCircuitConnectionComponent* Connector) {
   if (!IsValid(Connector)) {
     return TEXT("null");
   }

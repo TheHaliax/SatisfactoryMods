@@ -610,19 +610,19 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
         HandlePowerConnectionChanged(Pole, Connection);
       });
 
-  SUBSCRIBE_METHOD_AFTER(
-      AFGLightweightBuildableSubsystem::AddFromBuildableInstanceData,
-      [](int32 ReturnValue, AFGLightweightBuildableSubsystem* Subsystem,
-         TSubclassOf<AFGBuildable> BuildableClass,
-         FRuntimeBuildableInstanceData& /*BuildableInstanceData*/, bool FromSaveData,
-         int32 /*SaveDataBuildableIndex*/, uint16 /*ConstructId*/,
-         AActor* /*BuildEffectInstigator*/, int32 /*BlueprintBuildEffectIndex*/) {
-        if (FromSaveData) {
-          return;
-        }
+  SUBSCRIBE_METHOD_AFTER(AFGLightweightBuildableSubsystem::AddFromBuildableInstanceData,
+                         [](int32 ReturnValue, AFGLightweightBuildableSubsystem* Subsystem,
+                            TSubclassOf<AFGBuildable> BuildableClass,
+                            FRuntimeBuildableInstanceData& /*BuildableInstanceData*/,
+                            bool FromSaveData, int32 /*SaveDataBuildableIndex*/,
+                            uint16 /*ConstructId*/, AActor* /*BuildEffectInstigator*/,
+                            int32 /*BlueprintBuildEffectIndex*/) {
+                           if (FromSaveData) {
+                             return;
+                           }
 
-        HandleLightweightMemberAdded(Subsystem, BuildableClass, ReturnValue);
-      });
+                           HandleLightweightMemberAdded(Subsystem, BuildableClass, ReturnValue);
+                         });
 
   SUBSCRIBE_METHOD_AFTER(AFGLightweightBuildableSubsystem::RemoveByInstanceIndex,
                          [](AFGLightweightBuildableSubsystem* Subsystem,

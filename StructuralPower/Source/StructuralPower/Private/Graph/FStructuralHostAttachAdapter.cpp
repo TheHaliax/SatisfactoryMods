@@ -34,10 +34,10 @@ static EStructuralHostKind ClassifyHostClass(const AFGBuildable* Host) {
 
   return EStructuralHostKind::Unknown;
 }
-}  // namespace
+} // namespace
 
-EStructuralHostKind FStructuralHostAttachAdapter::ClassifyHost(
-    const FStructuralWallAnchor& Anchor) {
+EStructuralHostKind
+FStructuralHostAttachAdapter::ClassifyHost(const FStructuralWallAnchor& Anchor) {
   if (IsValid(Anchor.Actor)) {
     return ClassifyHostClass(Anchor.Actor);
   }
@@ -56,31 +56,31 @@ bool FStructuralHostAttachAdapter::ConfirmSiteAttach(
   }
 
   switch (ParentResolve.Method) {
-    case EStructuralOutletParentMethod::ActorParent:
-    case EStructuralOutletParentMethod::LightweightFaceAttach:
-    case EStructuralOutletParentMethod::LightweightIndex:
-      return true;
-    case EStructuralOutletParentMethod::StructureGraph: {
-      const EStructuralHostKind HostKind = ClassifyHost(ParentResolve.Anchor);
-      TSubclassOf<AFGBuildable> ParentClass;
-      if (IsValid(ParentResolve.Anchor.Actor)) {
-        ParentClass = ParentResolve.Anchor.Actor->GetClass();
-      } else if (ParentResolve.Anchor.Lightweight.IsValid()) {
-        ParentClass = ParentResolve.Anchor.Lightweight.BuildableClass;
-      }
-
-      FBox ParentBounds = FStructuralOutletParentResolver::BoundsForStructuralAnchor(
-          ParentResolve.Anchor, Endpoint->GetWorld());
-      if (HostKind == EStructuralHostKind::FactoryBuilding ||
-          HostKind == EStructuralHostKind::GenericBusMember) {
-        ParentBounds = ExpandHostBounds(ParentBounds, ParentClass, HostKind);
-      }
-
-      return FStructuralOutletParentHeuristics::IsConfirmedStructuralAttach(Endpoint, ParentBounds,
-                                                                            ParentClass);
+  case EStructuralOutletParentMethod::ActorParent:
+  case EStructuralOutletParentMethod::LightweightFaceAttach:
+  case EStructuralOutletParentMethod::LightweightIndex:
+    return true;
+  case EStructuralOutletParentMethod::StructureGraph: {
+    const EStructuralHostKind HostKind = ClassifyHost(ParentResolve.Anchor);
+    TSubclassOf<AFGBuildable> ParentClass;
+    if (IsValid(ParentResolve.Anchor.Actor)) {
+      ParentClass = ParentResolve.Anchor.Actor->GetClass();
+    } else if (ParentResolve.Anchor.Lightweight.IsValid()) {
+      ParentClass = ParentResolve.Anchor.Lightweight.BuildableClass;
     }
-    default:
-      return false;
+
+    FBox ParentBounds = FStructuralOutletParentResolver::BoundsForStructuralAnchor(
+        ParentResolve.Anchor, Endpoint->GetWorld());
+    if (HostKind == EStructuralHostKind::FactoryBuilding ||
+        HostKind == EStructuralHostKind::GenericBusMember) {
+      ParentBounds = ExpandHostBounds(ParentBounds, ParentClass, HostKind);
+    }
+
+    return FStructuralOutletParentHeuristics::IsConfirmedStructuralAttach(Endpoint, ParentBounds,
+                                                                          ParentClass);
+  }
+  default:
+    return false;
   }
 }
 

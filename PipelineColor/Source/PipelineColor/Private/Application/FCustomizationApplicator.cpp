@@ -13,9 +13,8 @@ namespace {
 TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> LoadCustomSwatch() {
   static TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Cached;
   if (!Cached) {
-    const FSoftClassPath Path(
-        TEXT("/Game/FactoryGame/Buildable/-Shared/Customization/Swatches/"
-             "SwatchDesc_Custom.SwatchDesc_Custom_C"));
+    const FSoftClassPath Path(TEXT("/Game/FactoryGame/Buildable/-Shared/Customization/Swatches/"
+                                   "SwatchDesc_Custom.SwatchDesc_Custom_C"));
     Cached = Path.TryLoadClass<UFGFactoryCustomizationDescriptor_Swatch>();
   }
   return Cached;
@@ -64,7 +63,7 @@ struct FScopedFinishRoughnessStamp {
   FScopedFinishRoughnessStamp(const FScopedFinishRoughnessStamp&) = delete;
   FScopedFinishRoughnessStamp& operator=(const FScopedFinishRoughnessStamp&) = delete;
 };
-}  // namespace
+} // namespace
 
 bool FCustomizationApplicator::ApplyIfChanged(AFGBuildable* Buildable,
                                               const FPCAppearanceSpec& Spec) {

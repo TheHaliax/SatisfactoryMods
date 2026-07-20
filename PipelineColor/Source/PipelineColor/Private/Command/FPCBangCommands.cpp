@@ -188,7 +188,7 @@ bool TryParseAllMetallic(const FString& Rest, bool& bOutOn) {
   }
   return false;
 }
-}  // namespace
+} // namespace
 
 void FPCBangCommands::RegisterChatHook() {
   if (BangChatHookHandle.IsValid()) {

@@ -18,15 +18,17 @@ struct FStructuralComponentResolveResult {
 
 class STRUCTURALPOWER_API FStructuralAttachmentResolver {
  public:
-  static FStructuralWallAnchor ResolveStructuralParent(
-      AFGBuildable* Buildable, UWorld* World, const FStructuralLightweightIndex& LightweightIndex);
+  static FStructuralWallAnchor
+  ResolveStructuralParent(AFGBuildable* Buildable, UWorld* World,
+                          const FStructuralLightweightIndex& LightweightIndex);
 
-  static FStructuralWallAnchor ResolveStructuralParent(
-      AFGBuildable* Buildable, UWorld* World, const FStructuralOutletParentResolveParams& Params);
+  static FStructuralWallAnchor
+  ResolveStructuralParent(AFGBuildable* Buildable, UWorld* World,
+                          const FStructuralOutletParentResolveParams& Params);
 
-  static FStructuralComponentResolveResult ResolveStructuralComponent(
-      const FStructuralConnectivityGraph& Graph, const FVector& WorldLoc, float QueryRadiusCm,
-      TSubclassOf<AFGBuildable> ClassHint = nullptr);
+  static FStructuralComponentResolveResult
+  ResolveStructuralComponent(const FStructuralConnectivityGraph& Graph, const FVector& WorldLoc,
+                             float QueryRadiusCm, TSubclassOf<AFGBuildable> ClassHint = nullptr);
 
   static int32 ResolveComponentRootForBuildable(AFGBuildable* Buildable,
                                                 const FStructuralConnectivityGraph& Graph,

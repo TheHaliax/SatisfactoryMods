@@ -12,18 +12,19 @@
 
 #define LOCTEXT_NAMESPACE "FStructuralPowerModule"
 
-static FAutoConsoleCommandWithWorld GStructuralPowerDiagCmd(
-    TEXT("StructuralPower.Diag"), TEXT("Audit the structural graph and bridge-pole circuit state."),
-    FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World) {
-      if (IsValid(World)) {
-        if (AStructuralPowerGraphSubsystem* Graph =
-                AStructuralPowerGraphSubsystem::GetOrCreate(World)) {
-          Graph->RunDiagnostics();
-        } else {
-          FStructuralPowerDiagnostics::AuditWorld(World, true);
-        }
-      }
-    }));
+static FAutoConsoleCommandWithWorld
+    GStructuralPowerDiagCmd(TEXT("StructuralPower.Diag"),
+                            TEXT("Audit the structural graph and bridge-pole circuit state."),
+                            FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World) {
+                              if (IsValid(World)) {
+                                if (AStructuralPowerGraphSubsystem* Graph =
+                                        AStructuralPowerGraphSubsystem::GetOrCreate(World)) {
+                                  Graph->RunDiagnostics();
+                                } else {
+                                  FStructuralPowerDiagnostics::AuditWorld(World, true);
+                                }
+                              }
+                            }));
 
 static FAutoConsoleCommandWithWorldAndArgs GStructuralPowerSetCmd(
     TEXT("StructuralPower.Set"), TEXT("Set a mod config key and persist to .cfg (authority only)."),

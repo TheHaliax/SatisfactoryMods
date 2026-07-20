@@ -42,8 +42,8 @@ static void StrategyCloseDirectedBridgeLeg(UFGStructuralPowerConnectionComponent
   }
 }
 
-static UFGPowerConnectionComponent* FindSingleWireSourceBridgeLeg(
-    AFGBuildableCircuitSwitch* Switch) {
+static UFGPowerConnectionComponent*
+FindSingleWireSourceBridgeLeg(AFGBuildableCircuitSwitch* Switch) {
   if (!IsValid(Switch)) {
     return nullptr;
   }
@@ -146,7 +146,7 @@ static int32 StrategyCountVanillaWirePorts(AFGBuildableCircuitSwitch* Switch) {
 
   return Count;
 }
-}  // namespace
+} // namespace
 
 void FStructuralSwitchBridgeStrategy::DisarmDirectedPair(FStructuralPowerContext& Ctx,
                                                          AFGBuildableCircuitSwitch* Switch) {

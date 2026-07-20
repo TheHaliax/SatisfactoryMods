@@ -361,8 +361,8 @@ void UPipelineColorRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase Ph
         if (!IsValid(World)) {
           return;
         }
-        World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda(
-            [PipeWeak = TWeakObjectPtr<AFGBuildablePipeline>(Pipe)]() {
+        World->GetTimerManager().SetTimerForNextTick(
+            FTimerDelegate::CreateLambda([PipeWeak = TWeakObjectPtr<AFGBuildablePipeline>(Pipe)]() {
               AFGBuildablePipeline* PipePtr = PipeWeak.Get();
               if (!IsValid(PipePtr) || !PipePtr->HasAuthority()) {
                 return;
@@ -390,12 +390,12 @@ void UPipelineColorRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase Ph
             }));
       });
 
-  SUBSCRIBE_METHOD_VIRTUAL_AFTER(
-      AFGBuildablePipelineAttachment::BeginPlay,
-      GetMutableDefault<AFGBuildablePipelineAttachment>(),
-      [](AFGBuildablePipelineAttachment* Attachment) {
-        UPipelineColorRootInstanceModule::HandleBuildableBuilt(Cast<AFGBuildable>(Attachment));
-      });
+  SUBSCRIBE_METHOD_VIRTUAL_AFTER(AFGBuildablePipelineAttachment::BeginPlay,
+                                 GetMutableDefault<AFGBuildablePipelineAttachment>(),
+                                 [](AFGBuildablePipelineAttachment* Attachment) {
+                                   UPipelineColorRootInstanceModule::HandleBuildableBuilt(
+                                       Cast<AFGBuildable>(Attachment));
+                                 });
 #endif
 
   Super::DispatchLifecycleEvent(Phase);

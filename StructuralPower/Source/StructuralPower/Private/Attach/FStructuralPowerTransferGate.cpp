@@ -77,7 +77,7 @@ void SuspendLightTransfer(FStructuralPowerContext& Ctx, AFGBuildableLightSource*
            *Light->GetName(), AttachContextToString(Ctx.GetAttachContext()));
   }
 }
-}  // namespace
+} // namespace
 
 bool FStructuralPowerTransferGate::IsBridgeWireOrToggleContext(EAttachContext AttachContext) {
   return AttachContext == EAttachContext::WireDelta || AttachContext == EAttachContext::Toggle;

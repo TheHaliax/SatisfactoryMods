@@ -88,8 +88,8 @@ bool FStructuralEndpointIdRegistry::TryGetPlayerOverride(const FStructuralNodeId
   return false;
 }
 
-const FStructuralEndpointOverrides* FStructuralEndpointIdRegistry::FindPlayerOverride(
-    const FStructuralNodeId& NodeId) const {
+const FStructuralEndpointOverrides*
+FStructuralEndpointIdRegistry::FindPlayerOverride(const FStructuralNodeId& NodeId) const {
   return PlayerEndpointOverrides ? PlayerEndpointOverrides->Find(NodeId) : nullptr;
 }
 

@@ -17,15 +17,15 @@ EAttachContext AttachContextFromBulkDrain(const bool bBulkLoadDrainActive) {
 
 const TCHAR* AttachContextToString(const EAttachContext Context) {
   switch (Context) {
-    case EAttachContext::BulkLoad:
-      return TEXT("bulk");
-    case EAttachContext::RuntimePlace:
-      return TEXT("runtime");
-    case EAttachContext::WireDelta:
-      return TEXT("wire_delta");
-    case EAttachContext::Toggle:
-      return TEXT("toggle");
-    default:
-      return TEXT("?");
+  case EAttachContext::BulkLoad:
+    return TEXT("bulk");
+  case EAttachContext::RuntimePlace:
+    return TEXT("runtime");
+  case EAttachContext::WireDelta:
+    return TEXT("wire_delta");
+  case EAttachContext::Toggle:
+    return TEXT("toggle");
+  default:
+    return TEXT("?");
   }
 }

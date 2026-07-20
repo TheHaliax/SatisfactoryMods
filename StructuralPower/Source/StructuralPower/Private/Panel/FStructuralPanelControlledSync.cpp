@@ -121,7 +121,7 @@ bool ShouldOverrideControlledBuildables(FStructuralGraphSession& Session,
   const FName Control = Session.Ids().ResolveControl(Panel, EStructuralChannel::Light);
   return FStructuralPowerRouter::IsAssignedControl(Control);
 }
-}  // namespace
+} // namespace
 
 FName FStructuralPanelControlledSync::ResolveEffectiveLightControl(
     FStructuralGraphSession& Session, AFGBuildableLightsControlPanel* Panel) {

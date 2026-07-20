@@ -37,10 +37,10 @@ class STRUCTURALPOWER_API FStructuralEndpointDispatcher {
   static void RunTeardown(FStructuralGraphSession& Session, IStructuralEndpointProcessor& Processor,
                           AFGBuildable* Host);
 
-  static void DispatchPlacement(
-      FStructuralGraphSession& Session, AFGBuildable* Buildable, bool bLocalPromoteOnly = false,
-      bool bOverrideAttachContext = false,
-      EAttachContext AttachContextOverride = EAttachContext::RuntimePlace);
+  static void
+  DispatchPlacement(FStructuralGraphSession& Session, AFGBuildable* Buildable,
+                    bool bLocalPromoteOnly = false, bool bOverrideAttachContext = false,
+                    EAttachContext AttachContextOverride = EAttachContext::RuntimePlace);
 
   static void DispatchOutlet(FStructuralGraphSession& Session, AFGBuildable* Buildable);
 

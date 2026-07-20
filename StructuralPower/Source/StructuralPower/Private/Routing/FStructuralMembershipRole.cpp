@@ -39,24 +39,24 @@ EStructuralMembershipRole FStructuralMembershipRole::Resolve(const AFGBuildable*
   return EStructuralMembershipRole::None;
 }
 
-EStructuralMembershipRole FStructuralMembershipRole::ResolveFromEndpointKind(
-    const EStructuralEndpointKind Kind) {
+EStructuralMembershipRole
+FStructuralMembershipRole::ResolveFromEndpointKind(const EStructuralEndpointKind Kind) {
   switch (Kind) {
-    case EStructuralEndpointKind::Switch:
-    case EStructuralEndpointKind::Panel:
-      return EStructuralMembershipRole::Bridge;
-    case EStructuralEndpointKind::Generator:
-      return EStructuralMembershipRole::Source;
-    case EStructuralEndpointKind::Light:
-    case EStructuralEndpointKind::Pole:
-    case EStructuralEndpointKind::Storage:
-    case EStructuralEndpointKind::Extractor:
-    case EStructuralEndpointKind::Manufacturer:
-    case EStructuralEndpointKind::Transport:
-    case EStructuralEndpointKind::PipePump:
-      return EStructuralMembershipRole::Control;
-    default:
-      return EStructuralMembershipRole::None;
+  case EStructuralEndpointKind::Switch:
+  case EStructuralEndpointKind::Panel:
+    return EStructuralMembershipRole::Bridge;
+  case EStructuralEndpointKind::Generator:
+    return EStructuralMembershipRole::Source;
+  case EStructuralEndpointKind::Light:
+  case EStructuralEndpointKind::Pole:
+  case EStructuralEndpointKind::Storage:
+  case EStructuralEndpointKind::Extractor:
+  case EStructuralEndpointKind::Manufacturer:
+  case EStructuralEndpointKind::Transport:
+  case EStructuralEndpointKind::PipePump:
+    return EStructuralMembershipRole::Control;
+  default:
+    return EStructuralMembershipRole::None;
   }
 }
 

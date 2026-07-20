@@ -12,5 +12,5 @@ enum class EStructuralAttachStrategy : uint8 {
   Router,
 };
 
-STRUCTURALPOWER_API const TCHAR* StructuralAttachStrategyToString(
-    EStructuralAttachStrategy Strategy);
+STRUCTURALPOWER_API const TCHAR*
+StructuralAttachStrategyToString(EStructuralAttachStrategy Strategy);

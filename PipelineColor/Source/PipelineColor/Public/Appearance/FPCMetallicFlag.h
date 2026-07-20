@@ -18,4 +18,4 @@ inline bool IsMetallicFinishPath(const FSoftClassPath& Path) {
   const FString Asset = Path.GetAssetName();
   return Asset.Contains(TEXT("MetallicColor"), ESearchCase::IgnoreCase);
 }
-}  // namespace FPCMetallicStyle
+} // namespace FPCMetallicStyle

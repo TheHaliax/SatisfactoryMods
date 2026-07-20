@@ -171,7 +171,7 @@ void ScanSupportsTouchingPipe(AFGBuildablePipeline* Pipe, TArray<AFGBuildable*>&
     ConsiderSupport(*It);
   }
 }
-}  // namespace
+} // namespace
 
 void RememberLink(AFGBuildablePipeline* Pipe, AFGBuildable* Support) {
   if (!IsValid(Pipe) || !IsValid(Support)) {
@@ -299,4 +299,4 @@ void CollectSupportsTouchingPipe(AFGBuildablePipeline* Pipe, TArray<AFGBuildable
     RememberLink(Pipe, Support);
   }
 }
-}  // namespace FPipeSupportTouch
+} // namespace FPipeSupportTouch

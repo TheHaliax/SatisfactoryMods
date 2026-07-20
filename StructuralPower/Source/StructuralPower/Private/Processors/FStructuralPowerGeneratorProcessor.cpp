@@ -132,7 +132,7 @@ void ProcessGenerationHost(FStructuralPowerContext& Ctx, AFGBuildable* Host) {
     FStructuralPowerTrace::LogPlacementSkip(Host, TEXT("gen_attach_failed"), ELogVerbosity::Log);
   }
 }
-}  // namespace
+} // namespace
 
 void FStructuralPowerGeneratorProcessor::Process(FStructuralPowerContext& Ctx,
                                                  AFGBuildableGenerator* Generator) {

@@ -18,9 +18,9 @@ namespace {
 static constexpr float HoverpackMultiplierMin = 1.0f;
 static constexpr float HoverpackMultiplierMax = 10.0f;
 
-static TAutoConsoleVariable<int32> CVarStructuralPowerTrace(
-    TEXT("StructuralPower.Trace"), 0, TEXT("1 = enable [HALSP] trace logging (debug)"),
-    ECVF_Default);
+static TAutoConsoleVariable<int32>
+    CVarStructuralPowerTrace(TEXT("StructuralPower.Trace"), 0,
+                             TEXT("1 = enable [HALSP] trace logging (debug)"), ECVF_Default);
 
 static TAutoConsoleVariable<int32> CVarStructuralPowerExtendedDebug(
     TEXT("StructuralPower.ExtendedDebug"), 0,
@@ -63,9 +63,9 @@ static TAutoConsoleVariable<int32> CVarStructuralPowerGroupPipes(
     TEXT("StructuralPower.GroupPipes"), 0,
     TEXT("1 = pipe topology bus (supports/machines) + pumps structural attach"), ECVF_Default);
 
-static TAutoConsoleVariable<int32> CVarStructuralPowerGroupBelts(
-    TEXT("StructuralPower.GroupBelts"), 0, TEXT("1 = belt category toggle placeholder"),
-    ECVF_Default);
+static TAutoConsoleVariable<int32>
+    CVarStructuralPowerGroupBelts(TEXT("StructuralPower.GroupBelts"), 0,
+                                  TEXT("1 = belt category toggle placeholder"), ECVF_Default);
 
 static float ClampHoverpackMultiplier(float Value) {
   return FMath::Clamp(Value, HoverpackMultiplierMin, HoverpackMultiplierMax);
@@ -177,7 +177,7 @@ static TSharedPtr<FJsonObject> BuildJsonFromCvars() {
           CVarStructuralPowerHoverpackVerticalMultiplier.GetValueOnGameThread()));
   return Object;
 }
-}  // namespace
+} // namespace
 
 void FStructuralPowerModConfig::RegisterConsoleVariables() {
   CVarStructuralPowerTrace.AsVariable();

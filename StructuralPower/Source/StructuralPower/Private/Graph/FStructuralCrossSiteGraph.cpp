@@ -51,8 +51,8 @@ void FStructuralCrossSiteGraph::GetCoupledSites(int32 Site, TArray<int32>& OutSi
   }
 }
 
-FStructuralSiteFeedSignature FStructuralCrossSiteGraph::ComputeSiteFeedSignature(
-    FStructuralGraphSession& Session, int32 Site) {
+FStructuralSiteFeedSignature
+FStructuralCrossSiteGraph::ComputeSiteFeedSignature(FStructuralGraphSession& Session, int32 Site) {
   FStructuralSiteFeedSignature Signature;
   if (Site == INDEX_NONE) {
     return Signature;

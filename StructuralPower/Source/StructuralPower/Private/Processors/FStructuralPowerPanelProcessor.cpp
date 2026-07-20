@@ -191,8 +191,8 @@ void FStructuralPowerPanelProcessor::Process(FStructuralPowerContext& Ctx,
           FStructuralPanelControlledSync::ApplyKeyedSubnet(Ctx.Session(), Panel);
         }
 
-        const bool bLightsLinked = FStructuralPanelAttach::AreKeyedLightsLinkedToControlBus(
-            Ctx.Session(), Panel, Root);
+        const bool bLightsLinked =
+            FStructuralPanelAttach::AreKeyedLightsLinkedToControlBus(Ctx.Session(), Panel, Root);
         Tracked.bDownstreamLinksReady = bLightsLinked;
         Tracked.CachedDownstreamControl = bLightsLinked ? EffectiveControl : NAME_None;
       }

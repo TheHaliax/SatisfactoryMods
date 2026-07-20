@@ -338,8 +338,8 @@ bool FStructuralHoverpackBridge::OwnsConnectivity(const AFGHoverPack* Pack) {
   return IsStructuralPathEnabled(Pack);
 }
 
-const FStructuralHoverpackSession* FStructuralHoverpackBridge::FindSession(
-    const AFGHoverPack* Pack) {
+const FStructuralHoverpackSession*
+FStructuralHoverpackBridge::FindSession(const AFGHoverPack* Pack) {
   if (!IsValid(Pack)) {
     return nullptr;
   }
@@ -459,8 +459,9 @@ bool FStructuralHoverpackBridge::SyncPowerFeed(AFGHoverPack* Pack,
   return true;
 }
 
-FStructuralHoverpackAxisLimits FStructuralHoverpackBridge::GetSessionAxisLimits(
-    EStructuralHoverpackTetherSource Source, float BaseSearchRadius) {
+FStructuralHoverpackAxisLimits
+FStructuralHoverpackBridge::GetSessionAxisLimits(EStructuralHoverpackTetherSource Source,
+                                                 float BaseSearchRadius) {
   const float Base = FMath::Max(1.0f, BaseSearchRadius);
   FStructuralHoverpackAxisLimits Limits;
   if (Source == EStructuralHoverpackTetherSource::StructuralGeometry) {

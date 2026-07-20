@@ -26,8 +26,8 @@ class STRUCTURALPOWER_API UStructuralPowerIdOptionManager : public UObject,
   FName GetSourceIdFromIndex(int32 Index) const;
   FName GetControlIdFromIndex(int32 Index) const;
 
-  virtual void GetAllUserSettings(
-      TArray<TObjectPtr<UFGUserSettingApplyType>>& OutUserSettings) const override;
+  virtual void
+  GetAllUserSettings(TArray<TObjectPtr<UFGUserSettingApplyType>>& OutUserSettings) const override;
   virtual void GetAllUserSettingsMap(
       TMap<FString, TObjectPtr<UFGUserSettingApplyType>>& OutUserSettings) const override;
   virtual UFGUserSettingApplyType* FindUserSetting(const FString& SettingId) const override;
@@ -35,8 +35,8 @@ class STRUCTURALPOWER_API UStructuralPowerIdOptionManager : public UObject,
   virtual bool IsInMainMenu() const override {
     return false;
   }
-  virtual TArray<FUserSettingCategoryMapping> GetCategorizedSettingWidgets(
-      UObject* WorldContext, UUserWidget* OwningWidget) override;
+  virtual TArray<FUserSettingCategoryMapping>
+  GetCategorizedSettingWidgets(UObject* WorldContext, UUserWidget* OwningWidget) override;
 
   int32 GetSuggestedOptionCount() const;
   FName GetSuggestedOptionAt(int32 Index) const;

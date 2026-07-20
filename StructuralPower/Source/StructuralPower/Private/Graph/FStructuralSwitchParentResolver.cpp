@@ -44,9 +44,10 @@ static bool IsGridSideNeighbor(const AFGBuildable* Neighbor) {
   return IsValid(Neighbor) && Neighbor->IsA<AFGBuildableFactory>();
 }
 
-static FStructuralWallAnchor AnchorFromStructureNeighbor(
-    AFGBuildable* Neighbor, UWorld* World, const FStructuralLightweightIndex& LightweightIndex,
-    const FStructuralOutletParentResolveParams* ParentResolveParams) {
+static FStructuralWallAnchor
+AnchorFromStructureNeighbor(AFGBuildable* Neighbor, UWorld* World,
+                            const FStructuralLightweightIndex& LightweightIndex,
+                            const FStructuralOutletParentResolveParams* ParentResolveParams) {
   if (!IsValid(Neighbor)) {
     return {};
   }
@@ -72,10 +73,10 @@ static FStructuralWallAnchor AnchorFromStructureNeighbor(
   return {};
 }
 
-static FStructuralSwitchParentResolveResult TryResolveFromWiredPorts(
-    AFGBuildableCircuitSwitch* Switch, UWorld* World,
-    const FStructuralLightweightIndex& LightweightIndex,
-    const FStructuralOutletParentResolveParams* ParentResolveParams) {
+static FStructuralSwitchParentResolveResult
+TryResolveFromWiredPorts(AFGBuildableCircuitSwitch* Switch, UWorld* World,
+                         const FStructuralLightweightIndex& LightweightIndex,
+                         const FStructuralOutletParentResolveParams* ParentResolveParams) {
   FStructuralSwitchParentResolveResult Result;
 
   for (int32 PortIndex = 0; PortIndex < 2; ++PortIndex) {

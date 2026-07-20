@@ -109,8 +109,8 @@ void FStructuralPowerLightProcessor::Process(FStructuralPowerContext& Ctx,
   int32 PanelDownstreamFed = -1;
 
   if (bPanelFed) {
-    AFGBuildableLightsControlPanel* Panel = FStructuralPanelAttach::FindPanelForDownstreamLight(
-        Ctx.Session(), Root, ChannelKey);
+    AFGBuildableLightsControlPanel* Panel =
+        FStructuralPanelAttach::FindPanelForDownstreamLight(Ctx.Session(), Root, ChannelKey);
     if (IsValid(Panel)) {
       bAttached = FStructuralPanelAttach::TryLinkLightToControlBus(Ctx.Session(), Panel, Light);
 
@@ -120,10 +120,11 @@ void FStructuralPowerLightProcessor::Process(FStructuralPowerContext& Ctx,
             FStructuralPanelPortResolver::AsPowerConnection(Ports.Input);
         UFGPowerConnectionComponent* Downstream =
             FStructuralPanelPortResolver::AsPowerConnection(Ports.Downstream);
-        PanelSupplyReady = IsValid(InputPower) &&
-                                   FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower)
-                               ? 1
-                               : 0;
+        PanelSupplyReady =
+            IsValid(InputPower) &&
+                    FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(InputPower)
+                ? 1
+                : 0;
         PanelDownstreamFed =
             IsValid(Downstream) &&
                     FStructuralCircuitPromotionUtil::ConnectorSuppliesPower(Downstream)

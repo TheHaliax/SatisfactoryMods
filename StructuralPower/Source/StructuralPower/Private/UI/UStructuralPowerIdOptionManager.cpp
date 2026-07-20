@@ -321,8 +321,8 @@ void UStructuralPowerIdOptionManager::GetAllUserSettingsMap(
   OutUserSettings = Settings;
 }
 
-UFGUserSettingApplyType* UStructuralPowerIdOptionManager::FindUserSetting(
-    const FString& SettingId) const {
+UFGUserSettingApplyType*
+UStructuralPowerIdOptionManager::FindUserSetting(const FString& SettingId) const {
   if (const TObjectPtr<UFGUserSettingApplyType>* Found = Settings.Find(SettingId)) {
     return Found->Get();
   }
@@ -330,13 +330,14 @@ UFGUserSettingApplyType* UStructuralPowerIdOptionManager::FindUserSetting(
   return nullptr;
 }
 
-IFGOptionInterface* UStructuralPowerIdOptionManager::GetPrimaryOptionInterface(
-    UWorld* World) const {
+IFGOptionInterface*
+UStructuralPowerIdOptionManager::GetPrimaryOptionInterface(UWorld* World) const {
   return const_cast<UStructuralPowerIdOptionManager*>(this);
 }
 
-TArray<FUserSettingCategoryMapping> UStructuralPowerIdOptionManager::GetCategorizedSettingWidgets(
-    UObject* WorldContext, UUserWidget* OwningWidget) {
+TArray<FUserSettingCategoryMapping>
+UStructuralPowerIdOptionManager::GetCategorizedSettingWidgets(UObject* WorldContext,
+                                                              UUserWidget* OwningWidget) {
   TMap<FString, TObjectPtr<UFGUserSettingApplyType>> SettingsMap;
   GetAllUserSettingsMap(SettingsMap);
 

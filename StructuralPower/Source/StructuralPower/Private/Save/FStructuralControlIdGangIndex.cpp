@@ -44,8 +44,9 @@ void FStructuralControlIdGangIndex::RemoveNode(const FStructuralNodeId& NodeId) 
   NodeToGangKey.Remove(NodeId);
 }
 
-TArray<FStructuralNodeId> FStructuralControlIdGangIndex::GetGangMembers(
-    const FStructuralComponentKey& ComponentKey, const FName ControlId) const {
+TArray<FStructuralNodeId>
+FStructuralControlIdGangIndex::GetGangMembers(const FStructuralComponentKey& ComponentKey,
+                                              const FName ControlId) const {
   const FStructuralControlGangKey GangKey{EStructuralControlGangScope::Site, ComponentKey,
                                           ControlId};
   if (const TArray<FStructuralNodeId>* Found = GangsByControlId.Find(GangKey)) {
@@ -55,8 +56,8 @@ TArray<FStructuralNodeId> FStructuralControlIdGangIndex::GetGangMembers(
   return {};
 }
 
-TArray<FStructuralNodeId> FStructuralControlIdGangIndex::GetGlobalGangMembers(
-    const FName ControlId) const {
+TArray<FStructuralNodeId>
+FStructuralControlIdGangIndex::GetGlobalGangMembers(const FName ControlId) const {
   const FStructuralControlGangKey GangKey{EStructuralControlGangScope::Global,
                                           FStructuralComponentKey{}, ControlId};
   if (const TArray<FStructuralNodeId>* Found = GangsByControlId.Find(GangKey)) {

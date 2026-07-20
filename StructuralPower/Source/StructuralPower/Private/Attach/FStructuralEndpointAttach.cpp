@@ -23,8 +23,9 @@
 #include "Processors/FStructuralPowerSwitchProcessor.h"
 #include "Rules/FStructuralEligibilityRules.h"
 
-FStructuralBridgeAttachOutcome FStructuralEndpointAttach::AttachOnPlace(
-    FStructuralPowerContext& Ctx, const FStructuralBridgeAttachRequest& Request) {
+FStructuralBridgeAttachOutcome
+FStructuralEndpointAttach::AttachOnPlace(FStructuralPowerContext& Ctx,
+                                         const FStructuralBridgeAttachRequest& Request) {
   return FStructuralBridgeAttach::AttachOnPlace(Ctx, Request);
 }
 
@@ -97,24 +98,24 @@ bool FStructuralEndpointAttach::RunStrategy(FStructuralPowerContext& Ctx, AFGBui
                                             const EStructuralAttachStrategy Strategy,
                                             const bool bLocalPromoteOnly) {
   switch (Strategy) {
-    case EStructuralAttachStrategy::Bridge: {
-      if (AFGBuildablePowerPole* Pole = FStructuralPowerBuildableCasts::AsPole(Host)) {
-        FStructuralPowerPoleProcessor::Process(Ctx, Pole);
-        return true;
-      }
-      if (AFGBuildablePowerStorage* Storage = FStructuralPowerBuildableCasts::AsStorage(Host)) {
-        FStructuralPowerStorageProcessor::Process(Ctx, Storage);
-        return true;
-      }
-      return false;
+  case EStructuralAttachStrategy::Bridge: {
+    if (AFGBuildablePowerPole* Pole = FStructuralPowerBuildableCasts::AsPole(Host)) {
+      FStructuralPowerPoleProcessor::Process(Ctx, Pole);
+      return true;
     }
-    case EStructuralAttachStrategy::ToggleBridge:
-      return AttachToggleBridge(Ctx, Host);
-    case EStructuralAttachStrategy::Consumer:
-      return AttachConsumer(Ctx, Host, bLocalPromoteOnly);
-    case EStructuralAttachStrategy::Router:
-      return AttachRouter(Ctx, Host, bLocalPromoteOnly);
-    default:
-      return false;
+    if (AFGBuildablePowerStorage* Storage = FStructuralPowerBuildableCasts::AsStorage(Host)) {
+      FStructuralPowerStorageProcessor::Process(Ctx, Storage);
+      return true;
+    }
+    return false;
+  }
+  case EStructuralAttachStrategy::ToggleBridge:
+    return AttachToggleBridge(Ctx, Host);
+  case EStructuralAttachStrategy::Consumer:
+    return AttachConsumer(Ctx, Host, bLocalPromoteOnly);
+  case EStructuralAttachStrategy::Router:
+    return AttachRouter(Ctx, Host, bLocalPromoteOnly);
+  default:
+    return false;
   }
 }

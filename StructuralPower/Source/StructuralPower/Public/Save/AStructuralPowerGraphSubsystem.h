@@ -76,8 +76,8 @@ class STRUCTURALPOWER_API AStructuralPowerGraphSubsystem : public AInfo, public 
   static UFGStructuralPowerConnectionComponent* FindBusConnector(const AFGBuildable* Host);
   static UFGStructuralPowerConnectionComponent* FindPanelControlBus(const AFGBuildable* Host);
   static UFGStructuralPowerConnectionComponent* FindSwitchControlBus(const AFGBuildable* Host);
-  static UFGStructuralPowerConnectionComponent* FindOutletBusConnector(
-      const AFGBuildablePowerPole* Outlet);
+  static UFGStructuralPowerConnectionComponent*
+  FindOutletBusConnector(const AFGBuildablePowerPole* Outlet);
   static void StripPersistedEndpointModComponents(AFGBuildable* Host);
 
   void OnWorldReady(UWorld* World);
@@ -112,12 +112,12 @@ class STRUCTURALPOWER_API AStructuralPowerGraphSubsystem : public AInfo, public 
   void RunDiagnostics() const;
 
   FStructuralWallAnchor ResolveOutletAnchor(AFGBuildable* Outlet) const;
-  FStructuralComponentResolveResult ResolveStructuralComponentAt(
-      const FVector& WorldLoc, float QueryRadiusCm,
-      TSubclassOf<AFGBuildable> ClassHint = nullptr) const;
+  FStructuralComponentResolveResult
+  ResolveStructuralComponentAt(const FVector& WorldLoc, float QueryRadiusCm,
+                               TSubclassOf<AFGBuildable> ClassHint = nullptr) const;
 
-  UFGCircuitConnectionComponent* GetComponentSourceConnector(
-      int32 ComponentRoot, const AFGBuildable* ExcludeHost = nullptr);
+  UFGCircuitConnectionComponent*
+  GetComponentSourceConnector(int32 ComponentRoot, const AFGBuildable* ExcludeHost = nullptr);
 
   UFGPowerConnectionComponent* ResolveSubnetFeedConnector(int32 ComponentRoot,
                                                           const FStructuralChannelKey& DeviceKey);
@@ -220,10 +220,10 @@ class STRUCTURALPOWER_API AStructuralPowerGraphSubsystem : public AInfo, public 
   bool IsPanelSupplyLinkedAndLive(UFGPowerConnectionComponent* InputPower,
                                   UFGPowerConnectionComponent* Feed) const;
   void PromoteStructuralMeshFrom(UFGPowerConnectionComponent* Seed);
-  UFGStructuralPowerConnectionComponent* GetOrCreatePanelControlBus(
-      AFGBuildableLightsControlPanel* Panel);
-  UFGStructuralPowerConnectionComponent* GetOrCreateSwitchControlBus(
-      AFGBuildableCircuitSwitch* Switch);
+  UFGStructuralPowerConnectionComponent*
+  GetOrCreatePanelControlBus(AFGBuildableLightsControlPanel* Panel);
+  UFGStructuralPowerConnectionComponent*
+  GetOrCreateSwitchControlBus(AFGBuildableCircuitSwitch* Switch);
 
   virtual void PreSaveGame_Implementation(int32 saveVersion, int32 gameVersion) override {
   }
@@ -252,8 +252,8 @@ class STRUCTURALPOWER_API AStructuralPowerGraphSubsystem : public AInfo, public 
   void ProcessLightweightStructure(const FStructuralLightweightKey& Key);
 
   UFGStructuralPowerConnectionComponent* GetOrCreateBusConnector(AFGBuildable* Host);
-  UFGStructuralPowerConnectionComponent* GetOrCreateOutletBusConnector(
-      AFGBuildablePowerPole* Outlet);
+  UFGStructuralPowerConnectionComponent*
+  GetOrCreateOutletBusConnector(AFGBuildablePowerPole* Outlet);
   int32 ResolveEndpointComponentRoot(AFGBuildable* Endpoint, const FStructuralWallAnchor& Anchor,
                                      FStructuralNodeId& OutParentId);
   int32 ResolvePoleComponentRoot(AFGBuildablePowerPole* Pole, const FStructuralWallAnchor& Anchor,
@@ -303,8 +303,9 @@ class STRUCTURALPOWER_API AStructuralPowerGraphSubsystem : public AInfo, public 
   void EnsurePanelListener(AFGBuildableLightsControlPanel* Panel);
   bool ShouldEndpointParticipateInRestitch(AFGBuildable* Host, EStructuralEndpointKind Kind);
   bool ShouldMeshEndpoints(AFGBuildable* HostA, AFGBuildable* HostB, int32 ComponentRoot) const;
-  UFGStructuralPowerConnectionComponent* FindPoweredHiddenReachable(
-      UFGStructuralPowerConnectionComponent* StartHidden, int32 MaxHiddenHops = 512) const;
+  UFGStructuralPowerConnectionComponent*
+  FindPoweredHiddenReachable(UFGStructuralPowerConnectionComponent* StartHidden,
+                             int32 MaxHiddenHops = 512) const;
 
   void RegisterBuildableActor(AFGBuildable* Buildable);
   void UnregisterBuildableActor(const FStructuralNodeId& NodeId);

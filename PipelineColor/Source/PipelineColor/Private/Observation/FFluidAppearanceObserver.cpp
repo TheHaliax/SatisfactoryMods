@@ -44,7 +44,7 @@ void EnqueueNetworkFirstIntegrant(AFGPipeNetwork* Network) {
     EnqueueIntegrantActor(First);
   }
 }
-}  // namespace
+} // namespace
 
 void FFluidAppearanceObserver::EnqueueFromWorld(UWorld* World, AFGBuildable* Buildable) {
   if (UPCWorldSubsystem* Sys = UPCWorldSubsystem::Get(World)) {

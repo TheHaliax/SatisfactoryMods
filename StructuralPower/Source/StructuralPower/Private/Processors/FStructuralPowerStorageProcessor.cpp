@@ -44,7 +44,7 @@ void EnsureStorageListener(AStructuralPowerGraphSubsystem& Graph,
   Listener->RegisterComponent();
   Listener->BindSubsystem(&Graph, Storage);
 }
-}  // namespace
+} // namespace
 
 void FStructuralPowerStorageProcessor::TearDown(FStructuralPowerContext& Ctx,
                                                 AFGBuildablePowerStorage* Storage) {
