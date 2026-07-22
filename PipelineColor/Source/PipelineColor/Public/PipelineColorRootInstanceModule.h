@@ -12,6 +12,7 @@ class AFGRecipeManager;
 class UFGCustomizerCategory;
 class UFGCustomizerSubCategory;
 class UFGFactoryCustomizationCollection;
+class UFGFactoryCustomizationDescriptor_PaintFinish;
 class UFGFactoryCustomizationDescriptor_Swatch;
 class UFGRecipe;
 class UWorld;
@@ -27,16 +28,36 @@ class PIPELINECOLOR_API UPipelineColorRootInstanceModule : public UGameInstanceM
 
   static void UnregisterGlobalDelegates();
 
+  static UPipelineColorRootInstanceModule* Find(UWorld* World);
+
   static void
   InjectSwatchIntoCollection(UFGFactoryCustomizationCollection* Collection,
                              TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
 
   static void
-  ApplyDefaultOrganization(TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
+  ApplyDefaultOrganization(UPipelineColorRootInstanceModule* Root,
+                           TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
 
-  static TSubclassOf<UFGCustomizerCategory> GetOrCreatePipelineColorCategory();
-  static TSubclassOf<UFGCustomizerSubCategory> GetOrCreatePipelineColorSubCategory();
+  static TSubclassOf<UFGCustomizerCategory>
+  GetOrCreatePipelineColorCategory(UPipelineColorRootInstanceModule* Root);
+  static TSubclassOf<UFGCustomizerSubCategory>
+  GetOrCreatePipelineColorSubCategory(UPipelineColorRootInstanceModule* Root);
   static void UnlockPcSwatchesViaUnlockSubsystem(UWorld* World);
+
+  /** ClassGen metallic roughness flyweights — GC roots (never stamp CDOs at apply). */
+  UPROPERTY()
+  TArray<TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish>> MetallicFinishBuckets;
+
+  UPROPERTY()
+  TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> MetallicNeutralFinish;
+
+  UPROPERTY()
+  TSubclassOf<UFGCustomizerCategory> CachedCategory;
+
+  UPROPERTY()
+  TSubclassOf<UFGCustomizerSubCategory> CachedSubCategory;
+
+  bool bMetallicFinishPoolReady = false;
 
  private:
   static void HandlePostLoadMap(UWorld* World);
@@ -44,6 +65,4 @@ class PIPELINECOLOR_API UPipelineColorRootInstanceModule : public UGameInstanceM
   static void CollectPcRecipes(TArray<TSubclassOf<UFGRecipe>>& Out);
 
   static FDelegateHandle PostLoadMapHandle;
-  static TSubclassOf<UFGCustomizerCategory> CachedCategory;
-  static TSubclassOf<UFGCustomizerSubCategory> CachedSubCategory;
 };

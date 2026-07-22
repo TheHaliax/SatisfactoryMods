@@ -4,6 +4,7 @@
 #include "PipelineColorRootInstanceModule.h"
 
 #include "Appearance/FPCFluidAppearanceCatalog.h"
+#include "Appearance/FPCMetallicFinishPool.h"
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildablePipeline.h"
 #include "Buildables/FGBuildablePipelineAttachment.h"
@@ -13,6 +14,7 @@
 #include "Content/FPipeFluidKeyResolver.h"
 #include "Content/FPipeSupportTouch.h"
 #include "Core/FPCWorldGate.h"
+#include "Engine/GameInstance.h"
 #include "Engine/Texture2D.h"
 #include "FGBuildableSubsystem.h"
 #include "FGCategory.h"
@@ -23,6 +25,7 @@
 #include "FGRecipe.h"
 #include "FGRecipeManager.h"
 #include "FGUnlockSubsystem.h"
+#include "Module/GameInstanceModuleManager.h"
 #include "Network/UPCChatRCO.h"
 #include "Observation/FFluidAppearanceObserver.h"
 #include "Patching/NativeHookManager.h"
@@ -40,12 +43,25 @@
 #include "Unlocks/FGUnlockRecipe.h"
 
 FDelegateHandle UPipelineColorRootInstanceModule::PostLoadMapHandle;
-TSubclassOf<UFGCustomizerCategory> UPipelineColorRootInstanceModule::CachedCategory;
-TSubclassOf<UFGCustomizerSubCategory> UPipelineColorRootInstanceModule::CachedSubCategory;
 
 UPipelineColorRootInstanceModule::UPipelineColorRootInstanceModule() {
   bRootModule = true;
   RemoteCallObjects.Add(UPCChatRCO::StaticClass());
+}
+
+UPipelineColorRootInstanceModule* UPipelineColorRootInstanceModule::Find(UWorld* World) {
+  if (!IsValid(World)) {
+    return nullptr;
+  }
+  UGameInstance* GI = World->GetGameInstance();
+  if (!GI) {
+    return nullptr;
+  }
+  UGameInstanceModuleManager* Mgr = GI->GetSubsystem<UGameInstanceModuleManager>();
+  if (!Mgr) {
+    return nullptr;
+  }
+  return Cast<UPipelineColorRootInstanceModule>(Mgr->FindModule(FName(TEXT("PipelineColor"))));
 }
 
 void UPipelineColorRootInstanceModule::UnregisterGlobalDelegates() {
@@ -77,9 +93,13 @@ void UPipelineColorRootInstanceModule::CollectPcRecipes(TArray<TSubclassOf<UFGRe
 }
 
 TSubclassOf<UFGCustomizerCategory>
-UPipelineColorRootInstanceModule::GetOrCreatePipelineColorCategory() {
-  if (CachedCategory) {
-    return CachedCategory;
+UPipelineColorRootInstanceModule::GetOrCreatePipelineColorCategory(
+    UPipelineColorRootInstanceModule* Root) {
+  if (!IsValid(Root)) {
+    return nullptr;
+  }
+  if (Root->CachedCategory) {
+    return Root->CachedCategory;
   }
 
   UClass* Generated = FClassGenerator::GenerateSimpleClass(TEXT("/PipelineColor"),
@@ -109,16 +129,20 @@ UPipelineColorRootInstanceModule::GetOrCreatePipelineColorCategory() {
     }
   }
 
-  CachedCategory = Generated;
+  Root->CachedCategory = Generated;
   UE_LOG(LogPipelineColor, Log, TEXT("%s ClassGen top category %s"), PIPELINECOLOR_LOG_PREFIX,
          *GetNameSafe(Generated));
-  return CachedCategory;
+  return Root->CachedCategory;
 }
 
 TSubclassOf<UFGCustomizerSubCategory>
-UPipelineColorRootInstanceModule::GetOrCreatePipelineColorSubCategory() {
-  if (CachedSubCategory) {
-    return CachedSubCategory;
+UPipelineColorRootInstanceModule::GetOrCreatePipelineColorSubCategory(
+    UPipelineColorRootInstanceModule* Root) {
+  if (!IsValid(Root)) {
+    return UPCSwatchSubCategory::StaticClass();
+  }
+  if (Root->CachedSubCategory) {
+    return Root->CachedSubCategory;
   }
 
   UClass* Generated = FClassGenerator::GenerateSimpleClass(
@@ -126,8 +150,8 @@ UPipelineColorRootInstanceModule::GetOrCreatePipelineColorSubCategory() {
   if (!Generated) {
     UE_LOG(LogPipelineColor, Error, TEXT("%s ClassGenerator failed for PipelineColor subcategory"),
            PIPELINECOLOR_LOG_PREFIX);
-    CachedSubCategory = UPCSwatchSubCategory::StaticClass();
-    return CachedSubCategory;
+    Root->CachedSubCategory = UPCSwatchSubCategory::StaticClass();
+    return Root->CachedSubCategory;
   }
 
   if (UFGCategory* CDO = Cast<UFGCategory>(Generated->GetDefaultObject())) {
@@ -135,10 +159,10 @@ UPipelineColorRootInstanceModule::GetOrCreatePipelineColorSubCategory() {
     CDO->mMenuPriority = 0.f;
   }
 
-  CachedSubCategory = Generated;
+  Root->CachedSubCategory = Generated;
   UE_LOG(LogPipelineColor, Log, TEXT("%s ClassGen subcategory %s"), PIPELINECOLOR_LOG_PREFIX,
          *GetNameSafe(Generated));
-  return CachedSubCategory;
+  return Root->CachedSubCategory;
 }
 
 void UPipelineColorRootInstanceModule::InjectSwatchIntoCollection(
@@ -156,6 +180,7 @@ void UPipelineColorRootInstanceModule::InjectSwatchIntoCollection(
 }
 
 void UPipelineColorRootInstanceModule::ApplyDefaultOrganization(
+    UPipelineColorRootInstanceModule* Root,
     TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch) {
   if (!Swatch) {
     return;
@@ -167,7 +192,7 @@ void UPipelineColorRootInstanceModule::ApplyDefaultOrganization(
     return;
   }
 
-  if (TSubclassOf<UFGCustomizerCategory> Category = GetOrCreatePipelineColorCategory()) {
+  if (TSubclassOf<UFGCustomizerCategory> Category = GetOrCreatePipelineColorCategory(Root)) {
     CDO->mCategory = Category;
   }
 
@@ -186,7 +211,7 @@ void UPipelineColorRootInstanceModule::ApplyDefaultOrganization(
   }
 
   CDO->mSubCategories.Reset();
-  CDO->mSubCategories.Add(GetOrCreatePipelineColorSubCategory());
+  CDO->mSubCategories.Add(GetOrCreatePipelineColorSubCategory(Root));
   CDO->mMenuPriority = 10.f;
 }
 
@@ -291,8 +316,6 @@ void UPipelineColorRootInstanceModule::HandlePostLoadMap(UWorld* World) {
     return;
   }
 
-  FPCFluidAppearanceCatalog::Get().EnsureLoaded();
-
   World->GetTimerManager().SetTimerForNextTick(
       FTimerDelegate::CreateLambda([WorldWeak = TWeakObjectPtr<UWorld>(World)]() {
         UWorld* WorldPtr = WorldWeak.Get();
@@ -300,14 +323,22 @@ void UPipelineColorRootInstanceModule::HandlePostLoadMap(UWorld* World) {
           return;
         }
 
+        // Clients never spawn/seed/CDO-inject. Metallic pool is the one ClassGen
+        // exception — server paints replicate these classes by path, so the client
+        // must generate the same names or PaintFinish resolves null (default look
+        // on remote clients). Mod-owned CDOs only; vanilla untouched.
+        if (WorldPtr->GetNetMode() == NM_Client) {
+          FPCMetallicFinishPool::EnsureCreated(Find(WorldPtr));
+          if (UPCWorldSubsystem* Sys = UPCWorldSubsystem::Get(WorldPtr)) {
+            Sys->BindSwatchStore(WorldPtr);
+          }
+          return;
+        }
+
         FPCSwatchPublisher::PublishForWorld(WorldPtr);
 
         if (UPCWorldSubsystem* Sys = UPCWorldSubsystem::Get(WorldPtr)) {
           Sys->BindSwatchStore(WorldPtr);
-        }
-
-        if (WorldPtr->GetNetMode() == NM_Client) {
-          return;
         }
 
         FPipelineColorSmlChatCommands::RegisterWithWorld(WorldPtr);
@@ -322,7 +353,7 @@ void UPipelineColorRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase Ph
   if (Phase == ELifecyclePhase::POST_INITIALIZATION) {
     FPCPipelineColorModConfig::LoadRuntimeConfig();
 #if !WITH_EDITOR
-    UE_LOG(LogPipelineColor, Display, TEXT("PipelineColor v1.1.0 — fluid-driven pipe swatches"));
+    UE_LOG(LogPipelineColor, Display, TEXT("PipelineColor v1.1.1 — fluid-driven pipe swatches"));
 #endif
   }
 

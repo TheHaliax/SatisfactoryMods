@@ -1,9 +1,11 @@
 # Changelog
 
-## Unreleased
+## 3.1.1 — 2026-07-22
 
-- **Id panel / input** — stop stomping vanilla Q/F when the Id panel never owned input
-  (ownership latch on modal acquire/release; no GameOnly / flush on every interact close)
+- **SCIM-safe save format** — Id-panel defaults and overrides persist as flat records
+  (string class paths); legacy struct-keyed maps load once and save empty. Fixes
+  satisfactory-calculator.com "readStructProperty" upload failure on saves containing
+  StructuralPower. Existing saves migrate on first load + save.
 
 ## 3.1.0 — 2026-07-16
 

@@ -18,35 +18,18 @@ constexpr float TouchRadiusUu = 50.f;
 TMap<TWeakObjectPtr<AFGBuildablePipeline>, TArray<TWeakObjectPtr<AFGBuildable>>> GPipeToSupports;
 TMap<TWeakObjectPtr<AFGBuildable>, TWeakObjectPtr<AFGBuildablePipeline>> GSupportToPipe;
 
-TSubclassOf<AFGBuildable> LoadFluidSupportParent(const TCHAR* SoftPath) {
-  const FSoftClassPath Path(SoftPath);
-  return Path.TryLoadClass<AFGBuildable>();
-}
-
-const TArray<TSubclassOf<AFGBuildable>>& FluidSupportParents() {
-  static TArray<TSubclassOf<AFGBuildable>> Parents;
-  static bool bReady = false;
-  if (!bReady) {
-    bReady = true;
-    const TSubclassOf<AFGBuildable> Loaded[] = {
-        LoadFluidSupportParent(TEXT("/Game/FactoryGame/Buildable/Factory/PipelineSupport/"
-                                    "Build_PipelineSupport.Build_PipelineSupport_C")),
-        LoadFluidSupportParent(TEXT("/Game/FactoryGame/Buildable/Factory/PipelineSupport/"
-                                    "Build_PipeSupportStackable.Build_PipeSupportStackable_C")),
-        LoadFluidSupportParent(TEXT("/Game/FactoryGame/Buildable/Factory/PipelineSupportWall/"
-                                    "Build_PipelineSupportWall.Build_PipelineSupportWall_C")),
-        LoadFluidSupportParent(
-            TEXT("/Game/FactoryGame/Buildable/Factory/PipelineSupportWallHole/"
-                 "Build_PipelineSupportWallHole.Build_PipelineSupportWallHole_C")),
-    };
-    for (const TSubclassOf<AFGBuildable>& Cls : Loaded) {
-      if (Cls) {
-        Parents.Add(Cls);
-      }
-    }
-  }
-  return Parents;
-}
+// Path literals only. Never cache BP UClass* in statics — no GC root; menu → reload
+// leaves dangling class (client AV in IsA during AddBuildable BeginPlay storm).
+const TCHAR* kFluidSupportParentPaths[] = {
+    TEXT("/Game/FactoryGame/Buildable/Factory/PipelineSupport/"
+         "Build_PipelineSupport.Build_PipelineSupport_C"),
+    TEXT("/Game/FactoryGame/Buildable/Factory/PipelineSupport/"
+         "Build_PipeSupportStackable.Build_PipeSupportStackable_C"),
+    TEXT("/Game/FactoryGame/Buildable/Factory/PipelineSupportWall/"
+         "Build_PipelineSupportWall.Build_PipelineSupportWall_C"),
+    TEXT("/Game/FactoryGame/Buildable/Factory/PipelineSupportWallHole/"
+         "Build_PipelineSupportWallHole.Build_PipelineSupportWallHole_C"),
+};
 
 void AddUniqueSupport(TArray<AFGBuildable*>& Out, AFGBuildable* Candidate) {
   if (!IsValid(Candidate)) {
@@ -215,7 +198,10 @@ bool IsPipeSupport(const AFGBuildable* Buildable) {
     return false;
   }
 
-  for (const TSubclassOf<AFGBuildable>& Parent : FluidSupportParents()) {
+  for (const TCHAR* ParentPath : kFluidSupportParentPaths) {
+    // ResolveClass = FindObject, no load. Class absent from memory → no such support
+    // exists in world → IsA would be false anyway.
+    UClass* Parent = FSoftClassPath(ParentPath).ResolveClass();
     if (Parent && Buildable->IsA(Parent)) {
       return true;
     }

@@ -24,8 +24,7 @@ class PIPELINECOLOR_API APCSwatchStoreSubsystem : public AInfo, public IFGSaveIn
   static APCSwatchStoreSubsystem* Find(UWorld* World);
   static APCSwatchStoreSubsystem* GetOrCreate(UWorld* World);
 
-  virtual void PreSaveGame_Implementation(int32 SaveVersion, int32 GameVersion) override {
-  }
+  virtual void PreSaveGame_Implementation(int32 SaveVersion, int32 GameVersion) override;
   virtual void PostSaveGame_Implementation(int32 SaveVersion, int32 GameVersion) override {
   }
   virtual void PostLoadGame_Implementation(int32 SaveVersion, int32 GameVersion) override;
@@ -60,6 +59,10 @@ class PIPELINECOLOR_API APCSwatchStoreSubsystem : public AInfo, public IFGSaveIn
 
   UPROPERTY(SaveGame, ReplicatedUsing = OnRep_Entries)
   TArray<FPCSwatchEntry> Entries;
+
+  // 2 = PaintFinishPath (SCIM-safe). Missing/0/1 → fill paths on PostLoadGame.
+  UPROPERTY(SaveGame)
+  int32 StoreSchema = 0;
 
  protected:
   UFUNCTION()

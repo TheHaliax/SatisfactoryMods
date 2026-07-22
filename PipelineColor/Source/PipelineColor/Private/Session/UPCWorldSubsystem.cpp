@@ -5,6 +5,7 @@
 
 #include "Appearance/FPCFluidAppearanceCatalog.h"
 #include "Appearance/FPCMetallicColorCorrection.h"
+#include "Appearance/FPCMetallicFinishPool.h"
 #include "Appearance/FPCMetallicFlag.h"
 #include "Application/FCustomizationApplicator.h"
 #include "Buildables/FGBuildable.h"
@@ -18,8 +19,8 @@
 #include "FGBuildableSubsystem.h"
 #include "FGFactoryColoringTypes.h"
 #include "PipelineColorLog.h"
+#include "PipelineColorRootInstanceModule.h"
 #include "Store/APCSwatchStoreSubsystem.h"
-#include "Swatches/FPCSwatchPublisher.h"
 #include "Swatches/UPCFinishDescs.h"
 #include "Target/FBuildableColorTarget.h"
 
@@ -113,11 +114,9 @@ void UPCWorldSubsystem::ApplyStoreOverlay(FPCAppearanceSpec& Spec) const {
 
   Spec.PrimaryColor = Entry.Primary;
   Spec.SecondaryColor = Entry.Secondary;
-  if (Entry.PaintFinish.IsValid()) {
-    if (TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> Loaded =
-            Entry.PaintFinish.TryLoadClass<UFGFactoryCustomizationDescriptor_PaintFinish>()) {
-      Spec.PaintFinish = Loaded;
-    }
+  if (TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> Loaded =
+          Entry.GetPaintFinishClass()) {
+    Spec.PaintFinish = Loaded;
   }
 }
 
@@ -140,14 +139,14 @@ AFGBuildablePipelineFlowIndicator* ResolveFlowIndicator(AFGBuildablePipeline* Pi
   return Cast<AFGBuildablePipelineFlowIndicator>(Prop->GetObjectPropertyValue_InContainer(Pipe));
 }
 
-void FinalizePaintFinishSpec(FPCAppearanceSpec& Spec) {
+void FinalizePaintFinishSpec(FPCAppearanceSpec& Spec, UWorld* World) {
   const bool bMetallic = FPCPipelineColorModConfig::IsMetallicForKey(Spec.CatalogKey);
 
   if (!bMetallic) {
     if (Spec.CatalogKey == FName(TEXT("Neutral"))) {
-      Spec.PaintFinish = FPCFluidAppearanceCatalog::Get().GetFinishClass(EPCPaintFinishKind::Matte);
+      Spec.PaintFinish = FPCMetallicFinishPool::GetMatteNeutral();
       Spec.RoughnessValue = FPCMetallicColorCorrection::NeutralMatteRoughness;
-      Spec.bOverrideRoughness = true;
+      Spec.bOverrideRoughness = false;
       return;
     }
 
@@ -159,8 +158,10 @@ void FinalizePaintFinishSpec(FPCAppearanceSpec& Spec) {
     return;
   }
 
-  Spec.PaintFinish = UPCFinish_MetallicColor::StaticClass();
   FPCMetallicColorCorrection::Apply(Spec);
+  UPipelineColorRootInstanceModule* Root = UPipelineColorRootInstanceModule::Find(World);
+  Spec.PaintFinish = FPCMetallicFinishPool::Resolve(Root, Spec.RoughnessValue);
+  Spec.bOverrideRoughness = false;
 }
 
 void PaintSupportsMatchingPipe(AFGBuildablePipeline* Pipe, const FPCAppearanceSpec& Spec,
@@ -214,7 +215,7 @@ void UPCWorldSubsystem::OnWorldReady(UWorld* World) {
 
   FPCFluidAppearanceCatalog::Get().EnsureLoaded();
   BindSwatchStore(World);
-  FPCSwatchPublisher::PublishForWorld(World);
+  // PublishForWorld runs once from HandlePostLoadMap (next tick) — avoid double seed.
   ScanWorld();
 
   UE_LOG(LogPipelineColor, Log, TEXT("%s OnWorldReady"), PIPELINECOLOR_LOG_PREFIX);
@@ -259,7 +260,7 @@ void UPCWorldSubsystem::ProcessNow(AFGBuildable* Buildable) {
   FPCFluidAppearanceCatalog::Get().EnsureLoaded();
   FPCFluidAppearanceCatalog::Get().Resolve(Fluid, bEmpty, Spec);
   ApplyStoreOverlay(Spec);
-  FinalizePaintFinishSpec(Spec);
+  FinalizePaintFinishSpec(Spec, GetWorld());
 
   const bool bSpecUnchanged = [&]() {
     if (const FPCAppearanceSpec* Prev = LastApplied.Find(Buildable)) {

@@ -1,6 +1,6 @@
 # PipelineColor
 
-**Version 1.1.0** · Satisfactory 1.2 (≥491125) · SML ^3.12.0
+**Version 1.1.1** · Satisfactory 1.2 (≥491125) · SML ^3.12.0
 
 Auto-colors pipelines, junctions, inline pumps, and matching pipe supports from the fluid currently in the network. Ships Customizer **PipelineColor** swatches, a SaveGame-backed swatch store, and metallic finishes for gases by default.
 
@@ -44,7 +44,7 @@ No SML Mods menu. Edit `Configs/PipelineColor.cfg` on the host, use console `Pip
 
 ## Multiplayer
 
-**Required on remote** — all players need the same mod version (`^1.1.0`). Authority applies colors and config. See [Documentation/multiplayer.md](Documentation/multiplayer.md).
+**Required on remote** — all players need the same mod version (`^1.1.1`). Authority applies colors and config. See [Documentation/multiplayer.md](Documentation/multiplayer.md).
 
 ## Screenshots
 

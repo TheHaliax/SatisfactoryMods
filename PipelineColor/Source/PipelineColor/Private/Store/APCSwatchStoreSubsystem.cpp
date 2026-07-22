@@ -15,6 +15,46 @@
 #include "Swatches/UPCSwatchDescs.h"
 #include "UObject/SoftObjectPath.h"
 
+namespace {
+constexpr int32 GStoreSchemaPaintFinishPath = 2;
+
+EPCPaintFinishKind FinishKindForKey(FName Key) {
+  if (Key == FName(TEXT("Neutral"))) {
+    return EPCPaintFinishKind::Matte;
+  }
+  for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows()) {
+    if (Row.Stem == Key) {
+      return Row.Finish;
+    }
+  }
+  return EPCPaintFinishKind::Default;
+}
+
+void FillEntryFromSpec(FPCSwatchEntry& Entry, FName Key, const FPCAppearanceSpec& Spec) {
+  Entry.Key = Key;
+  Entry.Primary = Spec.PrimaryColor;
+  Entry.Secondary = Spec.SecondaryColor;
+  // Path string only — Spec.PaintFinish may be a dangling cached UClass*.
+  Entry.PaintFinishPath = FPCFluidAppearanceCatalog::GetFinishPath(FinishKindForKey(Key));
+}
+
+void FillEmptyPaintFinishPaths(APCSwatchStoreSubsystem& Store, FPCFluidAppearanceCatalog& Catalog) {
+  bool bMigrated = false;
+  for (FPCSwatchEntry& Entry : Store.Entries) {
+    if (!Entry.PaintFinishPath.IsEmpty()) {
+      continue;
+    }
+    Entry.PaintFinishPath = FPCFluidAppearanceCatalog::GetFinishPath(FinishKindForKey(Entry.Key));
+    bMigrated = true;
+  }
+
+  if (bMigrated) {
+    UE_LOG(LogPipelineColor, Log, TEXT("%s store migrated to PaintFinishPath"),
+           PIPELINECOLOR_LOG_PREFIX);
+  }
+}
+} // namespace
+
 APCSwatchStoreSubsystem::APCSwatchStoreSubsystem() {
   PrimaryActorTick.bCanEverTick = false;
   bReplicates = true;
@@ -27,9 +67,24 @@ void APCSwatchStoreSubsystem::GetLifetimeReplicatedProps(
   DOREPLIFETIME(APCSwatchStoreSubsystem, Entries);
 }
 
+void APCSwatchStoreSubsystem::PreSaveGame_Implementation(int32 /*SaveVersion*/,
+                                                         int32 /*GameVersion*/) {
+  StoreSchema = GStoreSchemaPaintFinishPath;
+}
+
 void APCSwatchStoreSubsystem::PostLoadGame_Implementation(int32 /*SaveVersion*/,
                                                           int32 /*GameVersion*/) {
   RebuildMaps();
+
+  FPCFluidAppearanceCatalog& Catalog = FPCFluidAppearanceCatalog::Get();
+  Catalog.EnsureLoaded();
+  FillEmptyPaintFinishPaths(*this, Catalog);
+
+  if (HasAuthority()) {
+    SeedMissingFromCatalog();
+  }
+
+  StoreSchema = GStoreSchemaPaintFinishPath;
 }
 
 void APCSwatchStoreSubsystem::OnRep_Entries() {
@@ -146,33 +201,36 @@ void APCSwatchStoreSubsystem::SeedMissingFromCatalog() {
       return;
     }
     FPCSwatchEntry Entry;
-    Entry.Key = Key;
-    Entry.Primary = Spec.PrimaryColor;
-    Entry.Secondary = Spec.SecondaryColor;
-    Entry.PaintFinish =
-        Spec.PaintFinish ? FSoftClassPath(Spec.PaintFinish.Get()) : FSoftClassPath();
+    FillEntryFromSpec(Entry, Key, Spec);
     KeyToIndex.Add(Key, Entries.Num());
     Entries.Add(Entry);
   };
 
   {
     FPCAppearanceSpec Neutral;
-    Catalog.Resolve(nullptr, true, Neutral);
-    EnsureKey(FName(TEXT("Neutral")), Neutral);
+    if (Catalog.ResolveByKey(FName(TEXT("Neutral")), Neutral)) {
+      EnsureKey(FName(TEXT("Neutral")), Neutral);
+    }
   }
 
   for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows()) {
-    TSubclassOf<UFGItemDescriptor> Desc =
-        FSoftClassPath(Row.SoftPath).TryLoadClass<UFGItemDescriptor>();
+    if (FindIndex(Row.Stem) != INDEX_NONE) {
+      continue;
+    }
     FPCAppearanceSpec Spec;
-    Catalog.Resolve(Desc, !Desc, Spec);
+    if (!Catalog.ResolveByKey(Row.Stem, Spec)) {
+      UE_LOG(LogPipelineColor, Warning, TEXT("%s seed skip unresolved key %s"),
+             PIPELINECOLOR_LOG_PREFIX, *Row.Stem.ToString());
+      continue;
+    }
     EnsureKey(Row.Stem, Spec);
   }
 
   {
-    FPCAppearanceSpec Fallback = Catalog.GetNeutral();
-    Fallback.PrimaryColor = FLinearColor::FromSRGBColor(FColor::White);
-    EnsureKey(FName(TEXT("Fallback")), Fallback);
+    FPCAppearanceSpec Fallback;
+    if (Catalog.ResolveByKey(FName(TEXT("Fallback")), Fallback)) {
+      EnsureKey(FName(TEXT("Fallback")), Fallback);
+    }
   }
 
   RebuildMaps();
@@ -190,17 +248,10 @@ void APCSwatchStoreSubsystem::ForceReseedNeutralMatte() {
   Catalog.EnsureLoaded();
 
   FPCAppearanceSpec Spec;
-  Catalog.Resolve(nullptr, true, Spec);
+  Catalog.ResolveByKey(FName(TEXT("Neutral")), Spec);
 
   FPCSwatchEntry Entry;
-  Entry.Key = FName(TEXT("Neutral"));
-  Entry.Primary = Spec.PrimaryColor;
-  Entry.Secondary = Spec.SecondaryColor;
-  Entry.PaintFinish =
-      Spec.PaintFinish
-          ? FSoftClassPath(Spec.PaintFinish.Get())
-          : FSoftClassPath(TEXT("/Game/FactoryGame/Buildable/-Shared/Customization/PaintFinishes/"
-                                "PaintFinishDesc_Matte.PaintFinishDesc_Matte_C"));
+  FillEntryFromSpec(Entry, FName(TEXT("Neutral")), Spec);
 
   const int32 Idx = FindIndex(Entry.Key);
   if (Idx == INDEX_NONE) {
@@ -227,33 +278,33 @@ void APCSwatchStoreSubsystem::ReseedAllFromCatalog() {
 
   auto WriteKey = [this](FName Key, const FPCAppearanceSpec& Spec) {
     FPCSwatchEntry Entry;
-    Entry.Key = Key;
-    Entry.Primary = Spec.PrimaryColor;
-    Entry.Secondary = Spec.SecondaryColor;
-    Entry.PaintFinish =
-        Spec.PaintFinish ? FSoftClassPath(Spec.PaintFinish.Get()) : FSoftClassPath();
+    FillEntryFromSpec(Entry, Key, Spec);
     KeyToIndex.Add(Key, Entries.Num());
     Entries.Add(Entry);
   };
 
   {
     FPCAppearanceSpec Neutral;
-    Catalog.Resolve(nullptr, true, Neutral);
-    WriteKey(FName(TEXT("Neutral")), Neutral);
+    if (Catalog.ResolveByKey(FName(TEXT("Neutral")), Neutral)) {
+      WriteKey(FName(TEXT("Neutral")), Neutral);
+    }
   }
 
   for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows()) {
-    TSubclassOf<UFGItemDescriptor> Desc =
-        FSoftClassPath(Row.SoftPath).TryLoadClass<UFGItemDescriptor>();
     FPCAppearanceSpec Spec;
-    Catalog.Resolve(Desc, !Desc, Spec);
+    if (!Catalog.ResolveByKey(Row.Stem, Spec)) {
+      UE_LOG(LogPipelineColor, Warning, TEXT("%s reseed skip unresolved key %s"),
+             PIPELINECOLOR_LOG_PREFIX, *Row.Stem.ToString());
+      continue;
+    }
     WriteKey(Row.Stem, Spec);
   }
 
   {
-    FPCAppearanceSpec Fallback = Catalog.GetNeutral();
-    Fallback.PrimaryColor = FLinearColor::FromSRGBColor(FColor::White);
-    WriteKey(FName(TEXT("Fallback")), Fallback);
+    FPCAppearanceSpec Fallback;
+    if (Catalog.ResolveByKey(FName(TEXT("Fallback")), Fallback)) {
+      WriteKey(FName(TEXT("Fallback")), Fallback);
+    }
   }
 
   RebuildMaps();

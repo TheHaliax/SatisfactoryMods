@@ -47,6 +47,9 @@ void EnqueueNetworkFirstIntegrant(AFGPipeNetwork* Network) {
 } // namespace
 
 void FFluidAppearanceObserver::EnqueueFromWorld(UWorld* World, AFGBuildable* Buildable) {
+  if (!IsValid(Buildable) || !Buildable->HasAuthority()) {
+    return;
+  }
   if (UPCWorldSubsystem* Sys = UPCWorldSubsystem::Get(World)) {
     Sys->Enqueue(Buildable);
   }

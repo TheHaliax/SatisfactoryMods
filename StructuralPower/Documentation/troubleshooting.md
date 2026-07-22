@@ -57,6 +57,14 @@ For switch/panel toggle debugging with trace on: grep `switch restitch_off_settl
 
 v3.0+ strips persisted mod bus components before circuit bridge BeginPlay and rebuilds topology from geometry. If an older v2.1 build failed on load, update to **3.1.0** and retry. Report with `FactoryGame.log` from load if it persists.
 
+## satisfactory-calculator.com (SCIM) rejects the save
+
+Older builds stored Id-panel data in a format the SCIM save parser cannot read
+("Something went wrong... Source: readStructProperty"). Update StructuralPower, load the
+save once, save again — the data migrates to a SCIM-safe format. Removing the mod does
+**not** fix an already-affected save: the game preserves mod data blobs across resaves, so
+the old-format blob stays until a resave happens with the updated mod installed.
+
 ## No LogStructuralPower lines during gameplay
 
 Trace is **off by default**. Enable `StructuralPower.Trace 1` in the console before testing.
@@ -69,7 +77,7 @@ Automatic diagnostics skip menu worlds (`Map_Menu_*`). Load a save or run `Struc
 
 Include:
 
-- StructuralPower version (**3.1.0**)
+- StructuralPower version (**3.1.1**)
 - SML version
 - Single-player, listen host, or dedicated server
 - Which group toggles on (`!Generation`, `!Resources`, `!lighting`, …)

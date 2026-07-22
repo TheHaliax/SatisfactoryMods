@@ -35,6 +35,7 @@
 #include "Save/FStructuralControlIdGangIndex.h"
 #include "Save/FStructuralEndpointIdRegistry.h"
 #include "Save/FStructuralGraphIdOps.h"
+#include "Save/FStructuralGraphSaveRecords.h"
 #include "Save/FStructuralPlacementQueue.h"
 #include "AStructuralPowerGraphSubsystem.generated.h"
 
@@ -225,14 +226,9 @@ class STRUCTURALPOWER_API AStructuralPowerGraphSubsystem : public AInfo, public 
   UFGStructuralPowerConnectionComponent*
   GetOrCreateSwitchControlBus(AFGBuildableCircuitSwitch* Switch);
 
-  virtual void PreSaveGame_Implementation(int32 saveVersion, int32 gameVersion) override {
-  }
-  virtual void PostSaveGame_Implementation(int32 saveVersion, int32 gameVersion) override {
-  }
-  virtual void PostLoadGame_Implementation(int32 saveVersion, int32 gameVersion) override {
-    bPostLoadRebuilt = false;
-    IdRegistry.MigrateLegacyStructureDefaultIds();
-  }
+  virtual void PreSaveGame_Implementation(int32 saveVersion, int32 gameVersion) override;
+  virtual void PostSaveGame_Implementation(int32 saveVersion, int32 gameVersion) override;
+  virtual void PostLoadGame_Implementation(int32 saveVersion, int32 gameVersion) override;
   virtual void GatherDependencies_Implementation(TArray<UObject*>& out_dependentObjects) override {
   }
   virtual bool NeedTransform_Implementation() override {
@@ -319,6 +315,7 @@ class STRUCTURALPOWER_API AStructuralPowerGraphSubsystem : public AInfo, public 
   TMap<FStructuralNodeId, FTrackedEndpoint> TrackedEndpoints;
   TMap<FStructuralNodeId, TWeakObjectPtr<AFGBuildable>> RegisteredBuildables;
 
+  // Schema-0 maps: still loadable, serialized empty — SCIM cannot parse struct keys.
   UPROPERTY(SaveGame)
   TMap<FStructuralComponentKey, FName> ComponentDefaultIds;
 
@@ -327,6 +324,18 @@ class STRUCTURALPOWER_API AStructuralPowerGraphSubsystem : public AInfo, public 
 
   UPROPERTY(SaveGame)
   TMap<FStructuralNodeId, FStructuralEndpointOverrides> PlayerEndpointOverrides;
+
+  UPROPERTY(SaveGame)
+  TArray<FStructuralDefaultIdSaveRecord> SavedComponentDefaultIds;
+
+  UPROPERTY(SaveGame)
+  TArray<FStructuralEndpointOverrideSaveRecord> SavedEndpointOverrides;
+
+  UPROPERTY(SaveGame)
+  int32 GraphSaveSchema = 0;
+
+  void SnapshotSaveRecordsFromRuntime();
+  void RestoreRuntimeFromSaveRecords();
 
   FStructuralEndpointIdRegistry IdRegistry;
   FStructuralControlIdGangIndex ControlIdGangIndex;

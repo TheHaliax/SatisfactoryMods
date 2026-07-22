@@ -10,6 +10,8 @@ Runnable tooling for building, packaging, and shipping the mods in this repo.
 | `Invoke-ModIcons.ps1` | Shared wrapper: regen `Icon1024/512/128.png` for a mod |
 | `make-icons.py` | Icon compositor (base + mask + font + uplugin badge) |
 | `../scripts/check-version.ps1` | Pre-release guard: uplugin ↔ changelog version drift |
+| `scim-parse-check.mjs` | Run AnthorNet SCIM SaveParser (node) against a `.sav` — save-compat gate |
+| `scan-save-structs.py` | Fast string probe of a `.sav` for mod struct/property names |
 
 Machine paths — pass script parameters, set env vars, or add gitignored
 `tools/local-paths.ps1` (`$LocalProjectPath`, `$LocalUeCssRoot`, `$LocalGamePath`, `$LocalLogDir`):

@@ -2,7 +2,7 @@
 
 ## Pipes stay default / unpainted
 
-1. Confirm PipelineColor loads — look for `PipelineColor v1.1.0` and `[HALPC]` in `FactoryGame.log`.
+1. Confirm PipelineColor loads — look for `PipelineColor v1.1.1` and `[HALPC]` in `FactoryGame.log`.
 2. Fill the network with a known fluid (Water, Fuel, …) and wait a short settle.
 3. Empty networks use Neutral — that can look like “no paint” compared to bright fluids.
 4. Grep `FactoryGame.log` for `[HALPC]` / `LogPipelineColor`.
@@ -22,6 +22,10 @@ Supports must be a **fluid support parent** the mod soft-`IsA`s (floor / stackab
 ## Customizer swatch edits do not stick
 
 Save the session after editing. Store is authority SaveGame; pure clients need the host to save. Remote players must have the mod installed.
+
+## SCIM / Interactive Map cannot open save
+
+PipelineColor persists Customizer colors on the swatch store actor. Older builds wrote paint finish as SoftClassPath; AnthorNet SCIM does not parse that type. Current builds use a string path (`PaintFinishPath`). Load the save in-game once (colors migrate; finish may fall back to catalog defaults), save again, then open in SCIM.
 
 ## Chat commands ignored
 

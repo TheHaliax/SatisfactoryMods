@@ -492,7 +492,7 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
     FStructuralPowerModConfig::LoadRuntimeConfig();
 #if !WITH_EDITOR
     UE_LOG(LogStructuralPower, Log,
-           TEXT("StructuralPower v3.1.0 — machines + vanilla-first reconcile (I-key Id panel)"
+           TEXT("StructuralPower v3.1.1 — machines + vanilla-first reconcile (I-key Id panel)"
                 " (groupLighting=%s trace=%s extendedDebug=%s)"),
            FStructuralPowerModConfig::IsGroupLightingEnabled() ? TEXT("on") : TEXT("off"),
            FStructuralPowerModConfig::IsTraceEnabled() ? TEXT("on") : TEXT("off"),

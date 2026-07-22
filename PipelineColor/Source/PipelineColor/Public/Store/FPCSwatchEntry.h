@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "FGFactoryColoringTypes.h"
+#include "UObject/SoftObjectPath.h"
 #include "FPCSwatchEntry.generated.h"
 
 USTRUCT(BlueprintType)
@@ -20,14 +21,32 @@ struct PIPELINECOLOR_API FPCSwatchEntry {
   UPROPERTY(SaveGame, BlueprintReadWrite)
   FLinearColor Secondary = FLinearColor(0.15f, 0.15f, 0.15f, 1.f);
 
+  // SCIM-safe: Str property. SoftClassPath breaks AnthorNet SaveParser.
   UPROPERTY(SaveGame, BlueprintReadWrite)
-  FSoftClassPath PaintFinish;
+  FString PaintFinishPath;
+
+  TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> GetPaintFinishClass() const {
+    if (PaintFinishPath.IsEmpty()) {
+      return nullptr;
+    }
+    return FSoftClassPath(PaintFinishPath)
+        .TryLoadClass<UFGFactoryCustomizationDescriptor_PaintFinish>();
+  }
+
+  void SetPaintFinishClass(TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> Finish) {
+    // Slot.PaintFinish is live from Customizer — still TryLoad-safe path extract.
+    // Never pass catalog-cached TSubclassOf here (GC can leave dangling UClass*).
+    UClass* Cls = Finish.Get();
+    if (!Cls) {
+      PaintFinishPath.Reset();
+      return;
+    }
+    PaintFinishPath = FSoftClassPath(Cls).ToString();
+  }
 
   FFactoryCustomizationColorSlot ToSlot() const {
     FFactoryCustomizationColorSlot Slot(Primary, Secondary);
-    if (PaintFinish.IsValid()) {
-      Slot.PaintFinish = PaintFinish.TryLoadClass<UFGFactoryCustomizationDescriptor_PaintFinish>();
-    }
+    Slot.PaintFinish = GetPaintFinishClass();
     return Slot;
   }
 
@@ -35,6 +54,6 @@ struct PIPELINECOLOR_API FPCSwatchEntry {
     Key = InKey;
     Primary = Slot.PrimaryColor;
     Secondary = Slot.SecondaryColor;
-    PaintFinish = Slot.PaintFinish ? FSoftClassPath(Slot.PaintFinish.Get()) : FSoftClassPath();
+    SetPaintFinishClass(Slot.PaintFinish);
   }
 };
