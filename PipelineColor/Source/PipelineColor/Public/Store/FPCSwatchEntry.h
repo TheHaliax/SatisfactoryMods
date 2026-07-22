@@ -25,17 +25,37 @@ struct PIPELINECOLOR_API FPCSwatchEntry {
   UPROPERTY(SaveGame, BlueprintReadWrite)
   FString PaintFinishPath;
 
+ private:
+  // Resolve cache — transient, not serialized; weak so GC reload never dangles.
+  mutable TWeakObjectPtr<UClass> CachedFinishClass;
+  mutable FString CachedFinishPath;
+
+ public:
   TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> GetPaintFinishClass() const {
     if (PaintFinishPath.IsEmpty()) {
       return nullptr;
     }
-    return FSoftClassPath(PaintFinishPath)
-        .TryLoadClass<UFGFactoryCustomizationDescriptor_PaintFinish>();
+
+    // Weak cache per entry: overlay resolves run per pipe apply; re-parse and
+    // TryLoad only when GC dropped the class or the path changed.
+    if (CachedFinishPath == PaintFinishPath) {
+      if (UClass* Cached = CachedFinishClass.Get()) {
+        return Cached;
+      }
+    }
+
+    UClass* Loaded = FSoftClassPath(PaintFinishPath)
+                         .TryLoadClass<UFGFactoryCustomizationDescriptor_PaintFinish>();
+    CachedFinishClass = Loaded;
+    CachedFinishPath = PaintFinishPath;
+    return Loaded;
   }
 
   void SetPaintFinishClass(TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> Finish) {
     // Slot.PaintFinish is live from Customizer — still TryLoad-safe path extract.
     // Never pass catalog-cached TSubclassOf here (GC can leave dangling UClass*).
+    CachedFinishClass.Reset();
+    CachedFinishPath.Reset();
     UClass* Cls = Finish.Get();
     if (!Cls) {
       PaintFinishPath.Reset();

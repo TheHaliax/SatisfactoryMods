@@ -64,6 +64,15 @@ FPCFluidAppearanceCatalog::GetFinishClass(EPCPaintFinishKind Kind) const {
   if (Kind == EPCPaintFinishKind::MetallicColor) {
     return UPCFinish_MetallicColor::StaticClass();
   }
+
+  // Two vanilla finish descs, resolved on every spec fill — weak-cache them.
+  static TWeakObjectPtr<UClass> CachedMatte;
+  static TWeakObjectPtr<UClass> CachedDefault;
+  TWeakObjectPtr<UClass>& Slot = (Kind == EPCPaintFinishKind::Matte) ? CachedMatte : CachedDefault;
+  if (UClass* Cached = Slot.Get()) {
+    return Cached;
+  }
+
   const FString Path = GetFinishPath(Kind);
   UClass* Loaded =
       FSoftClassPath(Path).TryLoadClass<UFGFactoryCustomizationDescriptor_PaintFinish>();
@@ -71,6 +80,7 @@ FPCFluidAppearanceCatalog::GetFinishClass(EPCPaintFinishKind Kind) const {
     UE_LOG(LogPipelineColor, Warning, TEXT("%s catalog: failed load finish %s"),
            PIPELINECOLOR_LOG_PREFIX, *Path);
   }
+  Slot = Loaded;
   return Loaded;
 }
 
@@ -101,6 +111,7 @@ void FPCFluidAppearanceCatalog::BuildEntries() const {
 
   ByStem.Reset();
   SoftPathToStem.Reset();
+  ClassToStem.Reset();
   int32 LoadedCount = 0;
   for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows()) {
     FPCFluidCatalogEntry Entry;
@@ -161,9 +172,24 @@ bool FPCFluidAppearanceCatalog::Resolve(TSubclassOf<UFGItemDescriptor> FluidDesc
     return true;
   }
 
+  if (const FName* CachedStem = ClassToStem.Find(Cls)) {
+    if (const FPCFluidCatalogEntry* Found = ByStem.Find(*CachedStem)) {
+      FillSpecFromEntry(*Found, OutSpec);
+      return true;
+    }
+  }
+
   const FString SoftPath = FSoftClassPath(Cls).ToString();
   if (const FName* Stem = SoftPathToStem.Find(SoftPath)) {
     if (const FPCFluidCatalogEntry* Found = ByStem.Find(*Stem)) {
+      // Miss path also sweeps stale weak keys so the cache cannot grow past
+      // the live descriptor set.
+      for (auto It = ClassToStem.CreateIterator(); It; ++It) {
+        if (!It.Key().IsValid()) {
+          It.RemoveCurrent();
+        }
+      }
+      ClassToStem.Add(Cls, *Stem);
       FillSpecFromEntry(*Found, OutSpec);
       return true;
     }

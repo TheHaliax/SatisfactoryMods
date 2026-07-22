@@ -295,6 +295,11 @@ void UPipelineColorRootInstanceModule::HandleBuildableBuilt(AFGBuildable* Builda
   if (FPipeSupportTouch::IsPipeSupport(Buildable)) {
     if (AFGBuildablePipeline* Pipe = FPipeSupportTouch::FindTouchedPipe(Buildable)) {
       FPipeSupportTouch::RememberLink(Pipe, Buildable);
+      // Settled pipes early-out of ProcessNow on unchanged spec; invalidate so
+      // the fresh support gets painted through the changed path.
+      if (UPCWorldSubsystem* Sys = UPCWorldSubsystem::Get(Buildable->GetWorld())) {
+        Sys->InvalidateApplied(Pipe);
+      }
       FFluidAppearanceObserver::EnqueueFromWorld(Buildable->GetWorld(), Pipe);
     }
     return;
@@ -353,7 +358,7 @@ void UPipelineColorRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase Ph
   if (Phase == ELifecyclePhase::POST_INITIALIZATION) {
     FPCPipelineColorModConfig::LoadRuntimeConfig();
 #if !WITH_EDITOR
-    UE_LOG(LogPipelineColor, Display, TEXT("PipelineColor v1.1.1 — fluid-driven pipe swatches"));
+    UE_LOG(LogPipelineColor, Display, TEXT("PipelineColor v1.1.2 — fluid-driven pipe swatches"));
 #endif
   }
 
