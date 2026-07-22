@@ -17,3 +17,13 @@ class PIPELINECOLOR_API UPCFinish_MetallicColor
 
   static void EnsureIconLoaded();
 };
+
+/** Neutral empty-pipe matte — fixed roughness, never stamped at apply. */
+UCLASS()
+class PIPELINECOLOR_API UPCFinish_MatteNeutral
+    : public UFGFactoryCustomizationDescriptor_PaintFinish {
+  GENERATED_BODY()
+
+ public:
+  UPCFinish_MatteNeutral();
+};

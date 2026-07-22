@@ -3,6 +3,7 @@
 
 #include "Store/FPCSwatchSlotDispatch.h"
 
+#include "CoreGlobals.h"
 #include "Equipment/FGBuildGun.h"
 #include "Equipment/FGBuildGunPaint.h"
 #include "FGBlueprintFunctionLibrary.h"
@@ -217,18 +218,25 @@ void FPCSwatchSlotDispatch::RegisterHooks() {
 #if WITH_EDITOR
   return;
 #else
-  SUBSCRIBE_METHOD(UFGBlueprintFunctionLibrary::GetSlotDataForSwatchDesc,
-                   [](auto& Scope, TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> SwatchDesc,
-                      AActor* WorldContext, FFactoryCustomizationColorSlot& Out_SlotData) {
-                     if (FillFromStore(SwatchDesc, WorldContext, Out_SlotData)) {
-                       if (APCSwatchStoreSubsystem::IsPCCustomization(SwatchDesc)) {
-                         AFGPlayerController* PC = ResolvePlayerController(WorldContext);
-                         SetActivePcDesc(PC, SwatchDesc);
-                         SyncActivePcToServer(WorldContext, SwatchDesc);
+  // Linux dedicated: funchook mis-relocates this prologue (test rsi; je rel8 inside
+  // the 5-byte patch window) — the trampoline executes garbage and raises SIGILL when
+  // any server-side Blueprint calls it (Space Elevator / BP_ProjectAssembly). The read
+  // path serves the paint UI only, so never hook it on dedicated servers.
+  if (!IsRunningDedicatedServer()) {
+    SUBSCRIBE_METHOD(UFGBlueprintFunctionLibrary::GetSlotDataForSwatchDesc,
+                     [](auto& Scope,
+                        TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> SwatchDesc,
+                        AActor* WorldContext, FFactoryCustomizationColorSlot& Out_SlotData) {
+                       if (FillFromStore(SwatchDesc, WorldContext, Out_SlotData)) {
+                         if (APCSwatchStoreSubsystem::IsPCCustomization(SwatchDesc)) {
+                           AFGPlayerController* PC = ResolvePlayerController(WorldContext);
+                           SetActivePcDesc(PC, SwatchDesc);
+                           SyncActivePcToServer(WorldContext, SwatchDesc);
+                         }
+                         Scope.Cancel();
                        }
-                       Scope.Cancel();
-                     }
-                   });
+                     });
+  }
 
   SUBSCRIBE_METHOD_AFTER(
       UFGBuildGunStatePaint::SetActiveRecipe,

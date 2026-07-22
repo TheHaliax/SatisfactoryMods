@@ -147,7 +147,10 @@ void FPCPipelineColorModConfig::SaveToDisk() {
     return;
   }
 
-  FFileHelper::SaveStringToFile(JsonText, *Path);
+  if (!FFileHelper::SaveStringToFile(JsonText, *Path)) {
+    UE_LOG(LogPipelineColor, Warning, TEXT("%s config write failed %s"), PIPELINECOLOR_LOG_PREFIX,
+           *Path);
+  }
 }
 
 bool FPCPipelineColorModConfig::CanMutateLiveConfig(UWorld* World) {

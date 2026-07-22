@@ -10,16 +10,16 @@ Players and dedicated servers install **`.smod` files from [ficsit.app](https://
 | `PipelineColor-Windows.zip` etc. | Per-target slices | Local debugging |
 | `PipelineColor-*.smod` | SMR-hosted per target | Players / ficsit-cli |
 
-## Release checklist (1.1.0)
+## Release checklist (1.1.1 — 2026-07-22)
 
-1. **Version fields** in `PipelineColor.uplugin` — `SemVersion` / `VersionName` **1.1.0**, `RemoteVersionRange` **^1.1.0**, `Version` integer **1**, `GameVersion` **>=491125**, SML **^3.12.0**, `IsBetaVersion` **false**.
-2. **Icons** — `tools/Invoke-ModIcons.ps1 -ModRoot PipelineColor` → badge **V1.1** on `Resources/Icon*.png`.
+1. **Version fields** in `PipelineColor.uplugin` — `SemVersion` / `VersionName` **1.1.1**, `RemoteVersionRange` **^1.1.1**, `Version` integer **1**, `GameVersion` **>=491125**, SML **^3.12.0**, `IsBetaVersion` **false**.
+2. **Icons** — `tools/Invoke-ModIcons.ps1 -ModRoot PipelineColor` → badge **V1.1** on `Resources/Icon*.png` (badge tracks major.minor; unchanged for patch releases).
 3. **Version guard** — `powershell -File scripts/check-version.ps1`
 4. **Docs** — `CHANGELOG.md`, root `README.md` card, `PipelineColor/README.md`, evergreen `Documentation/*`. Screenshots under `PipelineColor/Screenshots/` with raw `refs/heads/main` URLs in README.
 5. **Alpakit Release** — cook client + Windows Server + Linux Server. Output under StarterProject `Saved/ArchivedPlugins/PipelineColor/`.
-6. **ficsit.app** → New Version → upload combined zip + changelog from `CHANGELOG.md` **1.1.0**. Refresh mod icon from `Resources/Icon512.png` if asked. Merge to `main` before announce so GitHub README/screenshots align.
-7. **Verify** — Mod Manager installs **1.1.0**; client and dedicated share `^1.1.0`.
-8. **Smoke test** — fill/empty pipes; Customizer PC swatches + save/reload; supports against painted pipes; `!Metallic` / `all on` / `all off` / `default` / `!pchelp`; gas metallic, liquid default; chromatics stay distinct under metallic; regular MK1/MK2 inline flow meters on place, load, and junction/valve split.
+6. **ficsit.app** → New Version → upload combined zip + changelog from `CHANGELOG.md` **1.1.1**. Refresh mod icon from `Resources/Icon512.png` if asked. Merge to `main` before announce so GitHub README/screenshots align.
+7. **Verify** — Mod Manager installs **1.1.1**; client and dedicated share `^1.1.1`.
+8. **Smoke test** — fill/empty pipes; Customizer PC swatches + save/reload; supports against painted pipes; `!Metallic` / `all on` / `all off` / `default` / `!pchelp`; gas metallic, liquid default; chromatics stay distinct under metallic; regular MK1/MK2 inline flow meters on place, load, and junction/valve split; place a Space Elevator on a Linux dedicated server; load a save twice in one client session (menu roundtrip).
 
 ## Dev pack (not SMR)
 

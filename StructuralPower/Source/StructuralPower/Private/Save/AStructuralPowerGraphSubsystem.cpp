@@ -126,6 +126,97 @@ FStructuralNodeId AStructuralPowerGraphSubsystem::MakeNodeId(const AFGBuildable*
   return Id;
 }
 
+namespace {
+// Schema 1 = flat records persisted, legacy struct-keyed maps saved empty (SCIM-safe).
+constexpr int32 GGraphSchemaScimSafe = 1;
+
+FStructuralNodeIdSaveRecord ToSaveRecord(const FStructuralNodeId& Id) {
+  FStructuralNodeIdSaveRecord Rec;
+  Rec.BuildableClassPath = Id.BuildableClass.ToString();
+  Rec.ActorName = Id.ActorName;
+  Rec.LightweightIndex = Id.LightweightIndex;
+  return Rec;
+}
+
+FStructuralNodeId FromSaveRecord(const FStructuralNodeIdSaveRecord& Rec) {
+  FStructuralNodeId Id;
+  Id.BuildableClass = FSoftClassPath(Rec.BuildableClassPath);
+  Id.ActorName = Rec.ActorName;
+  Id.LightweightIndex = Rec.LightweightIndex;
+  return Id;
+}
+} // namespace
+
+void AStructuralPowerGraphSubsystem::SnapshotSaveRecordsFromRuntime() {
+  SavedComponentDefaultIds.Reset();
+  SavedComponentDefaultIds.Reserve(ComponentDefaultIds.Num());
+  for (const TPair<FStructuralComponentKey, FName>& Pair : ComponentDefaultIds) {
+    FStructuralDefaultIdSaveRecord Rec;
+    Rec.Node = ToSaveRecord(Pair.Key.CanonicalNodeId);
+    Rec.DefaultId = Pair.Value;
+    SavedComponentDefaultIds.Add(MoveTemp(Rec));
+  }
+
+  SavedEndpointOverrides.Reset();
+  SavedEndpointOverrides.Reserve(PlayerEndpointOverrides.Num());
+  for (const TPair<FStructuralNodeId, FStructuralEndpointOverrides>& Pair :
+       PlayerEndpointOverrides) {
+    FStructuralEndpointOverrideSaveRecord Rec;
+    Rec.Node = ToSaveRecord(Pair.Key);
+    Rec.SourceOverride = Pair.Value.SourceOverride;
+    Rec.ControlOverride = Pair.Value.ControlOverride;
+    Rec.bGlobalControl = Pair.Value.bGlobalControl;
+    SavedEndpointOverrides.Add(MoveTemp(Rec));
+  }
+}
+
+void AStructuralPowerGraphSubsystem::RestoreRuntimeFromSaveRecords() {
+  ComponentDefaultIds.Reset();
+  ComponentDefaultIds.Reserve(SavedComponentDefaultIds.Num());
+  for (const FStructuralDefaultIdSaveRecord& Rec : SavedComponentDefaultIds) {
+    FStructuralComponentKey Key;
+    Key.CanonicalNodeId = FromSaveRecord(Rec.Node);
+    ComponentDefaultIds.Add(Key, Rec.DefaultId);
+  }
+
+  PlayerEndpointOverrides.Reset();
+  PlayerEndpointOverrides.Reserve(SavedEndpointOverrides.Num());
+  for (const FStructuralEndpointOverrideSaveRecord& Rec : SavedEndpointOverrides) {
+    FStructuralEndpointOverrides Overrides;
+    Overrides.SourceOverride = Rec.SourceOverride;
+    Overrides.ControlOverride = Rec.ControlOverride;
+    Overrides.bGlobalControl = Rec.bGlobalControl;
+    PlayerEndpointOverrides.Add(FromSaveRecord(Rec.Node), Overrides);
+  }
+}
+
+void AStructuralPowerGraphSubsystem::PreSaveGame_Implementation(int32 /*saveVersion*/,
+                                                                int32 /*gameVersion*/) {
+  SnapshotSaveRecordsFromRuntime();
+  GraphSaveSchema = GGraphSchemaScimSafe;
+  // Serialize maps empty; PostSaveGame restores them.
+  ComponentDefaultIds.Empty();
+  PlayerEndpointOverrides.Empty();
+}
+
+void AStructuralPowerGraphSubsystem::PostSaveGame_Implementation(int32 /*saveVersion*/,
+                                                                 int32 /*gameVersion*/) {
+  RestoreRuntimeFromSaveRecords();
+}
+
+void AStructuralPowerGraphSubsystem::PostLoadGame_Implementation(int32 /*saveVersion*/,
+                                                                 int32 /*gameVersion*/) {
+  bPostLoadRebuilt = false;
+  if (GraphSaveSchema >= GGraphSchemaScimSafe) {
+    RestoreRuntimeFromSaveRecords();
+  } else {
+    // Schema 0: maps loaded from their own tags; seed the records from them.
+    SnapshotSaveRecordsFromRuntime();
+    GraphSaveSchema = GGraphSchemaScimSafe;
+  }
+  IdRegistry.MigrateLegacyStructureDefaultIds();
+}
+
 UFGStructuralPowerConnectionComponent*
 AStructuralPowerGraphSubsystem::FindBusConnector(const AFGBuildable* Host) {
   if (!IsValid(Host)) {

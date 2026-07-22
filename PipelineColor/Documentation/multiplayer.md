@@ -4,7 +4,7 @@
 
 PipelineColor sets **`RequiredOnRemote: true`**. Every player joining a session must have the same mod version installed.
 
-Version range in the plugin: `^1.1.0` (compatible 1.1.x).
+Version range in the plugin: `^1.1.1` (compatible 1.1.x, 1.1.1 or newer).
 
 ## Listen server / host
 

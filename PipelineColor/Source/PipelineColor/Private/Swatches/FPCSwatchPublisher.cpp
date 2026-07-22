@@ -4,6 +4,7 @@
 #include "Swatches/FPCSwatchPublisher.h"
 
 #include "Appearance/FPCFluidRoster.h"
+#include "Appearance/FPCMetallicFinishPool.h"
 #include "Core/FPCWorldGate.h"
 #include "FGCustomizationRecipe.h"
 #include "FGFactoryColoringTypes.h"
@@ -12,6 +13,7 @@
 #include "PipelineColorLog.h"
 #include "PipelineColorRootInstanceModule.h"
 #include "Store/APCSwatchStoreSubsystem.h"
+#include "UObject/SoftObjectPath.h"
 
 namespace {
 bool GForceRecipeHookRegistered = false;
@@ -33,9 +35,10 @@ UFGFactoryCustomizationCollection* LoadSwatchCollectionCDO() {
   return Cast<UFGFactoryCustomizationCollection>(CollectionClass->GetDefaultObject());
 }
 
-void InjectOne(UFGFactoryCustomizationCollection* Collection,
+void InjectOne(UPipelineColorRootInstanceModule* Root,
+               UFGFactoryCustomizationCollection* Collection,
                TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch) {
-  UPipelineColorRootInstanceModule::ApplyDefaultOrganization(Swatch);
+  UPipelineColorRootInstanceModule::ApplyDefaultOrganization(Root, Swatch);
   UPipelineColorRootInstanceModule::InjectSwatchIntoCollection(Collection, Swatch);
 }
 } // namespace
@@ -60,20 +63,47 @@ void FPCSwatchPublisher::PublishForWorld(UWorld* World) {
   if (!FPCWorldGate::IsGameplayWorld(World)) {
     return;
   }
+  // Dedicated / listen authority only. Never ClassGen / seed / CDO inject on NM_Client.
+  if (World->GetNetMode() == NM_Client) {
+    return;
+  }
+
+  static TWeakObjectPtr<UWorld> GPublishedWorld;
+  if (GPublishedWorld.Get() == World) {
+    UE_LOG(LogPipelineColor, Verbose, TEXT("%s PublishForWorld skip (already published)"),
+           PIPELINECOLOR_LOG_PREFIX);
+    return;
+  }
+  GPublishedWorld = World;
 
   UE_LOG(LogPipelineColor, Log, TEXT("%s PublishForWorld begin"), PIPELINECOLOR_LOG_PREFIX);
 
-  UPipelineColorRootInstanceModule::GetOrCreatePipelineColorCategory();
-  UPipelineColorRootInstanceModule::GetOrCreatePipelineColorSubCategory();
+  UPipelineColorRootInstanceModule* Root = UPipelineColorRootInstanceModule::Find(World);
+  if (!Root) {
+    UE_LOG(LogPipelineColor, Error, TEXT("%s PublishForWorld: root module missing"),
+           PIPELINECOLOR_LOG_PREFIX);
+    return;
+  }
+
+  FPCMetallicFinishPool::EnsureCreated(Root);
+  UPipelineColorRootInstanceModule::GetOrCreatePipelineColorCategory(Root);
+  UPipelineColorRootInstanceModule::GetOrCreatePipelineColorSubCategory(Root);
 
   APCSwatchStoreSubsystem* Store = APCSwatchStoreSubsystem::GetOrCreate(World);
   if (!Store) {
     UE_LOG(LogPipelineColor, Warning, TEXT("%s PublishForWorld: swatch store missing"),
            PIPELINECOLOR_LOG_PREFIX);
-  } else {
+  } else if (Store->HasAuthority()) {
     Store->RebuildMaps();
     Store->SeedMissingFromCatalog();
-    Store->ForceReseedNeutralMatte();
+    // Do not ForceReseedNeutralMatte every publish — rewrite only when Neutral absent.
+    FPCSwatchEntry Neutral;
+    if (!Store->TryGet(FName(TEXT("Neutral")), Neutral) || Neutral.PaintFinishPath.IsEmpty()) {
+      Store->ForceReseedNeutralMatte();
+    }
+  } else {
+    UE_LOG(LogPipelineColor, Warning, TEXT("%s PublishForWorld: store lacks authority"),
+           PIPELINECOLOR_LOG_PREFIX);
   }
 
   UPipelineColorRootInstanceModule::UnlockPcSwatchesViaUnlockSubsystem(World);
@@ -86,7 +116,7 @@ void FPCSwatchPublisher::PublishForWorld(UWorld* World) {
   TArray<TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>> Swatches;
   FPCFluidRoster::AppendAllSwatchClasses(Swatches);
   for (const TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>& Swatch : Swatches) {
-    InjectOne(Collection, Swatch);
+    InjectOne(Root, Collection, Swatch);
   }
 
   UE_LOG(LogPipelineColor, Log, TEXT("%s menu injected (top category + CatalogKey color swatches)"),

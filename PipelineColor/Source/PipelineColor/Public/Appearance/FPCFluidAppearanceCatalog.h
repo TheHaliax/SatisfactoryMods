@@ -17,6 +17,7 @@ enum class EPCPaintFinishKind : uint8 {
 
 struct FPCFluidCatalogEntry {
   FName FluidStem;
+  FString SoftPath;
   FLinearColor Primary;
   EPCPaintFinishKind Finish = EPCPaintFinishKind::Default;
   TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> SwatchClass;
@@ -26,11 +27,12 @@ class FPCFluidAppearanceCatalog final : public IAppearanceCatalog {
  public:
   static FPCFluidAppearanceCatalog& Get();
 
-  void EnsureLoaded();
+  void EnsureLoaded() const;
 
   virtual bool Resolve(TSubclassOf<UFGItemDescriptor> FluidDescriptor, bool bEmpty,
                        FPCAppearanceSpec& OutSpec) const override;
 
+  // Colors only — PaintFinish always loaded fresh via GetFinishClass(Matte).
   const FPCAppearanceSpec& GetNeutral() const {
     return NeutralSpec;
   }
@@ -40,19 +42,22 @@ class FPCFluidAppearanceCatalog final : public IAppearanceCatalog {
   TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish>
   GetFinishClass(EPCPaintFinishKind Kind) const;
 
+  // SCIM-safe store seed: never touch cached UClass*.
+  static FString GetFinishPath(EPCPaintFinishKind Kind);
+
  private:
   FPCFluidAppearanceCatalog() = default;
 
-  void BuildEntries();
+  void BuildEntries() const;
+  void FillSpecFromEntry(const FPCFluidCatalogEntry& Entry, FPCAppearanceSpec& OutSpec) const;
+  void FillNeutralSpec(FPCAppearanceSpec& OutSpec) const;
   static FLinearColor HexRgb(uint8 R, uint8 G, uint8 B);
   static TSubclassOf<UFGItemDescriptor> LoadFluidDesc(const TCHAR* SoftPath);
-  static TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish>
-  LoadFinish(const TCHAR* SoftPath, const TCHAR* Label);
 
-  bool bBuilt = false;
-  FPCAppearanceSpec NeutralSpec;
-  TMap<TSubclassOf<UFGItemDescriptor>, FPCFluidCatalogEntry> ByDescriptor;
-  TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> FinishDefault;
-  TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> FinishMatte;
-  TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> FinishMetallicColor;
+  // Lazy-built cache; mutable so const resolvers can trigger the one-time build.
+  mutable bool bBuilt = false;
+  // PaintFinish left null — Resolve paths call GetFinishClass (TryLoad) each time.
+  mutable FPCAppearanceSpec NeutralSpec;
+  mutable TMap<FName, FPCFluidCatalogEntry> ByStem;
+  mutable TMap<FString, FName> SoftPathToStem;
 };

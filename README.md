@@ -18,7 +18,7 @@ Each mod has its own folder and README with features, requirements, and roadmap.
 | **Published** | 2026-07-02 |
 | **Updated** | 2026-07-16 |
 | **Previous** | **3.0** — [Foundation rewrite](StructuralPower/README.md#v300--foundation-rewrite-previous) |
-| **Version** | **3.1.0** *(current)* — [Machines + pipes](StructuralPower/README.md#v310--machines--pipes-current) |
+| **Version** | **3.1.1** *(current)* — [Machines + pipes](StructuralPower/README.md#v31--machines--pipes-current-311) |
 | **In development** | **3.2** — [Belt topology](StructuralPower/README.md#v32--belt-topology-in-development) ([roadmap](StructuralPower/README.md#roadmap)) |
 
 Hidden structural power bus for foundations, walls, ramps, and bridge poles. Retroactive — existing builds are wired on load. **v3.0:** vanilla-first rewrite, lighting, Id panel, switches, hoverpack. **v3.1:** opt-in machines + pipe topology (gen/storage/resources/production, supports→pumps). **v3.2 (in development):** belt topology. Config via cfg / console / `!` chat.
@@ -35,11 +35,11 @@ Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 |---|---|
 | **Added** | 2026-07-15 |
 | **Published** | 2026-07-15 |
-| **Updated** | 2026-07-16 |
-| **Version** | 1.1.0 |
+| **Updated** | 2026-07-22 |
+| **Version** | 1.1.1 |
 | **Next** | — |
 
-Fluid-driven colors for pipelines, junctions, pumps, and matching pipe supports. Customizer **PipelineColor** swatches, SaveGame store, metallic gases by default. **v1.1:** inline flow meter paint on place/split/load. Chat `!Metallic` (toggle / `all on` / `all off` / `default`). Config via cfg / console (no SML Mods menu).
+Fluid-driven colors for pipelines, junctions, pumps, and matching pipe supports. Customizer **PipelineColor** swatches, SaveGame store, metallic gases by default. **v1.1.1:** dedicated server crash fixes, SCIM-safe save format. Chat `!Metallic` (toggle / `all on` / `all off` / `default`). Config via cfg / console (no SML Mods menu).
 
 Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 

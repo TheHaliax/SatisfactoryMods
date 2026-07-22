@@ -1,6 +1,6 @@
 # StructuralPower Documentation
 
-Player and contributor docs for **StructuralPower 3.1.0** (see [CHANGELOG](../CHANGELOG.md) and `.uplugin`).
+Player and contributor docs for **StructuralPower 3.1.1** (see [CHANGELOG](../CHANGELOG.md) and `.uplugin`).
 
 ## Overview
 

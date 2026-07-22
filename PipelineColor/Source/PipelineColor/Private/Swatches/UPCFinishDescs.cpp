@@ -3,6 +3,7 @@
 
 #include "Swatches/UPCFinishDescs.h"
 
+#include "Appearance/FPCMetallicColorCorrection.h"
 #include "PipelineColorLog.h"
 #include "UObject/SoftObjectPath.h"
 
@@ -10,10 +11,23 @@ UPCFinish_MetallicColor::UPCFinish_MetallicColor() {
   mUseDisplayNameAndDescription = true;
   mDisplayName = NSLOCTEXT("PipelineColor", "FinishMetallicColor", "PC Metallic Color");
   mDescription = NSLOCTEXT("PipelineColor", "FinishMetallicColorDesc",
-                           "Metallic 1 — Roughness from Primary V");
+                           "Metallic 1 — roughness via finish flyweight pool");
   ID = INDEX_CUSTOM_COLOR_SLOT;
   RoughnessValue = 0.4f;
   MetallicValue = 1.0f;
+  mHasForcedColor = false;
+  mForcedColor = FLinearColor::White;
+  mValidBuildables.Reset();
+}
+
+UPCFinish_MatteNeutral::UPCFinish_MatteNeutral() {
+  mUseDisplayNameAndDescription = true;
+  mDisplayName = NSLOCTEXT("PipelineColor", "FinishMatteNeutral", "PC Matte Neutral");
+  mDescription =
+      NSLOCTEXT("PipelineColor", "FinishMatteNeutralDesc", "Matte finish for empty Neutral pipes");
+  ID = INDEX_CUSTOM_COLOR_SLOT;
+  RoughnessValue = FPCMetallicColorCorrection::NeutralMatteRoughness;
+  MetallicValue = 0.0f;
   mHasForcedColor = false;
   mForcedColor = FLinearColor::White;
   mValidBuildables.Reset();
