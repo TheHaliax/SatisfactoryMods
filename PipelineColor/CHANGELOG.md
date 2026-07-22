@@ -1,5 +1,22 @@
 # PipelineColor — CHANGELOG
 
+## 1.1.2 — 2026-07-22
+
+- Fix severe dedicated-server performance drop on large saves (server tickrate falling
+  below 30 FPS with CPU spikes and client rubberbanding). Painting a pipe no longer
+  iterates the whole world looking for pipe supports: support links resolve once in a
+  single seed pass at world load, pipes without supports are remembered instead of
+  rescanned, and support parent classes resolve through a GC-safe cache instead of
+  four soft-path lookups per world actor
+- Cut load-time paint cost per pipe roughly 400x: swatch, paint-finish, and fluid-stem
+  lookups now use GC-safe class caches instead of re-parsing soft class paths on every
+  apply, and the no-op compare path no longer heap-copies customization data
+- Background repaint safety net runs at much lower duty (8 pipes / 5 s instead of
+  32 / 0.5 s) and settled pipes skip meter and support work entirely; fluid change,
+  drain, placement, and dismantle still repaint immediately through event hooks
+- Placing a support against an already-painted pipe repaints immediately through the
+  invalidate path
+
 ## 1.1.1 — 2026-07-22
 
 - Fix Linux dedicated server SIGILL when a Space Elevator is placed (or its Project

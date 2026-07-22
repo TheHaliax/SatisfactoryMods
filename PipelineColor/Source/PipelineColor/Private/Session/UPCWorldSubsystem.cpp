@@ -269,15 +269,20 @@ void UPCWorldSubsystem::ProcessNow(AFGBuildable* Buildable) {
     return false;
   }();
 
-  if (!bSpecUnchanged) {
-    FBuildableColorTarget Target(Buildable);
-    if (Target.Apply(Spec)) {
-      LastApplied.FindOrAdd(Buildable) = Spec;
-    }
+  // Unchanged spec = settled pipe. Meter/support sync rides the changed path
+  // only: late meter spawn re-enters via BeginPlay hook InvalidateApplied +
+  // Enqueue, so nothing is lost — and the steady-state polling pass stops
+  // paying meter reflection + support collection per pipe per cycle.
+  if (bSpecUnchanged) {
+    return;
+  }
+
+  FBuildableColorTarget Target(Buildable);
+  if (Target.Apply(Spec)) {
+    LastApplied.FindOrAdd(Buildable) = Spec;
   }
 
   if (AFGBuildablePipeline* Pipe = Cast<AFGBuildablePipeline>(Buildable)) {
-    // Child meter may spawn after parent LastApplied — sync even when parent skip.
     if (AFGBuildablePipelineFlowIndicator* Ind = ResolveFlowIndicator(Pipe)) {
       FCustomizationApplicator::ApplyIfChanged(Ind, Spec);
     }
@@ -292,6 +297,10 @@ void UPCWorldSubsystem::ScanWorld() {
   }
 
   int32 Found = 0;
+
+  // Resolve support -> pipe links in one world pass before the paint drain;
+  // per-pipe Collect fallbacks then run cache-only.
+  FPipeSupportTouch::SeedFromWorld(World);
 
   if (AFGBuildableSubsystem* BuildableSub = AFGBuildableSubsystem::Get(World)) {
     for (AFGBuildable* Buildable : BuildableSub->GetAllBuildablesRef()) {

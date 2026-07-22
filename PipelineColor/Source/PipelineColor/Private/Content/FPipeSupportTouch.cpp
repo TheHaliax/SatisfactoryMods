@@ -9,6 +9,7 @@
 #include "Components/ActorComponent.h"
 #include "EngineUtils.h"
 #include "FGPipeConnectionComponent.h"
+#include "PipelineColorLog.h"
 #include "UObject/SoftObjectPath.h"
 
 namespace FPipeSupportTouch {
@@ -18,8 +19,17 @@ constexpr float TouchRadiusUu = 50.f;
 TMap<TWeakObjectPtr<AFGBuildablePipeline>, TArray<TWeakObjectPtr<AFGBuildable>>> GPipeToSupports;
 TMap<TWeakObjectPtr<AFGBuildable>, TWeakObjectPtr<AFGBuildablePipeline>> GSupportToPipe;
 
-// Path literals only. Never cache BP UClass* in statics — no GC root; menu → reload
-// leaves dangling class (client AV in IsA during AddBuildable BeginPlay storm).
+// Pipes scanned world-wide with zero supports found. Membership means "do not
+// rescan"; entries drop when a support links (RememberLink) or the pipe dies.
+TSet<TWeakObjectPtr<AFGBuildablePipeline>> GScannedNoSupports;
+
+// Full-map prune is O(cache); amortize instead of running per mutation.
+int32 GOpsSincePrune = 0;
+constexpr int32 PruneOpInterval = 256;
+
+// Path literals only as the parse source. Resolved classes held as weak ptrs:
+// GC-safe (weak nulls on menu -> reload, never dangles) and kills the previous
+// per-actor FSoftClassPath parse + FindObject storm.
 const TCHAR* kFluidSupportParentPaths[] = {
     TEXT("/Game/FactoryGame/Buildable/Factory/PipelineSupport/"
          "Build_PipelineSupport.Build_PipelineSupport_C"),
@@ -30,6 +40,21 @@ const TCHAR* kFluidSupportParentPaths[] = {
     TEXT("/Game/FactoryGame/Buildable/Factory/PipelineSupportWallHole/"
          "Build_PipelineSupportWallHole.Build_PipelineSupportWallHole_C"),
 };
+constexpr int32 kSupportParentCount = UE_ARRAY_COUNT(kFluidSupportParentPaths);
+
+TWeakObjectPtr<UClass> GSupportParentClasses[kSupportParentCount];
+
+UClass* GetSupportParentClass(int32 Index) {
+  if (UClass* Cached = GSupportParentClasses[Index].Get()) {
+    return Cached;
+  }
+
+  // ResolveClass = FindObject, no load. Class absent from memory -> no such
+  // support exists in world -> IsA would be false anyway.
+  UClass* Resolved = FSoftClassPath(kFluidSupportParentPaths[Index]).ResolveClass();
+  GSupportParentClasses[Index] = Resolved;
+  return Resolved;
+}
 
 void AddUniqueSupport(TArray<AFGBuildable*>& Out, AFGBuildable* Candidate) {
   if (!IsValid(Candidate)) {
@@ -56,6 +81,19 @@ void PruneCacheDead() {
       It.RemoveCurrent();
     }
   }
+  for (auto It = GScannedNoSupports.CreateIterator(); It; ++It) {
+    if (!It->IsValid()) {
+      It.RemoveCurrent();
+    }
+  }
+}
+
+void MaybePruneCacheDead() {
+  if (++GOpsSincePrune < PruneOpInterval) {
+    return;
+  }
+  GOpsSincePrune = 0;
+  PruneCacheDead();
 }
 
 UFGPipeConnectionComponentBase* FirstPipeSnapConn(AFGBuildable* Buildable) {
@@ -154,13 +192,74 @@ void ScanSupportsTouchingPipe(AFGBuildablePipeline* Pipe, TArray<AFGBuildable*>&
     ConsiderSupport(*It);
   }
 }
+
+TWeakObjectPtr<UWorld> GSeededWorld;
 } // namespace
+
+void SeedFromWorld(UWorld* World) {
+  if (!IsValid(World) || GSeededWorld.Get() == World) {
+    return;
+  }
+  GSeededWorld = World;
+
+  // Single world pass replaces per-pipe TActorIterator fallbacks: resolve each
+  // support's pipe through its snap connection (free), spline-project only
+  // against the connection-adjacent pipe. Pipes left unlinked get the negative
+  // flag lazily on their first Collect (which now cannot world-scan again).
+  int32 Supports = 0;
+  int32 Linked = 0;
+  TArray<AFGBuildablePipeline*> Pipes;
+  for (TActorIterator<AFGBuildable> It(World); It; ++It) {
+    AFGBuildable* Candidate = *It;
+    if (AFGBuildablePipeline* Pipe = Cast<AFGBuildablePipeline>(Candidate)) {
+      Pipes.Add(Pipe);
+      continue;
+    }
+    if (!IsPipeSupport(Candidate)) {
+      continue;
+    }
+
+    ++Supports;
+    bool bConnLinked = false;
+    TInlineComponentArray<UFGPipeConnectionComponentBase*> Conns(Candidate);
+    for (UFGPipeConnectionComponentBase* Conn : Conns) {
+      if (AFGBuildablePipeline* Pipe = PipeFromConn(Conn)) {
+        RememberLink(Pipe, Candidate);
+        bConnLinked = true;
+        ++Linked;
+        break;
+      }
+    }
+
+    // Mid-span support (wall hole etc.): pipeline-only proximity scan, once,
+    // at seed time — cheaper than letting its pipe world-scan later.
+    if (!bConnLinked && FindTouchedPipe(Candidate)) {
+      ++Linked;
+    }
+  }
+
+  // Every support in the world is linked now, so any pipe without a cache
+  // entry is provably supportless: negative-flag them all so no pipe ever
+  // pays a first-Collect world scan. New builds clear flags via the hooks.
+  int32 Flagged = 0;
+  for (AFGBuildablePipeline* Pipe : Pipes) {
+    if (!GPipeToSupports.Contains(Pipe)) {
+      GScannedNoSupports.Add(Pipe);
+      ++Flagged;
+    }
+  }
+
+  UE_LOG(LogPipelineColor, Log,
+         TEXT("%s support seed: %d support(s), %d linked, %d pipe(s) flagged supportless"),
+         PIPELINECOLOR_LOG_PREFIX, Supports, Linked, Flagged);
+}
 
 void RememberLink(AFGBuildablePipeline* Pipe, AFGBuildable* Support) {
   if (!IsValid(Pipe) || !IsValid(Support)) {
     return;
   }
-  PruneCacheDead();
+  MaybePruneCacheDead();
+  GScannedNoSupports.Remove(Pipe);
   GSupportToPipe.FindOrAdd(Support) = Pipe;
   TArray<TWeakObjectPtr<AFGBuildable>>& List = GPipeToSupports.FindOrAdd(Pipe);
   List.AddUnique(Support);
@@ -170,7 +269,7 @@ void InvalidateBuildable(AFGBuildable* Buildable) {
   if (!IsValid(Buildable)) {
     return;
   }
-  PruneCacheDead();
+  MaybePruneCacheDead();
 
   if (AFGBuildablePipeline* Pipe = Cast<AFGBuildablePipeline>(Buildable)) {
     if (TArray<TWeakObjectPtr<AFGBuildable>>* List = GPipeToSupports.Find(Pipe)) {
@@ -179,6 +278,7 @@ void InvalidateBuildable(AFGBuildable* Buildable) {
       }
     }
     GPipeToSupports.Remove(Pipe);
+    GScannedNoSupports.Remove(Pipe);
     return;
   }
 
@@ -187,6 +287,9 @@ void InvalidateBuildable(AFGBuildable* Buildable) {
       if (TArray<TWeakObjectPtr<AFGBuildable>>* List = GPipeToSupports.Find(Pipe)) {
         List->Remove(Buildable);
       }
+      // Sibling supports may remain; next Collect rescans once and either
+      // repopulates the list or negative-flags the pipe.
+      GScannedNoSupports.Remove(Pipe);
     }
     GSupportToPipe.Remove(Buildable);
   }
@@ -198,10 +301,8 @@ bool IsPipeSupport(const AFGBuildable* Buildable) {
     return false;
   }
 
-  for (const TCHAR* ParentPath : kFluidSupportParentPaths) {
-    // ResolveClass = FindObject, no load. Class absent from memory → no such support
-    // exists in world → IsA would be false anyway.
-    UClass* Parent = FSoftClassPath(ParentPath).ResolveClass();
+  for (int32 Index = 0; Index < kSupportParentCount; ++Index) {
+    UClass* Parent = GetSupportParentClass(Index);
     if (Parent && Buildable->IsA(Parent)) {
       return true;
     }
@@ -268,7 +369,7 @@ void CollectSupportsTouchingPipe(AFGBuildablePipeline* Pipe, TArray<AFGBuildable
     return;
   }
 
-  PruneCacheDead();
+  MaybePruneCacheDead();
   if (TArray<TWeakObjectPtr<AFGBuildable>>* List = GPipeToSupports.Find(Pipe)) {
     for (const TWeakObjectPtr<AFGBuildable>& Weak : *List) {
       if (AFGBuildable* Support = Weak.Get()) {
@@ -280,7 +381,18 @@ void CollectSupportsTouchingPipe(AFGBuildablePipeline* Pipe, TArray<AFGBuildable
     }
   }
 
+  // World scan is the expensive last resort. Negative cache keeps supportless
+  // pipes from re-scanning the world on every revisit.
+  if (GScannedNoSupports.Contains(Pipe)) {
+    return;
+  }
+
   ScanSupportsTouchingPipe(Pipe, OutSupports);
+  if (OutSupports.Num() == 0) {
+    GScannedNoSupports.Add(Pipe);
+    return;
+  }
+
   for (AFGBuildable* Support : OutSupports) {
     RememberLink(Pipe, Support);
   }

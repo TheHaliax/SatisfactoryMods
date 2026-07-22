@@ -60,4 +60,7 @@ class FPCFluidAppearanceCatalog final : public IAppearanceCatalog {
   mutable FPCAppearanceSpec NeutralSpec;
   mutable TMap<FName, FPCFluidCatalogEntry> ByStem;
   mutable TMap<FString, FName> SoftPathToStem;
+  // Descriptor UClass* -> stem, weak-keyed: skips FSoftClassPath::ToString per
+  // resolve (ran per pipe apply). Compact-on-miss keeps dead weaks bounded.
+  mutable TMap<TWeakObjectPtr<UClass>, FName> ClassToStem;
 };

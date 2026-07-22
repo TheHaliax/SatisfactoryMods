@@ -10,10 +10,18 @@
 
 namespace {
 TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> LoadCustomSwatch() {
-  // No static TSubclassOf cache — not a GC root; soft path TryLoad each call.
+  // Weak cache: GC-safe (nulls on menu -> reload, never dangles) and avoids a
+  // soft-path parse + TryLoad on every apply — this runs per buildable.
+  static TWeakObjectPtr<UClass> CachedSwatch;
+  if (UClass* Cached = CachedSwatch.Get()) {
+    return Cached;
+  }
+
   const FSoftClassPath Path(TEXT("/Game/FactoryGame/Buildable/-Shared/Customization/Swatches/"
                                  "SwatchDesc_Custom.SwatchDesc_Custom_C"));
-  return Path.TryLoadClass<UFGFactoryCustomizationDescriptor_Swatch>();
+  UClass* Loaded = Path.TryLoadClass<UFGFactoryCustomizationDescriptor_Swatch>();
+  CachedSwatch = Loaded;
+  return Loaded;
 }
 } // namespace
 
@@ -28,7 +36,9 @@ bool FCustomizationApplicator::ApplyIfChanged(AFGBuildable* Buildable,
     PaintSwatch = Spec.SwatchDesc;
   }
 
-  FFactoryCustomizationData Data = Buildable->GetCustomizationData_Native();
+  // Compare against the live struct by const ref; FFactoryCustomizationData
+  // owns TArrays, so the old by-value snapshot heap-copied on every no-op.
+  const FFactoryCustomizationData& Data = Buildable->GetCustomizationData_Native();
   const bool bSameColors =
       Data.SwatchDesc == PaintSwatch && Data.ColorSlot == INDEX_CUSTOM_COLOR_SLOT &&
       Data.OverrideColorData.PaintFinish == Spec.PaintFinish &&

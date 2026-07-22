@@ -1,0 +1,23 @@
+# Google C++ base with NASA Power-of-Ten-flavored overrides, tuned for UE mods.
+# Advisory (no WarningsAsErrors): UE macros and generated code stay buildable.
+Checks: >
+  -*,
+  google-*,
+  -google-readability-todo,
+  -google-runtime-references,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  performance-*,
+  misc-no-recursion,
+  readability-function-size,
+  readability-braces-around-statements,
+  readability-implicit-bool-conversion
+CheckOptions:
+  # Power of Ten rule 4: short functions with a single job.
+  - key: readability-function-size.LineThreshold
+    value: '80'
+  - key: readability-function-size.NestingThreshold
+    value: '5'
+  - key: readability-function-size.ParameterThreshold
+    value: '8'
+HeaderFilterRegex: '(StructuralPower|PipelineColor)/Source/.*'
