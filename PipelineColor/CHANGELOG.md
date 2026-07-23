@@ -1,6 +1,6 @@
 # PipelineColor — CHANGELOG
 
-## 1.2.0 — TBD
+## 1.2.0 — 2026-07-23
 
 - Add Customizer sections for modded fluids: **SatisfactoryPlus** and **RefinedPower**
   subcategories under the PipelineColor category, with swatches and recipes for 46
