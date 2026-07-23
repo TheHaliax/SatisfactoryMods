@@ -37,6 +37,7 @@ void FPipelineColorSmlChatCommands::RegisterWithWorld(UWorld* World) {
 
   const FString ModRef = FPCPipelineColorModConfig::ModReference;
   Chat->RegisterCommand(ModRef, APCMetallicChatCommand::StaticClass());
+  Chat->RegisterCommand(ModRef, APCPcChatCommand::StaticClass());
   Chat->RegisterCommand(ModRef, APCPchelpChatCommand::StaticClass());
 }
 
@@ -57,6 +58,27 @@ EExecutionStatus APCMetallicChatCommand::ExecuteCommand_Implementation(
 
   const FString FluidQuery = FString::Join(Arguments, TEXT(" "));
   const FString CommandLine = FString::Printf(TEXT("Metallic %s"), *FluidQuery);
+  return RunBangFromSender(Sender, CommandLine) ? EExecutionStatus::COMPLETED
+                                                : EExecutionStatus::UNCOMPLETED;
+}
+
+APCPcChatCommand::APCPcChatCommand() {
+  bOnlyUsableByPlayer = true;
+  MinNumberOfArguments = 1;
+  CommandName = TEXT("pc");
+  Usage = NSLOCTEXT("PipelineColor", "ChatCmd.Pc",
+                    "!pc default — reseed swatch colors from fluid data");
+}
+
+EExecutionStatus APCPcChatCommand::ExecuteCommand_Implementation(UCommandSender* Sender,
+                                                                 const TArray<FString>& Arguments,
+                                                                 const FString& /*Label*/) {
+  if (Arguments.Num() < 1) {
+    PrintCommandUsage(Sender);
+    return EExecutionStatus::BAD_ARGUMENTS;
+  }
+
+  const FString CommandLine = FString::Printf(TEXT("pc %s"), *FString::Join(Arguments, TEXT(" ")));
   return RunBangFromSender(Sender, CommandLine) ? EExecutionStatus::COMPLETED
                                                 : EExecutionStatus::UNCOMPLETED;
 }

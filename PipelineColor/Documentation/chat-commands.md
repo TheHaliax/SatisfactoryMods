@@ -13,7 +13,8 @@ The same commands register with **SML** (`AChatCommandSubsystem::RegisterCommand
 - `!Metallic [fluid]` — **toggle** metallic finish for that fluid (writes one `MetallicOverrides` entry in `Configs/PipelineColor.cfg`)
 - `!Metallic all on` — force **every** catalog fluid (incl. Neutral / Fallback) metallic **on** via per-fluid overrides
 - `!Metallic all off` — force **every** catalog fluid metallic **off** (color finish) the same way
-- `!Metallic default` — clear all metallic overrides, restore gas-on / liquid-off defaults, and reseed Customizer store colors from catalog
+- `!Metallic default` — clear all metallic overrides and restore gas-on / liquid-off defaults. **Metallic flags only** — Customizer swatch edits stay untouched
+- `!pc default` — reseed **all** Customizer swatch store colors from the fluid descriptors (`mFluidColor` / gas `mGasColor`). Destructive: resets every PC swatch edit
 - `!pchelp` — list Pipeline Color chat commands
 
 `all on` / `all off` do **not** flip `DefaultGasMetallic` / `DefaultLiquidMetallic`. They stamp explicit overrides for the full fluid roster. Use `!Metallic default` to drop those overrides and return to gas/liquid defaults.
@@ -28,6 +29,7 @@ Fluid tokens accept catalog keys or Customizer-style labels (e.g. `Water`, `Nitr
 !Metallic all on
 !Metallic all off
 !Metallic default
+!pc default
 !pchelp
 ```
 
@@ -39,7 +41,8 @@ Feedback uses the **Hal:** sender, for example:
 - `Nitrogen Gas metallic off.`
 - `All fluids metallic on.`
 - `All fluids metallic off (color).`
-- `Pipeline Color defaults restored (colors + metallic).`
+- `Metallic defaults restored (gas on / liquid off; overrides cleared).`
+- `Swatch colors reseeded from fluid data (Customizer edits reset).`
 - Unknown fluid → short error; try `!pchelp`
 
 ## Related settings

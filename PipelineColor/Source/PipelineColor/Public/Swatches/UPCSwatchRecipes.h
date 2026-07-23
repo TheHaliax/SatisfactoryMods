@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "FGCustomizationRecipe.h"
+#include "FGFactoryColoringTypes.h"
 #include "UPCSwatchRecipes.generated.h"
 
 UCLASS(Abstract)

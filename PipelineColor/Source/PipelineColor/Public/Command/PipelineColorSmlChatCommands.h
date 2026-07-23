@@ -27,6 +27,18 @@ class APCMetallicChatCommand : public AChatCommandInstance {
 };
 
 UCLASS(NotPlaceable)
+class APCPcChatCommand : public AChatCommandInstance {
+  GENERATED_BODY()
+
+ public:
+  APCPcChatCommand();
+
+  virtual EExecutionStatus ExecuteCommand_Implementation(UCommandSender* Sender,
+                                                         const TArray<FString>& Arguments,
+                                                         const FString& Label) override;
+};
+
+UCLASS(NotPlaceable)
 class APCPchelpChatCommand : public AChatCommandInstance {
   GENERATED_BODY()
 

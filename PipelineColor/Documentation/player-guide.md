@@ -2,9 +2,11 @@
 
 ## Overview
 
-PipelineColor paints vanilla pipeline networks from the fluid currently in the pipe. Empty lines use Neutral; liquids and gases use built-in wiki colors. Gases get a metallic PaintFinish by default.
+PipelineColor paints vanilla pipeline networks from the fluid currently in the pipe. Empty lines use Neutral; liquids use the fluid's own authored color and gases use the authored gas color (same data the vanilla flow indicator renders). Gases get a metallic PaintFinish by default.
 
 Matching **pipe supports** (floor, stackable, wall, wall-hole BP parents — including WallPipeSupports-style children) pick up the same look from a touching pipe.
+
+With [Satisfactory Plus](https://ficsit.app/mod/SatisfactoryPlus) or [Refined Power](https://ficsit.app/mod/RefinedPower) installed, their fluids and gases get swatches too, under separate **SatisfactoryPlus** / **RefinedPower** sections in the Customizer's PipelineColor category. Without those mods the sections do not appear.
 
 ## What gets colored
 
@@ -36,7 +38,8 @@ Chat:
 - `!Metallic <fluid>` — toggle that fluid
 - `!Metallic all on` — stamp metallic **on** for every catalog fluid (overrides, not the gas/liquid default flags)
 - `!Metallic all off` — stamp metallic **off** (color) for every catalog fluid the same way
-- `!Metallic default` — clear those overrides, restore gas-on / liquid-off defaults, and reseed Customizer store colors from catalog
+- `!Metallic default` — clear those overrides and restore gas-on / liquid-off defaults. Your Customizer swatch edits are untouched
+- `!pc default` — reseed every PC swatch color from the fluid's own data (liquids `mFluidColor`, gases `mGasColor`). This **resets** Customizer swatch edits
 
 `all on` / `all off` leave `DefaultGasMetallic` / `DefaultLiquidMetallic` alone until `default`.
 
