@@ -9,6 +9,11 @@ class UWorld;
 
 DECLARE_MULTICAST_DELEGATE(FPCPipelineColorConfigChanged);
 
+enum class EPCColorSource : uint8 {
+  Liquid,
+  Gas,
+};
+
 class PIPELINECOLOR_API FPCPipelineColorModConfig {
  public:
   static constexpr const TCHAR* ModReference = TEXT("PipelineColor");
@@ -30,6 +35,9 @@ class PIPELINECOLOR_API FPCPipelineColorModConfig {
   static bool IsDefaultLiquidMetallic();
 
   static void ApplyDefaultFlags(bool bGasMetallic, bool bLiquidMetallic);
+
+  static EPCColorSource GetColorSourceForKey(FName CatalogKey);
+  static bool TrySetColorSource(FName CatalogKey, EPCColorSource Source, UWorld* World);
 
   static FString GetConfigFilePath();
   static FPCPipelineColorConfigChanged& OnConfigChanged();

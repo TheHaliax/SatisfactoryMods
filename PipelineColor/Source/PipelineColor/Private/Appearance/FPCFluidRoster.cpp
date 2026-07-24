@@ -52,7 +52,8 @@ const TArray<FPCFluidRosterRow>& FluidRows() {
   Add(TEXT("/Game/FactoryGame/Resource/Parts/Fuel/Desc_LiquidFuel.Desc_LiquidFuel_C"), TEXT("Fuel"),
       0xEB, 0x7D, 0x15, EPCPaintFinishKind::Default, UPCSwatchDesc_Fuel::StaticClass(),
       UPCSwatchRecipe_Fuel::StaticClass());
-  Add(TEXT("/Game/FactoryGame/Resource/Parts/Turbofuel/Desc_TurboFuel.Desc_TurboFuel_C"),
+  Add(TEXT("/Game/FactoryGame/Resource/Parts/Turbofuel/"
+           "Desc_LiquidTurboFuel.Desc_LiquidTurboFuel_C"),
       TEXT("Turbofuel"), 0xD4, 0x29, 0x2E, EPCPaintFinishKind::Default,
       UPCSwatchDesc_Turbofuel::StaticClass(), UPCSwatchRecipe_Turbofuel::StaticClass());
   Add(TEXT("/Game/FactoryGame/Resource/Parts/BioFuel/"

@@ -19,7 +19,7 @@ void UPCSwatchRecipeBase::InitRecipe(TSubclassOf<UFGFactoryCustomizationDescript
 }
 
 UPCSwatchRecipe_Neutral::UPCSwatchRecipe_Neutral() {
-  InitRecipe(UPCSwatchDesc_Neutral::StaticClass(), TEXT("PC Neutral"));
+  InitRecipe(UPCSwatchDesc_Neutral::StaticClass(), TEXT("PC Empty Pipe"));
 }
 
 UPCSwatchRecipe_Water::UPCSwatchRecipe_Water() {
@@ -84,5 +84,5 @@ UPCSwatchRecipe_NitrogenGas::UPCSwatchRecipe_NitrogenGas() {
 }
 
 UPCSwatchRecipe_Fallback::UPCSwatchRecipe_Fallback() {
-  InitRecipe(UPCSwatchDesc_Fallback::StaticClass(), TEXT("PC Fallback"));
+  InitRecipe(UPCSwatchDesc_Fallback::StaticClass(), TEXT("PC ERR0R"));
 }

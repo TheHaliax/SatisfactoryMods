@@ -116,7 +116,10 @@ void CollectFluidAliases(TArray<FFluidAlias>& Out) {
     }
     FFluidAlias Alias;
     Alias.Key = CDO->CatalogKey;
-    Alias.Display = FString::Printf(TEXT("PC %s"), *FriendlyNameFromKey(Alias.Key));
+    Alias.Display = CDO->mDisplayName.ToString();
+    if (Alias.Display.IsEmpty()) {
+      Alias.Display = FString::Printf(TEXT("PC %s"), *FriendlyNameFromKey(Alias.Key));
+    }
     Out.Add(Alias);
   }
 }
@@ -143,27 +146,43 @@ bool ResolveFluidQuery(const FString& Query, FName& OutKey, FString& OutFriendly
 }
 
 void SendHelp(AFGPlayerController* PlayerController) {
-  SendBangChat(PlayerController, TEXT("!Metallic <fluid>  — toggle metallic for that fluid"),
+  SendBangChat(PlayerController, TEXT("!Metallic <fluid|all on|all off|default>"),
                FLinearColor::Yellow);
-  SendBangChat(PlayerController, TEXT("!Metallic all on  — force every fluid metallic on"),
+  SendBangChat(PlayerController, TEXT("!pc <fluid> liquid|gas | default"),
                FLinearColor::Yellow);
-  SendBangChat(PlayerController,
-               TEXT("!Metallic all off  — force every fluid metallic off (color)"),
-               FLinearColor::Yellow);
-  SendBangChat(PlayerController,
-               TEXT("!Metallic default  — clear metallic overrides; gas on / liquid off"),
-               FLinearColor::Yellow);
-  SendBangChat(PlayerController,
-               TEXT("!pc default  — reseed swatch colors from fluid data (resets edits)"),
-               FLinearColor::Yellow);
-  SendBangChat(PlayerController, TEXT("!pchelp  — list Pipeline Color chat commands"),
-               FLinearColor::Yellow);
+}
+
+bool TryParseColorSourceToken(const FString& Token, EPCColorSource& Out) {
+  if (Token.Equals(TEXT("gas"), ESearchCase::IgnoreCase)) {
+    Out = EPCColorSource::Gas;
+    return true;
+  }
+  if (Token.Equals(TEXT("liquid"), ESearchCase::IgnoreCase) ||
+      Token.Equals(TEXT("fluid"), ESearchCase::IgnoreCase)) {
+    Out = EPCColorSource::Liquid;
+    return true;
+  }
+  return false;
+}
+
+bool TryParsePcColorSource(const FString& Rest, FString& OutFluidQuery, EPCColorSource& OutSource) {
+  TArray<FString> Tokens;
+  Rest.ParseIntoArrayWS(Tokens);
+  if (Tokens.Num() < 2) {
+    return false;
+  }
+  if (!TryParseColorSourceToken(Tokens.Last(), OutSource)) {
+    return false;
+  }
+  Tokens.RemoveAt(Tokens.Num() - 1);
+  OutFluidQuery = FString::Join(Tokens, TEXT(" "));
+  return !OutFluidQuery.IsEmpty();
 }
 
 bool TryToggleMetallic(UWorld* World, FName Key, FString& OutMessage) {
   const bool bNext = !FPCPipelineColorModConfig::IsMetallicForKey(Key);
   if (!FPCPipelineColorModConfig::TrySetMetallicOverride(Key, bNext, World)) {
-    OutMessage = TEXT("Cannot change metallic on client.");
+    OutMessage = TEXT("Host only.");
     return false;
   }
 
@@ -238,8 +257,7 @@ void FPCBangCommands::Execute(AFGPlayerController* PlayerController, const FStri
 
   UWorld* World = PlayerController->GetWorld();
   if (!IsValid(World) || World->GetNetMode() == NM_Client) {
-    SendBangChat(PlayerController, TEXT("Pipeline Color chat commands run on the server only."),
-                 FLinearColor::Red);
+    SendBangChat(PlayerController, TEXT("Host only."), FLinearColor::Red);
     return;
   }
 
@@ -256,57 +274,79 @@ void FPCBangCommands::Execute(AFGPlayerController* PlayerController, const FStri
   }
 
   if (Verb.Equals(TEXT("pc"), ESearchCase::IgnoreCase)) {
-    if (!Rest.Equals(TEXT("default"), ESearchCase::IgnoreCase)) {
-      SendBangChat(PlayerController, TEXT("Use !pc default"), FLinearColor::Red);
+    if (Rest.Equals(TEXT("default"), ESearchCase::IgnoreCase)) {
+      APCSwatchStoreSubsystem* Store = APCSwatchStoreSubsystem::GetOrCreate(World);
+      if (!Store) {
+        SendBangChat(PlayerController, TEXT("No store."), FLinearColor::Red);
+        return;
+      }
+
+      Store->ReseedAllFromCatalog();
+      SendBangChat(PlayerController, TEXT("Swatches reseeded."));
       return;
     }
 
-    APCSwatchStoreSubsystem* Store = APCSwatchStoreSubsystem::GetOrCreate(World);
-    if (!Store) {
-      SendBangChat(PlayerController, TEXT("Swatch store unavailable."), FLinearColor::Red);
+    FString FluidQuery;
+    EPCColorSource Source = EPCColorSource::Liquid;
+    if (!TryParsePcColorSource(Rest, FluidQuery, Source)) {
+      SendBangChat(PlayerController, TEXT("!pc <fluid> liquid|gas | default"),
+                   FLinearColor::Red);
       return;
     }
 
-    Store->ReseedAllFromCatalog();
-    SendBangChat(PlayerController,
-                 TEXT("Swatch colors reseeded from fluid data (Customizer edits reset)."));
+    FName Key;
+    FString Friendly;
+    if (!ResolveFluidQuery(FluidQuery, Key, Friendly)) {
+      SendBangChat(PlayerController, FString::Printf(TEXT("Unknown: %s"), *FluidQuery),
+                   FLinearColor::Red);
+      return;
+    }
+
+    if (!FPCPipelineColorModConfig::TrySetColorSource(Key, Source, World)) {
+      SendBangChat(PlayerController, TEXT("Host only."), FLinearColor::Red);
+      return;
+    }
+
+    if (APCSwatchStoreSubsystem* Store = APCSwatchStoreSubsystem::GetOrCreate(World)) {
+      Store->ReseedKeyColorsFromCatalog(Key);
+    }
+
+    const TCHAR* SourceLabel = Source == EPCColorSource::Gas ? TEXT("gas") : TEXT("liquid");
+    SendBangChat(PlayerController, FString::Printf(TEXT("%s %s color."), *Friendly, SourceLabel));
     return;
   }
 
   if (Verb.Equals(TEXT("Metallic"), ESearchCase::IgnoreCase)) {
     if (Rest.IsEmpty()) {
-      SendBangChat(PlayerController, TEXT("Use !Metallic <fluid>, all on|off, or default"),
+      SendBangChat(PlayerController, TEXT("!Metallic <fluid|all on|all off|default>"),
                    FLinearColor::Red);
       return;
     }
 
     if (Rest.Equals(TEXT("default"), ESearchCase::IgnoreCase)) {
       if (!FPCPipelineColorModConfig::TryResetMetallicToDefaults(World)) {
-        SendBangChat(PlayerController, TEXT("Cannot reset metallic on client."), FLinearColor::Red);
+        SendBangChat(PlayerController, TEXT("Host only."), FLinearColor::Red);
         return;
       }
 
-      SendBangChat(PlayerController,
-                   TEXT("Metallic defaults restored (gas on / liquid off; overrides cleared)."));
+      SendBangChat(PlayerController, TEXT("Metallic defaults restored."));
       return;
     }
 
     bool bAllOn = false;
     if (TryParseAllMetallic(Rest, bAllOn)) {
       if (!FPCPipelineColorModConfig::TrySetAllMetallic(bAllOn, World)) {
-        SendBangChat(PlayerController, TEXT("Cannot change metallic on client."),
-                     FLinearColor::Red);
+        SendBangChat(PlayerController, TEXT("Host only."), FLinearColor::Red);
         return;
       }
-      SendBangChat(PlayerController, bAllOn ? TEXT("All fluids metallic on.")
-                                            : TEXT("All fluids metallic off (color)."));
+      SendBangChat(PlayerController, bAllOn ? TEXT("All metallic on.") : TEXT("All metallic off."));
       return;
     }
 
     FName Key;
     FString Friendly;
     if (!ResolveFluidQuery(Rest, Key, Friendly)) {
-      SendBangChat(PlayerController, FString::Printf(TEXT("Unknown fluid: %s"), *Rest),
+      SendBangChat(PlayerController, FString::Printf(TEXT("Unknown: %s"), *Rest),
                    FLinearColor::Red);
       return;
     }
@@ -320,7 +360,5 @@ void FPCBangCommands::Execute(AFGPlayerController* PlayerController, const FStri
     return;
   }
 
-  SendBangChat(PlayerController,
-               FString::Printf(TEXT("Unknown Pipeline Color command: !%s (try !pchelp)"), *Verb),
-               FLinearColor::Red);
+  SendBangChat(PlayerController, TEXT("Unknown. !pchelp"), FLinearColor::Red);
 }

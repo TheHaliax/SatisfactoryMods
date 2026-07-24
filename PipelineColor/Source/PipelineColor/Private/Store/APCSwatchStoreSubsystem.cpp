@@ -309,3 +309,52 @@ void APCSwatchStoreSubsystem::ReseedAllFromCatalog() {
   UE_LOG(LogPipelineColor, Log, TEXT("%s store reseeded all (%d entries)"),
          PIPELINECOLOR_LOG_PREFIX, Entries.Num());
 }
+
+bool APCSwatchStoreSubsystem::ReseedKeyFromCatalog(FName Key) {
+  if (Key.IsNone() || !HasAuthority()) {
+    return false;
+  }
+
+  FPCFluidAppearanceCatalog& Catalog = FPCFluidAppearanceCatalog::Get();
+  Catalog.EnsureLoaded();
+
+  FPCAppearanceSpec Spec;
+  if (!Catalog.ResolveByKey(Key, Spec)) {
+    UE_LOG(LogPipelineColor, Warning, TEXT("%s ReseedKey unresolved %s"), PIPELINECOLOR_LOG_PREFIX,
+           *Key.ToString());
+    return false;
+  }
+
+  FPCSwatchEntry Entry;
+  FillEntryFromSpec(Entry, Key, Spec);
+  Set(Key, Entry);
+  return true;
+}
+
+bool APCSwatchStoreSubsystem::ReseedKeyColorsFromCatalog(FName Key) {
+  if (Key.IsNone() || !HasAuthority()) {
+    return false;
+  }
+
+  FPCFluidAppearanceCatalog& Catalog = FPCFluidAppearanceCatalog::Get();
+  Catalog.EnsureLoaded();
+
+  FPCAppearanceSpec Spec;
+  if (!Catalog.ResolveByKey(Key, Spec)) {
+    UE_LOG(LogPipelineColor, Warning, TEXT("%s ReseedKeyColors unresolved %s"),
+           PIPELINECOLOR_LOG_PREFIX, *Key.ToString());
+    return false;
+  }
+
+  FPCSwatchEntry Entry;
+  if (!TryGet(Key, Entry)) {
+    FillEntryFromSpec(Entry, Key, Spec);
+    Set(Key, Entry);
+    return true;
+  }
+
+  Entry.Primary = Spec.PrimaryColor;
+  Entry.Secondary = Spec.SecondaryColor;
+  Set(Key, Entry);
+  return true;
+}

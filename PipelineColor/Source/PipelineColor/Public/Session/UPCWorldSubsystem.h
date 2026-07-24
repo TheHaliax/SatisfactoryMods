@@ -67,8 +67,6 @@ class PIPELINECOLOR_API UPCWorldSubsystem : public UTickableWorldSubsystem {
   bool bAuthority = false;
   bool bWorldReadyDone = false;
 
-  // Safety-net poll under the fluid hooks (drain -> Neutral). Hooks carry the
-  // event load; low duty keeps large-save dedicated ticks flat.
   static constexpr float EmptyScanInterval = 5.0f;
   static constexpr int32 EmptyScanBatch = 8;
   static constexpr int32 DirtyBatch = 64;

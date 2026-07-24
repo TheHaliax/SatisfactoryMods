@@ -10,7 +10,7 @@ Version range in the plugin: `^1.2.0` (compatible 1.2.x).
 
 The host (or dedicated server) owns apply, store, and config mutation. Clients receive replicated customization data; they do not run authority apply or write cfg.
 
-Chat bangs and `PipelineColor.Set` apply on the **authority** only.
+Chat bangs and `PipelineColor.Set` apply on the **authority** only. Pure clients get `Host only.`
 
 ## Dedicated server
 
@@ -24,9 +24,11 @@ Release builds should include server targets (Windows Server / Linux Server) bef
 
 Edit via console, chat when connected as authority, or edit the cfg file on the host. See [chat-commands.md](chat-commands.md).
 
+Metallic defaults / overrides and **color-source** overrides live in cfg (not the save).
+
 ## Save compatibility
 
-Customizer / SaveGame swatch entries persist in the world save. Runtime pipe/support paint rebuilds from fluid state + store on load. Metallic defaults and overrides live in cfg (not the save).
+Customizer / SaveGame swatch entries persist in the world save. Runtime pipe/support paint rebuilds from fluid state + store on load.
 
 ## Troubleshooting MP
 
@@ -35,7 +37,7 @@ Customizer / SaveGame swatch entries persist in the world save. Runtime pipe/sup
 | Mod missing on join | All parties on same 1.2.x, SML ^3.12.0 |
 | SFP/RP sections differ between host and client | Install the same Satisfactory Plus / Refined Power versions on every machine; sections follow the host's mod set |
 | Colors only on host | Dedicated build includes the PipelineColor server target |
-| Chat ignored | Run on server/listen host; pure client gets a Hal error |
+| Chat ignored | Run on server/listen host; pure client gets `Host only.` |
 | Customizer edits lost | Save the game after editing; store is SaveGame-backed |
 
 ## Related

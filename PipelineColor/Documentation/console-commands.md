@@ -2,9 +2,9 @@
 
 Open the in-game console (`~`) on the **server or listen host** (not pure clients).
 
-Chat equivalents: see [chat-commands.md](chat-commands.md) (`!Metallic <fluid>`, `all on`, `all off`, `default`, `!pchelp`).
+Chat equivalents: see [chat-commands.md](chat-commands.md) (`!Metallic <fluid>`, `all on`, `all off`, `default`, `!pc <fluid> liquid|gas`, `!pc default`, `!pchelp`).
 
-`!Metallic default` resets metallic cfg only; `!pc default` (chat) reseeds SaveGame swatch colors from fluid data.
+`!Metallic default` resets metallic cfg only; `!pc <fluid> liquid|gas` picks color field only; `!pc default` reseeds SaveGame swatch colors from fluid data.
 
 ## PipelineColor.Set
 
@@ -19,6 +19,7 @@ Updates a config key and persists to `Configs/PipelineColor.cfg`. Authority only
 | `DefaultGasMetallic` | `0` / `1` (also `true` / `false` / `on`) | Gases metallic by default |
 | `DefaultLiquidMetallic` | `0` / `1` | Liquids metallic by default |
 | `Metallic.<CatalogKey>` | `0` / `1` | Per-fluid override (e.g. `Metallic.Water`) |
+| `ColorSource.<CatalogKey>` | `liquid` / `gas` (also `fluid`) | Which descriptor RGB field; does not change metallic |
 
 ## CVars
 
@@ -43,6 +44,9 @@ Example:
   "DefaultLiquidMetallic": false,
   "MetallicOverrides": {
     "Water": true
+  },
+  "ColorSourceOverrides": {
+    "Water": "gas"
   }
 }
 ```

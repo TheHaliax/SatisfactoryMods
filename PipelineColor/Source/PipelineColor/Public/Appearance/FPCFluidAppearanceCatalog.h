@@ -28,11 +28,11 @@ class FPCFluidAppearanceCatalog final : public IAppearanceCatalog {
   static FPCFluidAppearanceCatalog& Get();
 
   void EnsureLoaded() const;
+  void Invalidate() const;
 
   virtual bool Resolve(TSubclassOf<UFGItemDescriptor> FluidDescriptor, bool bEmpty,
                        FPCAppearanceSpec& OutSpec) const override;
 
-  // Colors only — PaintFinish always loaded fresh via GetFinishClass(Matte).
   const FPCAppearanceSpec& GetNeutral() const {
     return NeutralSpec;
   }
@@ -42,7 +42,7 @@ class FPCFluidAppearanceCatalog final : public IAppearanceCatalog {
   TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish>
   GetFinishClass(EPCPaintFinishKind Kind) const;
 
-  // SCIM-safe store seed: never touch cached UClass*.
+  // SoftClassPath in SaveGame breaks SCIM — path strings only.
   static FString GetFinishPath(EPCPaintFinishKind Kind);
 
   EPCPaintFinishKind FinishKindForKey(FName CatalogKey) const;
@@ -55,18 +55,16 @@ class FPCFluidAppearanceCatalog final : public IAppearanceCatalog {
   void FillSpecFromEntry(const FPCFluidCatalogEntry& Entry, FPCAppearanceSpec& OutSpec) const;
   void FillNeutralSpec(FPCAppearanceSpec& OutSpec) const;
   static FLinearColor HexRgb(uint8 R, uint8 G, uint8 B);
+  static FLinearColor MissingMagenta();
   static TSubclassOf<UFGItemDescriptor> LoadFluidDesc(const TCHAR* SoftPath, bool bWarnIfMissing);
   static void SeedEntryFromDescriptor(FPCFluidCatalogEntry& Entry,
                                       TSubclassOf<UFGItemDescriptor> Desc,
                                       const struct FPCFluidRosterRow& Row);
 
-  // Lazy-built cache; mutable so const resolvers can trigger the one-time build.
   mutable bool bBuilt = false;
-  // PaintFinish left null — Resolve paths call GetFinishClass (TryLoad) each time.
   mutable FPCAppearanceSpec NeutralSpec;
   mutable TMap<FName, FPCFluidCatalogEntry> ByStem;
   mutable TMap<FString, FName> SoftPathToStem;
-  // Descriptor UClass* -> stem, weak-keyed: skips FSoftClassPath::ToString per
-  // resolve (ran per pipe apply). Compact-on-miss keeps dead weaks bounded.
+  mutable TMap<FString, FName> SoftPathNormToStem;
   mutable TMap<TWeakObjectPtr<UClass>, FName> ClassToStem;
 };

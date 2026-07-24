@@ -4,6 +4,7 @@
 #include "Appearance/FPCFluidAppearanceCatalog.h"
 
 #include "Appearance/FPCFluidRoster.h"
+#include "Config/FPCPipelineColorModConfig.h"
 #include "PipelineColorLog.h"
 #include "Swatches/UPCFinishDescs.h"
 #include "Swatches/UPCSwatchDescs.h"
@@ -16,6 +17,10 @@ const TCHAR* kFinishDefaultPath =
 const TCHAR* kFinishMattePath =
     TEXT("/Game/FactoryGame/Buildable/-Shared/Customization/PaintFinishes/"
          "PaintFinishDesc_Matte.PaintFinishDesc_Matte_C");
+
+FString NormalizeSoftPathKey(const FString& Path) {
+  return Path.Replace(TEXT("\\"), TEXT("/")).ToLower();
+}
 } // namespace
 
 FPCFluidAppearanceCatalog& FPCFluidAppearanceCatalog::Get() {
@@ -27,6 +32,10 @@ FLinearColor FPCFluidAppearanceCatalog::HexRgb(uint8 R, uint8 G, uint8 B) {
   return FLinearColor::FromSRGBColor(FColor(R, G, B, 255));
 }
 
+FLinearColor FPCFluidAppearanceCatalog::MissingMagenta() {
+  return HexRgb(0xFF, 0x00, 0xFF);
+}
+
 TSubclassOf<UFGItemDescriptor> FPCFluidAppearanceCatalog::LoadFluidDesc(const TCHAR* SoftPath,
                                                                         bool bWarnIfMissing) {
   const FSoftClassPath Path(SoftPath);
@@ -36,7 +45,6 @@ TSubclassOf<UFGItemDescriptor> FPCFluidAppearanceCatalog::LoadFluidDesc(const TC
       UE_LOG(LogPipelineColor, Warning, TEXT("%s catalog: failed load fluid %s"),
              PIPELINECOLOR_LOG_PREFIX, SoftPath);
     } else {
-      // Mod-section rows are expected to miss when SFP / RP absent — not a fault.
       UE_LOG(LogPipelineColor, Verbose, TEXT("%s catalog: mod fluid absent %s"),
              PIPELINECOLOR_LOG_PREFIX, SoftPath);
     }
@@ -50,6 +58,10 @@ void FPCFluidAppearanceCatalog::EnsureLoaded() const {
   }
   BuildEntries();
   bBuilt = true;
+}
+
+void FPCFluidAppearanceCatalog::Invalidate() const {
+  bBuilt = false;
 }
 
 FString FPCFluidAppearanceCatalog::GetFinishPath(EPCPaintFinishKind Kind) {
@@ -72,7 +84,6 @@ FPCFluidAppearanceCatalog::GetFinishClass(EPCPaintFinishKind Kind) const {
     return UPCFinish_MetallicColor::StaticClass();
   }
 
-  // Two vanilla finish descs, resolved on every spec fill — weak-cache them.
   static TWeakObjectPtr<UClass> CachedMatte;
   static TWeakObjectPtr<UClass> CachedDefault;
   TWeakObjectPtr<UClass>& Slot = (Kind == EPCPaintFinishKind::Matte) ? CachedMatte : CachedDefault;
@@ -113,11 +124,12 @@ void FPCFluidAppearanceCatalog::SeedEntryFromDescriptor(FPCFluidCatalogEntry& En
   const bool bGas = Form == EResourceForm::RF_GAS;
   Entry.Finish = bGas ? EPCPaintFinishKind::MetallicColor : EPCPaintFinishKind::Default;
 
-  // Some gases ship without mGasColor (zero black) — fall through to fluid color, then roster.
+  const bool bWantGasColor =
+      FPCPipelineColorModConfig::GetColorSourceForKey(Entry.FluidStem) == EPCColorSource::Gas;
   const FColor Preferred =
-      bGas ? UFGItemDescriptor::GetGasColor(Desc) : UFGItemDescriptor::GetFluidColor(Desc);
+      bWantGasColor ? UFGItemDescriptor::GetGasColor(Desc) : UFGItemDescriptor::GetFluidColor(Desc);
   const FColor Other =
-      bGas ? UFGItemDescriptor::GetFluidColor(Desc) : UFGItemDescriptor::GetGasColor(Desc);
+      bWantGasColor ? UFGItemDescriptor::GetFluidColor(Desc) : UFGItemDescriptor::GetGasColor(Desc);
   auto IsZeroRgb = [](const FColor& C) { return C.R == 0 && C.G == 0 && C.B == 0; };
 
   FColor Chosen(Row.PrimaryR, Row.PrimaryG, Row.PrimaryB, 255);
@@ -126,7 +138,7 @@ void FPCFluidAppearanceCatalog::SeedEntryFromDescriptor(FPCFluidCatalogEntry& En
   } else if (!IsZeroRgb(Other)) {
     Chosen = Other;
   }
-  // Authored alpha is unreliable (SFP ships CoolingWater A=2) — paint is opaque.
+  // SFP CoolingWater ships A=2 — force opaque paint.
   Entry.Primary = HexRgb(Chosen.R, Chosen.G, Chosen.B);
 
   const bool bColorDrift =
@@ -135,7 +147,8 @@ void FPCFluidAppearanceCatalog::SeedEntryFromDescriptor(FPCFluidCatalogEntry& En
     UE_LOG(LogPipelineColor, Log,
            TEXT("%s catalog drift %s: descriptor %d,%d,%d %s vs roster %d,%d,%d %s"),
            PIPELINECOLOR_LOG_PREFIX, *Row.Stem.ToString(), Chosen.R, Chosen.G, Chosen.B,
-           bGas ? TEXT("gas") : TEXT("liquid"), Row.PrimaryR, Row.PrimaryG, Row.PrimaryB,
+           bWantGasColor ? TEXT("gasColor") : TEXT("fluidColor"), Row.PrimaryR, Row.PrimaryG,
+           Row.PrimaryB,
            Row.Finish == EPCPaintFinishKind::MetallicColor ? TEXT("gas") : TEXT("liquid"));
   }
 }
@@ -152,6 +165,7 @@ void FPCFluidAppearanceCatalog::BuildEntries() const {
 
   ByStem.Reset();
   SoftPathToStem.Reset();
+  SoftPathNormToStem.Reset();
   ClassToStem.Reset();
   int32 LoadedCount = 0;
   int32 ModLoadedCount = 0;
@@ -170,10 +184,16 @@ void FPCFluidAppearanceCatalog::BuildEntries() const {
       if (!bDefaultRow) {
         ++ModLoadedCount;
       }
+      if (UClass* Cls = Desc.Get()) {
+        ClassToStem.Add(Cls, Row.Stem);
+        SoftPathToStem.Add(FSoftClassPath(Cls).ToString(), Row.Stem);
+        SoftPathNormToStem.Add(NormalizeSoftPathKey(FSoftClassPath(Cls).ToString()), Row.Stem);
+      }
     }
 
     ByStem.Add(Row.Stem, Entry);
     SoftPathToStem.Add(FString(Row.SoftPath), Row.Stem);
+    SoftPathNormToStem.Add(NormalizeSoftPathKey(FString(Row.SoftPath)), Row.Stem);
   }
 
   UE_LOG(LogPipelineColor, Log,
@@ -218,7 +238,8 @@ bool FPCFluidAppearanceCatalog::ResolveByKey(FName CatalogKey, FPCAppearanceSpec
     FillNeutralSpec(OutSpec);
     OutSpec.SwatchDesc = UPCSwatchDesc_Fallback::StaticClass();
     OutSpec.CatalogKey = CatalogKey;
-    OutSpec.PrimaryColor = FLinearColor::FromSRGBColor(FColor::White);
+    OutSpec.PrimaryColor = MissingMagenta();
+    OutSpec.SecondaryColor = HexRgb(0x2A, 0x2A, 0x2A);
     OutSpec.PaintFinish = GetFinishClass(EPCPaintFinishKind::Default);
     return true;
   }
@@ -249,8 +270,6 @@ bool FPCFluidAppearanceCatalog::Resolve(TSubclassOf<UFGItemDescriptor> FluidDesc
   const FString SoftPath = FSoftClassPath(Cls).ToString();
   if (const FName* Stem = SoftPathToStem.Find(SoftPath)) {
     if (const FPCFluidCatalogEntry* Found = ByStem.Find(*Stem)) {
-      // Miss path also sweeps stale weak keys so the cache cannot grow past
-      // the live descriptor set.
       for (auto It = ClassToStem.CreateIterator(); It; ++It) {
         if (!It.Key().IsValid()) {
           It.RemoveCurrent();
@@ -262,9 +281,17 @@ bool FPCFluidAppearanceCatalog::Resolve(TSubclassOf<UFGItemDescriptor> FluidDesc
     }
   }
 
+  if (const FName* Stem = SoftPathNormToStem.Find(NormalizeSoftPathKey(SoftPath))) {
+    if (const FPCFluidCatalogEntry* Found = ByStem.Find(*Stem)) {
+      ClassToStem.Add(Cls, *Stem);
+      FillSpecFromEntry(*Found, OutSpec);
+      return true;
+    }
+  }
+
   OutSpec.SwatchDesc = UPCSwatchDesc_Fallback::StaticClass();
   OutSpec.CatalogKey = Cls->GetFName();
-  OutSpec.PrimaryColor = UFGItemDescriptor::GetFluidColorLinear(FluidDescriptor);
+  OutSpec.PrimaryColor = MissingMagenta();
   OutSpec.SecondaryColor = HexRgb(0x2A, 0x2A, 0x2A);
   OutSpec.PaintFinish = GetFinishClass(EPCPaintFinishKind::Default);
   return true;

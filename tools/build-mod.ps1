@@ -1,19 +1,25 @@
 # SPDX-FileCopyrightText: 2026 Haliax
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Single mod build entry (-Mod All = every repo mod with a matching .uplugin).
-#   Quick   — UBT module → local Steam Mods (DLL + config + resources)
-#   Release — Alpakit PackagePlugin zip (Win client + Win/Linux server)
+# Mod BUILD tool (-Mod All = every repo mod with a matching .uplugin).
 #
-# Order: clang-format check → version check → icons (when wanted) → UBT / Alpakit.
-# Bad clang or version aborts before icons or compile.
+# Pipeline (always, in order — abort on fail):
+#   1. clang-format check
+#   2. version check
+#   3. icons
+#   4. build   (Quick = UBT module; Release = editor UBT + Alpakit PackagePlugin)
+#   5. deploy  → local Steam FactoryGame/Mods/<Mod>  (skip with -NoCopy)
+#
+# Release also leaves ArchivedPlugins zips for SMR; deploy uses the Windows
+# client zip so local game runs what just built. Resources + Config copied
+# from ModRoot after expand (Alpakit Windows zip often omits them).
 #
 # Examples:
 #   powershell -File tools/build-mod.ps1 -Mod PipelineColor
-#   powershell -File tools/build-mod.ps1 -Mod All -Icons
-#   powershell -File tools/build-mod.ps1 -Mod StructuralPower -Mode Release
-#   powershell -File tools/icons.ps1 All
-#   powershell -File tools/check-version.ps1 -Mod All
+#   powershell -File tools/build-mod.ps1 -Mod PipelineColor -Mode Release
+#   powershell -File tools/build-mod.ps1 -Mod All -Mode Release
+#   powershell -File tools/build-mod.ps1 -Mod PipelineColor -NoCopy
+#   powershell -File tools/build-mod.ps1 -Mod PipelineColor -NoIcons
 param(
     [Parameter(Mandatory = $true)]
     [string]$Mod,
@@ -66,9 +72,12 @@ if ([string]::IsNullOrWhiteSpace($ProjectPath)) {
 if ([string]::IsNullOrWhiteSpace($UeCssRoot)) {
     throw 'Pass -UeCssRoot, set UE_CSS_ROOT, or ueCssRoot in tools/local-paths.json'
 }
-if ($Mode -eq 'Quick' -and [string]::IsNullOrWhiteSpace($GamePath)) {
-    throw 'Quick mode needs -GamePath, SAT_GAME_PATH, or gamePath in tools/local-paths.json'
+if (-not $NoCopy -and [string]::IsNullOrWhiteSpace($GamePath)) {
+    throw 'Deploy needs -GamePath, SAT_GAME_PATH, or gamePath in tools/local-paths.json (or pass -NoCopy)'
 }
+
+# Icons on by default; -NoIcons opts out. -Icons kept for callers that still pass it.
+$WantIcons = -not $NoIcons
 
 # --- all mods ---
 if (Test-IsAllModsToken $Mod) {
@@ -99,7 +108,7 @@ if (Test-IsAllModsToken $Mod) {
     if ($SkipClang) { $ChildArgs.SkipClang = $true }
 
     if (-not $SkipClang) {
-        Write-Host 'clang-format check (first-party)...'
+        Write-Host '=== 1/5 clang (once for All) ==='
         & (Join-Path $ToolsDir 'clang-format-first-party.ps1') -Check
         if ($LASTEXITCODE -ne 0) {
             throw "clang-format check failed (exit $LASTEXITCODE). Format with tools/clang-format-first-party.ps1 or pass -SkipClang."
@@ -214,34 +223,126 @@ function Ensure-ModJunction {
     Ensure-StarterJunction -Name $Name -Root $Root -ProjDir $ProjDir
 }
 
+function Copy-ModSideFiles {
+    param([string]$Root, [string]$GameModRoot)
+    foreach ($Leaf in @('Resources', 'Config')) {
+        $Src = Join-Path $Root $Leaf
+        if (Test-Path -LiteralPath $Src) {
+            $Dst = Join-Path $GameModRoot $Leaf
+            New-Item -ItemType Directory -Force -Path $Dst | Out-Null
+            Copy-Item -Force (Join-Path $Src '*') $Dst
+        }
+    }
+}
+
+function Deploy-QuickDll {
+    param(
+        [string]$Name,
+        [string]$Root,
+        [string]$UpluginPath,
+        [string]$Game,
+        [string]$Cfg
+    )
+
+    $DllName = "FactoryGameSteam-$Name-Win64-$Cfg.dll"
+    $ModulesName = "FactoryGameSteam-Win64-$Cfg.modules"
+    $SourceDll = Join-Path $Root "Binaries\Win64\$DllName"
+    if (-not (Test-Path -LiteralPath $SourceDll)) {
+        throw "DLL missing: $SourceDll"
+    }
+
+    $ModulesJson = @"
+{
+	"BuildId": "SML",
+	"Modules":
+	{
+		"$Name": "$DllName"
+	}
+}
+"@
+    $SourceModules = Join-Path $Root "Binaries\Win64\$ModulesName"
+    New-Item -ItemType Directory -Force -Path (Split-Path $SourceModules) | Out-Null
+    [System.IO.File]::WriteAllText(
+        $SourceModules, $ModulesJson, (New-Object System.Text.UTF8Encoding $false))
+
+    $GameModRoot = Join-Path $Game "FactoryGame\Mods\$Name"
+    $DestBin = Join-Path $GameModRoot 'Binaries\Win64'
+    New-Item -ItemType Directory -Force -Path $DestBin | Out-Null
+    Copy-Item -Force $UpluginPath $GameModRoot
+    Copy-Item -Force $SourceDll (Join-Path $DestBin $DllName)
+    Copy-Item -Force $SourceModules (Join-Path $DestBin $ModulesName)
+    Copy-ModSideFiles -Root $Root -GameModRoot $GameModRoot
+
+    Write-Host "Deployed $GameModRoot"
+    Get-ChildItem $DestBin | Format-Table Name, Length, LastWriteTime
+}
+
+function Deploy-ReleaseWindowsZip {
+    param(
+        [string]$Name,
+        [string]$Root,
+        [string]$ProjDir,
+        [string]$Game
+    )
+
+    $WinZip = Join-Path $ProjDir "Saved\ArchivedPlugins\$Name\$Name-Windows.zip"
+    if (-not (Test-Path -LiteralPath $WinZip)) {
+        throw "Windows client zip missing: $WinZip"
+    }
+
+    $GameModRoot = Join-Path $Game "FactoryGame\Mods\$Name"
+    if (Test-Path -LiteralPath $GameModRoot) {
+        Remove-Item -Recurse -Force $GameModRoot
+    }
+    New-Item -ItemType Directory -Force -Path $GameModRoot | Out-Null
+    Expand-Archive -LiteralPath $WinZip -DestinationPath $GameModRoot -Force
+    Copy-ModSideFiles -Root $Root -GameModRoot $GameModRoot
+
+    Write-Host "Deployed $WinZip -> $GameModRoot"
+    Get-ChildItem $GameModRoot | Format-Table Name, Mode
+}
+
 $ModRoot = Resolve-ModRoot -Name $Mod -Explicit $ModRoot -Repo $RepoRoot -ProjDir $ProjectDir
 $Uplugin = Join-Path $ModRoot "$Mod.uplugin"
 if (-not (Test-Path -LiteralPath $Uplugin)) {
     throw "Missing uplugin: $Uplugin"
 }
 
-# --- clang → version → icons → build ---
+# --- 1/5 clang ---
 if (-not $SkipClang) {
-    Write-Host 'clang-format check (first-party)...'
+    Write-Host '=== 1/5 clang ==='
     & (Join-Path $ToolsDir 'clang-format-first-party.ps1') -Check
     if ($LASTEXITCODE -ne 0) {
         throw "clang-format check failed (exit $LASTEXITCODE). Format with tools/clang-format-first-party.ps1 or pass -SkipClang."
     }
 }
+else {
+    Write-Host '=== 1/5 clang (skipped) ==='
+}
 
+# --- 2/5 version ---
 if (-not $SkipVersionCheck) {
+    Write-Host '=== 2/5 version ==='
     $CheckVersion = Join-Path $ToolsDir 'check-version.ps1'
     & $CheckVersion -Mod $Mod -ModRoot $ModRoot -RepoRoot $RepoRoot
     if ($LASTEXITCODE -ne 0) {
         throw "Version check failed for $Mod (exit $LASTEXITCODE). Fix uplugin/CHANGELOG or pass -SkipVersionCheck."
     }
 }
+else {
+    Write-Host '=== 2/5 version (skipped) ==='
+}
 
-$WantIcons = $Icons -or ($Mode -eq 'Release' -and -not $NoIcons)
-if ($NoIcons) { $WantIcons = $false }
-
+# --- 3/5 icons ---
 if ($WantIcons) {
+    Write-Host '=== 3/5 icons ==='
     & (Join-Path $ToolsDir 'icons.ps1') -Mod $Mod -ModRoot $ModRoot
+    if ($LASTEXITCODE -ne 0) {
+        throw "icons.ps1 failed (exit $LASTEXITCODE). Pass -NoIcons to skip."
+    }
+}
+else {
+    Write-Host '=== 3/5 icons (skipped) ==='
 }
 
 $DotNet = Resolve-UeDotNet -Root $UeCssRoot
@@ -252,6 +353,8 @@ if (-not (Test-Path -LiteralPath $Ubt)) {
 
 Ensure-ModJunction -Name $Mod -Root $ModRoot -ProjDir $ProjectDir -Config $LocalCfg
 
+# --- 4/5 build ---
+Write-Host "=== 4/5 build ($Mode) ==="
 if ($Mode -eq 'Quick') {
     $UbtArgs = @(
         'FactoryGameSteam', 'Win64', $Config,
@@ -265,48 +368,6 @@ if ($Mode -eq 'Quick') {
     $Result.Output | Tee-Object -FilePath $LogFile
     if ($Result.ExitCode -ne 0) {
         throw "UBT failed exit $($Result.ExitCode). Log: $LogFile"
-    }
-
-    $DllName = "FactoryGameSteam-$Mod-Win64-$Config.dll"
-    $ModulesName = "FactoryGameSteam-Win64-$Config.modules"
-    $SourceDll = Join-Path $ModRoot "Binaries\Win64\$DllName"
-    if (-not (Test-Path -LiteralPath $SourceDll)) {
-        throw "DLL missing: $SourceDll"
-    }
-
-    $ModulesJson = @"
-{
-	"BuildId": "SML",
-	"Modules":
-	{
-		"$Mod": "$DllName"
-	}
-}
-"@
-    $SourceModules = Join-Path $ModRoot "Binaries\Win64\$ModulesName"
-    New-Item -ItemType Directory -Force -Path (Split-Path $SourceModules) | Out-Null
-    [System.IO.File]::WriteAllText(
-        $SourceModules, $ModulesJson, (New-Object System.Text.UTF8Encoding $false))
-
-    if (-not $NoCopy) {
-        $GameModRoot = Join-Path $GamePath "FactoryGame\Mods\$Mod"
-        $DestBin = Join-Path $GameModRoot 'Binaries\Win64'
-        New-Item -ItemType Directory -Force -Path $DestBin | Out-Null
-        Copy-Item -Force $Uplugin $GameModRoot
-        Copy-Item -Force $SourceDll (Join-Path $DestBin $DllName)
-        Copy-Item -Force $SourceModules (Join-Path $DestBin $ModulesName)
-
-        foreach ($Leaf in @('Resources', 'Config')) {
-            $Src = Join-Path $ModRoot $Leaf
-            if (Test-Path -LiteralPath $Src) {
-                $Dst = Join-Path $GameModRoot $Leaf
-                New-Item -ItemType Directory -Force -Path $Dst | Out-Null
-                Copy-Item -Force (Join-Path $Src '*') $Dst
-            }
-        }
-
-        Write-Host "Deployed $GameModRoot"
-        Get-ChildItem $DestBin | Format-Table Name, Length, LastWriteTime
     }
 }
 else {
@@ -394,6 +455,20 @@ else {
     }
     Write-Host "SMR zip: $Zip"
     Get-Item $Zip | Format-List FullName, Length, LastWriteTime
+}
+
+# --- 5/5 deploy ---
+if ($NoCopy) {
+    Write-Host '=== 5/5 deploy (skipped) ==='
+}
+else {
+    Write-Host '=== 5/5 deploy ==='
+    if ($Mode -eq 'Quick') {
+        Deploy-QuickDll -Name $Mod -Root $ModRoot -UpluginPath $Uplugin -Game $GamePath -Cfg $Config
+    }
+    else {
+        Deploy-ReleaseWindowsZip -Name $Mod -Root $ModRoot -ProjDir $ProjectDir -Game $GamePath
+    }
 }
 
 Write-Host "Done ($Mod / $Mode)."

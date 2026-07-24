@@ -1,5 +1,13 @@
 # PipelineColor — CHANGELOG
 
+## 1.2.1 — 2026-07-24
+
+- `!pc <fluid> liquid|gas` picks paint RGB from `mFluidColor` or `mGasColor` (metallic
+  unchanged). Default color source is liquid for all fluids except Nitrogen Gas → gas.
+  Persists in `ColorSourceOverrides` / `PipelineColor.Set ColorSource.<Key>`
+- Unknown / Fallback fluids paint missing-texture magenta (`#FF00FF`); display names
+  **PC Empty Pipe** (Neutral) and **PC ERR0R** (Fallback)
+
 ## 1.2.0 — 2026-07-23
 
 - Add Customizer sections for modded fluids: **SatisfactoryPlus** and **RefinedPower**

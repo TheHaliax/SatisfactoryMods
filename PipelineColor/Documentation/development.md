@@ -13,7 +13,10 @@ SatisfactoryMods/
     Resources/
     Screenshots/
     Documentation/
-  tools/                          ← pack-pipelinecolor.ps1, Invoke-ModIcons.ps1
+  tools/
+    build-mod.ps1          ← clang → version → icons → build → deploy
+    check-version.ps1
+    icons.ps1
 ```
 
 ## Link into SML StarterProject
@@ -30,23 +33,23 @@ Typical junction:
 ## Dev build
 
 ```powershell
-powershell -File tools/pack-pipelinecolor.ps1 -Config Shipping
+powershell -File tools/build-mod.ps1 -Mod PipelineColor
 ```
 
-Deploy cooked output to:
+Pipeline: clang (optional skip) → version guard → icons (default on; `-NoIcons`) → Quick Shipping build → deploy to Steam `FactoryGame/Mods/PipelineColor` (unless `-NoCopy`).
 
-```text
-<Satisfactory>/FactoryGame/Mods/PipelineColor
+Release:
+
+```powershell
+powershell -File tools/build-mod.ps1 -Mod PipelineColor -Mode Release
 ```
-
-Icons regenerate via `tools/Invoke-ModIcons.ps1 -ModRoot PipelineColor` (also from pack scripts when wired).
 
 ## Key source areas
 
 | Area | Path under `Source/PipelineColor/` |
 |------|--------------------------------------|
 | Lifecycle / hooks | `PipelineColorRootInstanceModule.cpp` |
-| Mod config / CVars | `Config/FPCPipelineColorModConfig.*` |
+| Mod config / CVars / color source | `Config/FPCPipelineColorModConfig.*` |
 | Chat bang + SML help | `Command/FPCBangCommands.cpp`, `PipelineColorSmlChatCommands.cpp` |
 | World session / scan | `Session/UPCWorldSubsystem.*` |
 | Apply | `Application/FCustomizationApplicator.cpp` |
@@ -62,7 +65,7 @@ Icons regenerate via `tools/Invoke-ModIcons.ps1 -ModRoot PipelineColor` (also fr
 ## Version guard
 
 ```powershell
-powershell -File scripts/check-version.ps1
+powershell -File tools/check-version.ps1 -Mod PipelineColor
 ```
 
 `SemVersion`, `Version` major, `RemoteVersionRange` major, and top `CHANGELOG.md` heading must match.

@@ -2,14 +2,24 @@
 
 ## Pipes stay default / unpainted
 
-1. Confirm PipelineColor loads — look for `PipelineColor v1.2.0` and `[HALPC]` in `FactoryGame.log`.
+1. Confirm PipelineColor loads — look for `PipelineColor v1.2.1` and `[HALPC]` in `FactoryGame.log`.
 2. Fill the network with a known fluid (Water, Fuel, …) and wait a short settle.
-3. Empty networks use Neutral — that can look like “no paint” compared to bright fluids.
+3. Empty networks use **PC Empty Pipe** — that can look like “no paint” compared to bright fluids.
 4. Grep `FactoryGame.log` for `[HALPC]` / `LogPipelineColor`.
+
+## Pipes are bright magenta
+
+**PC ERR0R** / unknown fluid path. Confirm the fluid is a catalogued pipe fluid. Grep `[HALPC]` for catalog miss / fallback lines. `!pc default` reseeds swatch store colors from descriptors after cfg/color-source changes.
 
 ## Supports do not match pipe color
 
 Supports must be a **fluid support parent** the mod soft-`IsA`s (floor / stackable / wall / wall-hole). Bare hyper/pole parents that are not fluid supports are skipped on purpose. Place or nudge the support against a painted pipe so touch detection can run after pipe ProcessNow.
+
+## Wrong RGB (liquid vs gas look)
+
+1. Check `ColorSourceOverrides` in `Configs/PipelineColor.cfg` or run `!pc <fluid> liquid|gas`.
+2. Default without override: liquid for all keys except Nitrogen Gas → gas.
+3. Color source does **not** flip metallic — use `!Metallic` for finish.
 
 ## Metallic not applying
 
@@ -28,7 +38,7 @@ Supports must be a **fluid support parent** the mod soft-`IsA`s (floor / stackab
 
 ## Customizer swatch edits do not stick
 
-Save the session after editing. Store is authority SaveGame; pure clients need the host to save. Remote players must have the mod installed.
+Save the session after editing. Store is authority SaveGame; pure clients need the host to save. Remote players must have the mod installed. Pipe *runtime* paint still follows fluid auto-color even if you paint a pipe with the gun — use Customizer PC swatches for stored per-fluid colors.
 
 ## SCIM / Interactive Map cannot open save
 
@@ -36,7 +46,7 @@ PipelineColor persists Customizer colors on the swatch store actor. Older builds
 
 ## Chat commands ignored
 
-Authority only. Pure clients get a Hal message. Try `!pchelp` on the host. Verbs: `!Metallic <fluid>`, `!Metallic all on`, `!Metallic all off`, `!Metallic default`.
+Authority only. Pure clients get `Host only.` Try `!pchelp` on the host. Verbs: `!Metallic …`, `!pc <fluid> liquid|gas`, `!pc default`.
 
 ## Reporting issues
 

@@ -253,7 +253,7 @@ void UPCWorldSubsystem::OnWorldReady(UWorld* World) {
 
   FPCFluidAppearanceCatalog::Get().EnsureLoaded();
   BindSwatchStore(World);
-  // PublishForWorld runs once from HandlePostLoadMap (next tick) — avoid double seed.
+  // Avoid double seed — PublishForWorld also runs next tick from PostLoadMap.
   ScanWorld();
 
   UE_LOG(LogPipelineColor, Log, TEXT("%s OnWorldReady"), PIPELINECOLOR_LOG_PREFIX);
@@ -307,10 +307,6 @@ void UPCWorldSubsystem::ProcessNow(AFGBuildable* Buildable) {
     return false;
   }();
 
-  // Unchanged spec = settled pipe. Meter/support sync rides the changed path
-  // only: late meter spawn re-enters via BeginPlay hook InvalidateApplied +
-  // Enqueue, so nothing is lost — and the steady-state polling pass stops
-  // paying meter reflection + support collection per pipe per cycle.
   if (bSpecUnchanged) {
     return;
   }
@@ -336,8 +332,6 @@ void UPCWorldSubsystem::ScanWorld() {
 
   int32 Found = 0;
 
-  // Resolve support -> pipe links in one world pass before the paint drain;
-  // per-pipe Collect fallbacks then run cache-only.
   FPipeSupportTouch::SeedFromWorld(World);
 
   if (AFGBuildableSubsystem* BuildableSub = AFGBuildableSubsystem::Get(World)) {

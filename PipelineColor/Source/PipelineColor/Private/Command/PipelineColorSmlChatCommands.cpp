@@ -67,7 +67,7 @@ APCPcChatCommand::APCPcChatCommand() {
   MinNumberOfArguments = 1;
   CommandName = TEXT("pc");
   Usage = NSLOCTEXT("PipelineColor", "ChatCmd.Pc",
-                    "!pc default — reseed swatch colors from fluid data");
+                    "!pc <fluid> liquid|gas | default");
 }
 
 EExecutionStatus APCPcChatCommand::ExecuteCommand_Implementation(UCommandSender* Sender,
@@ -87,7 +87,7 @@ APCPchelpChatCommand::APCPchelpChatCommand() {
   bOnlyUsableByPlayer = true;
   CommandName = TEXT("pchelp");
   Usage =
-      NSLOCTEXT("PipelineColor", "ChatCmd.PcHelp", "!pchelp — list Pipeline Color chat commands");
+      NSLOCTEXT("PipelineColor", "ChatCmd.PcHelp", "!pchelp - list Pipeline Color chat commands");
 }
 
 EExecutionStatus APCPchelpChatCommand::ExecuteCommand_Implementation(

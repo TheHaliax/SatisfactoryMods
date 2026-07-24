@@ -27,7 +27,21 @@ static TAutoConsoleVariable<int32>
                               ECVF_Default);
 
 static TMap<FName, bool> GMetallicOverrides;
+static TMap<FName, EPCColorSource> GColorSourceOverrides;
 static FPCPipelineColorConfigChanged GConfigChanged;
+
+static bool ParseColorSourceText(const FString& ValueText, EPCColorSource& Out) {
+  if (ValueText.Equals(TEXT("gas"), ESearchCase::IgnoreCase)) {
+    Out = EPCColorSource::Gas;
+    return true;
+  }
+  if (ValueText.Equals(TEXT("liquid"), ESearchCase::IgnoreCase) ||
+      ValueText.Equals(TEXT("fluid"), ESearchCase::IgnoreCase)) {
+    Out = EPCColorSource::Liquid;
+    return true;
+  }
+  return false;
+}
 
 static bool ParseBoolText(const FString& ValueText) {
   return ValueText.Equals(TEXT("1"), ESearchCase::IgnoreCase) ||
@@ -74,6 +88,20 @@ static void ApplyCvarsFromJson(const TSharedPtr<FJsonObject>& Object) {
       }
     }
   }
+
+  GColorSourceOverrides.Reset();
+  const TSharedPtr<FJsonObject>* ColorSources = nullptr;
+  if (Object->TryGetObjectField(TEXT("ColorSourceOverrides"), ColorSources) && ColorSources) {
+    for (const TPair<FString, TSharedPtr<FJsonValue>>& Pair : (*ColorSources)->Values) {
+      if (!Pair.Value.IsValid() || Pair.Value->Type != EJson::String) {
+        continue;
+      }
+      EPCColorSource Source = EPCColorSource::Liquid;
+      if (ParseColorSourceText(Pair.Value->AsString(), Source)) {
+        GColorSourceOverrides.Add(FName(*Pair.Key), Source);
+      }
+    }
+  }
 }
 
 static TSharedRef<FJsonObject> BuildJsonFromCvars() {
@@ -88,6 +116,13 @@ static TSharedRef<FJsonObject> BuildJsonFromCvars() {
     Overrides->SetBoolField(Pair.Key.ToString(), Pair.Value);
   }
   Root->SetObjectField(TEXT("MetallicOverrides"), Overrides);
+
+  TSharedRef<FJsonObject> ColorSources = MakeShared<FJsonObject>();
+  for (const TPair<FName, EPCColorSource>& Pair : GColorSourceOverrides) {
+    ColorSources->SetStringField(Pair.Key.ToString(),
+                                 Pair.Value == EPCColorSource::Gas ? TEXT("gas") : TEXT("liquid"));
+  }
+  Root->SetObjectField(TEXT("ColorSourceOverrides"), ColorSources);
   return Root;
 }
 } // namespace
@@ -130,8 +165,10 @@ void FPCPipelineColorModConfig::LoadRuntimeConfig() {
   }
 
   ApplyCvarsFromJson(Object);
-  UE_LOG(LogPipelineColor, Log, TEXT("%s loaded config from %s (%d overrides)"),
-         PIPELINECOLOR_LOG_PREFIX, *Path, GMetallicOverrides.Num());
+  FPCFluidAppearanceCatalog::Get().Invalidate();
+  UE_LOG(LogPipelineColor, Log,
+         TEXT("%s loaded config from %s (%d metallic, %d color-source overrides)"),
+         PIPELINECOLOR_LOG_PREFIX, *Path, GMetallicOverrides.Num(), GColorSourceOverrides.Num());
 }
 
 void FPCPipelineColorModConfig::SaveToDisk() {
@@ -229,6 +266,29 @@ bool FPCPipelineColorModConfig::TryResetMetallicToDefaults(UWorld* World) {
   return true;
 }
 
+EPCColorSource FPCPipelineColorModConfig::GetColorSourceForKey(FName CatalogKey) {
+  if (const EPCColorSource* Override = GColorSourceOverrides.Find(CatalogKey)) {
+    return *Override;
+  }
+  if (CatalogKey == FName(TEXT("NitrogenGas"))) {
+    return EPCColorSource::Gas;
+  }
+  return EPCColorSource::Liquid;
+}
+
+bool FPCPipelineColorModConfig::TrySetColorSource(FName CatalogKey, EPCColorSource Source,
+                                                  UWorld* World) {
+  if (CatalogKey.IsNone() || !CanMutateLiveConfig(World)) {
+    return false;
+  }
+
+  GColorSourceOverrides.Add(CatalogKey, Source);
+  FPCFluidAppearanceCatalog::Get().Invalidate();
+  SaveToDisk();
+  BroadcastConfigChanged();
+  return true;
+}
+
 bool FPCPipelineColorModConfig::TryApplySetCommand(const TArray<FString>& Args, UWorld* World) {
   if (Args.Num() < 2) {
     UE_LOG(LogPipelineColor, Warning, TEXT("%s Usage: PipelineColor.Set <key> <value>"),
@@ -260,6 +320,14 @@ bool FPCPipelineColorModConfig::TryApplySetCommand(const TArray<FString>& Args, 
     const FName FluidKey(*Key.Mid(9));
     if (!FluidKey.IsNone()) {
       GMetallicOverrides.Add(FluidKey, ParseBoolText(ValueText));
+      bChanged = true;
+    }
+  } else if (Key.StartsWith(TEXT("ColorSource."), ESearchCase::IgnoreCase)) {
+    const FName FluidKey(*Key.Mid(12));
+    EPCColorSource Source = EPCColorSource::Liquid;
+    if (!FluidKey.IsNone() && ParseColorSourceText(ValueText, Source)) {
+      GColorSourceOverrides.Add(FluidKey, Source);
+      FPCFluidAppearanceCatalog::Get().Invalidate();
       bChanged = true;
     }
   } else {

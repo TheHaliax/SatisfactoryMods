@@ -1,33 +1,29 @@
 # PipelineColor
 
-**Version 1.2.0** · Satisfactory 1.2 (≥491125) · SML ^3.12.0
+**Version 1.2.1** · Satisfactory 1.2 (≥491125) · SML ^3.12.0
 
 Auto-colors pipelines, junctions, inline pumps, and matching pipe supports from the fluid currently in the network. Ships Customizer **PipelineColor** swatches, a SaveGame-backed swatch store, and metallic finishes for gases by default.
 
 ## How it works
 
-- **Liquids:** the fluid's own authored color (`mFluidColor`) + Default paint finish (`UPCSwatchDesc_*`, Customizer **PipelineColor** category)
-- **Empty:** Neutral swatch + Matte (metallic optional via `!Metallic Neutral`)
-- **Gases:** the authored gas color (`mGasColor`) + metallic PaintFinish by default — gas-ness comes from the descriptor's actual form (override per fluid or global defaults)
-- **Metallic chromatics:** keep catalog hue/value; neutrals remap along a silver rail (bright → chrome, dark → burnished)
-- **Supports:** floor / stackable / wall / wall-hole parents inherit the touched pipe’s fluid look (includes WallPipeSupports-style BP children)
-- **Modded fluids:** [Satisfactory Plus](https://ficsit.app/mod/SatisfactoryPlus) and [Refined Power](https://ficsit.app/mod/RefinedPower) fluids get their own **SatisfactoryPlus** / **RefinedPower** Customizer sections when those mods are installed; without them nothing extra is added
-- Updates when fluid changes; empty networks settle after a short scan
-- Server/host applies paint; clients receive the result
-- Customizer edits persist in the **world save**
+- **Liquids:** `mFluidColor` by default (`!pc <fluid> gas` can use `mGasColor`) + Default paint finish
+- **Gases:** `mGasColor` when color source is gas (Nitrogen Gas defaults to gas); metallic PaintFinish from `RF_GAS` / `!Metallic`
+- **Empty:** **PC Empty Pipe** (catalog key `Neutral`) + Matte
+- **Unknown / miss:** **PC ERR0R** (catalog key `Fallback`) + missing-texture magenta (`#FF00FF`)
+- **Supports:** floor / stackable / wall / wall-hole parents inherit the touched pipe’s fluid look
+- **Modded fluids:** Satisfactory Plus / Refined Power soft-gated Customizer sections when those mods are present
+- Server/host applies paint; clients receive the result; Customizer edits persist in the world save
 
 ## Chat commands
 
 Type on the **server or listen host**. Commands start with `!` and do not appear in public chat. Responses show as **Hal:** system messages.
 
-- `!Metallic <fluid>` — toggle metallic finish for that fluid (saved to cfg)
-- `!Metallic all on` — force every catalog fluid metallic on (per-fluid overrides)
-- `!Metallic all off` — force every catalog fluid metallic off / color (same)
-- `!Metallic default` — clear overrides, restore gas-on / liquid-off defaults (swatch edits stay)
-- `!pc default` — reseed swatch store colors from fluid data (resets Customizer edits)
-- `!pchelp` — list Pipeline Color chat commands
+- `!Metallic <fluid>` / `all on` / `all off` / `default` — metallic flags only
+- `!pc <fluid> liquid|gas` — RGB color source (metallic untouched)
+- `!pc default` — reseed all Customizer swatch store colors from fluid data
+- `!pchelp` — short list
 
-Same verbs register with SML for **Chat Mk 2** expandable help. Fluid names match Customizer labels (e.g. `Water`, `PC Nitrogen Gas`).
+Same verbs register with SML for **Chat Mk 2** expandable help. Full list: [Documentation/chat-commands.md](Documentation/chat-commands.md).
 
 ## Config
 
@@ -37,7 +33,8 @@ No SML Mods menu. Edit `Configs/PipelineColor.cfg` on the host, use console `Pip
 |-----|---------|-------|
 | `DefaultGasMetallic` | `true` | Gases metallic when no per-fluid override |
 | `DefaultLiquidMetallic` | `false` | Liquids metallic when no per-fluid override |
-| `MetallicOverrides` | `{}` | Per catalog key (`Water`, `NitrogenGas`, …) |
+| `MetallicOverrides` | `{}` | Per catalog key (`true` / `false`) |
+| `ColorSourceOverrides` | `{}` | Per catalog key (`liquid` / `gas`) |
 
 ## Requirements
 

@@ -37,7 +37,7 @@ FName UPCSwatchDescBase::GetCatalogKey(
 }
 
 UPCSwatchDesc_Neutral::UPCSwatchDesc_Neutral() {
-  InitSwatch(this, NSLOCTEXT("PipelineColor", "SwatchNeutral", "PC Neutral"),
+  InitSwatch(this, NSLOCTEXT("PipelineColor", "SwatchNeutral", "PC Empty Pipe"),
              FName(TEXT("Neutral")));
 }
 
@@ -116,7 +116,7 @@ UPCSwatchDesc_NitrogenGas::UPCSwatchDesc_NitrogenGas() {
 }
 
 UPCSwatchDesc_Fallback::UPCSwatchDesc_Fallback() {
-  InitSwatch(this, NSLOCTEXT("PipelineColor", "SwatchFallback", "PC Fallback"),
+  InitSwatch(this, NSLOCTEXT("PipelineColor", "SwatchFallback", "PC ERR0R"),
              FName(TEXT("Fallback")));
 }
 
