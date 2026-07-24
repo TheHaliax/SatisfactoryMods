@@ -3,12 +3,12 @@
 
 #include "Observation/FFluidAppearanceObserver.h"
 
+#include "Async/Async.h"
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildablePipeline.h"
-#include "Buildables/FGBuildablePipelineAttachment.h"
 #include "Buildables/FGBuildablePipelinePump.h"
-#include "Content/FPipeFluidKeyResolver.h"
 #include "FGFluidIntegrantInterface.h"
+#include "FGPipeConnectionComponent.h"
 #include "FGPipeNetwork.h"
 #include "Patching/NativeHookManager.h"
 #include "PipelineColorLog.h"
@@ -32,6 +32,25 @@ void EnqueueIntegrantActor(IFGFluidIntegrantInterface* Integrant) {
 
   if (AFGBuildable* Buildable = Cast<AFGBuildable>(Integrant)) {
     EnqueueBuildable(Buildable);
+  }
+}
+
+void EnqueueConnectionIntegrantOnGameThread(UFGPipeConnectionComponent* Conn) {
+  if (!IsValid(Conn)) {
+    return;
+  }
+
+  const TWeakObjectPtr<UFGPipeConnectionComponent> WeakConn(Conn);
+  auto EnqueueWeak = [WeakConn]() {
+    if (UFGPipeConnectionComponent* Alive = WeakConn.Get()) {
+      EnqueueIntegrantActor(Alive->GetFluidIntegrant());
+    }
+  };
+
+  if (IsInGameThread()) {
+    EnqueueWeak();
+  } else {
+    AsyncTask(ENamedThreads::GameThread, MoveTemp(EnqueueWeak));
   }
 }
 
@@ -67,6 +86,12 @@ void FFluidAppearanceObserver::RegisterHooks() {
   SUBSCRIBE_METHOD_VIRTUAL_AFTER(AFGBuildablePipelinePump::OnFluidDescriptorSet,
                                  GetMutableDefault<AFGBuildablePipelinePump>(),
                                  [](AFGBuildablePipelinePump* Pump) { EnqueueBuildable(Pump); });
+
+  SUBSCRIBE_METHOD_AFTER(UFGPipeConnectionComponent::SetFluidDescriptor,
+                         [](UFGPipeConnectionComponent* Conn,
+                            TSubclassOf<UFGItemDescriptor> /*Desc*/) {
+                           EnqueueConnectionIntegrantOnGameThread(Conn);
+                         });
 
   SUBSCRIBE_METHOD_AFTER(AFGPipeNetwork::FlushNetwork,
                          [](AFGPipeNetwork* Network) { EnqueueNetworkFirstIntegrant(Network); });

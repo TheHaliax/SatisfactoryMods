@@ -6,9 +6,6 @@
 #include "CoreMinimal.h"
 
 class AFGBuildable;
-class AFGBuildablePipeline;
-class AFGBuildablePipelinePump;
-class AFGPipeNetwork;
 
 class FFluidAppearanceObserver {
  public:
