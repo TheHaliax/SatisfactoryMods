@@ -10,7 +10,7 @@ Player and contributor docs for **PipelineColor** (version in [CHANGELOG](../CHA
 
 ## Guides
 
-- [Chat commands](chat-commands.md) — `!Metallic` (fluid / `all on` / `all off` / `default`), `!pchelp`
+- [Chat commands](chat-commands.md) — `!Metallic` (fluid / `all on` / `all off` / `default`), `!pc default`, `!pchelp`
 - [Console commands](console-commands.md) — `PipelineColor.Set`, CVars
 - [Multiplayer](multiplayer.md) — client/server requirements and dedicated hosting
 - [Troubleshooting](troubleshooting.md) — common issues and log greps

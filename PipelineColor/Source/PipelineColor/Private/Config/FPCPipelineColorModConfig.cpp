@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "Config/FPCPipelineColorModConfig.h"
+#include "Appearance/FPCFluidAppearanceCatalog.h"
 #include "Appearance/FPCFluidRoster.h"
 
 #include "Configuration/ConfigManager.h"
@@ -161,10 +162,7 @@ bool FPCPipelineColorModConfig::CanMutateLiveConfig(UWorld* World) {
 }
 
 bool FPCPipelineColorModConfig::IsGasCatalogKey(FName CatalogKey) {
-  return CatalogKey == FName(TEXT("DarkMatterResidue")) ||
-         CatalogKey == FName(TEXT("ExcitedPhotonicMatter")) ||
-         CatalogKey == FName(TEXT("IonizedFuel")) || CatalogKey == FName(TEXT("RocketFuel")) ||
-         CatalogKey == FName(TEXT("NitrogenGas"));
+  return FPCFluidAppearanceCatalog::Get().IsGasCatalogKey(CatalogKey);
 }
 
 bool FPCPipelineColorModConfig::IsDefaultGasMetallic() {

@@ -62,6 +62,7 @@ bool IsPipelineColorCommand(const FString& CommandLine) {
 
   const FString& Verb = Tokens[0];
   return Verb.Equals(TEXT("Metallic"), ESearchCase::IgnoreCase) ||
+         Verb.Equals(TEXT("pc"), ESearchCase::IgnoreCase) ||
          Verb.Equals(TEXT("pchelp"), ESearchCase::IgnoreCase);
 }
 
@@ -150,7 +151,10 @@ void SendHelp(AFGPlayerController* PlayerController) {
                TEXT("!Metallic all off  — force every fluid metallic off (color)"),
                FLinearColor::Yellow);
   SendBangChat(PlayerController,
-               TEXT("!Metallic default  — clear overrides; gas on / liquid off + reseed colors"),
+               TEXT("!Metallic default  — clear metallic overrides; gas on / liquid off"),
+               FLinearColor::Yellow);
+  SendBangChat(PlayerController,
+               TEXT("!pc default  — reseed swatch colors from fluid data (resets edits)"),
                FLinearColor::Yellow);
   SendBangChat(PlayerController, TEXT("!pchelp  — list Pipeline Color chat commands"),
                FLinearColor::Yellow);
@@ -251,6 +255,24 @@ void FPCBangCommands::Execute(AFGPlayerController* PlayerController, const FStri
     return;
   }
 
+  if (Verb.Equals(TEXT("pc"), ESearchCase::IgnoreCase)) {
+    if (!Rest.Equals(TEXT("default"), ESearchCase::IgnoreCase)) {
+      SendBangChat(PlayerController, TEXT("Use !pc default"), FLinearColor::Red);
+      return;
+    }
+
+    APCSwatchStoreSubsystem* Store = APCSwatchStoreSubsystem::GetOrCreate(World);
+    if (!Store) {
+      SendBangChat(PlayerController, TEXT("Swatch store unavailable."), FLinearColor::Red);
+      return;
+    }
+
+    Store->ReseedAllFromCatalog();
+    SendBangChat(PlayerController,
+                 TEXT("Swatch colors reseeded from fluid data (Customizer edits reset)."));
+    return;
+  }
+
   if (Verb.Equals(TEXT("Metallic"), ESearchCase::IgnoreCase)) {
     if (Rest.IsEmpty()) {
       SendBangChat(PlayerController, TEXT("Use !Metallic <fluid>, all on|off, or default"),
@@ -264,11 +286,8 @@ void FPCBangCommands::Execute(AFGPlayerController* PlayerController, const FStri
         return;
       }
 
-      if (APCSwatchStoreSubsystem* Store = APCSwatchStoreSubsystem::GetOrCreate(World)) {
-        Store->ReseedAllFromCatalog();
-      }
-
-      SendBangChat(PlayerController, TEXT("Pipeline Color defaults restored (colors + metallic)."));
+      SendBangChat(PlayerController,
+                   TEXT("Metallic defaults restored (gas on / liquid off; overrides cleared)."));
       return;
     }
 

@@ -4,7 +4,7 @@
 
 PipelineColor sets **`RequiredOnRemote: true`**. Every player joining a session must have the same mod version installed.
 
-Version range in the plugin: `^1.1.2` (compatible 1.1.x, 1.1.2 or newer).
+Version range in the plugin: `^1.2.0` (compatible 1.2.x).
 
 ## Listen server / host
 
@@ -32,7 +32,8 @@ Customizer / SaveGame swatch entries persist in the world save. Runtime pipe/sup
 
 | Symptom | Check |
 |---------|--------|
-| Mod missing on join | All parties on same 1.1.x, SML ^3.12.0 |
+| Mod missing on join | All parties on same 1.2.x, SML ^3.12.0 |
+| SFP/RP sections differ between host and client | Install the same Satisfactory Plus / Refined Power versions on every machine; sections follow the host's mod set |
 | Colors only on host | Dedicated build includes the PipelineColor server target |
 | Chat ignored | Run on server/listen host; pure client gets a Hal error |
 | Customizer edits lost | Save the game after editing; store is SaveGame-backed |

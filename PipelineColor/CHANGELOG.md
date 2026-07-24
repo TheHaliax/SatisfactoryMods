@@ -1,5 +1,26 @@
 # PipelineColor — CHANGELOG
 
+## 1.2.0 — 2026-07-23
+
+- Add Customizer sections for modded fluids: **SatisfactoryPlus** and **RefinedPower**
+  subcategories under the PipelineColor category, with swatches and recipes for 46
+  Satisfactory Plus and 16 Refined Power fluids/gases (gases metallic by default)
+- Soft-gated on mod presence: each modded fluid probes its descriptor class at world
+  publish; absent mods contribute no swatches, recipes, subcategories, or SaveGame
+  store entries, and their catalog misses log at Verbose instead of Warning
+- Register PC customization recipes with the SML ModContentRegistry so Satisfactory
+  Plus's recipe clean-up pass no longer strips PC swatch recipes
+- Seed default colors from the fluid descriptors themselves: liquids use authored
+  `mFluidColor`, gases use `mGasColor` (fluid-color fallback when a gas ships without
+  one), and the metallic default derives from the descriptor's `RF_GAS` form — mod
+  updates re-tint automatically; the built-in roster table remains the fallback for
+  absent classes. Catalog logs a per-fluid drift line when descriptor data disagrees
+  with the roster constants
+- `!Metallic default` now resets **metallic flags only** (clears overrides, restores
+  gas-on / liquid-off defaults) — Customizer swatch edits survive
+- New `!pc default` chat command reseeds all Customizer swatch store colors from the
+  fluid descriptors (explicit, destructive reset of PC swatch edits)
+
 ## 1.1.2 — 2026-07-22
 
 - Fix severe dedicated-server performance drop on large saves (server tickrate falling

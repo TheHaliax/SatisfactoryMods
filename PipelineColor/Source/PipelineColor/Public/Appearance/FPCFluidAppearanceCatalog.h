@@ -45,6 +45,9 @@ class FPCFluidAppearanceCatalog final : public IAppearanceCatalog {
   // SCIM-safe store seed: never touch cached UClass*.
   static FString GetFinishPath(EPCPaintFinishKind Kind);
 
+  EPCPaintFinishKind FinishKindForKey(FName CatalogKey) const;
+  bool IsGasCatalogKey(FName CatalogKey) const;
+
  private:
   FPCFluidAppearanceCatalog() = default;
 
@@ -52,7 +55,10 @@ class FPCFluidAppearanceCatalog final : public IAppearanceCatalog {
   void FillSpecFromEntry(const FPCFluidCatalogEntry& Entry, FPCAppearanceSpec& OutSpec) const;
   void FillNeutralSpec(FPCAppearanceSpec& OutSpec) const;
   static FLinearColor HexRgb(uint8 R, uint8 G, uint8 B);
-  static TSubclassOf<UFGItemDescriptor> LoadFluidDesc(const TCHAR* SoftPath);
+  static TSubclassOf<UFGItemDescriptor> LoadFluidDesc(const TCHAR* SoftPath, bool bWarnIfMissing);
+  static void SeedEntryFromDescriptor(FPCFluidCatalogEntry& Entry,
+                                      TSubclassOf<UFGItemDescriptor> Desc,
+                                      const struct FPCFluidRosterRow& Row);
 
   // Lazy-built cache; mutable so const resolvers can trigger the one-time build.
   mutable bool bBuilt = false;

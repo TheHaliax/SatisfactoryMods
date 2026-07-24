@@ -35,11 +35,25 @@ Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 |---|---|
 | **Added** | 2026-07-15 |
 | **Published** | 2026-07-15 |
-| **Updated** | 2026-07-22 |
-| **Version** | 1.1.1 |
-| **Next** | — |
+| **Updated** | 2026-07-23 |
+| **Version** | **1.2.0** |
 
-Fluid-driven colors for pipelines, junctions, pumps, and matching pipe supports. Customizer **PipelineColor** swatches, SaveGame store, metallic gases by default. **v1.1.1:** dedicated server crash fixes, SCIM-safe save format. Chat `!Metallic` (toggle / `all on` / `all off` / `default`). Config via cfg / console (no SML Mods menu).
+Fluid-driven colors for pipelines, junctions, pumps, and matching pipe supports. Customizer **PipelineColor** swatches, SaveGame store, metallic gases by default. **v1.2.0:** SatisfactoryPlus + RefinedPower soft-gated Customizer sections; colors and metallic defaults seed from fluid descriptors (`mFluidColor` / `mGasColor` / `RF_GAS`); chat `!Metallic` (toggle / `all on` / `all off` / `default`) and `!pc default` (reseed swatch colors). Config via cfg / console (no SML Mods menu).
+
+Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
+
+---
+
+[![RemoteStandby icon](RemoteStandby/Resources/Icon128.png)](RemoteStandby/)
+
+[RemoteStandby](RemoteStandby/README.md)
+
+| | |
+|---|---|
+| **Added** | 2026-07-23 |
+| **Version** | **0.1.0** *(beta)* |
+
+Press **Z** while looking at a factory to toggle Standby (`SetIsProductionPaused`). Dedicated-safe RCO. Log `[HALRS]`.
 
 Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 

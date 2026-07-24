@@ -19,20 +19,25 @@
 *.user
 *.suo
 
-# Local infra scripts (host-specific; not for repo) — except the committed build tooling.
+# Local infra under tools/ — except committed build + icon pipeline.
 tools/*
-!tools/pack-structuralpower.ps1
-!tools/pack-structuralpower-release.ps1
-!tools/pack-pipelinecolor.ps1
-!tools/Invoke-ModIcons.ps1
+!tools/build-mod.ps1
+!tools/icons.ps1
+!tools/check-version.ps1
+!tools/repo-mods.ps1
+!tools/load-local-paths.ps1
+!tools/local-paths.example.json
 !tools/make-icons.py
 !tools/requirements.txt
 !tools/BaseIcon1024.png
 !tools/Mask1024.png
 !tools/UnispaceBd.ttf
-!tools/README.md
+!tools/clang-format-first-party.ps1
+!tools/scim-parse-check.mjs
+!tools/scan-save-structs.py
 
 # Local development notes (roadmap, research, scratch specs) — not for repo
+# Operator docs: D:\Modding\Satisfactory\Home\development\TOOLS.md (+ ICON-PIPELINE.md)
 StructuralPower/development/
 FactoryGameRE/
 

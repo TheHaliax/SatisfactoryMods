@@ -2,7 +2,7 @@
 
 ## Pipes stay default / unpainted
 
-1. Confirm PipelineColor loads — look for `PipelineColor v1.1.2` and `[HALPC]` in `FactoryGame.log`.
+1. Confirm PipelineColor loads — look for `PipelineColor v1.2.0` and `[HALPC]` in `FactoryGame.log`.
 2. Fill the network with a known fluid (Water, Fuel, …) and wait a short settle.
 3. Empty networks use Neutral — that can look like “no paint” compared to bright fluids.
 4. Grep `FactoryGame.log` for `[HALPC]` / `LogPipelineColor`.
@@ -17,7 +17,14 @@ Supports must be a **fluid support parent** the mod soft-`IsA`s (floor / stackab
 2. Turn one fluid on: `!Metallic <fluid>` (toggle) or `PipelineColor.Set Metallic.<Key> 1`. Force everything metallic: `!Metallic all on`. Force everything color: `!Metallic all off`.
 3. Confirm cfg wrote under `Configs/PipelineColor.cfg` (`MetallicOverrides` for `all on` / `all off` / toggles).
 4. Metallic is **PaintFinish at apply**, not Secondary RGB white in Customizer.
-5. Reset mess: `!Metallic default` reseeds store colors and clears overrides (back to gas-on / liquid-off defaults).
+5. Reset mess: `!Metallic default` clears overrides (back to gas-on / liquid-off defaults) without touching swatch edits; `!pc default` reseeds all swatch colors from fluid data (resets Customizer edits).
+
+## SatisfactoryPlus / RefinedPower sections missing
+
+1. Sections only exist when the matching mod is installed on the **authority** (host or dedicated). Vanilla installs show only the **Default** section — by design.
+2. Grep `FactoryGame.log` for `mod soft-available stems=`. `stems=0` means no SFP/RP fluid descriptors resolved; check the mods are actually enabled.
+3. `catalog ready (... mod fluids)` shows how many modded fluid classes loaded.
+4. PC recipes are registered with the SML ModContentRegistry at publish. If the log shows `ModContentRegistry missing — SFP may scrub`, Satisfactory Plus's clean-up pass may remove PC swatch recipes; report with the log slice.
 
 ## Customizer swatch edits do not stick
 

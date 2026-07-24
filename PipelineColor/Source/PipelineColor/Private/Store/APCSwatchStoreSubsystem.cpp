@@ -18,24 +18,13 @@
 namespace {
 constexpr int32 GStoreSchemaPaintFinishPath = 2;
 
-EPCPaintFinishKind FinishKindForKey(FName Key) {
-  if (Key == FName(TEXT("Neutral"))) {
-    return EPCPaintFinishKind::Matte;
-  }
-  for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows()) {
-    if (Row.Stem == Key) {
-      return Row.Finish;
-    }
-  }
-  return EPCPaintFinishKind::Default;
-}
-
 void FillEntryFromSpec(FPCSwatchEntry& Entry, FName Key, const FPCAppearanceSpec& Spec) {
   Entry.Key = Key;
   Entry.Primary = Spec.PrimaryColor;
   Entry.Secondary = Spec.SecondaryColor;
   // Path string only — Spec.PaintFinish may be a dangling cached UClass*.
-  Entry.PaintFinishPath = FPCFluidAppearanceCatalog::GetFinishPath(FinishKindForKey(Key));
+  Entry.PaintFinishPath = FPCFluidAppearanceCatalog::GetFinishPath(
+      FPCFluidAppearanceCatalog::Get().FinishKindForKey(Key));
 }
 
 void FillEmptyPaintFinishPaths(APCSwatchStoreSubsystem& Store, FPCFluidAppearanceCatalog& Catalog) {
@@ -44,7 +33,8 @@ void FillEmptyPaintFinishPaths(APCSwatchStoreSubsystem& Store, FPCFluidAppearanc
     if (!Entry.PaintFinishPath.IsEmpty()) {
       continue;
     }
-    Entry.PaintFinishPath = FPCFluidAppearanceCatalog::GetFinishPath(FinishKindForKey(Entry.Key));
+    Entry.PaintFinishPath =
+        FPCFluidAppearanceCatalog::GetFinishPath(Catalog.FinishKindForKey(Entry.Key));
     bMigrated = true;
   }
 
@@ -217,6 +207,9 @@ void APCSwatchStoreSubsystem::SeedMissingFromCatalog() {
     if (FindIndex(Row.Stem) != INDEX_NONE) {
       continue;
     }
+    if (Row.Section != EPCFluidRosterSection::Default && !FPCFluidRoster::SoftDescPresent(Row)) {
+      continue;
+    }
     FPCAppearanceSpec Spec;
     if (!Catalog.ResolveByKey(Row.Stem, Spec)) {
       UE_LOG(LogPipelineColor, Warning, TEXT("%s seed skip unresolved key %s"),
@@ -291,6 +284,9 @@ void APCSwatchStoreSubsystem::ReseedAllFromCatalog() {
   }
 
   for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows()) {
+    if (Row.Section != EPCFluidRosterSection::Default && !FPCFluidRoster::SoftDescPresent(Row)) {
+      continue;
+    }
     FPCAppearanceSpec Spec;
     if (!Catalog.ResolveByKey(Row.Stem, Spec)) {
       UE_LOG(LogPipelineColor, Warning, TEXT("%s reseed skip unresolved key %s"),

@@ -16,6 +16,7 @@ class UFGFactoryCustomizationDescriptor_PaintFinish;
 class UFGFactoryCustomizationDescriptor_Swatch;
 class UFGRecipe;
 class UWorld;
+enum class EPCFluidRosterSection : uint8;
 
 UCLASS()
 class PIPELINECOLOR_API UPipelineColorRootInstanceModule : public UGameInstanceModule {
@@ -38,10 +39,18 @@ class PIPELINECOLOR_API UPipelineColorRootInstanceModule : public UGameInstanceM
   ApplyDefaultOrganization(UPipelineColorRootInstanceModule* Root,
                            TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
 
+  static void ApplyOrganization(UPipelineColorRootInstanceModule* Root,
+                                TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch,
+                                EPCFluidRosterSection Section);
+
   static TSubclassOf<UFGCustomizerCategory>
   GetOrCreatePipelineColorCategory(UPipelineColorRootInstanceModule* Root);
   static TSubclassOf<UFGCustomizerSubCategory>
   GetOrCreatePipelineColorSubCategory(UPipelineColorRootInstanceModule* Root);
+  static TSubclassOf<UFGCustomizerSubCategory>
+  GetOrCreateSatisfactoryPlusSubCategory(UPipelineColorRootInstanceModule* Root);
+  static TSubclassOf<UFGCustomizerSubCategory>
+  GetOrCreateRefinedPowerSubCategory(UPipelineColorRootInstanceModule* Root);
   static void UnlockPcSwatchesViaUnlockSubsystem(UWorld* World);
 
   /** ClassGen metallic roughness flyweights — GC roots (never stamp CDOs at apply). */
@@ -57,12 +66,22 @@ class PIPELINECOLOR_API UPipelineColorRootInstanceModule : public UGameInstanceM
   UPROPERTY()
   TSubclassOf<UFGCustomizerSubCategory> CachedSubCategory;
 
+  UPROPERTY()
+  TSubclassOf<UFGCustomizerSubCategory> CachedSfpSubCategory;
+
+  UPROPERTY()
+  TSubclassOf<UFGCustomizerSubCategory> CachedRpSubCategory;
+
   bool bMetallicFinishPoolReady = false;
 
  private:
   static void HandlePostLoadMap(UWorld* World);
   static void HandleBuildableBuilt(AFGBuildable* Buildable);
-  static void CollectPcRecipes(TArray<TSubclassOf<UFGRecipe>>& Out);
+  static void CollectPcRecipes(UWorld* World, TArray<TSubclassOf<UFGRecipe>>& Out);
+  static TSubclassOf<UFGCustomizerSubCategory>
+  GetOrCreateNamedSubCategory(UPipelineColorRootInstanceModule* Root,
+                              TSubclassOf<UFGCustomizerSubCategory>& Cache, const TCHAR* ClassName,
+                              const TCHAR* DisplayName, float MenuPriority);
 
   static FDelegateHandle PostLoadMapHandle;
 };

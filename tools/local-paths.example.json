@@ -1,0 +1,12 @@
+{
+  "projectPath": "...\\StarterProject\\FactoryGame.uproject",
+  "ueCssRoot": "...\\Program",
+  "gamePath": "...\\Satisfactory",
+  "logDir": "...\\logs",
+  "ensureJunctions": true,
+  "junctions": [
+    { "name": "PipelineColor", "target": "PipelineColor" },
+    { "name": "StructuralPower", "target": "StructuralPower" },
+    { "name": "RemoteStandby", "target": "RemoteStandby" }
+  ]
+}

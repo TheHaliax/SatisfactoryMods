@@ -4,6 +4,7 @@
 #include "Session/UPCWorldSubsystem.h"
 
 #include "Appearance/FPCFluidAppearanceCatalog.h"
+#include "Appearance/FPCFluidRoster.h"
 #include "Appearance/FPCMetallicColorCorrection.h"
 #include "Appearance/FPCMetallicFinishPool.h"
 #include "Appearance/FPCMetallicFlag.h"
@@ -56,8 +57,45 @@ void UPCWorldSubsystem::Deinitialize() {
   WatchList.Reset();
   WatchMembership.Reset();
   LastApplied.Reset();
+  AvailableModStems.Reset();
   bWorldReadyDone = false;
   Super::Deinitialize();
+}
+
+void UPCWorldSubsystem::RebuildModAvailability() {
+  AvailableModStems.Reset();
+  for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows()) {
+    if (Row.Section == EPCFluidRosterSection::Default) {
+      continue;
+    }
+    if (FPCFluidRoster::SoftDescPresent(Row)) {
+      AvailableModStems.Add(Row.Stem);
+    }
+  }
+  UE_LOG(LogPipelineColor, Log, TEXT("%s mod soft-available stems=%d"), PIPELINECOLOR_LOG_PREFIX,
+         AvailableModStems.Num());
+}
+
+bool UPCWorldSubsystem::HasAvailableSection(EPCFluidRosterSection Section) const {
+  if (Section == EPCFluidRosterSection::Default) {
+    return true;
+  }
+  for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows()) {
+    if (Row.Section == Section && AvailableModStems.Contains(Row.Stem)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void UPCWorldSubsystem::AppendAvailableModSwatches(
+    TArray<TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>>& Out) const {
+  FPCFluidRoster::AppendAvailableModSwatchClasses(Out, AvailableModStems);
+}
+
+void UPCWorldSubsystem::AppendAvailableModRecipes(
+    TArray<TSubclassOf<UFGCustomizationRecipe>>& Out) const {
+  FPCFluidRoster::AppendAvailableModRecipeClasses(Out, AvailableModStems);
 }
 
 void UPCWorldSubsystem::DirtyAllWatched() {

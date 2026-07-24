@@ -27,12 +27,19 @@ FLinearColor FPCFluidAppearanceCatalog::HexRgb(uint8 R, uint8 G, uint8 B) {
   return FLinearColor::FromSRGBColor(FColor(R, G, B, 255));
 }
 
-TSubclassOf<UFGItemDescriptor> FPCFluidAppearanceCatalog::LoadFluidDesc(const TCHAR* SoftPath) {
+TSubclassOf<UFGItemDescriptor> FPCFluidAppearanceCatalog::LoadFluidDesc(const TCHAR* SoftPath,
+                                                                        bool bWarnIfMissing) {
   const FSoftClassPath Path(SoftPath);
   UClass* Loaded = Path.TryLoadClass<UFGItemDescriptor>();
   if (!Loaded) {
-    UE_LOG(LogPipelineColor, Warning, TEXT("%s catalog: failed load fluid %s"),
-           PIPELINECOLOR_LOG_PREFIX, SoftPath);
+    if (bWarnIfMissing) {
+      UE_LOG(LogPipelineColor, Warning, TEXT("%s catalog: failed load fluid %s"),
+             PIPELINECOLOR_LOG_PREFIX, SoftPath);
+    } else {
+      // Mod-section rows are expected to miss when SFP / RP absent — not a fault.
+      UE_LOG(LogPipelineColor, Verbose, TEXT("%s catalog: mod fluid absent %s"),
+             PIPELINECOLOR_LOG_PREFIX, SoftPath);
+    }
   }
   return Loaded;
 }
@@ -99,6 +106,40 @@ void FPCFluidAppearanceCatalog::FillSpecFromEntry(const FPCFluidCatalogEntry& En
   OutSpec.bOverrideRoughness = false;
 }
 
+void FPCFluidAppearanceCatalog::SeedEntryFromDescriptor(FPCFluidCatalogEntry& Entry,
+                                                        TSubclassOf<UFGItemDescriptor> Desc,
+                                                        const FPCFluidRosterRow& Row) {
+  const EResourceForm Form = UFGItemDescriptor::GetForm(Desc);
+  const bool bGas = Form == EResourceForm::RF_GAS;
+  Entry.Finish = bGas ? EPCPaintFinishKind::MetallicColor : EPCPaintFinishKind::Default;
+
+  // Some gases ship without mGasColor (zero black) — fall through to fluid color, then roster.
+  const FColor Preferred =
+      bGas ? UFGItemDescriptor::GetGasColor(Desc) : UFGItemDescriptor::GetFluidColor(Desc);
+  const FColor Other =
+      bGas ? UFGItemDescriptor::GetFluidColor(Desc) : UFGItemDescriptor::GetGasColor(Desc);
+  auto IsZeroRgb = [](const FColor& C) { return C.R == 0 && C.G == 0 && C.B == 0; };
+
+  FColor Chosen(Row.PrimaryR, Row.PrimaryG, Row.PrimaryB, 255);
+  if (!IsZeroRgb(Preferred)) {
+    Chosen = Preferred;
+  } else if (!IsZeroRgb(Other)) {
+    Chosen = Other;
+  }
+  // Authored alpha is unreliable (SFP ships CoolingWater A=2) — paint is opaque.
+  Entry.Primary = HexRgb(Chosen.R, Chosen.G, Chosen.B);
+
+  const bool bColorDrift =
+      Chosen.R != Row.PrimaryR || Chosen.G != Row.PrimaryG || Chosen.B != Row.PrimaryB;
+  if (bColorDrift || Entry.Finish != Row.Finish) {
+    UE_LOG(LogPipelineColor, Log,
+           TEXT("%s catalog drift %s: descriptor %d,%d,%d %s vs roster %d,%d,%d %s"),
+           PIPELINECOLOR_LOG_PREFIX, *Row.Stem.ToString(), Chosen.R, Chosen.G, Chosen.B,
+           bGas ? TEXT("gas") : TEXT("liquid"), Row.PrimaryR, Row.PrimaryG, Row.PrimaryB,
+           Row.Finish == EPCPaintFinishKind::MetallicColor ? TEXT("gas") : TEXT("liquid"));
+  }
+}
+
 void FPCFluidAppearanceCatalog::BuildEntries() const {
   UPCFinish_MetallicColor::EnsureIconLoaded();
 
@@ -113,6 +154,7 @@ void FPCFluidAppearanceCatalog::BuildEntries() const {
   SoftPathToStem.Reset();
   ClassToStem.Reset();
   int32 LoadedCount = 0;
+  int32 ModLoadedCount = 0;
   for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows()) {
     FPCFluidCatalogEntry Entry;
     Entry.FluidStem = Row.Stem;
@@ -120,16 +162,41 @@ void FPCFluidAppearanceCatalog::BuildEntries() const {
     Entry.Primary = HexRgb(Row.PrimaryR, Row.PrimaryG, Row.PrimaryB);
     Entry.Finish = Row.Finish;
     Entry.SwatchClass = Row.SwatchClass;
+
+    const bool bDefaultRow = Row.Section == EPCFluidRosterSection::Default;
+    if (TSubclassOf<UFGItemDescriptor> Desc = LoadFluidDesc(Row.SoftPath, bDefaultRow)) {
+      SeedEntryFromDescriptor(Entry, Desc, Row);
+      ++LoadedCount;
+      if (!bDefaultRow) {
+        ++ModLoadedCount;
+      }
+    }
+
     ByStem.Add(Row.Stem, Entry);
     SoftPathToStem.Add(FString(Row.SoftPath), Row.Stem);
-
-    if (LoadFluidDesc(Row.SoftPath)) {
-      ++LoadedCount;
-    }
   }
 
-  UE_LOG(LogPipelineColor, Log, TEXT("%s catalog ready (%d stems, %d fluid classes loaded)"),
-         PIPELINECOLOR_LOG_PREFIX, ByStem.Num(), LoadedCount);
+  UE_LOG(LogPipelineColor, Log,
+         TEXT("%s catalog ready (%d stems, %d fluid classes loaded, %d mod fluids)"),
+         PIPELINECOLOR_LOG_PREFIX, ByStem.Num(), LoadedCount, ModLoadedCount);
+}
+
+EPCPaintFinishKind FPCFluidAppearanceCatalog::FinishKindForKey(FName CatalogKey) const {
+  EnsureLoaded();
+  if (CatalogKey == FName(TEXT("Neutral"))) {
+    return EPCPaintFinishKind::Matte;
+  }
+  if (const FPCFluidCatalogEntry* Found = ByStem.Find(CatalogKey)) {
+    return Found->Finish;
+  }
+  return EPCPaintFinishKind::Default;
+}
+
+bool FPCFluidAppearanceCatalog::IsGasCatalogKey(FName CatalogKey) const {
+  if (CatalogKey.IsNone()) {
+    return false;
+  }
+  return FinishKindForKey(CatalogKey) == EPCPaintFinishKind::MetallicColor;
 }
 
 bool FPCFluidAppearanceCatalog::ResolveByKey(FName CatalogKey, FPCAppearanceSpec& OutSpec) const {

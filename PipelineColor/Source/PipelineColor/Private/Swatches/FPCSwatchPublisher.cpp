@@ -8,18 +8,57 @@
 #include "Core/FPCWorldGate.h"
 #include "FGCustomizationRecipe.h"
 #include "FGFactoryColoringTypes.h"
+#include "FGRecipe.h"
 #include "FGRecipeManager.h"
 #include "Patching/NativeHookManager.h"
 #include "PipelineColorLog.h"
 #include "PipelineColorRootInstanceModule.h"
+#include "Registry/ModContentRegistry.h"
+#include "Session/UPCWorldSubsystem.h"
 #include "Store/APCSwatchStoreSubsystem.h"
 #include "UObject/SoftObjectPath.h"
 
 namespace {
 bool GForceRecipeHookRegistered = false;
 
-void AppendPcCustomizationRecipes(TArray<TSubclassOf<UFGCustomizationRecipe>>& Out) {
-  FPCFluidRoster::AppendAllRecipeClasses(Out);
+void AppendPcCustomizationRecipes(const AFGRecipeManager* Self,
+                                  TArray<TSubclassOf<UFGCustomizationRecipe>>& OutRecipes) {
+  FPCFluidRoster::AppendAlwaysRecipeClasses(OutRecipes);
+  if (!Self) {
+    return;
+  }
+  if (UPCWorldSubsystem* Sys = UPCWorldSubsystem::Get(Self->GetWorld())) {
+    Sys->AppendAvailableModRecipes(OutRecipes);
+  }
+}
+
+// SFP CleanManager yeets recipes missing from ModContentRegistry. Badge ours first.
+void RegisterPcRecipesWithContentRegistry(UWorld* World) {
+  UModContentRegistry* Registry = UModContentRegistry::Get(World);
+  if (!Registry) {
+    UE_LOG(LogPipelineColor, Warning, TEXT("%s ModContentRegistry missing — SFP may scrub"),
+           PIPELINECOLOR_LOG_PREFIX);
+    return;
+  }
+
+  TArray<TSubclassOf<UFGCustomizationRecipe>> CustomRecipes;
+  FPCFluidRoster::AppendAlwaysRecipeClasses(CustomRecipes);
+  if (UPCWorldSubsystem* Sys = UPCWorldSubsystem::Get(World)) {
+    Sys->AppendAvailableModRecipes(CustomRecipes);
+  }
+
+  static const FName ModRef(TEXT("PipelineColor"));
+  int32 Registered = 0;
+  for (const TSubclassOf<UFGCustomizationRecipe>& Recipe : CustomRecipes) {
+    if (!Recipe) {
+      continue;
+    }
+    Registry->RegisterRecipe(ModRef, TSubclassOf<UFGRecipe>(Recipe.Get()));
+    ++Registered;
+  }
+
+  UE_LOG(LogPipelineColor, Log, TEXT("%s ModContentRegistry recipes=%d"), PIPELINECOLOR_LOG_PREFIX,
+         Registered);
 }
 
 UFGFactoryCustomizationCollection* LoadSwatchCollectionCDO() {
@@ -37,9 +76,20 @@ UFGFactoryCustomizationCollection* LoadSwatchCollectionCDO() {
 
 void InjectOne(UPipelineColorRootInstanceModule* Root,
                UFGFactoryCustomizationCollection* Collection,
-               TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch) {
-  UPipelineColorRootInstanceModule::ApplyDefaultOrganization(Root, Swatch);
+               TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch,
+               EPCFluidRosterSection Section) {
+  UPipelineColorRootInstanceModule::ApplyOrganization(Root, Swatch, Section);
   UPipelineColorRootInstanceModule::InjectSwatchIntoCollection(Collection, Swatch);
+}
+
+EPCFluidRosterSection
+SectionForSwatch(TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch) {
+  for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows()) {
+    if (Row.SwatchClass == Swatch) {
+      return Row.Section;
+    }
+  }
+  return EPCFluidRosterSection::Default;
 }
 } // namespace
 
@@ -49,11 +99,11 @@ void FPCSwatchPublisher::RegisterForceRecipeHook() {
   }
   GForceRecipeHookRegistered = true;
 
-  SUBSCRIBE_METHOD_AFTER(AFGRecipeManager::GetAllAvailableCustomizationRecipes,
-                         [](const AFGRecipeManager* /*Self*/,
-                            TArray<TSubclassOf<UFGCustomizationRecipe>>& OutRecipes) {
-                           AppendPcCustomizationRecipes(OutRecipes);
-                         });
+  SUBSCRIBE_METHOD_AFTER(
+      AFGRecipeManager::GetAllAvailableCustomizationRecipes,
+      [](const AFGRecipeManager* Self, TArray<TSubclassOf<UFGCustomizationRecipe>>& OutRecipes) {
+        AppendPcCustomizationRecipes(Self, OutRecipes);
+      });
 
   UE_LOG(LogPipelineColor, Log, TEXT("%s GetAllAvailableCustomizationRecipes force hook"),
          PIPELINECOLOR_LOG_PREFIX);
@@ -89,6 +139,17 @@ void FPCSwatchPublisher::PublishForWorld(UWorld* World) {
   UPipelineColorRootInstanceModule::GetOrCreatePipelineColorCategory(Root);
   UPipelineColorRootInstanceModule::GetOrCreatePipelineColorSubCategory(Root);
 
+  UPCWorldSubsystem* Sys = UPCWorldSubsystem::Get(World);
+  if (Sys) {
+    Sys->RebuildModAvailability();
+    if (Sys->HasAvailableSection(EPCFluidRosterSection::Sfp)) {
+      UPipelineColorRootInstanceModule::GetOrCreateSatisfactoryPlusSubCategory(Root);
+    }
+    if (Sys->HasAvailableSection(EPCFluidRosterSection::Rp)) {
+      UPipelineColorRootInstanceModule::GetOrCreateRefinedPowerSubCategory(Root);
+    }
+  }
+
   APCSwatchStoreSubsystem* Store = APCSwatchStoreSubsystem::GetOrCreate(World);
   if (!Store) {
     UE_LOG(LogPipelineColor, Warning, TEXT("%s PublishForWorld: swatch store missing"),
@@ -106,6 +167,7 @@ void FPCSwatchPublisher::PublishForWorld(UWorld* World) {
            PIPELINECOLOR_LOG_PREFIX);
   }
 
+  RegisterPcRecipesWithContentRegistry(World);
   UPipelineColorRootInstanceModule::UnlockPcSwatchesViaUnlockSubsystem(World);
 
   UFGFactoryCustomizationCollection* Collection = LoadSwatchCollectionCDO();
@@ -114,11 +176,14 @@ void FPCSwatchPublisher::PublishForWorld(UWorld* World) {
   }
 
   TArray<TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>> Swatches;
-  FPCFluidRoster::AppendAllSwatchClasses(Swatches);
+  FPCFluidRoster::AppendAlwaysSwatchClasses(Swatches);
+  if (Sys) {
+    Sys->AppendAvailableModSwatches(Swatches);
+  }
   for (const TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>& Swatch : Swatches) {
-    InjectOne(Root, Collection, Swatch);
+    InjectOne(Root, Collection, Swatch, SectionForSwatch(Swatch));
   }
 
-  UE_LOG(LogPipelineColor, Log, TEXT("%s menu injected (top category + CatalogKey color swatches)"),
+  UE_LOG(LogPipelineColor, Log, TEXT("%s menu injected (Default + available mod swatches)"),
          PIPELINECOLOR_LOG_PREFIX);
 }
