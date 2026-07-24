@@ -6,6 +6,7 @@
   "ensureJunctions": true,
   "junctions": [
     { "name": "PipelineColor", "target": "PipelineColor" },
-    { "name": "StructuralPower", "target": "StructuralPower" }
+    { "name": "StructuralPower", "target": "StructuralPower" },
+    { "name": "RemoteStandby", "target": "RemoteStandby" }
   ]
 }

@@ -1,4 +1,4 @@
-# Formats or checks first-party C++ (StructuralPower, PipelineColor).
+# Formats or checks first-party C++ (StructuralPower, PipelineColor, RemoteStandby).
 param(
 	[switch]$Check,
 	[string]$ClangFormat = ""
@@ -29,7 +29,8 @@ if (-not $ClangFormat -or -not (Test-Path $ClangFormat)) {
 
 $roots = @(
 	(Join-Path $RepoRoot "StructuralPower\Source"),
-	(Join-Path $RepoRoot "PipelineColor\Source")
+	(Join-Path $RepoRoot "PipelineColor\Source"),
+	(Join-Path $RepoRoot "RemoteStandby\Source")
 )
 
 $files = @()

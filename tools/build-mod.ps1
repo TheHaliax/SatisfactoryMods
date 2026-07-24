@@ -5,8 +5,8 @@
 #   Quick   — UBT module → local Steam Mods (DLL + config + resources)
 #   Release — Alpakit PackagePlugin zip (Win client + Win/Linux server)
 #
-# Order: version check → icons (when wanted) → UBT / Alpakit.
-# Bad version aborts before icons or compile.
+# Order: clang-format check → version check → icons (when wanted) → UBT / Alpakit.
+# Bad clang or version aborts before icons or compile.
 #
 # Examples:
 #   powershell -File tools/build-mod.ps1 -Mod PipelineColor
@@ -29,6 +29,7 @@ param(
     [switch]$NoCopy,
     [switch]$Clean,
     [switch]$SkipVersionCheck,
+    [switch]$SkipClang,
 
     [string]$ProjectPath = '',
     [string]$GamePath = '',
@@ -95,12 +96,21 @@ if (Test-IsAllModsToken $Mod) {
     if ($NoCopy) { $ChildArgs.NoCopy = $true }
     if ($Clean) { $ChildArgs.Clean = $true }
     if ($SkipVersionCheck) { $ChildArgs.SkipVersionCheck = $true }
+    if ($SkipClang) { $ChildArgs.SkipClang = $true }
+
+    if (-not $SkipClang) {
+        Write-Host 'clang-format check (first-party)...'
+        & (Join-Path $ToolsDir 'clang-format-first-party.ps1') -Check
+        if ($LASTEXITCODE -ne 0) {
+            throw "clang-format check failed (exit $LASTEXITCODE). Format with tools/clang-format-first-party.ps1 or pass -SkipClang."
+        }
+    }
 
     Write-Host ("All mods ({0}): {1}" -f $Mode, ($Names -join ', '))
     foreach ($Name in $Names) {
         Write-Host ''
         Write-Host "======== $Name ($Mode) ========"
-        & $PSCommandPath -Mod $Name @ChildArgs
+        & $PSCommandPath -Mod $Name @ChildArgs -SkipClang
     }
     Write-Host ''
     Write-Host "Done (All / $Mode)."
@@ -210,7 +220,15 @@ if (-not (Test-Path -LiteralPath $Uplugin)) {
     throw "Missing uplugin: $Uplugin"
 }
 
-# --- version before icons / build ---
+# --- clang → version → icons → build ---
+if (-not $SkipClang) {
+    Write-Host 'clang-format check (first-party)...'
+    & (Join-Path $ToolsDir 'clang-format-first-party.ps1') -Check
+    if ($LASTEXITCODE -ne 0) {
+        throw "clang-format check failed (exit $LASTEXITCODE). Format with tools/clang-format-first-party.ps1 or pass -SkipClang."
+    }
+}
+
 if (-not $SkipVersionCheck) {
     $CheckVersion = Join-Path $ToolsDir 'check-version.ps1'
     & $CheckVersion -Mod $Mod -ModRoot $ModRoot -RepoRoot $RepoRoot

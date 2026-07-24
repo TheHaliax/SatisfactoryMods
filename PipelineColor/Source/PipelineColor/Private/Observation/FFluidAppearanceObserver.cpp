@@ -87,11 +87,11 @@ void FFluidAppearanceObserver::RegisterHooks() {
                                  GetMutableDefault<AFGBuildablePipelinePump>(),
                                  [](AFGBuildablePipelinePump* Pump) { EnqueueBuildable(Pump); });
 
-  SUBSCRIBE_METHOD_AFTER(UFGPipeConnectionComponent::SetFluidDescriptor,
-                         [](UFGPipeConnectionComponent* Conn,
-                            TSubclassOf<UFGItemDescriptor> /*Desc*/) {
-                           EnqueueConnectionIntegrantOnGameThread(Conn);
-                         });
+  SUBSCRIBE_METHOD_AFTER(
+      UFGPipeConnectionComponent::SetFluidDescriptor,
+      [](UFGPipeConnectionComponent* Conn, TSubclassOf<UFGItemDescriptor> /*Desc*/) {
+        EnqueueConnectionIntegrantOnGameThread(Conn);
+      });
 
   SUBSCRIBE_METHOD_AFTER(AFGPipeNetwork::FlushNetwork,
                          [](AFGPipeNetwork* Network) { EnqueueNetworkFirstIntegrant(Network); });

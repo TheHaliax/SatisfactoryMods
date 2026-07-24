@@ -44,6 +44,21 @@ Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 
 ---
 
+[![RemoteStandby icon](RemoteStandby/Resources/Icon128.png)](RemoteStandby/)
+
+[RemoteStandby](RemoteStandby/README.md)
+
+| | |
+|---|---|
+| **Added** | 2026-07-23 |
+| **Version** | **0.1.0** *(beta)* |
+
+Press **Z** while looking at a factory to toggle Standby (`SetIsProductionPaused`). Dedicated-safe RCO. Log `[HALRS]`.
+
+Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
+
+---
+
 ## Generative AI Disclosure
 
 This project uses generative AI tools **only as a minor workflow assistant**. The developer is fully responsible for mod design, logic, execution, and stability — all implementation remains hands-on.
