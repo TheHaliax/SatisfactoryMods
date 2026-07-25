@@ -14,9 +14,9 @@ class UFGCustomizerSubCategory;
 class UFGFactoryCustomizationCollection;
 class UFGFactoryCustomizationDescriptor_PaintFinish;
 class UFGFactoryCustomizationDescriptor_Swatch;
+class UFGCustomizationRecipe;
 class UFGRecipe;
 class UWorld;
-enum class EPCFluidRosterSection : uint8;
 
 UCLASS()
 class PIPELINECOLOR_API UPipelineColorRootInstanceModule : public UGameInstanceModule {
@@ -35,25 +35,19 @@ class PIPELINECOLOR_API UPipelineColorRootInstanceModule : public UGameInstanceM
   InjectSwatchIntoCollection(UFGFactoryCustomizationCollection* Collection,
                              TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
 
-  static void
-  ApplyDefaultOrganization(UPipelineColorRootInstanceModule* Root,
-                           TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch);
-
   static void ApplyOrganization(UPipelineColorRootInstanceModule* Root,
                                 TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch,
-                                EPCFluidRosterSection Section);
+                                const FString& SubCategoryDisplayName);
 
   static TSubclassOf<UFGCustomizerCategory>
   GetOrCreatePipelineColorCategory(UPipelineColorRootInstanceModule* Root);
   static TSubclassOf<UFGCustomizerSubCategory>
   GetOrCreatePipelineColorSubCategory(UPipelineColorRootInstanceModule* Root);
   static TSubclassOf<UFGCustomizerSubCategory>
-  GetOrCreateSatisfactoryPlusSubCategory(UPipelineColorRootInstanceModule* Root);
-  static TSubclassOf<UFGCustomizerSubCategory>
-  GetOrCreateRefinedPowerSubCategory(UPipelineColorRootInstanceModule* Root);
+  GetOrCreateSubCategoryByDisplayName(UPipelineColorRootInstanceModule* Root,
+                                      const FString& DisplayName);
   static void UnlockPcSwatchesViaUnlockSubsystem(UWorld* World);
 
-  /** ClassGen metallic roughness flyweights — GC roots (never stamp CDOs at apply). */
   UPROPERTY()
   TArray<TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish>> MetallicFinishBuckets;
 
@@ -67,10 +61,13 @@ class PIPELINECOLOR_API UPipelineColorRootInstanceModule : public UGameInstanceM
   TSubclassOf<UFGCustomizerSubCategory> CachedSubCategory;
 
   UPROPERTY()
-  TSubclassOf<UFGCustomizerSubCategory> CachedSfpSubCategory;
+  TMap<FName, TSubclassOf<UFGCustomizerSubCategory>> CachedSubCategoriesByName;
 
   UPROPERTY()
-  TSubclassOf<UFGCustomizerSubCategory> CachedRpSubCategory;
+  TArray<TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>> DynamicSwatchClasses;
+
+  UPROPERTY()
+  TArray<TSubclassOf<UFGCustomizationRecipe>> DynamicRecipeClasses;
 
   bool bMetallicFinishPoolReady = false;
 

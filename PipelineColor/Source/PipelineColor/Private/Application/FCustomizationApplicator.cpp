@@ -10,8 +10,6 @@
 
 namespace {
 TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> LoadCustomSwatch() {
-  // Weak cache: GC-safe (nulls on menu -> reload, never dangles) and avoids a
-  // soft-path parse + TryLoad on every apply — this runs per buildable.
   static TWeakObjectPtr<UClass> CachedSwatch;
   if (UClass* Cached = CachedSwatch.Get()) {
     return Cached;
@@ -33,11 +31,15 @@ bool FCustomizationApplicator::ApplyIfChanged(AFGBuildable* Buildable,
 
   TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> PaintSwatch = LoadCustomSwatch();
   if (!PaintSwatch) {
+    static bool bLoggedMissingCustom = false;
+    if (!bLoggedMissingCustom) {
+      bLoggedMissingCustom = true;
+      UE_LOG(LogPipelineColor, Error, TEXT("%s SwatchDesc_Custom missing — using Spec.SwatchDesc"),
+             PIPELINECOLOR_LOG_PREFIX);
+    }
     PaintSwatch = Spec.SwatchDesc;
   }
 
-  // Compare against the live struct by const ref; FFactoryCustomizationData
-  // owns TArrays, so the old by-value snapshot heap-copied on every no-op.
   const FFactoryCustomizationData& Data = Buildable->GetCustomizationData_Native();
   const bool bSameColors =
       Data.SwatchDesc == PaintSwatch && Data.ColorSlot == INDEX_CUSTOM_COLOR_SLOT &&
@@ -49,8 +51,7 @@ bool FCustomizationApplicator::ApplyIfChanged(AFGBuildable* Buildable,
     return false;
   }
 
-  // Never mutate PaintFinish CDOs (shared or owned). Roughness is finish-class identity
-  // via FPCMetallicFinishPool.
+  // Never stamp shared PaintFinish CDOs (SIGILL).
   FFactoryCustomizationData Next;
   Next.InlineCombine(Data);
   Next.SwatchDesc = PaintSwatch;
@@ -61,7 +62,7 @@ bool FCustomizationApplicator::ApplyIfChanged(AFGBuildable* Buildable,
 
   Buildable->SetCustomizationData_Native(Next, /*skipCombine=*/true);
 
-  UE_LOG(LogPipelineColor, Log, TEXT("%s apply %s key=%s primary=(%.2f,%.2f,%.2f)"),
+  UE_LOG(LogPipelineColor, Verbose, TEXT("%s apply %s key=%s primary=(%.2f,%.2f,%.2f)"),
          PIPELINECOLOR_LOG_PREFIX, *GetNameSafe(Buildable), *Spec.CatalogKey.ToString(),
          Spec.PrimaryColor.R, Spec.PrimaryColor.G, Spec.PrimaryColor.B);
 

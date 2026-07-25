@@ -35,10 +35,11 @@ Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 |---|---|
 | **Added** | 2026-07-15 |
 | **Published** | 2026-07-15 |
-| **Updated** | 2026-07-23 |
-| **Version** | **1.2.0** |
+| **Updated** | 2026-07-24 |
+| **Previous** | **1.2.0** — SFP/RP sections, descriptor RGB, `!pc` |
+| **Version** | **1.3.0** *(current)* — dynamic registry, `OwnerMod_Stem`, schema-4 / cfg-2 |
 
-Fluid-driven colors for pipelines, junctions, pumps, and matching pipe supports. Customizer **PipelineColor** swatches, SaveGame store, metallic gases by default. **v1.2.0:** SatisfactoryPlus + RefinedPower soft-gated Customizer sections; colors and metallic defaults seed from fluid descriptors (`mFluidColor` / `mGasColor` / `RF_GAS`); chat `!Metallic` (toggle / `all on` / `all off` / `default`) and `!pc default` (reseed swatch colors). Config via cfg / console (no SML Mods menu).
+Fluid-driven colors for pipelines, junctions, pumps, and matching pipe supports. Dynamic Customizer **PipelineColor** swatches per loaded fluid, SaveGame **custom-only** store, metallic gases by default. **v1.3.0:** `OwnerMod_Stem` keys, schema-4 store / cfg-2 reseed, `!pc` color source, **PC Empty Pipe** + **PC ERR0R** magenta. Config via cfg / console / chat.
 
 Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 

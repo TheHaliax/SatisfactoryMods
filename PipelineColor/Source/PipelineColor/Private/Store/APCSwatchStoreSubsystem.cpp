@@ -5,24 +5,23 @@
 
 #include "Appearance/FPCAppearanceSpec.h"
 #include "Appearance/FPCFluidAppearanceCatalog.h"
-#include "Appearance/FPCFluidRoster.h"
 #include "Core/FPCWorldGate.h"
 #include "FGFactoryColoringTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "PipelineColorLog.h"
+#include "PipelineColorRootInstanceModule.h"
 #include "Resources/FGItemDescriptor.h"
+#include "Swatches/FPCDynamicSwatchRegistry.h"
 #include "Swatches/UPCSwatchDescs.h"
-#include "UObject/SoftObjectPath.h"
 
 namespace {
-constexpr int32 GStoreSchemaPaintFinishPath = 2;
+constexpr int32 GStoreSchemaOnlyCustom = 4;
 
-void FillEntryFromSpec(FPCSwatchEntry& Entry, FName Key, const FPCAppearanceSpec& Spec) {
+void FillNeutralOrFallback(FPCSwatchEntry& Entry, FName Key, const FPCAppearanceSpec& Spec) {
   Entry.Key = Key;
   Entry.Primary = Spec.PrimaryColor;
   Entry.Secondary = Spec.SecondaryColor;
-  // Path string only — Spec.PaintFinish may be a dangling cached UClass*.
   Entry.PaintFinishPath = FPCFluidAppearanceCatalog::GetFinishPath(
       FPCFluidAppearanceCatalog::Get().FinishKindForKey(Key));
 }
@@ -37,11 +36,17 @@ void FillEmptyPaintFinishPaths(APCSwatchStoreSubsystem& Store, FPCFluidAppearanc
         FPCFluidAppearanceCatalog::GetFinishPath(Catalog.FinishKindForKey(Entry.Key));
     bMigrated = true;
   }
-
   if (bMigrated) {
     UE_LOG(LogPipelineColor, Log, TEXT("%s store migrated to PaintFinishPath"),
            PIPELINECOLOR_LOG_PREFIX);
   }
+}
+
+void FillFromDynamic(FPCSwatchEntry& Entry, const FPCDynamicSwatchEntry& Dyn) {
+  Entry.Key = Dyn.CatalogKey;
+  Entry.Primary = Dyn.Primary;
+  Entry.Secondary = FLinearColor::FromSRGBColor(FColor(0x2A, 0x2A, 0x2A, 255));
+  Entry.PaintFinishPath = FPCFluidAppearanceCatalog::GetFinishPath(Dyn.Finish);
 }
 } // namespace
 
@@ -59,22 +64,29 @@ void APCSwatchStoreSubsystem::GetLifetimeReplicatedProps(
 
 void APCSwatchStoreSubsystem::PreSaveGame_Implementation(int32 /*SaveVersion*/,
                                                          int32 /*GameVersion*/) {
-  StoreSchema = GStoreSchemaPaintFinishPath;
+  StoreSchema = GStoreSchemaOnlyCustom;
 }
 
 void APCSwatchStoreSubsystem::PostLoadGame_Implementation(int32 /*SaveVersion*/,
                                                           int32 /*GameVersion*/) {
+  if (StoreSchema < GStoreSchemaOnlyCustom) {
+    UE_LOG(LogPipelineColor, Log, TEXT("%s store schema %d->%d nuke (only-custom)"),
+           PIPELINECOLOR_LOG_PREFIX, StoreSchema, GStoreSchemaOnlyCustom);
+    Entries.Reset();
+    KeyToIndex.Reset();
+    StoreSchema = GStoreSchemaOnlyCustom;
+    if (HasAuthority()) {
+      EntryChanged.Broadcast(NAME_None);
+      ForceNetUpdate();
+    }
+    return;
+  }
+
   RebuildMaps();
 
   FPCFluidAppearanceCatalog& Catalog = FPCFluidAppearanceCatalog::Get();
   Catalog.EnsureLoaded();
   FillEmptyPaintFinishPaths(*this, Catalog);
-
-  if (HasAuthority()) {
-    SeedMissingFromCatalog();
-  }
-
-  StoreSchema = GStoreSchemaPaintFinishPath;
 }
 
 void APCSwatchStoreSubsystem::OnRep_Entries() {
@@ -100,7 +112,12 @@ APCSwatchStoreSubsystem* APCSwatchStoreSubsystem::GetOrCreate(UWorld* World) {
   FActorSpawnParameters Params;
   Params.Name = TEXT("PipelineColorSwatchStore");
   Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-  return World->SpawnActor<APCSwatchStoreSubsystem>(StaticClass(), FTransform::Identity, Params);
+  APCSwatchStoreSubsystem* Spawned =
+      World->SpawnActor<APCSwatchStoreSubsystem>(StaticClass(), FTransform::Identity, Params);
+  if (Spawned) {
+    Spawned->StoreSchema = GStoreSchemaOnlyCustom;
+  }
+  return Spawned;
 }
 
 bool APCSwatchStoreSubsystem::IsPCCustomization(
@@ -167,6 +184,7 @@ void APCSwatchStoreSubsystem::Set(FName Key, const FPCSwatchEntry& Entry) {
     Entries[Idx] = Copy;
   }
 
+  StoreSchema = GStoreSchemaOnlyCustom;
   EntryChanged.Broadcast(Key);
   ForceNetUpdate();
 }
@@ -178,57 +196,6 @@ void APCSwatchStoreSubsystem::SetFromSlot(FName Key, const FFactoryCustomization
 }
 
 void APCSwatchStoreSubsystem::SeedMissingFromCatalog() {
-  if (!HasAuthority()) {
-    return;
-  }
-
-  RebuildMaps();
-  FPCFluidAppearanceCatalog& Catalog = FPCFluidAppearanceCatalog::Get();
-  Catalog.EnsureLoaded();
-
-  auto EnsureKey = [this](FName Key, const FPCAppearanceSpec& Spec) {
-    if (FindIndex(Key) != INDEX_NONE) {
-      return;
-    }
-    FPCSwatchEntry Entry;
-    FillEntryFromSpec(Entry, Key, Spec);
-    KeyToIndex.Add(Key, Entries.Num());
-    Entries.Add(Entry);
-  };
-
-  {
-    FPCAppearanceSpec Neutral;
-    if (Catalog.ResolveByKey(FName(TEXT("Neutral")), Neutral)) {
-      EnsureKey(FName(TEXT("Neutral")), Neutral);
-    }
-  }
-
-  for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows()) {
-    if (FindIndex(Row.Stem) != INDEX_NONE) {
-      continue;
-    }
-    if (Row.Section != EPCFluidRosterSection::Default && !FPCFluidRoster::SoftDescPresent(Row)) {
-      continue;
-    }
-    FPCAppearanceSpec Spec;
-    if (!Catalog.ResolveByKey(Row.Stem, Spec)) {
-      UE_LOG(LogPipelineColor, Warning, TEXT("%s seed skip unresolved key %s"),
-             PIPELINECOLOR_LOG_PREFIX, *Row.Stem.ToString());
-      continue;
-    }
-    EnsureKey(Row.Stem, Spec);
-  }
-
-  {
-    FPCAppearanceSpec Fallback;
-    if (Catalog.ResolveByKey(FName(TEXT("Fallback")), Fallback)) {
-      EnsureKey(FName(TEXT("Fallback")), Fallback);
-    }
-  }
-
-  RebuildMaps();
-  UE_LOG(LogPipelineColor, Log, TEXT("%s store seeded (%d entries)"), PIPELINECOLOR_LOG_PREFIX,
-         Entries.Num());
 }
 
 void APCSwatchStoreSubsystem::ForceReseedNeutralMatte() {
@@ -244,17 +211,16 @@ void APCSwatchStoreSubsystem::ForceReseedNeutralMatte() {
   Catalog.ResolveByKey(FName(TEXT("Neutral")), Spec);
 
   FPCSwatchEntry Entry;
-  FillEntryFromSpec(Entry, FName(TEXT("Neutral")), Spec);
+  FillNeutralOrFallback(Entry, FName(TEXT("Neutral")), Spec);
 
   const int32 Idx = FindIndex(Entry.Key);
   if (Idx == INDEX_NONE) {
-    KeyToIndex.Add(Entry.Key, Entries.Num());
-    Entries.Add(Entry);
-  } else {
-    Entries[Idx] = Entry;
+    return;
   }
+  Entries[Idx] = Entry;
   EntryChanged.Broadcast(Entry.Key);
   RebuildMaps();
+  ForceNetUpdate();
   UE_LOG(LogPipelineColor, Log, TEXT("%s Neutral reseeded Matte"), PIPELINECOLOR_LOG_PREFIX);
 }
 
@@ -262,50 +228,84 @@ void APCSwatchStoreSubsystem::ReseedAllFromCatalog() {
   if (!HasAuthority()) {
     return;
   }
+  Entries.Reset();
+  KeyToIndex.Reset();
+  StoreSchema = GStoreSchemaOnlyCustom;
+  EntryChanged.Broadcast(NAME_None);
+  ForceNetUpdate();
+  UE_LOG(LogPipelineColor, Log, TEXT("%s store customs cleared (!pc default)"),
+         PIPELINECOLOR_LOG_PREFIX);
+}
+
+bool APCSwatchStoreSubsystem::ReseedKeyFromCatalog(FName Key) {
+  if (Key.IsNone() || !HasAuthority()) {
+    return false;
+  }
+  if (FindIndex(Key) == INDEX_NONE) {
+    return false;
+  }
+
+  UWorld* World = GetWorld();
+  FPCDynamicSwatchRegistry::Ensure(World, UPipelineColorRootInstanceModule::Find(World));
+
+  FPCDynamicSwatchEntry Dyn;
+  if (FPCDynamicSwatchRegistry::TryGetByKey(Key, Dyn)) {
+    FPCSwatchEntry Entry;
+    FillFromDynamic(Entry, Dyn);
+    Set(Key, Entry);
+    return true;
+  }
 
   FPCFluidAppearanceCatalog& Catalog = FPCFluidAppearanceCatalog::Get();
   Catalog.EnsureLoaded();
+  FPCAppearanceSpec Spec;
+  if (!Catalog.ResolveByKey(Key, Spec)) {
+    UE_LOG(LogPipelineColor, Warning, TEXT("%s ReseedKey unresolved %s"), PIPELINECOLOR_LOG_PREFIX,
+           *Key.ToString());
+    return false;
+  }
 
-  Entries.Reset();
-  KeyToIndex.Reset();
+  FPCSwatchEntry Entry;
+  FillNeutralOrFallback(Entry, Key, Spec);
+  Set(Key, Entry);
+  return true;
+}
 
-  auto WriteKey = [this](FName Key, const FPCAppearanceSpec& Spec) {
+bool APCSwatchStoreSubsystem::ReseedKeyColorsFromCatalog(FName Key) {
+  if (Key.IsNone() || !HasAuthority()) {
+    return false;
+  }
+
+  UWorld* World = GetWorld();
+  FPCDynamicSwatchRegistry::Ensure(World, UPipelineColorRootInstanceModule::Find(World));
+
+  FPCDynamicSwatchEntry Dyn;
+  if (FPCDynamicSwatchRegistry::TryGetByKey(Key, Dyn)) {
     FPCSwatchEntry Entry;
-    FillEntryFromSpec(Entry, Key, Spec);
-    KeyToIndex.Add(Key, Entries.Num());
-    Entries.Add(Entry);
-  };
-
-  {
-    FPCAppearanceSpec Neutral;
-    if (Catalog.ResolveByKey(FName(TEXT("Neutral")), Neutral)) {
-      WriteKey(FName(TEXT("Neutral")), Neutral);
+    if (!TryGet(Key, Entry)) {
+      return false;
     }
+    Entry.Primary = Dyn.Primary;
+    Entry.Secondary = FLinearColor::FromSRGBColor(FColor(0x2A, 0x2A, 0x2A, 255));
+    Set(Key, Entry);
+    return true;
   }
 
-  for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows()) {
-    if (Row.Section != EPCFluidRosterSection::Default && !FPCFluidRoster::SoftDescPresent(Row)) {
-      continue;
-    }
-    FPCAppearanceSpec Spec;
-    if (!Catalog.ResolveByKey(Row.Stem, Spec)) {
-      UE_LOG(LogPipelineColor, Warning, TEXT("%s reseed skip unresolved key %s"),
-             PIPELINECOLOR_LOG_PREFIX, *Row.Stem.ToString());
-      continue;
-    }
-    WriteKey(Row.Stem, Spec);
+  FPCFluidAppearanceCatalog& Catalog = FPCFluidAppearanceCatalog::Get();
+  Catalog.EnsureLoaded();
+  FPCAppearanceSpec Spec;
+  if (!Catalog.ResolveByKey(Key, Spec)) {
+    UE_LOG(LogPipelineColor, Warning, TEXT("%s ReseedKeyColors unresolved %s"),
+           PIPELINECOLOR_LOG_PREFIX, *Key.ToString());
+    return false;
   }
 
-  {
-    FPCAppearanceSpec Fallback;
-    if (Catalog.ResolveByKey(FName(TEXT("Fallback")), Fallback)) {
-      WriteKey(FName(TEXT("Fallback")), Fallback);
-    }
+  FPCSwatchEntry Entry;
+  if (!TryGet(Key, Entry)) {
+    return false;
   }
-
-  RebuildMaps();
-  EntryChanged.Broadcast(NAME_None);
-  ForceNetUpdate();
-  UE_LOG(LogPipelineColor, Log, TEXT("%s store reseeded all (%d entries)"),
-         PIPELINECOLOR_LOG_PREFIX, Entries.Num());
+  Entry.Primary = Spec.PrimaryColor;
+  Entry.Secondary = Spec.SecondaryColor;
+  Set(Key, Entry);
+  return true;
 }

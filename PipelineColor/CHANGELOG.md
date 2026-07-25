@@ -1,5 +1,27 @@
 # PipelineColor — CHANGELOG
 
+## 1.3.0 — 2026-07-24
+
+- CatalogKey always `OwnerMod_Stem` (e.g. `FactoryGame_Water`); ClassGen token hash on
+  sanitize collision. Display names still item names. Hand fluid roster / SFP-RP static
+  desc+recipe tables removed — `FPCDynamicSwatchRegistry` discovers fluids at publish
+- Store schema **4**: pre-4 saves nuke; SaveGame keeps **only custom** Customizer edits;
+  miss → live catalog default. Gap wipe / mass hydrate removed. `!pc default` clears customs.
+  Customizer slot hook fills from catalog when store miss (icons not black)
+- Cfg schema **2**: full reseed (wipe metallic/color-source overrides; seed
+  `FactoryGame_NitrogenGas` → gas). No short-key remap
+- `!pc <fluid> liquid|gas` picks paint RGB from `mFluidColor` or `mGasColor` (metallic
+  unchanged). Defaults: liquid for all keys except Nitrogen Gas → gas. Persists in
+  `ColorSourceOverrides` / `PipelineColor.Set ColorSource.<Key>`
+- Display names **PC Empty Pipe** (Neutral) and **PC ERR0R** (Fallback); unknown / Fallback
+  fluids paint missing-texture magenta (`#FF00FF`)
+- Discovery: MCR + recipe products + AssetRegistry soft-load of `Desc_*` under mounted
+  roots / loaded mods + lazy `DiscoverClass` (no TObjectIterator pass)
+- `ForceReseedNeutralMatte` ForceNetUpdate; apply paint logs Verbose; SML chat cmds once/world;
+  metallic pool retries incomplete ClassGen; unlock Outer = Root; SlotDispatch no first-PC
+  fallback on dedi; support mid-span world scan skipped after seed; LastApplied prune with
+  watchlist; registry Reset on module shutdown
+
 ## 1.2.0 — 2026-07-23
 
 - Add Customizer sections for modded fluids: **SatisfactoryPlus** and **RefinedPower**

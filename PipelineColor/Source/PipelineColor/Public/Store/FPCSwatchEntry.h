@@ -36,8 +36,7 @@ struct PIPELINECOLOR_API FPCSwatchEntry {
       return nullptr;
     }
 
-    // Weak cache per entry: overlay resolves run per pipe apply; re-parse and
-    // TryLoad only when GC dropped the class or the path changed.
+    // Weak cache: overlay hits every pipe apply — reload only after GC/path change.
     if (CachedFinishPath == PaintFinishPath) {
       if (UClass* Cached = CachedFinishClass.Get()) {
         return Cached;
@@ -52,8 +51,7 @@ struct PIPELINECOLOR_API FPCSwatchEntry {
   }
 
   void SetPaintFinishClass(TSubclassOf<UFGFactoryCustomizationDescriptor_PaintFinish> Finish) {
-    // Slot.PaintFinish is live from Customizer — still TryLoad-safe path extract.
-    // Never pass catalog-cached TSubclassOf here (GC can leave dangling UClass*).
+    // Live Customizer Finish — path extract only; catalog TSubclassOf can dangle post-GC.
     CachedFinishClass.Reset();
     CachedFinishPath.Reset();
     UClass* Cls = Finish.Get();

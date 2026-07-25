@@ -1,11 +1,13 @@
 # Content / Swatches
 
-v1.0 ships C++ swatch classes for the Customizer **PipelineColor** category. Optional cooked Blueprint mirrors are not required.
+Native C++ swatch / recipe classes: **PC Empty Pipe**, **PC ERR0R**, plus ClassGen
+`PCSwatch_*` / `PCRecipe_*` per discovered fluid (`FPCDynamicSwatchRegistry`). Optional cooked
+Blueprint mirrors are not required.
 
-Metallic sheen is applied with PaintFinish (+ cfg / chat overrides), not by stuffing white into Secondary RGB.
+Metallic sheen is PaintFinish (+ cfg / chat overrides), not Secondary RGB white.
 
 To add editor-visible Customizer polish later:
 
-1. Create Blueprint subclasses of each `UPCSwatchDesc_*` here.
+1. Create Blueprint subclasses of `UPCSwatchDescBase` / Neutral / Fallback here.
 2. Register them in a customization collection if needed.
-3. Point the appearance catalog at the Blueprint classes instead of the native defaults.
+3. Point publisher / organization at those Blueprint classes instead of native defaults.

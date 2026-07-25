@@ -3,11 +3,9 @@
 
 #include "Swatches/FPCSwatchPublisher.h"
 
-#include "Appearance/FPCFluidRoster.h"
 #include "Appearance/FPCMetallicFinishPool.h"
 #include "Core/FPCWorldGate.h"
 #include "FGCustomizationRecipe.h"
-#include "FGFactoryColoringTypes.h"
 #include "FGRecipe.h"
 #include "FGRecipeManager.h"
 #include "Patching/NativeHookManager.h"
@@ -16,6 +14,8 @@
 #include "Registry/ModContentRegistry.h"
 #include "Session/UPCWorldSubsystem.h"
 #include "Store/APCSwatchStoreSubsystem.h"
+#include "Swatches/FPCDynamicSwatchRegistry.h"
+#include "Swatches/UPCSwatchDescs.h"
 #include "UObject/SoftObjectPath.h"
 
 namespace {
@@ -23,16 +23,9 @@ bool GForceRecipeHookRegistered = false;
 
 void AppendPcCustomizationRecipes(const AFGRecipeManager* Self,
                                   TArray<TSubclassOf<UFGCustomizationRecipe>>& OutRecipes) {
-  FPCFluidRoster::AppendAlwaysRecipeClasses(OutRecipes);
-  if (!Self) {
-    return;
-  }
-  if (UPCWorldSubsystem* Sys = UPCWorldSubsystem::Get(Self->GetWorld())) {
-    Sys->AppendAvailableModRecipes(OutRecipes);
-  }
+  FPCDynamicSwatchRegistry::AppendRecipeClasses(OutRecipes);
 }
 
-// SFP CleanManager yeets recipes missing from ModContentRegistry. Badge ours first.
 void RegisterPcRecipesWithContentRegistry(UWorld* World) {
   UModContentRegistry* Registry = UModContentRegistry::Get(World);
   if (!Registry) {
@@ -42,10 +35,7 @@ void RegisterPcRecipesWithContentRegistry(UWorld* World) {
   }
 
   TArray<TSubclassOf<UFGCustomizationRecipe>> CustomRecipes;
-  FPCFluidRoster::AppendAlwaysRecipeClasses(CustomRecipes);
-  if (UPCWorldSubsystem* Sys = UPCWorldSubsystem::Get(World)) {
-    Sys->AppendAvailableModRecipes(CustomRecipes);
-  }
+  FPCDynamicSwatchRegistry::AppendRecipeClasses(CustomRecipes);
 
   static const FName ModRef(TEXT("PipelineColor"));
   int32 Registered = 0;
@@ -73,24 +63,6 @@ UFGFactoryCustomizationCollection* LoadSwatchCollectionCDO() {
   }
   return Cast<UFGFactoryCustomizationCollection>(CollectionClass->GetDefaultObject());
 }
-
-void InjectOne(UPipelineColorRootInstanceModule* Root,
-               UFGFactoryCustomizationCollection* Collection,
-               TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch,
-               EPCFluidRosterSection Section) {
-  UPipelineColorRootInstanceModule::ApplyOrganization(Root, Swatch, Section);
-  UPipelineColorRootInstanceModule::InjectSwatchIntoCollection(Collection, Swatch);
-}
-
-EPCFluidRosterSection
-SectionForSwatch(TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch) {
-  for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows()) {
-    if (Row.SwatchClass == Swatch) {
-      return Row.Section;
-    }
-  }
-  return EPCFluidRosterSection::Default;
-}
 } // namespace
 
 void FPCSwatchPublisher::RegisterForceRecipeHook() {
@@ -113,7 +85,6 @@ void FPCSwatchPublisher::PublishForWorld(UWorld* World) {
   if (!FPCWorldGate::IsGameplayWorld(World)) {
     return;
   }
-  // Dedicated / listen authority only. Never ClassGen / seed / CDO inject on NM_Client.
   if (World->GetNetMode() == NM_Client) {
     return;
   }
@@ -136,19 +107,7 @@ void FPCSwatchPublisher::PublishForWorld(UWorld* World) {
   }
 
   FPCMetallicFinishPool::EnsureCreated(Root);
-  UPipelineColorRootInstanceModule::GetOrCreatePipelineColorCategory(Root);
-  UPipelineColorRootInstanceModule::GetOrCreatePipelineColorSubCategory(Root);
-
-  UPCWorldSubsystem* Sys = UPCWorldSubsystem::Get(World);
-  if (Sys) {
-    Sys->RebuildModAvailability();
-    if (Sys->HasAvailableSection(EPCFluidRosterSection::Sfp)) {
-      UPipelineColorRootInstanceModule::GetOrCreateSatisfactoryPlusSubCategory(Root);
-    }
-    if (Sys->HasAvailableSection(EPCFluidRosterSection::Rp)) {
-      UPipelineColorRootInstanceModule::GetOrCreateRefinedPowerSubCategory(Root);
-    }
-  }
+  FPCDynamicSwatchRegistry::Ensure(World, Root, /*bForceRescan=*/true);
 
   APCSwatchStoreSubsystem* Store = APCSwatchStoreSubsystem::GetOrCreate(World);
   if (!Store) {
@@ -156,10 +115,8 @@ void FPCSwatchPublisher::PublishForWorld(UWorld* World) {
            PIPELINECOLOR_LOG_PREFIX);
   } else if (Store->HasAuthority()) {
     Store->RebuildMaps();
-    Store->SeedMissingFromCatalog();
-    // Do not ForceReseedNeutralMatte every publish — rewrite only when Neutral absent.
     FPCSwatchEntry Neutral;
-    if (!Store->TryGet(FName(TEXT("Neutral")), Neutral) || Neutral.PaintFinishPath.IsEmpty()) {
+    if (Store->TryGet(FName(TEXT("Neutral")), Neutral) && Neutral.PaintFinishPath.IsEmpty()) {
       Store->ForceReseedNeutralMatte();
     }
   } else {
@@ -175,15 +132,25 @@ void FPCSwatchPublisher::PublishForWorld(UWorld* World) {
     return;
   }
 
-  TArray<TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>> Swatches;
-  FPCFluidRoster::AppendAlwaysSwatchClasses(Swatches);
-  if (Sys) {
-    Sys->AppendAvailableModSwatches(Swatches);
-  }
-  for (const TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>& Swatch : Swatches) {
-    InjectOne(Root, Collection, Swatch, SectionForSwatch(Swatch));
+  UPipelineColorRootInstanceModule::ApplyOrganization(Root, UPCSwatchDesc_Neutral::StaticClass(),
+                                                      TEXT("Default"));
+  UPipelineColorRootInstanceModule::InjectSwatchIntoCollection(
+      Collection, UPCSwatchDesc_Neutral::StaticClass());
+
+  for (const FPCDynamicSwatchEntry& Entry : FPCDynamicSwatchRegistry::Entries()) {
+    if (!Entry.SwatchClass) {
+      continue;
+    }
+    UPipelineColorRootInstanceModule::ApplyOrganization(Root, Entry.SwatchClass,
+                                                        Entry.OwnerFriendlyName);
+    UPipelineColorRootInstanceModule::InjectSwatchIntoCollection(Collection, Entry.SwatchClass);
   }
 
-  UE_LOG(LogPipelineColor, Log, TEXT("%s menu injected (Default + available mod swatches)"),
+  UPipelineColorRootInstanceModule::ApplyOrganization(Root, UPCSwatchDesc_Fallback::StaticClass(),
+                                                      TEXT("Default"));
+  UPipelineColorRootInstanceModule::InjectSwatchIntoCollection(
+      Collection, UPCSwatchDesc_Fallback::StaticClass());
+
+  UE_LOG(LogPipelineColor, Log, TEXT("%s menu injected (dynamic fluids)"),
          PIPELINECOLOR_LOG_PREFIX);
 }

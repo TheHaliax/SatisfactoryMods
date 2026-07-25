@@ -30,6 +30,11 @@ void FPipelineColorSmlChatCommands::RegisterWithWorld(UWorld* World) {
     return;
   }
 
+  static TWeakObjectPtr<UWorld> GRegisteredWorld;
+  if (GRegisteredWorld.Get() == World) {
+    return;
+  }
+
   AChatCommandSubsystem* Chat = AChatCommandSubsystem::Get(World);
   if (!IsValid(Chat)) {
     return;
@@ -39,6 +44,7 @@ void FPipelineColorSmlChatCommands::RegisterWithWorld(UWorld* World) {
   Chat->RegisterCommand(ModRef, APCMetallicChatCommand::StaticClass());
   Chat->RegisterCommand(ModRef, APCPcChatCommand::StaticClass());
   Chat->RegisterCommand(ModRef, APCPchelpChatCommand::StaticClass());
+  GRegisteredWorld = World;
 }
 
 APCMetallicChatCommand::APCMetallicChatCommand() {
@@ -66,8 +72,8 @@ APCPcChatCommand::APCPcChatCommand() {
   bOnlyUsableByPlayer = true;
   MinNumberOfArguments = 1;
   CommandName = TEXT("pc");
-  Usage = NSLOCTEXT("PipelineColor", "ChatCmd.Pc",
-                    "!pc default — reseed swatch colors from fluid data");
+  Usage =
+      NSLOCTEXT("PipelineColor", "ChatCmd.Pc", "!pc <fluid> liquid|gas | default (clear customs)");
 }
 
 EExecutionStatus APCPcChatCommand::ExecuteCommand_Implementation(UCommandSender* Sender,
@@ -87,7 +93,7 @@ APCPchelpChatCommand::APCPchelpChatCommand() {
   bOnlyUsableByPlayer = true;
   CommandName = TEXT("pchelp");
   Usage =
-      NSLOCTEXT("PipelineColor", "ChatCmd.PcHelp", "!pchelp — list Pipeline Color chat commands");
+      NSLOCTEXT("PipelineColor", "ChatCmd.PcHelp", "!pchelp - list Pipeline Color chat commands");
 }
 
 EExecutionStatus APCPchelpChatCommand::ExecuteCommand_Implementation(

@@ -11,6 +11,7 @@
 #include "FGFactoryColoringTypes.h"
 #include "FGGameState.h"
 #include "FGPlayerController.h"
+#include "Appearance/FPCFluidAppearanceCatalog.h"
 #include "Network/UPCChatRCO.h"
 #include "Patching/NativeHookManager.h"
 #include "PipelineColorLog.h"
@@ -104,17 +105,29 @@ void RememberIfPc(TSubclassOf<UFGCustomizationRecipe> Recipe, UObject* WorldCont
 
 bool FillFromStore(TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch,
                    UObject* WorldContext, FFactoryCustomizationColorSlot& Out) {
-  APCSwatchStoreSubsystem* Store = StoreFor(WorldContext);
-  if (!Store || !APCSwatchStoreSubsystem::IsPCCustomization(Swatch)) {
+  if (!APCSwatchStoreSubsystem::IsPCCustomization(Swatch)) {
+    return false;
+  }
+
+  const FName Key = APCSwatchStoreSubsystem::KeyFromSwatchStatic(Swatch);
+  if (Key.IsNone()) {
     return false;
   }
 
   FPCSwatchEntry Entry;
-  if (!Store->TryGetBySwatch(Swatch, Entry)) {
-    return false;
+  APCSwatchStoreSubsystem* Store = StoreFor(WorldContext);
+  if (Store && Store->TryGet(Key, Entry)) {
+    Out = Entry.ToSlot();
+  } else {
+    FPCAppearanceSpec Spec;
+    FPCFluidAppearanceCatalog::Get().EnsureLoaded();
+    if (!FPCFluidAppearanceCatalog::Get().ResolveByKey(Key, Spec)) {
+      return false;
+    }
+    Out = FFactoryCustomizationColorSlot(Spec.PrimaryColor, Spec.SecondaryColor);
+    Out.PaintFinish = Spec.PaintFinish;
   }
 
-  Out = Entry.ToSlot();
   if (!Out.PaintFinish) {
     const FSoftClassPath DefaultPath(
         TEXT("/Game/FactoryGame/Buildable/-Shared/Customization/PaintFinishes/"
@@ -178,7 +191,7 @@ AFGPlayerController* FPCSwatchSlotDispatch::ResolvePlayerController(UObject* Wor
       }
     }
   }
-  return Cast<AFGPlayerController>(World->GetFirstPlayerController());
+  return nullptr;
 }
 
 void FPCSwatchSlotDispatch::SetActivePcDesc(

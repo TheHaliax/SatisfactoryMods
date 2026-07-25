@@ -40,6 +40,8 @@ class PIPELINECOLOR_API APCSwatchStoreSubsystem : public AInfo, public IFGSaveIn
   void SeedMissingFromCatalog();
   void ForceReseedNeutralMatte();
   void ReseedAllFromCatalog();
+  bool ReseedKeyFromCatalog(FName Key);
+  bool ReseedKeyColorsFromCatalog(FName Key);
 
   bool TryGet(FName Key, FPCSwatchEntry& Out) const;
   bool TryGetBySwatch(TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch,
@@ -60,7 +62,6 @@ class PIPELINECOLOR_API APCSwatchStoreSubsystem : public AInfo, public IFGSaveIn
   UPROPERTY(SaveGame, ReplicatedUsing = OnRep_Entries)
   TArray<FPCSwatchEntry> Entries;
 
-  // 2 = PaintFinishPath (SCIM-safe). Missing/0/1 → fill paths on PostLoadGame.
   UPROPERTY(SaveGame)
   int32 StoreSchema = 0;
 

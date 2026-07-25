@@ -56,10 +56,15 @@ int32 BucketIndex(float Roughness) {
 } // namespace
 
 void FPCMetallicFinishPool::EnsureCreated(UPipelineColorRootInstanceModule* Root) {
-  if (!IsValid(Root) || Root->bMetallicFinishPoolReady) {
+  if (!IsValid(Root)) {
+    return;
+  }
+  if (Root->bMetallicFinishPoolReady && Root->MetallicFinishBuckets.Num() == BucketCount &&
+      Root->MetallicNeutralFinish) {
     return;
   }
 
+  Root->bMetallicFinishPoolReady = false;
   Root->MetallicFinishBuckets.Reset();
   Root->MetallicFinishBuckets.Reserve(BucketCount);
 

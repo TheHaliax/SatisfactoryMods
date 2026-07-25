@@ -1,20 +1,20 @@
 # PipelineColor Documentation
 
-Player and contributor docs for **PipelineColor** (version in [CHANGELOG](../CHANGELOG.md) and `.uplugin`).
+Player and contributor docs for **PipelineColor** **1.3.0** (see [CHANGELOG](../CHANGELOG.md) and `.uplugin`).
 
 ## Overview
 
 - [Mod README](../README.md) — what ships today, chat commands, config, requirements, screenshots
-- [Player guide](player-guide.md) — auto-color, Customizer, supports, metallic
+- [Player guide](player-guide.md) — auto-color, discovery, custom-only store, Customizer, supports, metallic
 - [Changelog](../CHANGELOG.md) — release history
 
 ## Guides
 
-- [Chat commands](chat-commands.md) — `!Metallic` (fluid / `all on` / `all off` / `default`), `!pc default`, `!pchelp`
-- [Console commands](console-commands.md) — `PipelineColor.Set`, CVars
+- [Chat commands](chat-commands.md) — `!Metallic`, `!pc` (liquid/gas / default), `!pchelp`
+- [Console commands](console-commands.md) — `PipelineColor.Set`, CVars, cfg JSON
 - [Multiplayer](multiplayer.md) — client/server requirements and dedicated hosting
 - [Troubleshooting](troubleshooting.md) — common issues and log greps
-- [Development](development.md) — source layout, build, pack
+- [Development](development.md) — source layout, `build-mod.ps1`, pack
 - [Release (SMR)](release.md) — Alpakit release zip, deploy checklist
 
 ## Source

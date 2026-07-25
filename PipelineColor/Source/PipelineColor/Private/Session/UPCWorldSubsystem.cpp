@@ -4,7 +4,6 @@
 #include "Session/UPCWorldSubsystem.h"
 
 #include "Appearance/FPCFluidAppearanceCatalog.h"
-#include "Appearance/FPCFluidRoster.h"
 #include "Appearance/FPCMetallicColorCorrection.h"
 #include "Appearance/FPCMetallicFinishPool.h"
 #include "Appearance/FPCMetallicFlag.h"
@@ -22,6 +21,7 @@
 #include "PipelineColorLog.h"
 #include "PipelineColorRootInstanceModule.h"
 #include "Store/APCSwatchStoreSubsystem.h"
+#include "Swatches/FPCDynamicSwatchRegistry.h"
 #include "Swatches/UPCFinishDescs.h"
 #include "Target/FBuildableColorTarget.h"
 
@@ -57,45 +57,8 @@ void UPCWorldSubsystem::Deinitialize() {
   WatchList.Reset();
   WatchMembership.Reset();
   LastApplied.Reset();
-  AvailableModStems.Reset();
   bWorldReadyDone = false;
   Super::Deinitialize();
-}
-
-void UPCWorldSubsystem::RebuildModAvailability() {
-  AvailableModStems.Reset();
-  for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows()) {
-    if (Row.Section == EPCFluidRosterSection::Default) {
-      continue;
-    }
-    if (FPCFluidRoster::SoftDescPresent(Row)) {
-      AvailableModStems.Add(Row.Stem);
-    }
-  }
-  UE_LOG(LogPipelineColor, Log, TEXT("%s mod soft-available stems=%d"), PIPELINECOLOR_LOG_PREFIX,
-         AvailableModStems.Num());
-}
-
-bool UPCWorldSubsystem::HasAvailableSection(EPCFluidRosterSection Section) const {
-  if (Section == EPCFluidRosterSection::Default) {
-    return true;
-  }
-  for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows()) {
-    if (Row.Section == Section && AvailableModStems.Contains(Row.Stem)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-void UPCWorldSubsystem::AppendAvailableModSwatches(
-    TArray<TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>>& Out) const {
-  FPCFluidRoster::AppendAvailableModSwatchClasses(Out, AvailableModStems);
-}
-
-void UPCWorldSubsystem::AppendAvailableModRecipes(
-    TArray<TSubclassOf<UFGCustomizationRecipe>>& Out) const {
-  FPCFluidRoster::AppendAvailableModRecipeClasses(Out, AvailableModStems);
 }
 
 void UPCWorldSubsystem::DirtyAllWatched() {
@@ -253,7 +216,7 @@ void UPCWorldSubsystem::OnWorldReady(UWorld* World) {
 
   FPCFluidAppearanceCatalog::Get().EnsureLoaded();
   BindSwatchStore(World);
-  // PublishForWorld runs once from HandlePostLoadMap (next tick) — avoid double seed.
+  // PublishForWorld also seeds next tick from PostLoadMap — skip duplicate here.
   ScanWorld();
 
   UE_LOG(LogPipelineColor, Log, TEXT("%s OnWorldReady"), PIPELINECOLOR_LOG_PREFIX);
@@ -307,10 +270,6 @@ void UPCWorldSubsystem::ProcessNow(AFGBuildable* Buildable) {
     return false;
   }();
 
-  // Unchanged spec = settled pipe. Meter/support sync rides the changed path
-  // only: late meter spawn re-enters via BeginPlay hook InvalidateApplied +
-  // Enqueue, so nothing is lost — and the steady-state polling pass stops
-  // paying meter reflection + support collection per pipe per cycle.
   if (bSpecUnchanged) {
     return;
   }
@@ -336,8 +295,6 @@ void UPCWorldSubsystem::ScanWorld() {
 
   int32 Found = 0;
 
-  // Resolve support -> pipe links in one world pass before the paint drain;
-  // per-pipe Collect fallbacks then run cache-only.
   FPipeSupportTouch::SeedFromWorld(World);
 
   if (AFGBuildableSubsystem* BuildableSub = AFGBuildableSubsystem::Get(World)) {
@@ -398,6 +355,7 @@ void UPCWorldSubsystem::BudgetedEmptyPass(int32 MaxCount) {
     AFGBuildable* Buildable = Weak.Get();
     if (!IsValid(Buildable)) {
       WatchMembership.Remove(Weak);
+      LastApplied.Remove(Weak);
       WatchList.RemoveAt(WatchCursor);
       if (WatchCursor >= WatchList.Num()) {
         WatchCursor = 0;
