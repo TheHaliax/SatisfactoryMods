@@ -36,7 +36,7 @@ Typical junction:
 powershell -File tools/build-mod.ps1 -Mod PipelineColor
 ```
 
-Pipeline: clang (optional skip) → version guard → icons (default on; `-NoIcons`) → Quick Shipping build → deploy to Steam `FactoryGame/Mods/PipelineColor` (unless `-NoCopy`).
+Pipeline: clang → version guard → icons (default on; `-NoIcons`) → Quick Shipping build → deploy to Steam `FactoryGame/Mods/PipelineColor` (unless `-NoCopy`).
 
 Release:
 
@@ -53,14 +53,16 @@ powershell -File tools/build-mod.ps1 -Mod PipelineColor -Mode Release
 | Chat bang + SML help | `Command/FPCBangCommands.cpp`, `PipelineColorSmlChatCommands.cpp` |
 | World session / scan | `Session/UPCWorldSubsystem.*` |
 | Apply | `Application/FCustomizationApplicator.cpp` |
-| Metallic post | `Appearance/FPCMetallicColorCorrection.h`, `FPCMetallicFlag.h` |
-| Fluid roster | `Appearance/FPCFluidRoster.*` |
+| Metallic post | `Appearance/FPCMetallicColorCorrection.h` |
+| Dynamic fluid registry | `Swatches/FPCDynamicSwatchRegistry.*` |
 | Catalog / specs | `Appearance/FPCFluidAppearanceCatalog.*`, `FPCAppearanceSpec.h` |
-| Swatch descs / publish | `Swatches/*` |
-| SaveGame store | `Store/APCSwatchStoreSubsystem.*`, `FPCSwatchSlotDispatch.*` |
+| Swatch descs / recipes / publish | `Swatches/UPCSwatchDescs.*`, `UPCSwatchRecipes.*`, `FPCSwatchPublisher.*` |
+| SaveGame store + Customizer slot hook | `Store/APCSwatchStoreSubsystem.*`, `FPCSwatchSlotDispatch.*` |
 | Chat RCO | `Network/UPCChatRCO.*` |
 | Support touch | `Content/FPipeSupportTouch.*` |
 | Fluid key resolve | `Content/FPipeFluidKeyResolver.*` |
+
+Hand fluid roster / SFP-RP static desc tables removed in **1.3.0** — discovery is dynamic.
 
 ## Version guard
 

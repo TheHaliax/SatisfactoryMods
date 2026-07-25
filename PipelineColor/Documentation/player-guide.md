@@ -6,7 +6,7 @@ PipelineColor paints vanilla pipeline networks from the fluid currently in the p
 
 Matching **pipe supports** (floor, stackable, wall, wall-hole BP parents — including WallPipeSupports-style children) pick up the same look from a touching pipe.
 
-With [Satisfactory Plus](https://ficsit.app/mod/SatisfactoryPlus) or [Refined Power](https://ficsit.app/mod/RefinedPower) installed, their fluids and gases get swatches too, under separate **SatisfactoryPlus** / **RefinedPower** sections in the Customizer's PipelineColor category. Without those mods the sections do not appear.
+Any installed mod that ships `RF_LIQUID` / `RF_GAS` item descriptors (including [Satisfactory Plus](https://ficsit.app/mod/SatisfactoryPlus) and [Refined Power](https://ficsit.app/mod/RefinedPower)) gets ClassGen swatches under a Customizer subcategory named after that mod’s FriendlyName. Without those mods, their sections do not appear.
 
 ## What gets colored
 
@@ -21,17 +21,21 @@ Machines, tanks, and non-pipe buildables stay vanilla unless they are one of tho
 
 1. Install the mod and load a save — existing networks scan and paint on load.
 2. Fill or empty pipes; colors update as fluid descriptors change.
-3. Open the **Customizer** → **PipelineColor** category to browse or edit PC swatches. Customizer edits persist in the **world save**.
+3. Open the **Customizer** → **PipelineColor** category to browse or edit PC swatches. **Only edits you make** are written into the world save; everything else uses live catalog colors.
 4. Place or reposition supports against colored pipes — they inherit the pipe Spec after the pipe applies.
+
+**Upgrade note (1.3.0):** older SaveGame swatch stores (schema &lt; 4) are cleared once. Older `PipelineColor.cfg` (schema &lt; 2) is fully reseeded (prior metallic / color-source overrides discarded).
 
 ## Color source (RGB only)
 
 Per fluid, paint RGB comes from either `mFluidColor` or `mGasColor`:
 
 1. Per-fluid override (`ColorSourceOverrides` / `!pc <fluid> liquid|gas` / `PipelineColor.Set ColorSource.<Key>`)
-2. Else defaults: **liquid** for every catalog key except **Nitrogen Gas** → **gas**
+2. Else defaults: **liquid** for every catalog key except **Nitrogen Gas** (`FactoryGame_NitrogenGas`) → **gas**
 
 This does **not** change metallic. Metallic still follows `RF_GAS` / `!Metallic` / metallic cfg.
+
+Catalog keys look like `FactoryGame_Water`. Chat also accepts display names (`Water`, `Nitrogen Gas`).
 
 ## Metallic finishes
 
@@ -49,7 +53,7 @@ Chat:
 - `!Metallic all off` — stamp metallic **off** (color) for every catalog fluid the same way
 - `!Metallic default` — clear those overrides and restore gas-on / liquid-off defaults. Your Customizer swatch edits are untouched
 - `!pc <fluid> liquid|gas` — paint from `mFluidColor` or `mGasColor` (metallic unchanged)
-- `!pc default` — reseed every PC swatch color from fluid data (respects color-source picks). This **resets** Customizer swatch edits
+- `!pc default` — clear every custom PC swatch edit (catalog defaults until you paint again)
 
 `all on` / `all off` leave `DefaultGasMetallic` / `DefaultLiquidMetallic` alone until `default`.
 
@@ -68,9 +72,9 @@ Budgeted empty scans catch transitions after drain.
 
 | Surface | Use |
 |---------|-----|
-| `Configs/PipelineColor.cfg` | Host JSON — metallic + color-source overrides, defaults |
+| `Configs/PipelineColor.cfg` | Host JSON — metallic + color-source overrides, defaults (`CfgSchema`) |
 | Console `PipelineColor.Set` | Same keys on authority |
-| Chat `!Metallic` / `!pc` / `!pchelp` | Metallic; color source; default reseed; help |
+| Chat `!Metallic` / `!pc` / `!pchelp` | Metallic; color source; clear customs; help |
 
 There is **no** SML Mods configuration menu.
 

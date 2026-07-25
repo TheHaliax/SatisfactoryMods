@@ -9,7 +9,7 @@
 class UFGFactoryCustomizationDescriptor_PaintFinish;
 class UPipelineColorRootInstanceModule;
 
-/** Flyweight PaintFinish classes — fixed Roughness/Metallic, never stamped at apply. */
+/** Never stamp these CDOs at apply — shared Finish SIGILL. */
 namespace FPCMetallicFinishPool {
 constexpr int32 BucketCount = 16;
 

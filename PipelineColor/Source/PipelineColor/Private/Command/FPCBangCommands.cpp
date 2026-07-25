@@ -3,13 +3,14 @@
 
 #include "Command/FPCBangCommands.h"
 
-#include "Appearance/FPCFluidRoster.h"
 #include "Config/FPCPipelineColorModConfig.h"
 #include "FGChatManager.h"
 #include "FGGameState.h"
 #include "FGPlayerController.h"
 #include "Network/UPCChatRCO.h"
+#include "PipelineColorRootInstanceModule.h"
 #include "Store/APCSwatchStoreSubsystem.h"
+#include "Swatches/FPCDynamicSwatchRegistry.h"
 #include "Swatches/UPCSwatchDescs.h"
 
 namespace {
@@ -104,7 +105,7 @@ struct FFluidAlias {
 void CollectFluidAliases(TArray<FFluidAlias>& Out) {
   Out.Reset();
   TArray<TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>> Descs;
-  FPCFluidRoster::AppendAllSwatchClasses(Descs);
+  FPCDynamicSwatchRegistry::AppendSwatchClasses(Descs);
 
   for (const TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch>& Desc : Descs) {
     if (!Desc) {
@@ -118,7 +119,7 @@ void CollectFluidAliases(TArray<FFluidAlias>& Out) {
     Alias.Key = CDO->CatalogKey;
     Alias.Display = CDO->mDisplayName.ToString();
     if (Alias.Display.IsEmpty()) {
-      Alias.Display = FString::Printf(TEXT("PC %s"), *FriendlyNameFromKey(Alias.Key));
+      Alias.Display = FriendlyNameFromKey(Alias.Key);
     }
     Out.Add(Alias);
   }
@@ -146,9 +147,22 @@ bool ResolveFluidQuery(const FString& Query, FName& OutKey, FString& OutFriendly
 }
 
 void SendHelp(AFGPlayerController* PlayerController) {
-  SendBangChat(PlayerController, TEXT("!Metallic <fluid|all on|all off|default>"),
+  SendBangChat(PlayerController, TEXT("!Metallic <fluid>  — toggle metallic for that fluid"),
                FLinearColor::Yellow);
-  SendBangChat(PlayerController, TEXT("!pc <fluid> liquid|gas | default"),
+  SendBangChat(PlayerController, TEXT("!Metallic all on  — force every fluid metallic on"),
+               FLinearColor::Yellow);
+  SendBangChat(PlayerController,
+               TEXT("!Metallic all off  — force every fluid metallic off (color)"),
+               FLinearColor::Yellow);
+  SendBangChat(PlayerController,
+               TEXT("!Metallic default  — clear metallic overrides; gas on / liquid off"),
+               FLinearColor::Yellow);
+  SendBangChat(PlayerController, TEXT("!pc <fluid> liquid|gas  — pick mFluidColor / mGasColor"),
+               FLinearColor::Yellow);
+  SendBangChat(PlayerController,
+               TEXT("!pc default  — clear custom swatch colors (catalog defaults)"),
+               FLinearColor::Yellow);
+  SendBangChat(PlayerController, TEXT("!pchelp  — list Pipeline Color chat commands"),
                FLinearColor::Yellow);
 }
 
@@ -261,6 +275,8 @@ void FPCBangCommands::Execute(AFGPlayerController* PlayerController, const FStri
     return;
   }
 
+  FPCDynamicSwatchRegistry::Ensure(World, UPipelineColorRootInstanceModule::Find(World));
+
   const FString Trimmed = CommandLine.TrimStartAndEnd();
   int32 SpaceIdx = INDEX_NONE;
   Trimmed.FindChar(TEXT(' '), SpaceIdx);
@@ -282,15 +298,14 @@ void FPCBangCommands::Execute(AFGPlayerController* PlayerController, const FStri
       }
 
       Store->ReseedAllFromCatalog();
-      SendBangChat(PlayerController, TEXT("Swatches reseeded."));
+      SendBangChat(PlayerController, TEXT("Custom swatches cleared."));
       return;
     }
 
     FString FluidQuery;
     EPCColorSource Source = EPCColorSource::Liquid;
     if (!TryParsePcColorSource(Rest, FluidQuery, Source)) {
-      SendBangChat(PlayerController, TEXT("!pc <fluid> liquid|gas | default"),
-                   FLinearColor::Red);
+      SendBangChat(PlayerController, TEXT("!pc <fluid> liquid|gas | default"), FLinearColor::Red);
       return;
     }
 

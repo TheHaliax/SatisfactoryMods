@@ -1,11 +1,11 @@
 # PipelineColor Documentation
 
-Player and contributor docs for **PipelineColor** **1.2.1** (see [CHANGELOG](../CHANGELOG.md) and `.uplugin`).
+Player and contributor docs for **PipelineColor** **1.3.0** (see [CHANGELOG](../CHANGELOG.md) and `.uplugin`).
 
 ## Overview
 
 - [Mod README](../README.md) — what ships today, chat commands, config, requirements, screenshots
-- [Player guide](player-guide.md) — auto-color, color source, Customizer, supports, metallic
+- [Player guide](player-guide.md) — auto-color, discovery, custom-only store, Customizer, supports, metallic
 - [Changelog](../CHANGELOG.md) — release history
 
 ## Guides

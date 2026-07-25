@@ -4,8 +4,8 @@
 #include "PipelineColorRootInstanceModule.h"
 
 #include "Appearance/FPCFluidAppearanceCatalog.h"
-#include "Appearance/FPCFluidRoster.h"
 #include "Appearance/FPCMetallicFinishPool.h"
+#include "Swatches/FPCDynamicSwatchRegistry.h"
 #include "Buildables/FGBuildable.h"
 #include "Buildables/FGBuildablePipeline.h"
 #include "Buildables/FGBuildablePipelineAttachment.h"
@@ -76,10 +76,7 @@ void UPipelineColorRootInstanceModule::CollectPcRecipes(UWorld* World,
                                                         TArray<TSubclassOf<UFGRecipe>>& Out) {
   Out.Reset();
   TArray<TSubclassOf<UFGCustomizationRecipe>> Recipes;
-  FPCFluidRoster::AppendAlwaysRecipeClasses(Recipes);
-  if (UPCWorldSubsystem* Sys = UPCWorldSubsystem::Get(World)) {
-    Sys->AppendAvailableModRecipes(Recipes);
-  }
+  FPCDynamicSwatchRegistry::AppendRecipeClasses(Recipes);
   for (const TSubclassOf<UFGCustomizationRecipe>& Recipe : Recipes) {
     Out.Add(TSubclassOf<UFGRecipe>(Recipe.Get()));
   }
@@ -169,23 +166,30 @@ UPipelineColorRootInstanceModule::GetOrCreatePipelineColorSubCategory(
 }
 
 TSubclassOf<UFGCustomizerSubCategory>
-UPipelineColorRootInstanceModule::GetOrCreateSatisfactoryPlusSubCategory(
-    UPipelineColorRootInstanceModule* Root) {
+UPipelineColorRootInstanceModule::GetOrCreateSubCategoryByDisplayName(
+    UPipelineColorRootInstanceModule* Root, const FString& DisplayName) {
   if (!IsValid(Root)) {
     return UPCSwatchSubCategory::StaticClass();
   }
-  return GetOrCreateNamedSubCategory(Root, Root->CachedSfpSubCategory, TEXT("PC_SubCat_SFP"),
-                                     TEXT("SatisfactoryPlus"), 1.f);
-}
+  if (DisplayName.IsEmpty() || DisplayName.Equals(TEXT("Default"), ESearchCase::IgnoreCase)) {
+    return GetOrCreatePipelineColorSubCategory(Root);
+  }
 
-TSubclassOf<UFGCustomizerSubCategory>
-UPipelineColorRootInstanceModule::GetOrCreateRefinedPowerSubCategory(
-    UPipelineColorRootInstanceModule* Root) {
-  if (!IsValid(Root)) {
-    return UPCSwatchSubCategory::StaticClass();
+  const FName CacheKey(*DisplayName);
+  TSubclassOf<UFGCustomizerSubCategory>& Cache =
+      Root->CachedSubCategoriesByName.FindOrAdd(CacheKey);
+  if (Cache) {
+    return Cache;
   }
-  return GetOrCreateNamedSubCategory(Root, Root->CachedRpSubCategory, TEXT("PC_SubCat_RP"),
-                                     TEXT("RefinedPower"), 2.f);
+
+  FString Token = DisplayName;
+  for (TCHAR& C : Token) {
+    if (!FChar::IsAlnum(C)) {
+      C = TEXT('_');
+    }
+  }
+  const FString ClassName = FString::Printf(TEXT("PC_SubCat_%s"), *Token);
+  return GetOrCreateNamedSubCategory(Root, Cache, *ClassName, *DisplayName, 1.f);
 }
 
 void UPipelineColorRootInstanceModule::InjectSwatchIntoCollection(
@@ -202,15 +206,10 @@ void UPipelineColorRootInstanceModule::InjectSwatchIntoCollection(
   }
 }
 
-void UPipelineColorRootInstanceModule::ApplyDefaultOrganization(
-    UPipelineColorRootInstanceModule* Root,
-    TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch) {
-  ApplyOrganization(Root, Swatch, EPCFluidRosterSection::Default);
-}
-
 void UPipelineColorRootInstanceModule::ApplyOrganization(
     UPipelineColorRootInstanceModule* Root,
-    TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch, EPCFluidRosterSection Section) {
+    TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> Swatch,
+    const FString& SubCategoryDisplayName) {
   if (!Swatch) {
     return;
   }
@@ -240,13 +239,7 @@ void UPipelineColorRootInstanceModule::ApplyOrganization(
   }
 
   CDO->mSubCategories.Reset();
-  TSubclassOf<UFGCustomizerSubCategory> Sub = GetOrCreatePipelineColorSubCategory(Root);
-  if (Section == EPCFluidRosterSection::Sfp) {
-    Sub = GetOrCreateSatisfactoryPlusSubCategory(Root);
-  } else if (Section == EPCFluidRosterSection::Rp) {
-    Sub = GetOrCreateRefinedPowerSubCategory(Root);
-  }
-  CDO->mSubCategories.Add(Sub);
+  CDO->mSubCategories.Add(GetOrCreateSubCategoryByDisplayName(Root, SubCategoryDisplayName));
   CDO->mMenuPriority = 10.f;
 }
 
@@ -254,6 +247,9 @@ void UPipelineColorRootInstanceModule::UnlockPcSwatchesViaUnlockSubsystem(UWorld
   if (!IsValid(World) || World->GetNetMode() == NM_Client) {
     return;
   }
+
+  UPipelineColorRootInstanceModule* Root = Find(World);
+  UObject* UnlockOuter = IsValid(Root) ? static_cast<UObject*>(Root) : GetTransientPackage();
 
   AFGUnlockSubsystem* UnlockSys = AFGUnlockSubsystem::Get(World);
   if (!UnlockSys) {
@@ -281,7 +277,7 @@ void UPipelineColorRootInstanceModule::UnlockPcSwatchesViaUnlockSubsystem(UWorld
       TEXT("/Game/FactoryGame/Unlocks/BP_UnlockCustomizer.BP_UnlockCustomizer_C"));
   if (UClass* CustomizerUnlockClass = CustomizerUnlockPath.TryLoadClass<UFGUnlockCustomizer>()) {
     UFGUnlockCustomizer* CustomizerUnlock =
-        NewObject<UFGUnlockCustomizer>(GetTransientPackage(), CustomizerUnlockClass);
+        NewObject<UFGUnlockCustomizer>(UnlockOuter, CustomizerUnlockClass);
     CustomizerUnlock->Apply(UnlockSys);
     UE_LOG(LogPipelineColor, Log, TEXT("%s BP_UnlockCustomizer applied"), PIPELINECOLOR_LOG_PREFIX);
   } else {
@@ -299,8 +295,7 @@ void UPipelineColorRootInstanceModule::UnlockPcSwatchesViaUnlockSubsystem(UWorld
     return;
   }
 
-  UFGUnlockRecipe* RecipeUnlock =
-      NewObject<UFGUnlockRecipe>(GetTransientPackage(), RecipeUnlockClass);
+  UFGUnlockRecipe* RecipeUnlock = NewObject<UFGUnlockRecipe>(UnlockOuter, RecipeUnlockClass);
   RecipeUnlock->mRecipes = Batch;
   RecipeUnlock->Apply(UnlockSys);
 
@@ -363,12 +358,12 @@ void UPipelineColorRootInstanceModule::HandlePostLoadMap(UWorld* World) {
           return;
         }
 
-        // Clients never spawn/seed/CDO-inject. Metallic pool is the one ClassGen
-        // exception — server paints replicate these classes by path, so the client
-        // must generate the same names or PaintFinish resolves null (default look
-        // on remote clients). Mod-owned CDOs only; vanilla untouched.
+        // Clients: ClassGen same names as authority (finish pool + dynamic swatches).
+        // No store seed / collection inject on NM_Client.
         if (WorldPtr->GetNetMode() == NM_Client) {
-          FPCMetallicFinishPool::EnsureCreated(Find(WorldPtr));
+          UPipelineColorRootInstanceModule* Root = Find(WorldPtr);
+          FPCMetallicFinishPool::EnsureCreated(Root);
+          FPCDynamicSwatchRegistry::Ensure(WorldPtr, Root);
           if (UPCWorldSubsystem* Sys = UPCWorldSubsystem::Get(WorldPtr)) {
             Sys->BindSwatchStore(WorldPtr);
           }
@@ -393,7 +388,7 @@ void UPipelineColorRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase Ph
   if (Phase == ELifecyclePhase::POST_INITIALIZATION) {
     FPCPipelineColorModConfig::LoadRuntimeConfig();
 #if !WITH_EDITOR
-    UE_LOG(LogPipelineColor, Display, TEXT("PipelineColor v1.2.0 — fluid-driven pipe swatches"));
+    UE_LOG(LogPipelineColor, Display, TEXT("PipelineColor v1.3.0 — fluid-driven pipe swatches"));
 #endif
   }
 

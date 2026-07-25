@@ -1,26 +1,27 @@
 # PipelineColor
 
-**Version 1.2.1** · Satisfactory 1.2 (≥491125) · SML ^3.12.0
+**Version 1.3.0** · Satisfactory 1.2 (≥491125) · SML ^3.12.0
 
-Auto-colors pipelines, junctions, inline pumps, and matching pipe supports from the fluid currently in the network. Ships Customizer **PipelineColor** swatches, a SaveGame-backed swatch store, and metallic finishes for gases by default.
+Auto-colors pipelines from network fluid. Dynamic Customizer swatches, custom-only store, metallic gases by default.
 
 ## How it works
 
-- **Liquids:** `mFluidColor` by default (`!pc <fluid> gas` can use `mGasColor`) + Default paint finish
-- **Gases:** `mGasColor` when color source is gas (Nitrogen Gas defaults to gas); metallic PaintFinish from `RF_GAS` / `!Metallic`
-- **Empty:** **PC Empty Pipe** (catalog key `Neutral`) + Matte
-- **Unknown / miss:** **PC ERR0R** (catalog key `Fallback`) + missing-texture magenta (`#FF00FF`)
+- **Discovery:** every loaded `RF_LIQUID` / `RF_GAS` item descriptor (vanilla + mods) → ClassGen swatch + recipe; Customizer subcategory = mod FriendlyName (e.g. **Default**, **Refined Power**)
+- **Catalog keys:** `OwnerMod_Stem` (e.g. `FactoryGame_Water`, `RefinedPower_RP_…`). UI labels use item display names
+- **Liquids / gases:** RGB from `mFluidColor` / `mGasColor` (`!pc <fluid> liquid|gas`); gases metallic by default (`!Metallic`)
+- **Empty:** **PC Empty Pipe** (`Neutral`) + Matte
+- **Unknown:** **PC ERR0R** (`Fallback`) + magenta (`#FF00FF`)
+- **Store:** SaveGame keeps only Customizer-edited swatches; unedited fluids use live catalog defaults (Customizer icons still show catalog colors)
 - **Supports:** floor / stackable / wall / wall-hole parents inherit the touched pipe’s fluid look
-- **Modded fluids:** Satisfactory Plus / Refined Power soft-gated Customizer sections when those mods are present
-- Server/host applies paint; clients receive the result; Customizer edits persist in the world save
+- Server/host applies paint; clients receive the result
 
 ## Chat commands
 
 Type on the **server or listen host**. Commands start with `!` and do not appear in public chat. Responses show as **Hal:** system messages.
 
-- `!Metallic <fluid>` / `all on` / `all off` / `default` — metallic flags only
+- `!Metallic <fluid>` / `all on` / `all off` / `default` — metallic flags only (cfg)
 - `!pc <fluid> liquid|gas` — RGB color source (metallic untouched)
-- `!pc default` — reseed all Customizer swatch store colors from fluid data
+- `!pc default` — clear custom SaveGame swatch edits (catalog defaults)
 - `!pchelp` — short list
 
 Same verbs register with SML for **Chat Mk 2** expandable help. Full list: [Documentation/chat-commands.md](Documentation/chat-commands.md).
@@ -31,10 +32,11 @@ No SML Mods menu. Edit `Configs/PipelineColor.cfg` on the host, use console `Pip
 
 | Key | Default | Notes |
 |-----|---------|-------|
+| `CfgSchema` | `2` | Prefixed catalog keys; older cfg full-reseeds on load |
 | `DefaultGasMetallic` | `true` | Gases metallic when no per-fluid override |
 | `DefaultLiquidMetallic` | `false` | Liquids metallic when no per-fluid override |
-| `MetallicOverrides` | `{}` | Per catalog key (`true` / `false`) |
-| `ColorSourceOverrides` | `{}` | Per catalog key (`liquid` / `gas`) |
+| `MetallicOverrides` | `{}` | Per catalog key (`FactoryGame_Water`, …) |
+| `ColorSourceOverrides` | `{}` | Per catalog key (`liquid` / `gas`); default seed includes `FactoryGame_NitrogenGas` → gas |
 
 ## Requirements
 
@@ -43,7 +45,7 @@ No SML Mods menu. Edit `Configs/PipelineColor.cfg` on the host, use console `Pip
 
 ## Multiplayer
 
-**Required on remote** — all players need the same mod version (`^1.2.0`). Authority applies colors and config. See [Documentation/multiplayer.md](Documentation/multiplayer.md).
+**Required on remote** — all players need the same mod version (`^1.3.0`). Authority applies colors and config. See [Documentation/multiplayer.md](Documentation/multiplayer.md).
 
 ## Screenshots
 

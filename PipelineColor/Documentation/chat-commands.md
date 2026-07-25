@@ -14,13 +14,13 @@ The same commands register with **SML** (`AChatCommandSubsystem::RegisterCommand
 - `!Metallic all on` — force **every** catalog fluid (incl. Neutral / Fallback) metallic **on** via per-fluid overrides
 - `!Metallic all off` — force **every** catalog fluid metallic **off** (color finish) the same way
 - `!Metallic default` — clear all metallic overrides and restore gas-on / liquid-off defaults. **Metallic flags only** — Customizer swatch edits stay untouched
-- `!pc [fluid] liquid|gas` — paint RGB from `mFluidColor` or `mGasColor` (**metallic unchanged**). Default without override: liquid for all except Nitrogen Gas → gas
-- `!pc default` — reseed **all** Customizer swatch store colors from the fluid descriptors. Destructive: resets every PC swatch edit (metallic cfg untouched)
+- `!pc [fluid] liquid|gas` — paint RGB from `mFluidColor` or `mGasColor` (**metallic unchanged**). Default without override: liquid for all except `FactoryGame_NitrogenGas` → gas
+- `!pc default` — clear **all** custom Customizer swatch store entries. Catalog defaults paint until you edit again (metallic cfg untouched)
 - `!pchelp` — short command list
 
 `all on` / `all off` do **not** flip `DefaultGasMetallic` / `DefaultLiquidMetallic`. They stamp explicit overrides for the full fluid roster. Use `!Metallic default` to drop those overrides and return to gas/liquid defaults.
 
-Fluid tokens accept catalog keys or Customizer-style labels (e.g. `Water`, `NitrogenGas`, `PC Nitrogen Gas`). Matching ignores spaces and case. Toggle flips the **effective** state (override or gas/liquid default). Synonyms for the second `all` token: `on`/`1`/`true`, `off`/`0`/`false`. Color-source last token synonyms: `liquid`/`fluid`, `gas`.
+Fluid tokens accept catalog keys or Customizer-style labels (e.g. `Water`, `FactoryGame_Water`, `NitrogenGas`, `PC Nitrogen Gas`). Matching ignores spaces and case. Toggle flips the **effective** state (override or gas/liquid default). Synonyms for the second `all` token: `on`/`1`/`true`, `off`/`0`/`false`. Color-source last token synonyms: `liquid`/`fluid`, `gas`.
 
 ## Examples
 
@@ -44,7 +44,7 @@ Feedback uses the **Hal:** sender. Examples:
 | Metallic all | `All metallic on.` / `All metallic off.` |
 | Metallic default | `Metallic defaults restored.` |
 | Color source | `Water gas color.` / `Water liquid color.` |
-| `!pc default` | `Swatches reseeded.` |
+| `!pc default` | `Custom swatches cleared.` |
 | Client / no authority | `Host only.` |
 | Unknown fluid | `Unknown: …` |
 | Bad args / catch-all | usage line, or `Unknown. !pchelp` |
@@ -54,6 +54,6 @@ Feedback uses the **Hal:** sender. Examples:
 
 | Surface | Use |
 |---------|-----|
-| `Configs/PipelineColor.cfg` | `MetallicOverrides`, `ColorSourceOverrides`, defaults |
+| `Configs/PipelineColor.cfg` | `CfgSchema`, `MetallicOverrides`, `ColorSourceOverrides`, defaults |
 | Console `PipelineColor.Set` | Same keys as cfg |
 | Customizer | PC swatch RGB / finish edits (store) |

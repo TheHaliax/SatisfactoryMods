@@ -7,6 +7,7 @@
 #include "Config/FPCPipelineColorModConfig.h"
 #include "HAL/IConsoleManager.h"
 #include "PipelineColorRootInstanceModule.h"
+#include "Swatches/FPCDynamicSwatchRegistry.h"
 
 #define LOCTEXT_NAMESPACE "FPipelineColorModule"
 
@@ -24,6 +25,7 @@ void FPipelineColorModule::StartupModule() {
 
 void FPipelineColorModule::ShutdownModule() {
   UPipelineColorRootInstanceModule::UnregisterGlobalDelegates();
+  FPCDynamicSwatchRegistry::Reset();
 }
 
 #undef LOCTEXT_NAMESPACE

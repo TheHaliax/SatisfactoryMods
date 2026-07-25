@@ -3,7 +3,7 @@
 
 #include "Config/FPCPipelineColorModConfig.h"
 #include "Appearance/FPCFluidAppearanceCatalog.h"
-#include "Appearance/FPCFluidRoster.h"
+#include "Swatches/FPCDynamicSwatchRegistry.h"
 
 #include "Configuration/ConfigManager.h"
 #include "HAL/IConsoleManager.h"
@@ -16,6 +16,8 @@
 #include "Serialization/JsonWriter.h"
 
 namespace {
+constexpr int32 GCfgSchemaPrefixedKeys = 2;
+
 static TAutoConsoleVariable<int32>
     CVarDefaultGasMetallic(TEXT("PipelineColor.DefaultGasMetallic"), 1,
                            TEXT("1 = gases metallic by default when no per-key override"),
@@ -29,6 +31,15 @@ static TAutoConsoleVariable<int32>
 static TMap<FName, bool> GMetallicOverrides;
 static TMap<FName, EPCColorSource> GColorSourceOverrides;
 static FPCPipelineColorConfigChanged GConfigChanged;
+
+struct FColorSourceDefault {
+  const TCHAR* Key;
+  EPCColorSource Source;
+};
+
+constexpr FColorSourceDefault GColorSourceDefaults[] = {
+    {TEXT("FactoryGame_NitrogenGas"), EPCColorSource::Gas},
+};
 
 static bool ParseColorSourceText(const FString& ValueText, EPCColorSource& Out) {
   if (ValueText.Equals(TEXT("gas"), ESearchCase::IgnoreCase)) {
@@ -74,6 +85,20 @@ static void BroadcastConfigChanged() {
   GConfigChanged.Broadcast();
 }
 
+static void SeedColorSourceDefaults() {
+  GColorSourceOverrides.Reset();
+  for (const FColorSourceDefault& Def : GColorSourceDefaults) {
+    GColorSourceOverrides.Add(FName(Def.Key), Def.Source);
+  }
+}
+
+static void ApplyFreshDefaults() {
+  CVarDefaultGasMetallic->Set(1);
+  CVarDefaultLiquidMetallic->Set(0);
+  GMetallicOverrides.Reset();
+  SeedColorSourceDefaults();
+}
+
 static void ApplyCvarsFromJson(const TSharedPtr<FJsonObject>& Object) {
   CVarDefaultGasMetallic->Set(ParseBoolField(Object, TEXT("DefaultGasMetallic"), true) ? 1 : 0);
   CVarDefaultLiquidMetallic->Set(ParseBoolField(Object, TEXT("DefaultLiquidMetallic"), false) ? 1
@@ -83,9 +108,20 @@ static void ApplyCvarsFromJson(const TSharedPtr<FJsonObject>& Object) {
   const TSharedPtr<FJsonObject>* Overrides = nullptr;
   if (Object->TryGetObjectField(TEXT("MetallicOverrides"), Overrides) && Overrides) {
     for (const TPair<FString, TSharedPtr<FJsonValue>>& Pair : (*Overrides)->Values) {
-      if (Pair.Value.IsValid()) {
-        GMetallicOverrides.Add(FName(*Pair.Key), Pair.Value->AsBool());
+      if (!Pair.Value.IsValid()) {
+        continue;
       }
+      bool bOn = false;
+      if (Pair.Value->Type == EJson::Boolean) {
+        bOn = Pair.Value->AsBool();
+      } else if (Pair.Value->Type == EJson::Number) {
+        bOn = Pair.Value->AsNumber() != 0.0;
+      } else if (Pair.Value->Type == EJson::String) {
+        bOn = ParseBoolText(Pair.Value->AsString());
+      } else {
+        continue;
+      }
+      GMetallicOverrides.Add(FName(*Pair.Key), bOn);
     }
   }
 
@@ -106,6 +142,7 @@ static void ApplyCvarsFromJson(const TSharedPtr<FJsonObject>& Object) {
 
 static TSharedRef<FJsonObject> BuildJsonFromCvars() {
   TSharedRef<FJsonObject> Root = MakeShared<FJsonObject>();
+  Root->SetNumberField(TEXT("CfgSchema"), GCfgSchemaPrefixedKeys);
   Root->SetBoolField(TEXT("DefaultGasMetallic"),
                      CVarDefaultGasMetallic.GetValueOnGameThread() != 0);
   Root->SetBoolField(TEXT("DefaultLiquidMetallic"),
@@ -154,13 +191,33 @@ void FPCPipelineColorModConfig::LoadRuntimeConfig() {
   const FString Path = GetConfigFilePath();
   FString JsonText;
   if (!FFileHelper::LoadFileToString(JsonText, *Path)) {
+    ApplyFreshDefaults();
+    SaveToDisk();
+    FPCFluidAppearanceCatalog::Get().Invalidate();
     return;
   }
 
   TSharedPtr<FJsonObject> Object;
   const TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonText);
   if (!FJsonSerializer::Deserialize(Reader, Object) || !Object.IsValid()) {
-    UE_LOG(LogPipelineColor, Warning, TEXT("%s bad JSON %s"), PIPELINECOLOR_LOG_PREFIX, *Path);
+    UE_LOG(LogPipelineColor, Warning, TEXT("%s bad JSON %s — reseed cfg"), PIPELINECOLOR_LOG_PREFIX,
+           *Path);
+    ApplyFreshDefaults();
+    SaveToDisk();
+    FPCFluidAppearanceCatalog::Get().Invalidate();
+    return;
+  }
+
+  const int32 FileSchema = Object->HasField(TEXT("CfgSchema"))
+                               ? static_cast<int32>(Object->GetNumberField(TEXT("CfgSchema")))
+                               : 0;
+  if (FileSchema < GCfgSchemaPrefixedKeys) {
+    UE_LOG(LogPipelineColor, Log, TEXT("%s cfg schema %d->%d full reseed"),
+           PIPELINECOLOR_LOG_PREFIX, FileSchema, GCfgSchemaPrefixedKeys);
+    ApplyFreshDefaults();
+    SaveToDisk();
+    FPCFluidAppearanceCatalog::Get().Invalidate();
+    BroadcastConfigChanged();
     return;
   }
 
@@ -243,8 +300,8 @@ bool FPCPipelineColorModConfig::TrySetAllMetallic(bool bOn, UWorld* World) {
   };
 
   AddKey(FName(TEXT("Neutral")));
-  for (const FPCFluidRosterRow& Row : FPCFluidRoster::FluidRows()) {
-    AddKey(Row.Stem);
+  for (const FPCDynamicSwatchEntry& Entry : FPCDynamicSwatchRegistry::Entries()) {
+    AddKey(Entry.CatalogKey);
   }
   AddKey(FName(TEXT("Fallback")));
 
@@ -269,9 +326,6 @@ bool FPCPipelineColorModConfig::TryResetMetallicToDefaults(UWorld* World) {
 EPCColorSource FPCPipelineColorModConfig::GetColorSourceForKey(FName CatalogKey) {
   if (const EPCColorSource* Override = GColorSourceOverrides.Find(CatalogKey)) {
     return *Override;
-  }
-  if (CatalogKey == FName(TEXT("NitrogenGas"))) {
-    return EPCColorSource::Gas;
   }
   return EPCColorSource::Liquid;
 }

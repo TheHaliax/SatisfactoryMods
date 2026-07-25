@@ -200,6 +200,9 @@ void SeedFromWorld(UWorld* World) {
   if (!IsValid(World) || GSeededWorld.Get() == World) {
     return;
   }
+  GPipeToSupports.Reset();
+  GSupportToPipe.Reset();
+  GScannedNoSupports.Reset();
   GSeededWorld = World;
 
   // Single world pass replaces per-pipe TActorIterator fallbacks: resolve each
@@ -331,6 +334,10 @@ AFGBuildablePipeline* FindTouchedPipe(AFGBuildable* Support) {
 
   UWorld* World = Support->GetWorld();
   if (!IsValid(World)) {
+    return nullptr;
+  }
+
+  if (GSeededWorld.Get() == World) {
     return nullptr;
   }
 

@@ -31,6 +31,12 @@ bool FCustomizationApplicator::ApplyIfChanged(AFGBuildable* Buildable,
 
   TSubclassOf<UFGFactoryCustomizationDescriptor_Swatch> PaintSwatch = LoadCustomSwatch();
   if (!PaintSwatch) {
+    static bool bLoggedMissingCustom = false;
+    if (!bLoggedMissingCustom) {
+      bLoggedMissingCustom = true;
+      UE_LOG(LogPipelineColor, Error, TEXT("%s SwatchDesc_Custom missing — using Spec.SwatchDesc"),
+             PIPELINECOLOR_LOG_PREFIX);
+    }
     PaintSwatch = Spec.SwatchDesc;
   }
 
@@ -56,7 +62,7 @@ bool FCustomizationApplicator::ApplyIfChanged(AFGBuildable* Buildable,
 
   Buildable->SetCustomizationData_Native(Next, /*skipCombine=*/true);
 
-  UE_LOG(LogPipelineColor, Log, TEXT("%s apply %s key=%s primary=(%.2f,%.2f,%.2f)"),
+  UE_LOG(LogPipelineColor, Verbose, TEXT("%s apply %s key=%s primary=(%.2f,%.2f,%.2f)"),
          PIPELINECOLOR_LOG_PREFIX, *GetNameSafe(Buildable), *Spec.CatalogKey.ToString(),
          Spec.PrimaryColor.R, Spec.PrimaryColor.G, Spec.PrimaryColor.B);
 
