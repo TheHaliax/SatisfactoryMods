@@ -7,6 +7,9 @@
 #include "Attach/FStructuralEndpointAttach.h"
 #include "Buildables/FGBuildablePowerPole.h"
 #include "Circuit/FStructuralCircuitPromotionUtil.h"
+// Was previously satisfied only by transitive inclusion from a neighbouring file in the same
+// unity blob; an unrelated edit shifted the grouping and broke the build.
+#include "Components/UFGStructuralPowerConnectionComponent.h"
 #include "Connection/FStructuralSiteMembership.h"
 #include "Core/EStructuralAttachStrategy.h"
 #include "Core/EStructuralPowerRole.h"

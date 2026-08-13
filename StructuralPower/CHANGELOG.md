@@ -1,5 +1,50 @@
 # Changelog
 
+## 3.1.2 — 2026-08-13
+
+Compatibility fix for **Satisfactory 1.2.4 (CL 502094, UE 5.6.1)**. No gameplay or save-format
+changes. Verified on a Linux dedicated server: clean world load, 42 pipe supports injected, bulk
+drain completed.
+
+- **Fatal hook failure on launch** — CL502094 compiles `AFGBuildableCircuitBridge::OnCircuitsRebuilt`
+  and `AFGBuildablePowerPole::OnPowerConnectionChanged` into bodies too short for funchook to
+  detour. SML escalates a failed hook to `Fatal`, so the game died in `UGameInstance::Init` with
+  `funchook failed: Too short instructions` before reaching the main menu. Both signals are
+  re-driven from non-virtual functions that still detour cleanly: circuit rebuilds from
+  `AFGCircuitSubsystem::SetCircuitBridgesModified`, and pole wire deltas from
+  `UFGCircuitConnectionComponent::AddConnection` / `RemoveConnection`, resolving the pole from the
+  connection component's owner. The rebuild signal names no bridge, so every switch is re-evaluated
+  on it; authority filtering and deferral in `HandleSwitchCircuitsRebuilt` are unchanged. The two
+  matching diagnostics hooks are dropped — they only logged under extended debug.
+
+- **Dedicated-server crash during world load** — `FStructuralPipeTopology` made virtual calls on
+  `AFGBuildablePipeBase` and `AFGBuildablePipeline`. Virtual calls bind by vtable *index*, fixed
+  when the mod compiles, while ordinary calls bind by *symbol name* through the PLT at load. The
+  mod compiles against a FactoryGame stub and binds to the shipped FactoryGame at runtime, so
+  drift between the two shifts every index computed from those headers while symbol-resolved calls
+  keep working. On CL502094 those calls landed on neighbouring vtable slots:
+
+  | Called | Arrived in |
+  |---|---|
+  | `GetSplineComponent()` | `AFGBuildablePipeBase::CreateClearanceData` |
+  | `GetPipeConnections()` | `AFGBuildablePipelinePump::OnFluidDescriptorSet` |
+
+  `GetPipeConnections` and `OnFluidDescriptorSet` are declared on consecutive lines in
+  `FGBuildablePipeline.h` — an off-by-one slot. Disassembly of the shipped `.so` showed the faulting
+  line as `call *0xb58(%rax)`, an indirect call, with every symbol-resolved call in the same loop
+  unaffected. Object layout is not affected by this skew, since adding or removing virtuals changes
+  vtable contents rather than field offsets — which is why property reads were always fine.
+
+  Both call sites are removed. `FindTouchedPipe` takes the pipeline's `USplineComponent` from the
+  actor's component set with `TInlineComponentArray` and measures against it with
+  `USplineComponent::FindLocationClosestToWorldLocation`. `CollectConnectedConductors` drops its
+  per-class connection chain entirely — every component it fetched was already in the component
+  array gathered a line earlier. Neither function contains an indirect call in the built binary.
+
+- **Latent build break** — `FStructuralPowerPoleProcessor.cpp` used
+  `UFGStructuralPowerConnectionComponent` without including its header, compiling only because
+  Unreal's unity build placed it beside a file that did.
+
 ## 3.1.1 — 2026-07-22
 
 - **SCIM-safe save format** — Id-panel defaults and overrides persist as flat records

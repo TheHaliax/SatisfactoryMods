@@ -8,6 +8,7 @@
 #include "Buildables/FGBuildablePipelineAttachment.h"
 #include "Buildables/FGBuildablePipelinePump.h"
 #include "Buildables/FGBuildablePipeReservoir.h"
+#include "Components/SplineComponent.h"
 #include "Core/FStructuralGraphSession.h"
 #include "EngineUtils.h"
 #include "FGPipeConnectionComponent.h"
@@ -166,29 +167,9 @@ void FStructuralPipeTopology::CollectConnectedConductors(AFGBuildable* Self,
     return;
   }
 
+  // Component set only. GetPipeConnections() returns what this array already holds, and is
+  // virtual — see FindTouchedPipe.
   TInlineComponentArray<UFGPipeConnectionComponent*> Conns(Self);
-  if (AFGBuildablePipelineAttachment* Attachment = Cast<AFGBuildablePipelineAttachment>(Self)) {
-    const TArray<UFGPipeConnectionComponent*> AttachmentConns = Attachment->GetPipeConnections();
-    for (UFGPipeConnectionComponent* Conn : AttachmentConns) {
-      if (IsValid(Conn)) {
-        Conns.AddUnique(Conn);
-      }
-    }
-  } else if (AFGBuildablePipeReservoir* Reservoir = Cast<AFGBuildablePipeReservoir>(Self)) {
-    const TArray<UFGPipeConnectionComponent*> ReservoirConns = Reservoir->GetPipeConnections();
-    for (UFGPipeConnectionComponent* Conn : ReservoirConns) {
-      if (IsValid(Conn)) {
-        Conns.AddUnique(Conn);
-      }
-    }
-  } else if (AFGBuildablePipeline* Pipeline = Cast<AFGBuildablePipeline>(Self)) {
-    if (UFGPipeConnectionComponent* C0 = Pipeline->GetPipeConnection0()) {
-      Conns.AddUnique(C0);
-    }
-    if (UFGPipeConnectionComponent* C1 = Pipeline->GetPipeConnection1()) {
-      Conns.AddUnique(C1);
-    }
-  }
 
   const int32 Limit = FMath::Min(Conns.Num(), MaxNeighborPorts);
   for (int32 i = 0; i < Limit; ++i) {
@@ -232,6 +213,9 @@ AFGBuildable* FStructuralPipeTopology::FindTouchedPipe(AFGBuildable* Support) co
     }
   }
 
+  // Geometric fallback for supports with no pipe connection. Do not call AFGBuildablePipeBase
+  // virtuals here: on CL502094 they dispatch to a neighbouring vtable slot and crash. Spline
+  // comes from the component set, and everything else below binds by symbol.
   UWorld* World = Support->GetWorld();
   if (!IsValid(World)) {
     return nullptr;
@@ -249,10 +233,19 @@ AFGBuildable* FStructuralPipeTopology::FindTouchedPipe(AFGBuildable* Support) co
     if (!IsValid(Pipe) || !FStructuralEligibilityRules::IsFluidPipeConductor(Pipe)) {
       continue;
     }
-    const float Offset = Pipe->FindOffsetClosestToLocation(SnapLoc);
-    FVector OnSpline = FVector::ZeroVector;
-    FVector Dir = FVector::ZeroVector;
-    Pipe->GetLocationAndDirectionAtOffset(Offset, OnSpline, Dir);
+    TInlineComponentArray<USplineComponent*> Splines(Pipe);
+    const USplineComponent* Spline = nullptr;
+    for (USplineComponent* Candidate : Splines) {
+      if (IsValid(Candidate)) {
+        Spline = Candidate;
+        break;
+      }
+    }
+    if (!Spline || Spline->GetNumberOfSplinePoints() < 2) {
+      continue;
+    }
+    const FVector OnSpline =
+        Spline->FindLocationClosestToWorldLocation(SnapLoc, ESplineCoordinateSpace::World);
     const float DistSq = FVector::DistSquared(SnapLoc, OnSpline);
     if (DistSq <= BestDistSq) {
       BestDistSq = DistSq;
