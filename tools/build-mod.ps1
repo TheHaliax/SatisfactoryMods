@@ -193,6 +193,21 @@ function Invoke-Ubt {
     return [PSCustomObject]@{ Output = $Out; ExitCode = $Code }
 }
 
+function Unlink-SiblingModJunctions {
+    param([string]$KeepName, [string]$ProjDir)
+    $ModsDir = Join-Path $ProjDir 'Mods'
+    if (-not (Test-Path -LiteralPath $ModsDir)) { return }
+    Get-ChildItem -LiteralPath $ModsDir -Force | ForEach-Object {
+        if ($_.Name -eq $KeepName) { return }
+        if ($_.LinkType -ne 'Junction' -and $_.LinkType -ne 'SymbolicLink') { return }
+        Write-Host "Unlink: $($_.Name)"
+        cmd /c "rmdir `"$($_.FullName)`""
+        if ($LASTEXITCODE -ne 0) {
+            throw "Unlink failed: $($_.FullName)"
+        }
+    }
+}
+
 function Ensure-StarterJunction {
     param([string]$Name, [string]$Root, [string]$ProjDir)
     $Link = Join-Path $ProjDir "Mods\$Name"
@@ -351,6 +366,7 @@ if (-not (Test-Path -LiteralPath $Ubt)) {
     throw "UnrealBuildTool not found: $Ubt"
 }
 
+Unlink-SiblingModJunctions -KeepName $Mod -ProjDir $ProjectDir
 Ensure-ModJunction -Name $Mod -Root $ModRoot -ProjDir $ProjectDir -Config $LocalCfg
 
 # --- 4/5 build ---

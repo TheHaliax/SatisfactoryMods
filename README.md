@@ -16,9 +16,9 @@ Each mod has its own folder and README with features, requirements, and roadmap.
 |---|---|
 | **Added** | 2026-06-30 |
 | **Published** | 2026-07-02 |
-| **Updated** | 2026-07-16 |
-| **Previous** | **3.0** — [Foundation rewrite](StructuralPower/README.md#v300--foundation-rewrite-previous) |
-| **Version** | **3.1.1** *(current)* — [Machines + pipes](StructuralPower/README.md#v31--machines--pipes-current-311) |
+| **Updated** | 2026-08-13 |
+| **Previous** | **3.1.1** — SCIM-safe save format |
+| **Version** | **3.1.2** *(current)* — recook CL 502094 |
 | **In development** | **3.2** — [Belt topology](StructuralPower/README.md#v32--belt-topology-in-development) ([roadmap](StructuralPower/README.md#roadmap)) |
 
 Hidden structural power bus for foundations, walls, ramps, and bridge poles. Retroactive — existing builds are wired on load. **v3.0:** vanilla-first rewrite, lighting, Id panel, switches, hoverpack. **v3.1:** opt-in machines + pipe topology (gen/storage/resources/production, supports→pumps). **v3.2 (in development):** belt topology. Config via cfg / console / `!` chat.
@@ -35,11 +35,11 @@ Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 |---|---|
 | **Added** | 2026-07-15 |
 | **Published** | 2026-07-15 |
-| **Updated** | 2026-07-24 |
-| **Previous** | **1.2.0** — SFP/RP sections, descriptor RGB, `!pc` |
-| **Version** | **1.3.0** *(current)* — dynamic registry, `OwnerMod_Stem`, schema-4 / cfg-2 |
+| **Updated** | 2026-08-13 |
+| **Previous** | **1.3.0** — dynamic registry, `OwnerMod_Stem`, schema-4 / cfg-2 |
+| **Version** | **1.3.1** *(current)* — rebuild CL 502094 (anniversary vtable / dedi hook) |
 
-Fluid-driven colors for pipelines, junctions, pumps, and matching pipe supports. Dynamic Customizer **PipelineColor** swatches per loaded fluid, SaveGame **custom-only** store, metallic gases by default. **v1.3.0:** `OwnerMod_Stem` keys, schema-4 store / cfg-2 reseed, `!pc` color source, **PC Empty Pipe** + **PC ERR0R** magenta. Config via cfg / console / chat.
+Fluid-driven colors for pipelines, junctions, pumps, and matching pipe supports. Dynamic Customizer **PipelineColor** swatches per loaded fluid, SaveGame **custom-only** store, metallic gases by default. **v1.3.1:** cook vs game CL 502094 (fixes dedi `OnFluidDescriptorSet` hook crash). **v1.3.0:** `OwnerMod_Stem` keys, schema-4 store / cfg-2 reseed, `!pc` color source, **PC Empty Pipe** + **PC ERR0R** magenta. Config via cfg / console / chat.
 
 Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 
@@ -52,7 +52,7 @@ Requires Satisfactory 1.2 (≥491125) and SML ^3.12.0.
 | | |
 |---|---|
 | **Added** | 2026-07-23 |
-| **Version** | **0.1.0** *(beta)* |
+| **Version** | **0.1.1** *(beta)* |
 
 Press **Z** while looking at a factory to toggle Standby (`SetIsProductionPaused`). Dedicated-safe RCO. Log `[HALRS]`.
 

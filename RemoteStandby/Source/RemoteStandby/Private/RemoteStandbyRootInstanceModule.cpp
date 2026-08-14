@@ -49,7 +49,7 @@ void URemoteStandbyRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase Ph
   }
 
   if (Phase == ELifecyclePhase::POST_INITIALIZATION) {
-    UE_LOG(LogRemoteStandby, Display, TEXT("%s RemoteStandby v0.1.0 — Z look-at standby toggle"),
+    UE_LOG(LogRemoteStandby, Display, TEXT("%s RemoteStandby v0.1.1 — Z look-at standby toggle"),
            REMOTESTANDBY_LOG_PREFIX);
   }
   Super::DispatchLifecycleEvent(Phase);

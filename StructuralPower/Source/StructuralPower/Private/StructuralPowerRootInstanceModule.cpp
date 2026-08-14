@@ -602,7 +602,9 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
 
   SUBSCRIBE_METHOD_VIRTUAL_AFTER(
       AFGBuildableLightSource::OnBuildEffectFinished, GetMutableDefault<AFGBuildableLightSource>(),
-      [](AFGBuildableLightSource* Light) { HandleLightBuildEffectFinished(Light); });
+      [](AFGBuildable* Buildable) {
+        HandleLightBuildEffectFinished(Cast<AFGBuildableLightSource>(Buildable));
+      });
 
   SUBSCRIBE_METHOD_VIRTUAL(
       AFGBuildableCircuitSwitch::BeginPlay, GetMutableDefault<AFGBuildableCircuitSwitch>(),
