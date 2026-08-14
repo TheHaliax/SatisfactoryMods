@@ -77,7 +77,7 @@ Automatic diagnostics skip menu worlds (`Map_Menu_*`). Load a save or run `Struc
 
 Include:
 
-- StructuralPower version (**3.1.2**)
+- StructuralPower version (**3.1.3**)
 - SML version
 - Single-player, listen host, or dedicated server
 - Which group toggles on (`!Generation`, `!Resources`, `!lighting`, …)

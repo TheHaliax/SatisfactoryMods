@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.1.3 — 2026-08-13
+
+- Pipe topology: support→pipe lookup measures against the pipe spline from the actor's
+  component set; redundant per-class connection re-fetch removed (thanks @Eli-Zac)
+
 ## 3.1.2 — 2026-08-13
 
 - Recook vs Satisfactory **1.2.4.0** CL **502094**. `OnBuildEffectFinished` is protected

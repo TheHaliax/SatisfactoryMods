@@ -14,9 +14,9 @@ Upload the combined `StructuralPower.zip`. SMR unpacks it and serves per-platfor
 
 Mod page: [ficsit.app/mod/StructuralPower](https://ficsit.app/mod/StructuralPower)
 
-## Release checklist (3.1.2)
+## Release checklist (3.1.3)
 
-1. **Version fields** in `StructuralPower.uplugin` — `SemVersion` / `VersionName` **3.1.2**, `RemoteVersionRange` **^3.0.0**, `Version` integer **3** (major), `GameVersion` **>=491125**, SML **^3.12.0**.
+1. **Version fields** in `StructuralPower.uplugin` — `SemVersion` / `VersionName` **3.1.3**, `RemoteVersionRange` **^3.0.0**, `Version` integer **3** (major), `GameVersion` **>=491125**, SML **^3.12.0**.
 2. **Icons** — `tools/Invoke-ModIcons.ps1` (also from pack scripts) → badge **V3.1** on `Resources/Icon*.png` (badge tracks major.minor; unchanged for patch releases).
 3. **Version guard** — `powershell -File scripts/check-version.ps1`
 4. **Docs** — `CHANGELOG.md`, root `README.md`, `StructuralPower/README.md`, `Documentation/*`.
@@ -27,8 +27,8 @@ Mod page: [ficsit.app/mod/StructuralPower](https://ficsit.app/mod/StructuralPowe
 6. **Save-parser check** — load an existing save, save again, and confirm the new save uploads
    to [satisfactory-calculator.com](https://satisfactory-calculator.com/en/interactive-map)
    without parse errors (client and dedicated autosaves).
-7. **ficsit.app** → New Version → upload `StructuralPower.zip` + changelog **3.1.2**. Refresh mod icon from `Resources/Icon512.png` if asked. Merge `development` → `main` so GitHub README/screenshots match.
-8. **Verify** — Mod Manager installs **3.1.2**; client and dedicated share the same mod set.
+7. **ficsit.app** → New Version → upload `StructuralPower.zip` + changelog **3.1.3**. Refresh mod icon from `Resources/Icon512.png` if asked. Merge `development` → `main` so GitHub README/screenshots match.
+8. **Verify** — Mod Manager installs **3.1.3**; client and dedicated share the same mod set.
 9. **Smoke test** — load save; machine/pipe groups; lights/switches/panels; Id panel; hoverpack; save/reload.
 
 ## Updating a release
