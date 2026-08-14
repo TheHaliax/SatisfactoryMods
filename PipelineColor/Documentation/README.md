@@ -1,6 +1,6 @@
 # PipelineColor Documentation
 
-Player and contributor docs for **PipelineColor** **1.3.0** (see [CHANGELOG](../CHANGELOG.md) and `.uplugin`).
+Player and contributor docs for **PipelineColor** **1.3.1** (see [CHANGELOG](../CHANGELOG.md) and `.uplugin`).
 
 ## Overview
 

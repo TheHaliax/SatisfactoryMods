@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.1.2 — 2026-08-13
+
+- Recook vs Satisfactory **1.2.4.0** CL **502094**. `OnBuildEffectFinished` is protected
+  on `AFGBuildable`; hook via accessible member pointer (vtable unchanged)
+
 ## 3.1.1 — 2026-07-22
 
 - **SCIM-safe save format** — Id-panel defaults and overrides persist as flat records

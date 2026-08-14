@@ -1,6 +1,6 @@
 # PipelineColor
 
-**Version 1.3.0** · Satisfactory 1.2 (≥491125) · SML ^3.12.0
+**Version 1.3.1** · Satisfactory 1.2 (≥491125) · SML ^3.12.0
 
 Auto-colors pipelines from network fluid. Dynamic Customizer swatches, custom-only store, metallic gases by default.
 
