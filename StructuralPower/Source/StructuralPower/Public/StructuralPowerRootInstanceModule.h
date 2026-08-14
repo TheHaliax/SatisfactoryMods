@@ -31,7 +31,6 @@ class STRUCTURALPOWER_API UStructuralPowerRootInstanceModule : public UGameInsta
   static void HandleBuildableRemoved(AFGBuildable* Buildable);
   static void HandlePowerConnectionChanged(AFGBuildablePowerPole* Pole,
                                            UFGCircuitConnectionComponent* Connection);
-  static void HandlePoleWireChanged(UFGCircuitConnectionComponent* Connection);
   static void HandleLightweightMemberAdded(AFGLightweightBuildableSubsystem* Subsystem,
                                            TSubclassOf<AFGBuildable> BuildableClass,
                                            int32 InstanceIndex);

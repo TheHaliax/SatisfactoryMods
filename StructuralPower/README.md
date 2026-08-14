@@ -1,21 +1,8 @@
 # StructuralPower
 
-**Version 3.1.2** · Satisfactory 1.2 (≥491125) · SML ^3.12.0
+**Version 3.1.3** · Satisfactory 1.2 (≥491125) · SML ^3.12.0
 
 Structural Power adds a hidden power network through structural pieces — foundations, walls, ramps, and bridge poles — so you can power outlets and poles without running visible wires along every segment. **v3.1** adds opt-in **machine groups** and **pipe topology** (generators, storage, resources, production; fluid supports and machine pipe ports → inline pumps; transport stub). **v3.0** reworked attach, load, and reconcile on vanilla circuit APIs with opt-in **structural lighting** and **named light groups**.
-
-### A note on v2.1 (and why v3.0+ is worth another try)
-
-**I'm sorry.** **v2.1.0** added switches and hoverpack tether, but the save-load path change **broke legacy support** so badly on many existing bases that first-time use failed entirely. That was never the intent — and it is why the full rework exists. **v2.0.0** had already introduced retroactive wiring (no rebuild). There was **no public v2.2 release**; the next shipped line was **v3.0.0**, now **v3.1.2** with machines and pipe topology.
-
-**v3.0+** reworks attach and load on vanilla circuit APIs — aimed at being lean at runtime and workable on large bases, while restoring full legacy / retroactive support. Existing structures still wire on load; you do not need to rebuild your factory to use the mod again.
-
-**Honest testing note:** my heaviest internal check so far is a save around **~20 MB**. I have not claimed unlimited megabase coverage beyond that. On **legacy / large saves**, expect:
-
-- a **longer load** than a mod-free session of the same world  
-- a **short post-load hitch** that scales roughly with save size (remesh / panel-light seed settling)
-
-After that settle, **post-load gameplay performance has generally been net positive** across the saves I run — the cost is front-loaded into load, not paid every frame. If you bounced on v2.1, this is the line worth returning to.
 
 ## How it works
 
@@ -61,9 +48,9 @@ Feature releases after the v3.0 foundation. Stages are **opt-in** on servers (of
 - Faster / more stable load remesh on large saves
 - Server config via cfg / console / chat only
 
-### v3.1 — Machines + pipes *(current, 3.1.2)*
+### v3.1 — Machines + pipes *(current, 3.1.3)*
 
-**3.1.2** recooks vs CL 502094 (protected `OnBuildEffectFinished` hook). **3.1.1** fixes satisfactory-calculator.com save uploads (SCIM-safe persistence of
+**3.1.3** simplifies the pipe-support spline lookup. **3.1.2** recooks vs CL 502094 (protected `OnBuildEffectFinished` hook). **3.1.1** fixes satisfactory-calculator.com save uploads (SCIM-safe persistence of
 Id-panel names and overrides).
 
 - **Generators** — coal, fuel, nuclear, geothermal, wind, alien booster, HUB biomass

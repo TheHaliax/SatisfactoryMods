@@ -11,7 +11,6 @@
 #include "Buildables/FGBuildableLightSource.h"
 #include "Buildables/FGBuildableLightsControlPanel.h"
 #include "Buildables/FGBuildablePowerPole.h"
-#include "Buildables/FGBuildableWire.h"
 #include "Command/StructuralPowerSmlChatCommands.h"
 #include "Config/FStructuralGroupToggleRegistry.h"
 #include "Config/FStructuralPowerModConfig.h"
@@ -19,10 +18,7 @@
 #include "Diagnostics/FStructuralPowerTrace.h"
 #include "Diagnostics/FStructuralVanillaPowerTrace.h"
 #include "Equipment/FStructuralEquipmentBridgeRegistry.h"
-#include "EngineUtils.h"
 #include "FGBuildableSubsystem.h"
-#include "FGCircuitConnectionComponent.h"
-#include "FGCircuitSubsystem.h"
 #include "FGHUD.h"
 #include "FGLightweightBuildableSubsystem.h"
 #include "Graph/FStructuralEndpointDescriptor.h"
@@ -406,42 +402,6 @@ void UStructuralPowerRootInstanceModule::HandlePowerConnectionChanged(
       }));
 }
 
-// Replacement signal for AFGBuildableCircuitBridge::OnCircuitsRebuilt, not detourable on
-// CL502094. Names no bridge, so every switch is re-evaluated — HandleSwitchCircuitsRebuilt
-// already filters by authority and defers via the graph subsystem.
-static void HandleCircuitBridgesModified(AFGCircuitSubsystem* Subsystem) {
-  if (!IsValid(Subsystem)) {
-    return;
-  }
-
-  UWorld* World = Subsystem->GetWorld();
-  if (!IsValid(World)) {
-    return;
-  }
-
-  for (TActorIterator<AFGBuildableCircuitSwitch> It(World); It; ++It) {
-    if (AFGBuildableCircuitSwitch* Switch = *It) {
-      HandleSwitchCircuitsRebuilt(Switch);
-    }
-  }
-}
-
-// Replacement signal for AFGBuildablePowerPole::OnPowerConnectionChanged, likewise not
-// detourable. Wire add/remove on a connection component is the same event one level down.
-void UStructuralPowerRootInstanceModule::HandlePoleWireChanged(
-    UFGCircuitConnectionComponent* Connection) {
-  if (!IsValid(Connection)) {
-    return;
-  }
-
-  AFGBuildablePowerPole* Pole = Cast<AFGBuildablePowerPole>(Connection->GetOwner());
-  if (!IsValid(Pole)) {
-    return;
-  }
-
-  HandlePowerConnectionChanged(Pole, Connection);
-}
-
 void UStructuralPowerRootInstanceModule::HandleBuildableRemoved(AFGBuildable* Buildable) {
   if (!IsValid(Buildable)) {
     return;
@@ -532,7 +492,7 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
     FStructuralPowerModConfig::LoadRuntimeConfig();
 #if !WITH_EDITOR
     UE_LOG(LogStructuralPower, Log,
-           TEXT("StructuralPower v3.1.2 — machines + vanilla-first reconcile (I-key Id panel)"
+           TEXT("StructuralPower v3.1.3 — machines + vanilla-first reconcile (I-key Id panel)"
                 " (groupLighting=%s trace=%s extendedDebug=%s)"),
            FStructuralPowerModConfig::IsGroupLightingEnabled() ? TEXT("on") : TEXT("off"),
            FStructuralPowerModConfig::IsTraceEnabled() ? TEXT("on") : TEXT("off"),
@@ -642,20 +602,15 @@ void UStructuralPowerRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase 
                            HandleBuildableRemoved(Buildable);
                          });
 
-  // Non-virtual, so they detour cleanly on CL502094 where the originals do not.
-  SUBSCRIBE_METHOD_AFTER(
-      AFGCircuitSubsystem::SetCircuitBridgesModified,
-      [](AFGCircuitSubsystem* Subsystem) { HandleCircuitBridgesModified(Subsystem); });
+  SUBSCRIBE_METHOD_VIRTUAL_AFTER(
+      AFGBuildableCircuitBridge::OnCircuitsRebuilt, GetMutableDefault<AFGBuildableCircuitBridge>(),
+      [](AFGBuildableCircuitBridge* Bridge) { HandleSwitchCircuitsRebuilt(Bridge); });
 
-  SUBSCRIBE_METHOD_AFTER(UFGCircuitConnectionComponent::AddConnection,
-                         [](UFGCircuitConnectionComponent* Self, AFGBuildableWire* /*Wire*/) {
-                           HandlePoleWireChanged(Self);
-                         });
-
-  SUBSCRIBE_METHOD_AFTER(UFGCircuitConnectionComponent::RemoveConnection,
-                         [](UFGCircuitConnectionComponent* Self, AFGBuildableWire* /*Wire*/) {
-                           HandlePoleWireChanged(Self);
-                         });
+  SUBSCRIBE_METHOD_VIRTUAL_AFTER(
+      AFGBuildablePowerPole::OnPowerConnectionChanged, GetMutableDefault<AFGBuildablePowerPole>(),
+      [](AFGBuildablePowerPole* Pole, UFGCircuitConnectionComponent* Connection) {
+        HandlePowerConnectionChanged(Pole, Connection);
+      });
 
   SUBSCRIBE_METHOD_AFTER(AFGLightweightBuildableSubsystem::AddFromBuildableInstanceData,
                          [](int32 ReturnValue, AFGLightweightBuildableSubsystem* Subsystem,

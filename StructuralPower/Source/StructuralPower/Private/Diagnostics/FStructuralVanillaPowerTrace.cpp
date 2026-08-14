@@ -354,7 +354,13 @@ void FStructuralVanillaPowerTrace::RegisterHooks() {
       AFGBuildableCircuitSwitch::SetSwitchOn,
       [](AFGBuildableCircuitSwitch* Switch, bool bOn) { OnSetSwitchOn(Switch, bOn); });
 
-  // OnCircuitsRebuilt and OnPowerConnectionChanged are too short for funchook to detour on
-  // CL502094, and SML makes a failed hook fatal. Both were diagnostics-only, so they are
-  // dropped; the functional paths are re-driven in StructuralPowerRootInstanceModule.
+  SUBSCRIBE_METHOD_VIRTUAL_AFTER(
+      AFGBuildableCircuitBridge::OnCircuitsRebuilt, GetMutableDefault<AFGBuildableCircuitBridge>(),
+      [](AFGBuildableCircuitBridge* Bridge) { OnBridgeCircuitsRebuilt(Bridge); });
+
+  SUBSCRIBE_METHOD_VIRTUAL_AFTER(
+      AFGBuildablePowerPole::OnPowerConnectionChanged, GetMutableDefault<AFGBuildablePowerPole>(),
+      [](AFGBuildablePowerPole* Pole, UFGCircuitConnectionComponent* Connection) {
+        OnPolePowerConnectionChanged(Pole, Connection);
+      });
 }

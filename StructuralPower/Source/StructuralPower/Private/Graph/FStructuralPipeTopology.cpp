@@ -167,8 +167,6 @@ void FStructuralPipeTopology::CollectConnectedConductors(AFGBuildable* Self,
     return;
   }
 
-  // Component set only. GetPipeConnections() returns what this array already holds, and is
-  // virtual — see FindTouchedPipe.
   TInlineComponentArray<UFGPipeConnectionComponent*> Conns(Self);
 
   const int32 Limit = FMath::Min(Conns.Num(), MaxNeighborPorts);
@@ -213,9 +211,6 @@ AFGBuildable* FStructuralPipeTopology::FindTouchedPipe(AFGBuildable* Support) co
     }
   }
 
-  // Geometric fallback for supports with no pipe connection. Do not call AFGBuildablePipeBase
-  // virtuals here: on CL502094 they dispatch to a neighbouring vtable slot and crash. Spline
-  // comes from the component set, and everything else below binds by symbol.
   UWorld* World = Support->GetWorld();
   if (!IsValid(World)) {
     return nullptr;
