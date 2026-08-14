@@ -388,7 +388,7 @@ void UPipelineColorRootInstanceModule::DispatchLifecycleEvent(ELifecyclePhase Ph
   if (Phase == ELifecyclePhase::POST_INITIALIZATION) {
     FPCPipelineColorModConfig::LoadRuntimeConfig();
 #if !WITH_EDITOR
-    UE_LOG(LogPipelineColor, Display, TEXT("PipelineColor v1.3.0 — fluid-driven pipe swatches"));
+    UE_LOG(LogPipelineColor, Display, TEXT("PipelineColor v1.3.1 — fluid-driven pipe swatches"));
 #endif
   }
 

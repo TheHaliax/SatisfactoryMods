@@ -1,5 +1,11 @@
 # PipelineColor — CHANGELOG
 
+## 1.3.1 — 2026-08-13
+
+- Rebuild against Satisfactory **1.2.4.0** CL **502094** (anniversary). Fixes dedicated
+  Linux SIGSEGV in `SUBSCRIBE_METHOD_VIRTUAL_AFTER` on
+  `AFGBuildablePipeline::OnFluidDescriptorSet` (vtable moved vs 1.3.0 cook)
+
 ## 1.3.0 — 2026-07-24
 
 - CatalogKey always `OwnerMod_Stem` (e.g. `FactoryGame_Water`); ClassGen token hash on
